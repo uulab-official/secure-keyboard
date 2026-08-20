@@ -56,14 +56,14 @@ Exit criteria: an external consumer can create a branded keypad without changing
 
 ### Phase 3 — Native mobile renderer
 
-Status: planned
+Status: native renderer sources complete; packaging and device verification pending
 
-- [ ] Implement iOS native secure view and controller.
-- [ ] Implement Android native secure view and controller.
-- [ ] Keep key events and secret composition inside native/core code.
+- [x] Implement iOS native secure view and controller.
+- [x] Implement Android native secure view and controller.
+- [x] Keep key events and secret composition inside native/core code.
 - [x] Provide native submission-to-OPAQUE handoff without exposing a password or client session key.
-- [ ] Add background masking, screenshot/capture handling, autofill/clipboard restrictions, and accessibility review.
-- [ ] Add native UI snapshot tests that use only masked fixtures.
+- [x] Add background masking, screenshot/capture handling, and autofill/clipboard restrictions.
+- [ ] Complete device-level accessibility review and native snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.
 

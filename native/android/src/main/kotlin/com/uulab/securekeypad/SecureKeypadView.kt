@@ -1,0 +1,276 @@
+package com.uulab.securekeypad
+
+import android.app.Activity
+import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.util.AttributeSet
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
+
+/** Public presentation role. It never contains a secret value. */
+public enum class SecureKeyRole {
+    INPUT,
+    BACKSPACE,
+    CLEAR,
+    SUBMIT,
+    SPACER,
+}
+
+/** A public key specification supplied by the host application. */
+public data class SecureKeySpec(
+    val id: String,
+    val label: String,
+    val role: SecureKeyRole,
+    val accessibilityLabel: String = label,
+)
+
+/** A serializable row-based presentation layout. */
+public data class SecureKeypadLayout(val rows: List<List<SecureKeySpec>>)
+
+/** Theme values for the native renderer. */
+public data class SecureKeypadTheme(
+    val backgroundColor: Int = Color.rgb(16, 17, 20),
+    val keyColor: Int = Color.rgb(35, 38, 45),
+    val keyPressedColor: Int = Color.rgb(59, 130, 246),
+    val keyTextColor: Int = Color.WHITE,
+    val keyHeightPx: Int = 56,
+    val keyGapPx: Int = 8,
+    val keyRadiusPx: Float = 12f,
+)
+
+/** Native-owned opaque submission. It cannot be serialized to JavaScript. */
+public class SecureKeypadSubmission internal constructor(internal var handle: Long) : AutoCloseable {
+    override fun close() {
+        if (handle != 0L) {
+            SecureKeypadNative.submissionFree(handle)
+            handle = 0L
+        }
+    }
+}
+
+/**
+ * Secure Native Android keypad.
+ *
+ * This view does not create an EditText, does not keep a password string, and
+ * exposes only masked state and an opaque native submission callback.
+ */
+public class SecureKeypadView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : FrameLayout(context, attrs) {
+    private var sessionHandle: Long = 0L
+    private val display: TextView
+    private val keypad: LinearLayout
+    private var currentTheme: SecureKeypadTheme = SecureKeypadTheme()
+
+    /** Called with a native-only submission that the host must close or authenticate natively. */
+    public var onSubmit: ((SecureKeypadSubmission) -> Unit)? = null
+
+    /** Called with masked length and non-secret display state only. */
+    public var onMaskedStateChanged: ((length: Int, displayState: Int) -> Unit)? = null
+
+    /** Called with a stable non-secret native error code. */
+    public var onError: ((code: Int) -> Unit)? = null
+
+    init {
+        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+        isSaveEnabled = false
+        (context as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+
+        setBackgroundColor(currentTheme.backgroundColor)
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(16, 16, 16, 16)
+        }
+        display = TextView(context).apply {
+            gravity = Gravity.CENTER
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            contentDescription = "No input"
+        }
+        keypad = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+        }
+        root.addView(display, LinearLayout.LayoutParams(-1, 72))
+        root.addView(keypad, LinearLayout.LayoutParams(-1, -2))
+        addView(root, LayoutParams(-1, -2))
+    }
+
+    /** Starts a numeric Secure Native session and renders the supplied layout. */
+    public fun configureNumeric(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme = SecureKeypadTheme(),
+        maxTokens: Int = 8,
+        timeoutMs: Long = 60_000L,
+    ) {
+        require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
+        require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
+        validateLayout(layout)
+        releaseSession()
+        val handle = SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
+            ?: error("secure keypad native session could not be created")
+        sessionHandle = handle
+        currentTheme = theme
+        render(layout)
+        refreshMaskedState()
+    }
+
+    /** Releases the native session and zeroizes any pending input. */
+    public fun releaseSession() {
+        if (sessionHandle != 0L) {
+            SecureKeypadNative.sessionFree(sessionHandle)
+            sessionHandle = 0L
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        releaseSession()
+        super.onDetachedFromWindow()
+    }
+
+    private fun render(layout: SecureKeypadLayout) {
+        keypad.removeAllViews()
+        setBackgroundColor(currentTheme.backgroundColor)
+        layout.rows.forEach { row ->
+            val rowView = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+            row.forEach { key ->
+                val button = Button(context).apply {
+                    text = key.label
+                    contentDescription = key.accessibilityLabel
+                    setTextColor(currentTheme.keyTextColor)
+                    background = keyBackground()
+                    importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+                    setOnClickListener { activate(key) }
+                }
+                rowView.addView(button, LinearLayout.LayoutParams(0, currentTheme.keyHeightPx, 1f).apply {
+                    setMargins(currentTheme.keyGapPx / 2, currentTheme.keyGapPx / 2,
+                        currentTheme.keyGapPx / 2, currentTheme.keyGapPx / 2)
+                })
+            }
+            keypad.addView(rowView, LinearLayout.LayoutParams(-1, currentTheme.keyHeightPx + currentTheme.keyGapPx))
+        }
+    }
+
+    private fun activate(key: SecureKeySpec) {
+        if (sessionHandle == 0L) return
+        var status = 0
+        when (key.role) {
+            SecureKeyRole.INPUT -> status = SecureKeypadNative.sessionPressKey(sessionHandle, key.id)
+            SecureKeyRole.BACKSPACE -> status = SecureKeypadNative.sessionBackspace(sessionHandle)
+            SecureKeyRole.CLEAR -> status = SecureKeypadNative.sessionClear(sessionHandle)
+            SecureKeyRole.SUBMIT -> {
+                val submission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return
+                onSubmit?.invoke(SecureKeypadSubmission(submission))
+            }
+            SecureKeyRole.SPACER -> return
+        }
+        if (status != 0) onError?.invoke(status)
+        refreshMaskedState()
+    }
+
+    private fun keyBackground(): StateListDrawable = StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
+            setColor(currentTheme.keyPressedColor)
+            cornerRadius = currentTheme.keyRadiusPx
+        })
+        addState(intArrayOf(), GradientDrawable().apply {
+            setColor(currentTheme.keyColor)
+            cornerRadius = currentTheme.keyRadiusPx
+        })
+    }
+
+    private fun refreshMaskedState() {
+        val packed = SecureKeypadNative.sessionRefresh(sessionHandle)
+        val length = (packed ushr 32).toInt()
+        val displayState = packed.toInt()
+        display.text = if (length == 0) "" else "•".repeat(length)
+        display.contentDescription = if (length == 0) "No input" else "${length} characters entered"
+        onMaskedStateChanged?.invoke(length, displayState)
+    }
+
+    private fun validateLayout(layout: SecureKeypadLayout) {
+        require(layout.rows.isNotEmpty()) { "layout must contain a row" }
+        val ids = HashSet<String>()
+        layout.rows.forEach { row ->
+            require(row.isNotEmpty()) { "layout rows cannot be empty" }
+            row.forEach { key ->
+                require(key.id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) { "invalid public key ID" }
+                require(ids.add(key.id)) { "duplicate public key ID" }
+                require(key.label.length <= 16) { "key label is too long" }
+            }
+        }
+    }
+}
+
+private object SecureKeypadNative {
+    private var loaded: Boolean = false
+
+    private fun ensureLoaded() {
+        if (!loaded) {
+            System.loadLibrary("secure_keypad_jni")
+            loaded = true
+        }
+    }
+
+    fun sessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long? {
+        ensureLoaded()
+        return nativeSessionNewNumeric(maxTokens, timeoutMs).takeIf { it != 0L }
+    }
+
+    fun sessionFree(handle: Long) {
+        ensureLoaded()
+        nativeSessionFree(handle)
+    }
+
+    fun sessionPressKey(handle: Long, keyId: String): Int {
+        ensureLoaded()
+        return nativeSessionPressKey(handle, keyId.toByteArray(Charsets.UTF_8))
+    }
+
+    fun sessionBackspace(handle: Long): Int {
+        ensureLoaded()
+        return nativeSessionBackspace(handle)
+    }
+
+    fun sessionClear(handle: Long): Int {
+        ensureLoaded()
+        return nativeSessionClear(handle)
+    }
+
+    fun sessionRefresh(handle: Long): Long {
+        ensureLoaded()
+        return nativeSessionRefresh(handle)
+    }
+
+    fun sessionSubmit(handle: Long): Long? {
+        ensureLoaded()
+        return nativeSessionSubmit(handle).takeIf { it != 0L }
+    }
+
+    fun submissionFree(handle: Long) {
+        ensureLoaded()
+        nativeSubmissionFree(handle)
+    }
+
+    private external fun nativeSessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long
+    private external fun nativeSessionFree(handle: Long)
+    private external fun nativeSessionPressKey(handle: Long, keyId: ByteArray): Int
+    private external fun nativeSessionBackspace(handle: Long): Int
+    private external fun nativeSessionClear(handle: Long): Int
+    private external fun nativeSessionRefresh(handle: Long): Long
+    private external fun nativeSessionSubmit(handle: Long): Long
+    private external fun nativeSubmissionFree(handle: Long)
+}

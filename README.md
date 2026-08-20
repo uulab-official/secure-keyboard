@@ -22,7 +22,10 @@ The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 custom renderers. These objects contain labels and key IDs only; they do not
 contain password values.
 
-The native iOS/Android renderers and React Native/Flutter bindings are not released yet. Do not treat the current repository state as a drop-in production authentication component.
+Native iOS/Android renderer sources now exist under `native/`, but the
+React Native/Flutter bindings, architecture-specific release packaging, and
+device-level security review are not released yet. Do not treat the current
+repository state as a drop-in production authentication component.
 
 ## Development
 
