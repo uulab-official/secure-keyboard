@@ -34,7 +34,7 @@ The `secure-auth-server` crate includes `InMemoryOneTimeLoginStore` as a
 bounded reference implementation with 32-byte handles, TTL, capacity, and
 state-size limits. It is not a distributed production store; a multi-instance
 deployment must replace it with an atomic backend adapter that preserves the
-same `insert`/`take` semantics.
+same `OneTimeLoginStateStore` `insert`/`take` semantics.
 
 ## Required server controls
 

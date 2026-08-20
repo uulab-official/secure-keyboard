@@ -1,8 +1,16 @@
 use secure_auth::ServerLoginStateBytes;
 use secure_auth_server::{
-    InMemoryOneTimeLoginStore, StoreError, MAX_IN_MEMORY_ENTRIES, MAX_STORED_STATE_BYTES,
+    InMemoryOneTimeLoginStore, LoginStateHandle, OneTimeLoginStateStore, StoreError,
+    MAX_IN_MEMORY_ENTRIES, MAX_STORED_STATE_BYTES,
 };
 use std::time::Duration;
+
+fn take_through_backend_contract<S: OneTimeLoginStateStore>(
+    store: &S,
+    handle: &LoginStateHandle,
+) -> bool {
+    store.take(handle).unwrap().is_some()
+}
 
 #[test]
 fn a_login_state_is_consumed_at_most_once() {
@@ -16,7 +24,7 @@ fn a_login_state_is_consumed_at_most_once() {
         .unwrap()
         .expect("state should be available once");
     assert_eq!(state.as_bytes(), b"fixture-state");
-    assert!(store.take(&handle).unwrap().is_none());
+    assert!(!take_through_backend_contract(&store, &handle));
 }
 
 #[test]

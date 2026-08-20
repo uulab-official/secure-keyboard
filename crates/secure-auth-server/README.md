@@ -7,5 +7,6 @@ Reference server-side storage primitives for the Secure Keypad OPAQUE flow.
 deployment, or as an executable contract for another backend adapter.
 
 It is not a distributed store. A production deployment behind a load balancer
-must implement the same atomic `take` behavior with Redis, a database, or an
-equivalent store, with a short TTL and no logging of handles or state bytes.
+must implement the `OneTimeLoginStateStore` trait with Redis, a database, or an
+equivalent backend. Its `take` operation must be atomic, with a short TTL and
+no logging of handles or state bytes.

@@ -82,6 +82,29 @@ struct Entry {
     state: ServerLoginStateBytes,
 }
 
+/// Backend contract for one-use serialized server-login state.
+///
+/// A distributed Redis/database adapter should implement these operations with
+/// an atomic remove in `take`. It must preserve the same error behavior and
+/// never log handles or state bytes.
+pub trait OneTimeLoginStateStore {
+    /// Stores a pending state and returns its opaque handle.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StoreError`] when the backend rejects the state or cannot
+    /// create a handle.
+    fn insert(&self, state: ServerLoginStateBytes) -> Result<LoginStateHandle, StoreError>;
+
+    /// Atomically removes and returns a state at most once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::Unavailable`] or the backend's equivalent when
+    /// the atomic read-and-delete operation cannot be completed safely.
+    fn take(&self, handle: &LoginStateHandle) -> Result<Option<ServerLoginStateBytes>, StoreError>;
+}
+
 /// A bounded, process-local one-time login state store.
 ///
 /// `take` removes a state before returning it, so a handle can succeed only
@@ -187,6 +210,16 @@ impl InMemoryOneTimeLoginStore {
     /// poisoned.
     pub fn is_empty(&self) -> Result<bool, StoreError> {
         Ok(self.len()? == 0)
+    }
+}
+
+impl OneTimeLoginStateStore for InMemoryOneTimeLoginStore {
+    fn insert(&self, state: ServerLoginStateBytes) -> Result<LoginStateHandle, StoreError> {
+        InMemoryOneTimeLoginStore::insert(self, state)
+    }
+
+    fn take(&self, handle: &LoginStateHandle) -> Result<Option<ServerLoginStateBytes>, StoreError> {
+        InMemoryOneTimeLoginStore::take(self, handle)
     }
 }
 
