@@ -82,11 +82,12 @@ Exit criteria: RN users can customize the entire supported visual contract while
 
 ### Phase 5 — Flutter adapter
 
-Status: planned
+Status: public contract package complete; PlatformView/FFI and device verification pending
 
+- [x] Publish the Flutter-facing layout/theme/policy contract.
+- [x] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
+- [x] Mirror the RN masked-state/result-code contract and add Flutter analyze/test CI gates.
 - [ ] Expose the native renderer through PlatformView/FFI.
-- [ ] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
-- [ ] Mirror the RN public contract and test vectors.
 - [ ] Provide examples for numeric PIN, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.
@@ -119,11 +120,13 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: planned
+Status: passkey-first adapter contract complete; browser/server example and deployment hardening pending
 
-- [ ] Add WebAuthn/passkey-first examples.
-- [ ] Add a custom web keypad fallback with an explicit lower-assurance warning.
-- [ ] Use Web Crypto only for protocol operations, not as a claim that page JavaScript is trusted.
+- [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
+- [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
+- [x] Expose a custom web keypad fallback only as an explicitly acknowledged lower-assurance mode.
+- [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
+- [ ] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
 - [ ] Add CSP, dependency integrity, and supply-chain guidance.
 
 Exit criteria: web users get a safe default and understand the difference between native and browser security.

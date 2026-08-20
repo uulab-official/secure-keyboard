@@ -38,6 +38,27 @@ jobs:
       - run: pnpm --dir packages/react-native typecheck
       - run: pnpm --dir packages/react-native test
       - run: pnpm --dir packages/react-native build
+      - run: pnpm --dir packages/web typecheck
+      - run: pnpm --dir packages/web test
+      - run: pnpm --dir packages/web build
+
+  flutter:
+    name: Validate Flutter contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: packages/flutter
+      - run: dart format --output=none --set-exit-if-changed lib test
+        working-directory: packages/flutter
+      - run: flutter analyze
+        working-directory: packages/flutter
+      - run: flutter test
+        working-directory: packages/flutter
 
   ffi-header:
     name: Validate C ABI header

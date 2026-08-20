@@ -18,6 +18,8 @@ Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROAD
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 - `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.
+- `@secure-keypad/web`: passkey-first WebAuthn adapter; it converts server JSON options and serializes ceremony results without exposing password/PIN APIs. Its custom browser-keypad fallback requires explicit lower-assurance acknowledgement.
+- `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and has no `TextEditingController` or secret callback.
 
 The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 `DEFAULT_HANGUL_LAYOUT`, and `DEFAULT_THEME` as safe starting points for
@@ -27,9 +29,9 @@ contain password values.
 Native iOS/Android renderer sources now exist under `native/`. The React
 Native package currently ships the public contract and lazy native-component
 resolver; the platform view-manager registration, architecture-specific
-release packaging, Flutter binding, and device-level security review remain
-release gates. Do not treat the current repository state as a drop-in
-production authentication component.
+release packaging, Flutter binding, WebAuthn server example, and device-level
+security review remain release gates. Do not treat the current repository
+state as a drop-in production authentication component.
 
 ## Development
 
@@ -38,6 +40,8 @@ cargo test --workspace
 pnpm install
 pnpm --dir packages/contracts test
 pnpm --dir packages/react-native test
+pnpm --dir packages/web test
+cd packages/flutter && flutter test
 ```
 
 Do not use real credentials in tests, issues, logs, screenshots, or crash reports.
