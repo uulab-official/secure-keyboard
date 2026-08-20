@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://secure-keypad.dev/schema/theme.v1.json",
+  "title": "Secure Keypad Theme v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "colors", "metrics", "typography"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error"],
+      "properties": {
+        "background": { "$ref": "#/$defs/color" },
+        "keyBackground": { "$ref": "#/$defs/color" },
+        "keyForeground": { "$ref": "#/$defs/color" },
+        "keyPressedBackground": { "$ref": "#/$defs/color" },
+        "keyDisabledBackground": { "$ref": "#/$defs/color" },
+        "error": { "$ref": "#/$defs/color" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyHeight", "keyGap", "keyRadius", "contentPadding"],
+      "properties": {
+        "keyHeight": { "type": "number", "minimum": 32, "maximum": 160 },
+        "keyGap": { "type": "number", "minimum": 0, "maximum": 48 },
+        "keyRadius": { "type": "number", "minimum": 0, "maximum": 80 },
+        "contentPadding": { "type": "number", "minimum": 0, "maximum": 80 }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyFontSize", "keyFontWeight"],
+      "properties": {
+        "keyFontSize": { "type": "number", "minimum": 10, "maximum": 72 },
+        "keyFontWeight": { "enum": ["400", "500", "600", "700"] }
+      }
+    },
+    "animation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pressDurationMs": { "type": "integer", "minimum": 0, "maximum": 500 },
+        "maskRevealDurationMs": { "type": "integer", "minimum": 0, "maximum": 2000 }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "haptic": { "enum": ["none", "light", "medium", "heavy"] },
+        "sound": { "enum": ["none", "click"] }
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$"
+    }
+  }
+}

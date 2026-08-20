@@ -1,0 +1,13 @@
+[package]
+name = "secure-core"
+version = "0.1.0"
+description = "Memory-conscious, framework-neutral secure keypad core"
+license = "MIT"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+zeroize = "1.8.1"
+
+[lints]
+workspace = true
