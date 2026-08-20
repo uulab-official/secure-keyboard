@@ -138,7 +138,7 @@ Exit criteria: web users get a safe default and understand the difference betwee
 
 Status: release-gate automation in progress; independent/device review pending
 
-- [ ] Map tests to OWASP MASVS/MASTG controls.
+- [x] Create an OWASP MASVS/MASTG evidence map; independent assessor sign-off remains pending.
 - [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
 - [ ] Run the fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
