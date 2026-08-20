@@ -27,6 +27,13 @@ the matching iOS device/simulator architectures and expose the same module
 map. The library and Swift view must be built in the same release pipeline;
 the Swift source alone is not a security boundary.
 
+Reference Rust artifacts:
+
+```sh
+cargo build --release -p secure-ffi --target aarch64-apple-ios
+cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
+```
+
 ## Android
 
 `native/android/src/main/kotlin/.../SecureKeypadView.kt` is a custom
@@ -47,6 +54,14 @@ KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/ko
 The application must link the JNI adapter with the Rust `secure-ffi` library
 for every ABI it ships. The CMake file intentionally does not invent a Rust
 library path; the host build must provide the architecture-specific artifact.
+
+For an arm64 Android build, configure the NDK linker explicitly:
+
+```sh
+NDK="$HOME/Library/Android/sdk/ndk/27.1.12297006"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android24-clang"
+cargo build --release -p secure-ffi --target aarch64-linux-android
+```
 
 ## Framework adapters
 

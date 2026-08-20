@@ -23,6 +23,17 @@ Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionNewNumeric(
     return error == SECURE_KEYPAD_OK ? (jlong)(uintptr_t)session : 0;
 }
 
+JNIEXPORT jlong JNICALL
+Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionNewHangul(
+    JNIEnv *env, jobject object, jint max_tokens, jlong timeout_ms) {
+    (void)env;
+    (void)object;
+    secure_keypad_session_t *session = NULL;
+    secure_keypad_error_t error = secure_keypad_session_new_hangul(
+        (uint32_t)max_tokens, (uint64_t)timeout_ms, &session);
+    return error == SECURE_KEYPAD_OK ? (jlong)(uintptr_t)session : 0;
+}
+
 JNIEXPORT void JNICALL
 Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionFree(
     JNIEnv *env, jobject object, jlong handle) {

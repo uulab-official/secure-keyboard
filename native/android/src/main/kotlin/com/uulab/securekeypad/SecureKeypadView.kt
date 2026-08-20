@@ -113,11 +113,35 @@ public class SecureKeypadView @JvmOverloads constructor(
         maxTokens: Int = 8,
         timeoutMs: Long = 60_000L,
     ) {
+        configure(layout, theme, maxTokens, timeoutMs, hangul = false)
+    }
+
+    /** Starts a structured Hangul Secure Native session. */
+    public fun configureHangul(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme = SecureKeypadTheme(),
+        maxTokens: Int = 32,
+        timeoutMs: Long = 60_000L,
+    ) {
+        configure(layout, theme, maxTokens, timeoutMs, hangul = true)
+    }
+
+    private fun configure(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme,
+        maxTokens: Int,
+        timeoutMs: Long,
+        hangul: Boolean,
+    ) {
         require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
         validateLayout(layout)
         releaseSession()
-        val handle = SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
+        val handle = if (hangul) {
+            SecureKeypadNative.sessionNewHangul(maxTokens, timeoutMs)
+        } else {
+            SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
+        }
             ?: error("secure keypad native session could not be created")
         sessionHandle = handle
         currentTheme = theme
@@ -230,6 +254,11 @@ private object SecureKeypadNative {
         return nativeSessionNewNumeric(maxTokens, timeoutMs).takeIf { it != 0L }
     }
 
+    fun sessionNewHangul(maxTokens: Int, timeoutMs: Long): Long? {
+        ensureLoaded()
+        return nativeSessionNewHangul(maxTokens, timeoutMs).takeIf { it != 0L }
+    }
+
     fun sessionFree(handle: Long) {
         ensureLoaded()
         nativeSessionFree(handle)
@@ -266,6 +295,7 @@ private object SecureKeypadNative {
     }
 
     private external fun nativeSessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long
+    private external fun nativeSessionNewHangul(maxTokens: Int, timeoutMs: Long): Long
     private external fun nativeSessionFree(handle: Long)
     private external fun nativeSessionPressKey(handle: Long, keyId: ByteArray): Int
     private external fun nativeSessionBackspace(handle: Long): Int

@@ -87,6 +87,7 @@ public final class SecureKeypadView: UIView {
     private let keypadStack = UIStackView()
     private var theme = SecureKeypadTheme()
     private var protectedPresentation = false
+    private var notificationTokens: [NSObjectProtocol] = []
 
     /// Called with a native-only submission that the host must close or authenticate natively.
     public var onSubmit: ((SecureKeypadSubmission) -> Void)?
@@ -110,7 +111,7 @@ public final class SecureKeypadView: UIView {
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        notificationTokens.forEach(NotificationCenter.default.removeObserver)
         if let session {
             secure_keypad_session_free(session)
         }
@@ -123,6 +124,26 @@ public final class SecureKeypadView: UIView {
         maxTokens: Int = 8,
         timeoutMs: UInt64 = 60_000
     ) throws {
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, hangul: false)
+    }
+
+    /// Starts a structured Hangul Secure Native session.
+    public func configureHangul(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme = SecureKeypadTheme(),
+        maxTokens: Int = 32,
+        timeoutMs: UInt64 = 60_000
+    ) throws {
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, hangul: true)
+    }
+
+    private func configure(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme,
+        maxTokens: Int,
+        timeoutMs: UInt64,
+        hangul: Bool
+    ) throws {
         guard maxTokens > 0, maxTokens <= 4_096, timeoutMs > 0, timeoutMs <= 86_400_000 else {
             throw SecureKeypadViewError.invalidLayout
         }
@@ -132,7 +153,12 @@ public final class SecureKeypadView: UIView {
             secure_keypad_session_free(session)
         }
         var newSession: OpaquePointer?
-        let status = secure_keypad_session_new_numeric(UInt32(maxTokens), timeoutMs, &newSession)
+        let status: UInt32
+        if hangul {
+            status = secure_keypad_session_new_hangul(UInt32(maxTokens), timeoutMs, &newSession)
+        } else {
+            status = secure_keypad_session_new_numeric(UInt32(maxTokens), timeoutMs, &newSession)
+        }
         guard status == 0, let newSession else {
             throw SecureKeypadViewError.nativeFailure(status)
         }
@@ -265,16 +291,16 @@ public final class SecureKeypadView: UIView {
 
     private func installProtectionObservers() {
         let center = NotificationCenter.default
-        center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        notificationTokens.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.setProtectedPresentation(true)
-        }
-        center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        })
+        notificationTokens.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.setProtectedPresentation(false)
-        }
-        center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+        })
+        notificationTokens.append(center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             let captured = self?.window?.windowScene?.screen.isCaptured ?? false
             self?.setProtectedPresentation(captured)
-        }
+        })
     }
 
     private func setProtectedPresentation(_ protected: Bool) {
