@@ -1,5 +1,6 @@
 use secure_auth::{
-    AuthEnvelope, AuthError, AuthMessageKind, Message, CIPHER_SUITE_ID, PROTOCOL_VERSION,
+    AuthEnvelope, AuthError, AuthMessageKind, Message, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES,
+    PROTOCOL_VERSION,
 };
 
 #[test]
@@ -134,4 +135,34 @@ fn serde_deserialization_rejects_invalid_payload_bounds() {
         "payload": vec![0u8; 16 * 1024 + 1]
     });
     assert!(serde_json::from_value::<AuthEnvelope>(oversized).is_err());
+}
+
+#[test]
+fn json_decoder_returns_a_validated_envelope() {
+    let envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialRequest,
+        "server-key-2026",
+        &Message::from_bytes(b"fixture"),
+    )
+    .unwrap();
+    let wire = serde_json::to_vec(&envelope).unwrap();
+
+    let decoded = AuthEnvelope::from_json(&wire).unwrap();
+    let message = decoded
+        .into_message(AuthMessageKind::CredentialRequest, "server-key-2026")
+        .unwrap();
+    assert_eq!(message.as_bytes(), b"fixture");
+}
+
+#[test]
+fn json_decoder_rejects_oversized_bodies_and_malformed_envelopes() {
+    let oversized_body = vec![b' '; MAX_JSON_BODY_BYTES + 1];
+    assert!(matches!(
+        AuthEnvelope::from_json(&oversized_body),
+        Err(AuthError::RequestBodyTooLarge)
+    ));
+    assert!(matches!(
+        AuthEnvelope::from_json(b"{}"),
+        Err(AuthError::MalformedTransport)
+    ));
 }

@@ -98,6 +98,7 @@ Status: OPAQUE engine and typed transport contract complete; HTTP/deployment lay
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
 - [x] Add typed version/suite/key envelopes and a 16 KiB payload limit.
 - [x] Apply envelope bounds to both constructor and Serde deserialization paths.
+- [x] Add a bounded JSON decoder and generic external authentication error codes.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
 - [x] Add zeroizing server-login-state serialization and bounded public identifiers.

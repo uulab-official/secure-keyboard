@@ -26,6 +26,8 @@ pub const PROTOCOL_VERSION: u16 = 1;
 pub const CIPHER_SUITE_ID: &str = "opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2";
 /// Maximum encoded OPAQUE payload accepted by the transport contract.
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
+/// Maximum JSON request body accepted before deserialization begins.
+pub const MAX_JSON_BODY_BYTES: usize = 128 * 1024;
 /// Maximum size of a public client, server, or credential identifier.
 pub const MAX_IDENTIFIER_BYTES: usize = 256;
 /// Version of the serialized server-login state container.
@@ -253,6 +255,23 @@ impl AuthEnvelope {
             server_key_id: server_key_id.to_owned(),
             payload: payload.to_vec(),
         })
+    }
+
+    /// Decodes a bounded JSON request body into a validated envelope.
+    ///
+    /// The body limit is checked before JSON parsing. The decoded envelope is
+    /// then validated through the same path as [`Self::from_parts`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AuthError::RequestBodyTooLarge`] when the raw body exceeds
+    /// [`MAX_JSON_BODY_BYTES`], or [`AuthError::MalformedTransport`] when the
+    /// body is not a valid, bounded envelope.
+    pub fn from_json(bytes: &[u8]) -> Result<Self, AuthError> {
+        if bytes.len() > MAX_JSON_BODY_BYTES {
+            return Err(AuthError::RequestBodyTooLarge);
+        }
+        serde_json::from_slice(bytes).map_err(|_| AuthError::MalformedTransport)
     }
 
     /// Returns the envelope protocol version without inspecting the payload.
@@ -539,6 +558,10 @@ pub enum AuthError {
     InvalidLogin,
     /// A required transport argument is invalid.
     InvalidArgument,
+    /// The raw JSON request body exceeds [`MAX_JSON_BODY_BYTES`].
+    RequestBodyTooLarge,
+    /// The request body is not a valid validated transport envelope.
+    MalformedTransport,
     /// The envelope payload is empty.
     EmptyMessage,
     /// The envelope payload exceeds [`MAX_MESSAGE_BYTES`].
@@ -561,6 +584,8 @@ impl core::fmt::Display for AuthError {
             Self::InvalidCredentialFile => "invalid credential file",
             Self::InvalidLogin => "invalid login",
             Self::InvalidArgument => "invalid auth argument",
+            Self::RequestBodyTooLarge => "auth request body too large",
+            Self::MalformedTransport => "malformed auth transport",
             Self::EmptyMessage => "empty auth message",
             Self::MessageTooLarge => "auth message too large",
             Self::UnsupportedVersion => "unsupported auth protocol version",

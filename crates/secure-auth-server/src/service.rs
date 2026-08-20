@@ -30,6 +30,70 @@ impl From<StoreError> for ServerAuthError {
     }
 }
 
+/// Stable, non-sensitive error classes suitable for an external auth response.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicAuthCode {
+    /// The request could not be decoded or did not match the endpoint.
+    InvalidRequest,
+    /// Authentication proof, credential state, or one-time state was rejected.
+    AuthenticationFailed,
+    /// The service or its protected state backend is not ready to serve.
+    TemporarilyUnavailable,
+}
+
+impl PublicAuthCode {
+    /// Returns the stable wire-safe code for this class.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::InvalidRequest => "invalid_request",
+            Self::AuthenticationFailed => "authentication_failed",
+            Self::TemporarilyUnavailable => "temporarily_unavailable",
+        }
+    }
+}
+
+impl ServerAuthError {
+    /// Maps an internal error to a generic external response class.
+    ///
+    /// Applications must return this class or its stable string code to
+    /// clients, and keep [`Self`] for protected server logs and metrics only.
+    #[must_use]
+    pub const fn public_code(&self) -> PublicAuthCode {
+        match self {
+            Self::Auth(error) => match error {
+                AuthError::InvalidSetup | AuthError::InvalidCredentialFile => {
+                    PublicAuthCode::TemporarilyUnavailable
+                }
+                AuthError::InvalidLogin | AuthError::Protocol => {
+                    PublicAuthCode::AuthenticationFailed
+                }
+                AuthError::InvalidArgument
+                | AuthError::RequestBodyTooLarge
+                | AuthError::MalformedTransport
+                | AuthError::EmptyMessage
+                | AuthError::MessageTooLarge
+                | AuthError::UnsupportedVersion
+                | AuthError::UnsupportedSuite
+                | AuthError::UnexpectedMessageKind
+                | AuthError::UnexpectedServerKey => PublicAuthCode::InvalidRequest,
+            },
+            Self::Store(error) => match error {
+                StoreError::Unavailable
+                | StoreError::CapacityReached
+                | StoreError::HandleCollision => PublicAuthCode::TemporarilyUnavailable,
+                StoreError::InvalidCapacity
+                | StoreError::InvalidTtl
+                | StoreError::StateTooLarge
+                | StoreError::InvalidIdentifier
+                | StoreError::StateTypeMismatch => PublicAuthCode::AuthenticationFailed,
+            },
+            Self::MissingLoginState => PublicAuthCode::AuthenticationFailed,
+            Self::InvalidServerKeyId => PublicAuthCode::TemporarilyUnavailable,
+        }
+    }
+}
+
 impl core::fmt::Display for ServerAuthError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter.write_str(match self {

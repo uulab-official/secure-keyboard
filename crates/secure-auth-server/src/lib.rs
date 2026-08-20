@@ -10,7 +10,7 @@
 
 mod service;
 
-pub use service::{ServerAuthError, ServerAuthService};
+pub use service::{PublicAuthCode, ServerAuthError, ServerAuthService};
 
 use rand::{rngs::OsRng, RngCore};
 use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_MESSAGE_BYTES};

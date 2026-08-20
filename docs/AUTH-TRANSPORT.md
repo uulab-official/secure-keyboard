@@ -25,6 +25,12 @@ key identifier bounds enforced by `AuthEnvelope::from_parts`. Applications
 should still enforce a request-body limit before parsing and reject malformed
 requests without logging their payloads.
 
+For JSON endpoints, use `AuthEnvelope::from_json`, which applies the 128 KiB
+raw-body limit before parsing and returns generic `MalformedTransport` errors
+for invalid input. Server integrations should map internal
+`ServerAuthError` values through `PublicAuthCode` before returning an external
+response; do not expose internal protocol, credential, or store messages.
+
 The current suite is pinned as
 `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2`. Raw OPAQUE payloads are
 limited to 16 KiB. The server must reject unsupported protocol versions and

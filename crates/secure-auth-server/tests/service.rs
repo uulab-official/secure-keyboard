@@ -3,7 +3,9 @@ use secure_auth::{
     server_registration_finish, server_registration_start, AuthEnvelope, AuthMessageKind,
     ServerSetupBytes, CIPHER_SUITE_ID,
 };
-use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthError, ServerAuthService};
+use secure_auth_server::{
+    InMemoryOneTimeLoginStore, PublicAuthCode, ServerAuthError, ServerAuthService, StoreError,
+};
 use secure_core::{InputPolicy, KeyId, SecureSession};
 
 const CLIENT_ID: &[u8] = b"fixture-user";
@@ -174,6 +176,34 @@ fn service_rejects_invalid_server_key_configuration() {
         ),
         Err(ServerAuthError::InvalidServerKeyId)
     ));
+}
+
+#[test]
+fn public_error_mapping_hides_authentication_and_replay_details() {
+    assert_eq!(
+        ServerAuthError::Auth(secure_auth::AuthError::InvalidLogin).public_code(),
+        PublicAuthCode::AuthenticationFailed
+    );
+    assert_eq!(
+        ServerAuthError::MissingLoginState.public_code(),
+        PublicAuthCode::AuthenticationFailed
+    );
+    assert_eq!(
+        ServerAuthError::Auth(secure_auth::AuthError::UnexpectedServerKey).public_code(),
+        PublicAuthCode::InvalidRequest
+    );
+    assert_eq!(
+        ServerAuthError::Store(StoreError::Unavailable).public_code(),
+        PublicAuthCode::TemporarilyUnavailable
+    );
+    assert_eq!(
+        ServerAuthError::InvalidServerKeyId.public_code(),
+        PublicAuthCode::TemporarilyUnavailable
+    );
+    assert_eq!(
+        PublicAuthCode::AuthenticationFailed.as_str(),
+        "authentication_failed"
+    );
 }
 
 #[test]
