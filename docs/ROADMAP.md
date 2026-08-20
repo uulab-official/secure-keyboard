@@ -36,7 +36,8 @@ Status: core contract complete
 - [x] Implement primitive Hangul jamo composition behind an input-policy interface.
 - [x] Lock the initial canonical composition behavior with test vectors.
 - [x] Add explicit buffer clearing and a no-secret-API test harness.
-- [ ] Add the native FFI boundary and timeout policy.
+- [x] Add the monotonic inactivity timeout policy.
+- [ ] Add the native FFI boundary with explicit ownership and null-safety rules.
 
 Exit criteria: core tests pass and the public API cannot return the accumulated secret.
 
@@ -95,6 +96,7 @@ Status: OPAQUE engine complete; transport layer pending
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
+- [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
 - [ ] Add HTTP transport with TLS requirements and message-size limits.
 - [ ] Add replay, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.

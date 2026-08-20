@@ -213,8 +213,12 @@ pub struct Submission {
 }
 
 impl Submission {
-    #[allow(dead_code)]
-    pub(crate) fn with_bytes<R>(&self, operation: impl FnOnce(&[u8]) -> R) -> R {
+    /// Provides the sealed bytes to native/server Rust code for immediate
+    /// cryptographic consumption.
+    ///
+    /// This must not be exposed through a JavaScript, Dart, or UI binding and
+    /// must not be used to create strings, logs, JSON, analytics, or storage.
+    pub fn with_native_bytes<R>(&self, operation: impl FnOnce(&[u8]) -> R) -> R {
         operation(self.buffer.as_slice())
     }
 }

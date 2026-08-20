@@ -160,6 +160,19 @@ pub struct ClientLoginState(ClientLogin<SecureSuite>);
 /// Server state retained between the first and second login messages.
 pub struct ServerLoginState(ServerLogin<SecureSuite>);
 
+/// Native-only client login state that retains the sealed password until the
+/// second OPAQUE message. Never expose this type through a framework bridge.
+pub struct NativeClientLoginState {
+    state: Option<ClientLogin<SecureSuite>>,
+    password: Vec<u8>,
+}
+
+impl Drop for NativeClientLoginState {
+    fn drop(&mut self) {
+        self.password.zeroize();
+    }
+}
+
 /// Errors that never include password or secret bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuthError {
@@ -288,6 +301,30 @@ pub fn client_login_start(password: &[u8]) -> Result<(ClientLoginState, Message)
     ))
 }
 
+/// Starts client login directly from a secure keypad submission.
+///
+/// # Errors
+///
+/// Returns [`AuthError::Protocol`] when the pinned OPAQUE implementation cannot
+/// create a login request.
+#[allow(clippy::needless_pass_by_value)]
+pub fn client_login_start_from_submission(
+    submission: secure_core::Submission,
+) -> Result<(NativeClientLoginState, Message), AuthError> {
+    let mut password = Vec::new();
+    submission.with_native_bytes(|bytes| password.extend_from_slice(bytes));
+    let mut rng = OsRng;
+    let result =
+        ClientLogin::<SecureSuite>::start(&mut rng, &password).map_err(|_| AuthError::Protocol)?;
+    Ok((
+        NativeClientLoginState {
+            state: Some(result.state),
+            password,
+        },
+        Message(result.message.serialize().to_vec()),
+    ))
+}
+
 /// Starts server login. Pass `None` for a missing user to keep enumeration
 /// behavior indistinguishable from a registered user.
 ///
@@ -350,6 +387,45 @@ pub fn client_login_finish(
         .finish(
             &mut rng,
             password,
+            response,
+            ClientLoginFinishParameters::new(
+                None,
+                Identifiers {
+                    client: Some(client_identifier),
+                    server: Some(server_identifier),
+                },
+                None,
+            ),
+        )
+        .map_err(|_| AuthError::InvalidLogin)?;
+    Ok((
+        Message(result.message.serialize().to_vec()),
+        SecretOutput(result.session_key.to_vec()),
+    ))
+}
+
+/// Finishes a native-only login without returning the password to the caller.
+///
+/// # Errors
+///
+/// Returns [`AuthError::InvalidLogin`] when the password proof is invalid, or
+/// [`AuthError::Protocol`] when the response is malformed.
+pub fn client_login_finish_from_native_state(
+    mut state: NativeClientLoginState,
+    response: &Message,
+    client_identifier: &[u8],
+    server_identifier: &[u8],
+) -> Result<(Message, SecretOutput), AuthError> {
+    let response = CredentialResponse::<SecureSuite>::deserialize(response.as_bytes())
+        .map_err(|_| AuthError::Protocol)?;
+    let mut rng = OsRng;
+    let result = state
+        .state
+        .take()
+        .ok_or(AuthError::InvalidLogin)?
+        .finish(
+            &mut rng,
+            &state.password,
             response,
             ClientLoginFinishParameters::new(
                 None,

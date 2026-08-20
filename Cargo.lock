@@ -420,6 +420,7 @@ version = "0.1.0"
 dependencies = [
  "opaque-ke",
  "rand",
+ "secure-core",
  "sha2",
  "subtle",
  "zeroize",
