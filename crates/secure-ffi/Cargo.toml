@@ -10,5 +10,5 @@ license.workspace = true
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-secure-auth = { path = "../secure-auth" }
-secure-core = { path = "../secure-core" }
+secure-auth = { path = "../secure-auth", version = "0.1.0" }
+secure-core = { path = "../secure-core", version = "0.1.0" }
