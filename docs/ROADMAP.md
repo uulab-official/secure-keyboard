@@ -99,8 +99,9 @@ Status: OPAQUE engine and typed transport contract complete; HTTP/deployment lay
 - [x] Add typed version/suite/key envelopes and a 16 KiB payload limit.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
+- [x] Add zeroizing server-login-state serialization and bounded public identifiers.
 - [ ] Add HTTP transport with TLS requirements and message-size limits.
-- [ ] Add replay, downgrade, rate-limit, enumeration, and key-rotation tests.
+- [ ] Add replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.
 

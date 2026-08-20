@@ -25,8 +25,13 @@ pub const PROTOCOL_VERSION: u16 = 1;
 pub const CIPHER_SUITE_ID: &str = "opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2";
 /// Maximum encoded OPAQUE payload accepted by the transport contract.
 pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
+/// Maximum size of a public client, server, or credential identifier.
+pub const MAX_IDENTIFIER_BYTES: usize = 256;
+/// Version of the serialized server-login state container.
+pub const SERVER_LOGIN_STATE_VERSION: u16 = 1;
 const MAX_SERVER_KEY_ID_BYTES: usize = 128;
 const MAX_SUITE_ID_BYTES: usize = 128;
+const SERVER_LOGIN_STATE_MAGIC: &[u8; 4] = b"SKLS";
 
 /// OPAQUE cipher suite used by this SDK.
 pub struct SecureSuite;
@@ -329,6 +334,90 @@ pub struct ClientLoginState(ClientLogin<SecureSuite>);
 /// Server state retained between the first and second login messages.
 pub struct ServerLoginState(ServerLogin<SecureSuite>);
 
+/// Zeroizing serialized server login state for a one-use HTTP/session store.
+///
+/// The application store must atomically remove the bytes before calling
+/// [`Self::into_state`]. Serialization makes distributed storage possible; it
+/// does not provide replay protection by itself.
+pub struct ServerLoginStateBytes(Vec<u8>);
+
+impl ServerLoginState {
+    /// Consumes the live state into zeroizing bytes suitable for protected
+    /// short-lived storage.
+    #[must_use]
+    pub fn into_bytes(self) -> ServerLoginStateBytes {
+        let serialized = self.0.serialize();
+        let suite_id = CIPHER_SUITE_ID.as_bytes();
+        let mut bytes = Vec::with_capacity(6 + suite_id.len() + serialized.len());
+        bytes.extend_from_slice(SERVER_LOGIN_STATE_MAGIC);
+        bytes.extend_from_slice(&SERVER_LOGIN_STATE_VERSION.to_le_bytes());
+        bytes.extend_from_slice(suite_id);
+        bytes.extend_from_slice(&serialized);
+        ServerLoginStateBytes(bytes)
+    }
+}
+
+impl ServerLoginStateBytes {
+    /// Copies serialized state bytes into a zeroizing container.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec())
+    }
+
+    /// Borrows the serialized state for an application-owned atomic store.
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Consumes and zeroizes the serialized state while restoring the live
+    /// server state.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transport or protocol error when the state header or bytes
+    /// are malformed, unsupported, empty, or oversized.
+    pub fn into_state(mut self) -> Result<ServerLoginState, AuthError> {
+        let result = decode_server_login_state(&self.0).and_then(|bytes| {
+            ServerLogin::<SecureSuite>::deserialize(bytes)
+                .map(ServerLoginState)
+                .map_err(|_| AuthError::Protocol)
+        });
+        self.0.zeroize();
+        result
+    }
+}
+
+impl Drop for ServerLoginStateBytes {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+fn decode_server_login_state(bytes: &[u8]) -> Result<&[u8], AuthError> {
+    let header_length = 6usize
+        .checked_add(CIPHER_SUITE_ID.len())
+        .ok_or(AuthError::Protocol)?;
+    if bytes.len() < header_length || &bytes[..4] != SERVER_LOGIN_STATE_MAGIC {
+        return Err(AuthError::Protocol);
+    }
+    let version = u16::from_le_bytes([bytes[4], bytes[5]]);
+    if version != SERVER_LOGIN_STATE_VERSION {
+        return Err(AuthError::UnsupportedVersion);
+    }
+    if &bytes[6..header_length] != CIPHER_SUITE_ID.as_bytes() {
+        return Err(AuthError::UnsupportedSuite);
+    }
+    let state = &bytes[header_length..];
+    if state.is_empty() {
+        return Err(AuthError::EmptyMessage);
+    }
+    if state.len() > MAX_MESSAGE_BYTES {
+        return Err(AuthError::MessageTooLarge);
+    }
+    Ok(state)
+}
+
 /// Native-only client login state that retains the sealed keypad submission
 /// until the second OPAQUE message. Never expose this type through a framework
 /// bridge.
@@ -384,6 +473,19 @@ impl core::fmt::Display for AuthError {
 
 impl std::error::Error for AuthError {}
 
+fn validate_identifier(identifier: &[u8]) -> Result<(), AuthError> {
+    if identifier.is_empty() || identifier.len() > MAX_IDENTIFIER_BYTES {
+        return Err(AuthError::InvalidArgument);
+    }
+    Ok(())
+}
+
+fn validate_identifiers(identifiers: &[&[u8]]) -> Result<(), AuthError> {
+    identifiers
+        .iter()
+        .try_for_each(|identifier| validate_identifier(identifier))
+}
+
 /// Starts client registration. The password is borrowed only for the protocol call.
 ///
 /// # Errors
@@ -413,6 +515,7 @@ pub fn server_registration_start(
     request: &Message,
     credential_identifier: &[u8],
 ) -> Result<Message, AuthError> {
+    validate_identifier(credential_identifier)?;
     let setup = setup.decode()?;
     let request = RegistrationRequest::<SecureSuite>::deserialize(request.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
@@ -434,6 +537,7 @@ pub fn client_registration_finish(
     client_identifier: &[u8],
     server_identifier: &[u8],
 ) -> Result<(Message, SecretOutput), AuthError> {
+    validate_identifiers(&[client_identifier, server_identifier])?;
     let response = RegistrationResponse::<SecureSuite>::deserialize(response.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let mut rng = OsRng;
@@ -523,6 +627,7 @@ pub fn server_login_start(
     client_identifier: &[u8],
     server_identifier: &[u8],
 ) -> Result<(Message, ServerLoginState), AuthError> {
+    validate_identifiers(&[credential_identifier, client_identifier, server_identifier])?;
     let setup = setup.decode()?;
     let credential_file = credential_file.map(CredentialFile::decode).transpose()?;
     let request = CredentialRequest::<SecureSuite>::deserialize(request.as_bytes())
@@ -562,6 +667,7 @@ pub fn client_login_finish(
     client_identifier: &[u8],
     server_identifier: &[u8],
 ) -> Result<(Message, SecretOutput), AuthError> {
+    validate_identifiers(&[client_identifier, server_identifier])?;
     let response = CredentialResponse::<SecureSuite>::deserialize(response.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let mut rng = OsRng;
@@ -599,6 +705,7 @@ pub fn client_login_finish_from_native_state(
     client_identifier: &[u8],
     server_identifier: &[u8],
 ) -> Result<(Message, SecretOutput), AuthError> {
+    validate_identifiers(&[client_identifier, server_identifier])?;
     let response = CredentialResponse::<SecureSuite>::deserialize(response.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let mut rng = OsRng;
@@ -639,6 +746,7 @@ pub fn server_login_finish(
     client_identifier: &[u8],
     server_identifier: &[u8],
 ) -> Result<SecretOutput, AuthError> {
+    validate_identifiers(&[client_identifier, server_identifier])?;
     let finalization = CredentialFinalization::<SecureSuite>::deserialize(finalization.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let result = state
