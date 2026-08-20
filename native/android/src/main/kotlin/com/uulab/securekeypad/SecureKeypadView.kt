@@ -197,7 +197,11 @@ public class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.CLEAR -> status = SecureKeypadNative.sessionClear(sessionHandle)
             SecureKeyRole.SUBMIT -> {
                 val submission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return
-                onSubmit?.invoke(SecureKeypadSubmission(submission))
+                deliverOrRelease(
+                    submission,
+                    onSubmit?.let { callback -> { handle -> callback(SecureKeypadSubmission(handle)) } },
+                    SecureKeypadNative::submissionFree,
+                )
             }
             SecureKeyRole.SPACER -> return
         }

@@ -46,3 +46,53 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile header contract
         run: cc -std=c11 -Wall -Wextra -Werror -Icrates/secure-ffi/include -fsyntax-only crates/secure-ffi/tests/header_contract.c
+
+  native-platforms:
+    name: Validate native platform contracts
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift presentation contract
+        run: |
+          swiftc -warnings-as-errors \
+            native/ios/SecureKeypadPresentation.swift \
+            native/ios/SecureKeypadPresentationContractTest.swift \
+            -o /tmp/secure-keypad-presentation-contract
+          /tmp/secure-keypad-presentation-contract
+      - name: Swift iOS typecheck
+        run: |
+          IOS_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          swiftc -warnings-as-errors -typecheck \
+            -sdk "$IOS_SDK" \
+            -target arm64-apple-ios26.0 \
+            -I native/ios/SecureKeypadFFI \
+            native/ios/SecureKeypadPresentation.swift \
+            native/ios/SecureKeypadView.swift
+      - name: Android Kotlin typecheck
+        run: |
+          ANDROID_ROOT="$HOME/Library/Android/sdk"
+          if [ -n "$ANDROID_HOME" ]; then ANDROID_ROOT="$ANDROID_HOME"; fi
+          ANDROID_JAR="$(find "$ANDROID_ROOT/platforms" -name android.jar -print | sort | tail -n 1)"
+          KOTLINC_BIN="$(command -v kotlinc || true)"
+          if [ -z "$KOTLINC_BIN" ]; then
+            KOTLINC_BIN="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+          fi
+          test -f "$ANDROID_JAR"
+          test -x "$KOTLINC_BIN"
+          "$KOTLINC_BIN" \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
+            -classpath "$ANDROID_JAR" \
+            -jvm-target 17 -Werror -d /tmp/secure-keypad-android.jar
+      - name: Android ownership contract
+        run: |
+          KOTLINC_BIN="$(command -v kotlinc || true)"
+          if [ -z "$KOTLINC_BIN" ]; then
+            KOTLINC_BIN="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+          fi
+          test -x "$KOTLINC_BIN"
+          "$KOTLINC_BIN" \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
+            native/android/SubmissionOwnershipContractTest.kt \
+            -include-runtime -d /tmp/secure-keypad-submission-contract.jar
+          java -jar /tmp/secure-keypad-submission-contract.jar

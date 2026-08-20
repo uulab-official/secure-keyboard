@@ -63,6 +63,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Keep key events and secret composition inside native/core code.
 - [x] Provide native submission-to-OPAQUE handoff without exposing a password or client session key.
 - [x] Add background masking, screenshot/capture handling, and autofill/clipboard restrictions.
+- [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [ ] Complete device-level accessibility review and native snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.

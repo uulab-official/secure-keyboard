@@ -20,7 +20,18 @@ swiftc -warnings-as-errors -typecheck \
   -sdk "$IOS_SDK" \
   -target arm64-apple-ios26.0 \
   -I native/ios/SecureKeypadFFI \
+  native/ios/SecureKeypadPresentation.swift \
   native/ios/SecureKeypadView.swift
+```
+
+The Foundation-only presentation contract can be executed without an iOS SDK:
+
+```sh
+swiftc -warnings-as-errors \
+  native/ios/SecureKeypadPresentation.swift \
+  native/ios/SecureKeypadPresentationContractTest.swift \
+  -o /tmp/secure-keypad-presentation-contract
+/tmp/secure-keypad-presentation-contract
 ```
 
 An application target must link the Rust `secure-ffi` static library built for
@@ -49,7 +60,19 @@ Local checks with the Android SDK installed:
 ANDROID_JAR="$HOME/Library/Android/sdk/platforms/android-37.0/android.jar"
 KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
 "$KOTLINC" native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+  native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
   -classpath "$ANDROID_JAR" -jvm-target 17 -Werror -d /tmp/secure-keypad-android.jar
+```
+
+The ownership contract is also executable without Android:
+
+```sh
+KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+"$KOTLINC" \
+  native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
+  native/android/SubmissionOwnershipContractTest.kt \
+  -include-runtime -d /tmp/secure-keypad-submission-contract.jar
+java -jar /tmp/secure-keypad-submission-contract.jar
 ```
 
 The application must link the JNI adapter with the Rust `secure-ffi` library

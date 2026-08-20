@@ -283,9 +283,10 @@ public final class SecureKeypadView: UIView {
         }
         let count = Int(state.length)
         displayLabel.text = protectedPresentation ? "Protected" : String(repeating: "•", count: count)
-        displayLabel.accessibilityLabel = protectedPresentation
-            ? "Protected"
-            : (count == 0 ? "No input" : "(count) characters entered")
+        displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(
+            length: count,
+            protected: protectedPresentation
+        )
         onMaskedStateChanged?(state.length, state.display_state)
     }
 
