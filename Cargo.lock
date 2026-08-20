@@ -421,6 +421,7 @@ dependencies = [
  "opaque-ke",
  "rand",
  "secure-core",
+ "serde",
  "sha2",
  "subtle",
  "zeroize",

@@ -15,6 +15,7 @@ use opaque_ke::{
     ServerLogin, ServerLoginParameters, ServerRegistration, ServerSetup,
 };
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -22,6 +23,10 @@ use zeroize::Zeroize;
 pub const PROTOCOL_VERSION: u16 = 1;
 /// Stable cipher-suite identifier for persistence and downgrade checks.
 pub const CIPHER_SUITE_ID: &str = "opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2";
+/// Maximum encoded OPAQUE payload accepted by the transport contract.
+pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
+const MAX_SERVER_KEY_ID_BYTES: usize = 128;
+const MAX_SUITE_ID_BYTES: usize = 128;
 
 /// OPAQUE cipher suite used by this SDK.
 pub struct SecureSuite;
@@ -50,9 +55,167 @@ impl Message {
     }
 }
 
+impl Drop for Message {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+/// The OPAQUE message type carried by the versioned transport envelope.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum AuthMessageKind {
+    /// Client-to-server registration request.
+    RegistrationRequest,
+    /// Server-to-client registration response.
+    RegistrationResponse,
+    /// Client-to-server login request.
+    CredentialRequest,
+    /// Server-to-client login response.
+    CredentialResponse,
+    /// Client-to-server login finalization.
+    CredentialFinalization,
+}
+
+/// Versioned, typed OPAQUE transport data.
+///
+/// The payload is sensitive protocol data and must use HTTPS/TLS and protected
+/// logging/storage policies. This envelope rejects unsupported versions,
+/// suites, message kinds, and server key IDs before a protocol state machine
+/// consumes the payload. It does not itself provide replay storage, rate
+/// limiting, TLS, or session-token issuance.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AuthEnvelope {
+    protocol_version: u16,
+    suite_id: String,
+    message_kind: AuthMessageKind,
+    server_key_id: String,
+    payload: Vec<u8>,
+}
+
+impl AuthEnvelope {
+    /// Creates an envelope for the current protocol version and suite.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transport validation error for an empty or oversized payload
+    /// or an invalid server key identifier.
+    pub fn new(
+        message_kind: AuthMessageKind,
+        server_key_id: &str,
+        message: &Message,
+    ) -> Result<Self, AuthError> {
+        Self::from_parts(
+            PROTOCOL_VERSION,
+            CIPHER_SUITE_ID,
+            message_kind,
+            server_key_id,
+            message.as_bytes(),
+        )
+    }
+
+    /// Creates an envelope from decoded transport metadata.
+    ///
+    /// Unsupported versions and suites are retained so [`Self::into_message`]
+    /// can return an explicit downgrade error at the protocol boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns a transport validation error for invalid metadata or payload
+    /// size.
+    pub fn from_parts(
+        protocol_version: u16,
+        suite_id: &str,
+        message_kind: AuthMessageKind,
+        server_key_id: &str,
+        payload: &[u8],
+    ) -> Result<Self, AuthError> {
+        if suite_id.is_empty() || suite_id.len() > MAX_SUITE_ID_BYTES {
+            return Err(AuthError::InvalidArgument);
+        }
+        if server_key_id.is_empty() || server_key_id.len() > MAX_SERVER_KEY_ID_BYTES {
+            return Err(AuthError::InvalidArgument);
+        }
+        if payload.is_empty() {
+            return Err(AuthError::EmptyMessage);
+        }
+        if payload.len() > MAX_MESSAGE_BYTES {
+            return Err(AuthError::MessageTooLarge);
+        }
+        Ok(Self {
+            protocol_version,
+            suite_id: suite_id.to_owned(),
+            message_kind,
+            server_key_id: server_key_id.to_owned(),
+            payload: payload.to_vec(),
+        })
+    }
+
+    /// Returns the envelope protocol version without inspecting the payload.
+    #[must_use]
+    pub fn protocol_version(&self) -> u16 {
+        self.protocol_version
+    }
+
+    /// Returns the suite identifier used for downgrade checks.
+    #[must_use]
+    pub fn suite_id(&self) -> &str {
+        &self.suite_id
+    }
+
+    /// Returns the public server key identifier.
+    #[must_use]
+    pub fn server_key_id(&self) -> &str {
+        &self.server_key_id
+    }
+
+    /// Returns the typed message kind.
+    #[must_use]
+    pub fn message_kind(&self) -> AuthMessageKind {
+        self.message_kind
+    }
+
+    /// Validates metadata and consumes the payload into a protocol message.
+    ///
+    /// # Errors
+    ///
+    /// Returns an explicit error when the envelope does not match the current
+    /// version, suite, expected message kind, or server key ID.
+    pub fn into_message(
+        mut self,
+        expected_kind: AuthMessageKind,
+        expected_server_key_id: &str,
+    ) -> Result<Message, AuthError> {
+        if self.protocol_version != PROTOCOL_VERSION {
+            return Err(AuthError::UnsupportedVersion);
+        }
+        if self.suite_id != CIPHER_SUITE_ID {
+            return Err(AuthError::UnsupportedSuite);
+        }
+        if self.message_kind != expected_kind {
+            return Err(AuthError::UnexpectedMessageKind);
+        }
+        if self.server_key_id != expected_server_key_id {
+            return Err(AuthError::UnexpectedServerKey);
+        }
+        Ok(Message(std::mem::take(&mut self.payload)))
+    }
+}
+
+impl Drop for AuthEnvelope {
+    fn drop(&mut self) {
+        self.payload.zeroize();
+    }
+}
+
 /// Serialized server setup. Store it in a server secret store, not in a
 /// client bundle or ordinary application configuration.
 pub struct ServerSetupBytes(Vec<u8>);
+
+impl Drop for ServerSetupBytes {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
 
 impl ServerSetupBytes {
     /// Generates a new server setup using the operating system CSPRNG.
@@ -91,6 +254,12 @@ impl ServerSetupBytes {
 /// A server-side OPAQUE credential file. It is password-equivalent sensitive
 /// material and must be encrypted or access-controlled at rest.
 pub struct CredentialFile(Vec<u8>);
+
+impl Drop for CredentialFile {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
 
 impl CredentialFile {
     /// Restores a credential file after checking its encoding.
@@ -179,6 +348,20 @@ pub enum AuthError {
     InvalidCredentialFile,
     /// Authentication proof verification failed.
     InvalidLogin,
+    /// A required transport argument is invalid.
+    InvalidArgument,
+    /// The envelope payload is empty.
+    EmptyMessage,
+    /// The envelope payload exceeds [`MAX_MESSAGE_BYTES`].
+    MessageTooLarge,
+    /// The envelope uses an unsupported protocol version.
+    UnsupportedVersion,
+    /// The envelope uses an unsupported cipher suite.
+    UnsupportedSuite,
+    /// The envelope message kind is not the one expected by the state machine.
+    UnexpectedMessageKind,
+    /// The envelope server key ID does not match the active key.
+    UnexpectedServerKey,
 }
 
 impl core::fmt::Display for AuthError {
@@ -188,6 +371,13 @@ impl core::fmt::Display for AuthError {
             Self::InvalidSetup => "invalid server setup",
             Self::InvalidCredentialFile => "invalid credential file",
             Self::InvalidLogin => "invalid login",
+            Self::InvalidArgument => "invalid auth argument",
+            Self::EmptyMessage => "empty auth message",
+            Self::MessageTooLarge => "auth message too large",
+            Self::UnsupportedVersion => "unsupported auth protocol version",
+            Self::UnsupportedSuite => "unsupported auth suite",
+            Self::UnexpectedMessageKind => "unexpected auth message kind",
+            Self::UnexpectedServerKey => "unexpected auth server key",
         })
     }
 }
