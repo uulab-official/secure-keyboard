@@ -17,6 +17,11 @@ Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROAD
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 
+The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
+`DEFAULT_HANGUL_LAYOUT`, and `DEFAULT_THEME` as safe starting points for
+custom renderers. These objects contain labels and key IDs only; they do not
+contain password values.
+
 The native iOS/Android renderers and React Native/Flutter bindings are not released yet. Do not treat the current repository state as a drop-in production authentication component.
 
 ## Development

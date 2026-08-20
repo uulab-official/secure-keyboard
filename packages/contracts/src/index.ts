@@ -71,6 +71,94 @@ export type SecureKeypadEvent =
   | { readonly type: "state"; readonly state: MaskedState }
   | { readonly type: "result"; readonly code: "success" | "cancelled" | "invalid" | "locked" | "error" };
 
+/** Safe starting layout for a numeric PIN keypad. */
+export const DEFAULT_NUMERIC_LAYOUT = {
+  schemaVersion: 1,
+  id: "default-numeric",
+  locale: "en",
+  direction: "ltr",
+  rows: [
+    [
+      { id: "digit-1", label: "1", role: "input" },
+      { id: "digit-2", label: "2", role: "input" },
+      { id: "digit-3", label: "3", role: "input" },
+    ],
+    [
+      { id: "digit-4", label: "4", role: "input" },
+      { id: "digit-5", label: "5", role: "input" },
+      { id: "digit-6", label: "6", role: "input" },
+    ],
+    [
+      { id: "digit-7", label: "7", role: "input" },
+      { id: "digit-8", label: "8", role: "input" },
+      { id: "digit-9", label: "9", role: "input" },
+    ],
+    [
+      { id: "clear", label: "Clear", role: "clear" },
+      { id: "digit-0", label: "0", role: "input" },
+      { id: "backspace", label: "Delete", role: "backspace" },
+    ],
+    [{ id: "submit", label: "Continue", role: "submit" }],
+  ],
+  slots: { header: true, display: true, footer: true, error: true },
+} as const satisfies KeypadLayout;
+
+/** Safe starting layout demonstrating structured Hangul composition. */
+export const DEFAULT_HANGUL_LAYOUT = {
+  schemaVersion: 1,
+  id: "default-hangul-example",
+  locale: "ko",
+  direction: "ltr",
+  rows: [
+    [
+      { id: "jamo-giyeok", label: "ㄱ", role: "input" },
+      { id: "jamo-nieun", label: "ㄴ", role: "input" },
+      { id: "jamo-digeut", label: "ㄷ", role: "input" },
+    ],
+    [
+      { id: "vowel-a", label: "ㅏ", role: "input" },
+      { id: "vowel-eo", label: "ㅓ", role: "input" },
+      { id: "vowel-o", label: "ㅗ", role: "input" },
+    ],
+    [
+      { id: "tail-giyeok", label: "받침 ㄱ", role: "input" },
+      { id: "tail-nieun", label: "받침 ㄴ", role: "input" },
+      { id: "tail-mieum", label: "받침 ㅁ", role: "input" },
+    ],
+    [
+      { id: "clear", label: "초기화", role: "clear" },
+      { id: "backspace", label: "삭제", role: "backspace" },
+      { id: "submit", label: "확인", role: "submit" },
+    ],
+  ],
+  slots: { header: true, display: true, footer: true, error: true },
+} as const satisfies KeypadLayout;
+
+/** Neutral, accessible baseline theme for native renderers. */
+export const DEFAULT_THEME = {
+  schemaVersion: 1,
+  colors: {
+    background: "#101114",
+    keyBackground: "#23262D",
+    keyForeground: "#FFFFFF",
+    keyPressedBackground: "#3B82F6",
+    keyDisabledBackground: "#4B5563",
+    error: "#F87171",
+  },
+  metrics: {
+    keyHeight: 56,
+    keyGap: 8,
+    keyRadius: 12,
+    contentPadding: 16,
+  },
+  typography: {
+    keyFontSize: 24,
+    keyFontWeight: "600",
+  },
+  animation: { pressDurationMs: 80, maskRevealDurationMs: 0 },
+  feedback: { haptic: "light", sound: "none" },
+} as const satisfies ThemeTokens;
+
 export interface ValidationResult {
   readonly valid: boolean;
   readonly errors: readonly string[];

@@ -50,7 +50,7 @@ Status: schema contract complete
 - [x] Define masked state and result event contracts.
 - [x] Define locale, RTL, accessibility, haptic, sound, animation, and masking policy fields.
 - [x] Add schema validation and secret-field rejection tests.
-- [ ] Ship a default theme and numeric/Hangul examples.
+- [x] Ship a default theme and numeric/Hangul examples.
 
 Exit criteria: an external consumer can create a branded keypad without changing secure-core code.
 
