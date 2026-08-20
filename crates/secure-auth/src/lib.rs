@@ -160,17 +160,12 @@ pub struct ClientLoginState(ClientLogin<SecureSuite>);
 /// Server state retained between the first and second login messages.
 pub struct ServerLoginState(ServerLogin<SecureSuite>);
 
-/// Native-only client login state that retains the sealed password until the
-/// second OPAQUE message. Never expose this type through a framework bridge.
+/// Native-only client login state that retains the sealed keypad submission
+/// until the second OPAQUE message. Never expose this type through a framework
+/// bridge.
 pub struct NativeClientLoginState {
     state: Option<ClientLogin<SecureSuite>>,
-    password: Vec<u8>,
-}
-
-impl Drop for NativeClientLoginState {
-    fn drop(&mut self) {
-        self.password.zeroize();
-    }
+    submission: Option<secure_core::Submission>,
 }
 
 /// Errors that never include password or secret bytes.
@@ -307,19 +302,17 @@ pub fn client_login_start(password: &[u8]) -> Result<(ClientLoginState, Message)
 ///
 /// Returns [`AuthError::Protocol`] when the pinned OPAQUE implementation cannot
 /// create a login request.
-#[allow(clippy::needless_pass_by_value)]
 pub fn client_login_start_from_submission(
     submission: secure_core::Submission,
 ) -> Result<(NativeClientLoginState, Message), AuthError> {
-    let mut password = Vec::new();
-    submission.with_native_bytes(|bytes| password.extend_from_slice(bytes));
     let mut rng = OsRng;
-    let result =
-        ClientLogin::<SecureSuite>::start(&mut rng, &password).map_err(|_| AuthError::Protocol)?;
+    let result = submission
+        .with_native_bytes(|password| ClientLogin::<SecureSuite>::start(&mut rng, password))
+        .map_err(|_| AuthError::Protocol)?;
     Ok((
         NativeClientLoginState {
             state: Some(result.state),
-            password,
+            submission: Some(submission),
         },
         Message(result.message.serialize().to_vec()),
     ))
@@ -419,23 +412,24 @@ pub fn client_login_finish_from_native_state(
     let response = CredentialResponse::<SecureSuite>::deserialize(response.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let mut rng = OsRng;
-    let result = state
-        .state
-        .take()
-        .ok_or(AuthError::InvalidLogin)?
-        .finish(
-            &mut rng,
-            &state.password,
-            response,
-            ClientLoginFinishParameters::new(
-                None,
-                Identifiers {
-                    client: Some(client_identifier),
-                    server: Some(server_identifier),
-                },
-                None,
-            ),
-        )
+    let login_state = state.state.take().ok_or(AuthError::InvalidLogin)?;
+    let submission = state.submission.take().ok_or(AuthError::InvalidLogin)?;
+    let result = submission
+        .with_native_bytes(|password| {
+            login_state.finish(
+                &mut rng,
+                password,
+                response,
+                ClientLoginFinishParameters::new(
+                    None,
+                    Identifiers {
+                        client: Some(client_identifier),
+                        server: Some(server_identifier),
+                    },
+                    None,
+                ),
+            )
+        })
         .map_err(|_| AuthError::InvalidLogin)?;
     Ok((
         Message(result.message.serialize().to_vec()),
