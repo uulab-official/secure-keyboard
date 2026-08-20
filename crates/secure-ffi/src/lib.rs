@@ -10,9 +10,13 @@
 use core::time::Duration;
 use std::{panic::catch_unwind, panic::AssertUnwindSafe, ptr, slice, str};
 
+use secure_auth::{
+    client_login_finish_from_native_state, client_login_start_from_submission, AuthError, Message,
+};
 use secure_core::{DisplayState, InputPolicy, MaskedState, SecureSession, SessionError};
 
 const MAX_KEY_ID_BYTES: usize = 64;
+const MAX_PUBLIC_ID_BYTES: usize = 256;
 const MAX_TOKENS: u32 = 4_096;
 const MAX_TIMEOUT_MS: u64 = 86_400_000;
 
@@ -36,6 +40,14 @@ pub enum SecureKeypadError {
     Inactive = 6,
     /// The native boundary encountered an internal representation failure.
     Internal = 7,
+    /// A native auth message exceeds the fixed payload limit.
+    MessageTooLarge = 8,
+    /// The supplied output buffer is smaller than the message.
+    BufferTooSmall = 9,
+    /// The native OPAQUE engine rejected a protocol message.
+    AuthProtocol = 10,
+    /// The native OPAQUE proof was invalid.
+    AuthInvalidLogin = 11,
     /// A Rust panic was contained at the ABI boundary.
     Panic = 255,
 }
@@ -77,6 +89,18 @@ pub struct SecureKeypadSubmission {
     core: secure_core::Submission,
 }
 
+/// Opaque native-owned OPAQUE transport message.
+#[repr(C)]
+pub struct SecureKeypadAuthMessage {
+    core: Message,
+}
+
+/// Opaque native-owned OPAQUE client login state.
+#[repr(C)]
+pub struct SecureKeypadClientLogin {
+    core: secure_auth::NativeClientLoginState,
+}
+
 fn contain_panic(operation: impl FnOnce() -> SecureKeypadError) -> SecureKeypadError {
     match catch_unwind(AssertUnwindSafe(operation)) {
         Ok(result) => result,
@@ -90,6 +114,13 @@ fn map_session_error(error: SessionError) -> SecureKeypadError {
         SessionError::LimitReached => SecureKeypadError::LimitReached,
         SessionError::Empty => SecureKeypadError::Empty,
         SessionError::Inactive => SecureKeypadError::Inactive,
+    }
+}
+
+fn map_auth_error(error: AuthError) -> SecureKeypadError {
+    match error {
+        AuthError::InvalidLogin => SecureKeypadError::AuthInvalidLogin,
+        _ => SecureKeypadError::AuthProtocol,
     }
 }
 
@@ -154,6 +185,18 @@ unsafe fn parse_key_id(
     let bytes = unsafe { slice::from_raw_parts(key_id, key_id_len) };
     let value = str::from_utf8(bytes).map_err(|_| SecureKeypadError::InvalidUtf8)?;
     Ok(secure_core::KeyId::new(value))
+}
+
+unsafe fn parse_public_id(
+    identifier: *const u8,
+    identifier_len: usize,
+) -> Result<Vec<u8>, SecureKeypadError> {
+    if identifier.is_null() || identifier_len == 0 || identifier_len > MAX_PUBLIC_ID_BYTES {
+        return Err(SecureKeypadError::InvalidArgument);
+    }
+    // SAFETY: The caller contract guarantees a readable public identifier
+    // buffer for the duration of the enclosing FFI call.
+    Ok(unsafe { slice::from_raw_parts(identifier, identifier_len) }.to_vec())
 }
 
 /// Creates a numeric keypad session.
@@ -371,6 +414,281 @@ pub unsafe extern "C" fn secure_keypad_session_submit(
         // SAFETY: Ownership transfers to the caller through the output slot.
         unsafe {
             *output = Box::into_raw(Box::new(SecureKeypadSubmission { core: submission }));
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Creates an opaque OPAQUE transport message from native network bytes.
+///
+/// This is for native networking only. The message is not a password, but it
+/// is sensitive protocol data and must not be logged or sent through a
+/// JavaScript/Dart bridge.
+///
+/// # Safety
+///
+/// `bytes` must point to a readable buffer of `length` bytes, and `output` must
+/// be a valid writable pointer. The returned handle must be freed exactly once
+/// with [`secure_keypad_auth_message_free`].
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_auth_message_new(
+    bytes: *const u8,
+    length: usize,
+    output: *mut *mut SecureKeypadAuthMessage,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: `output` is checked for null and must be writable.
+        unsafe {
+            *output = ptr::null_mut();
+        }
+        if bytes.is_null() || length == 0 {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if length > secure_auth::MAX_MESSAGE_BYTES {
+            return SecureKeypadError::MessageTooLarge;
+        }
+        // SAFETY: The caller contract guarantees the input buffer is readable
+        // for exactly `length` bytes during this call.
+        let bytes = unsafe { slice::from_raw_parts(bytes, length) };
+        // SAFETY: Ownership transfers to the caller through the output slot.
+        unsafe {
+            *output = Box::into_raw(Box::new(SecureKeypadAuthMessage {
+                core: Message::from_bytes(bytes),
+            }));
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Returns the length of an opaque OPAQUE transport message.
+///
+/// # Safety
+///
+/// `message` must be a live message handle and `output_length` must be a valid
+/// writable pointer.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_auth_message_size(
+    message: *const SecureKeypadAuthMessage,
+    output_length: *mut usize,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if message.is_null() || output_length.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The caller contract guarantees live message and output
+        // pointers.
+        unsafe {
+            *output_length = (*message).core.as_bytes().len();
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Copies an opaque OPAQUE transport message into a native network buffer.
+///
+/// # Safety
+///
+/// `message` must be live. `output_written` must be a valid writable pointer.
+/// When the message is non-empty, `output` must point to a writable buffer of
+/// at least `output_length` bytes. The caller must not use the handles
+/// concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_auth_message_copy(
+    message: *const SecureKeypadAuthMessage,
+    output: *mut u8,
+    output_length: usize,
+    output_written: *mut usize,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if message.is_null() || output_written.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The caller contract guarantees a live message and writable
+        // output-length pointer.
+        let bytes = unsafe { &(*message).core.as_bytes() };
+        // SAFETY: `output_written` is checked for null and must be writable.
+        unsafe {
+            *output_written = 0;
+        }
+        if output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if output_length < bytes.len() {
+            // SAFETY: `output_written` is valid and writable as checked above.
+            unsafe {
+                *output_written = bytes.len();
+            }
+            return SecureKeypadError::BufferTooSmall;
+        }
+        // SAFETY: The caller contract guarantees a writable output buffer of
+        // `output_length` bytes; `bytes.len()` is no larger than it.
+        unsafe {
+            slice::from_raw_parts_mut(output, bytes.len()).copy_from_slice(bytes);
+            *output_written = bytes.len();
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Frees an opaque OPAQUE transport message and zeroizes its bytes.
+///
+/// # Safety
+///
+/// `message` must be null or a live handle returned by
+/// [`secure_keypad_auth_message_new`] that has not already been freed.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_auth_message_free(message: *mut SecureKeypadAuthMessage) {
+    let _ = contain_panic(|| {
+        if !message.is_null() {
+            // SAFETY: The caller contract requires ownership of a live handle.
+            unsafe { drop(Box::from_raw(message)) };
+        }
+        SecureKeypadError::Ok
+    });
+}
+
+/// Starts native OPAQUE login by consuming a sealed keypad submission.
+///
+/// The caller receives only the first OPAQUE transport message and an opaque
+/// native login handle. The password never crosses this ABI.
+///
+/// # Safety
+///
+/// `submission` must point to a live submission pointer and `output_login` and
+/// `output_request` must be valid writable pointers. On success the submission
+/// pointer is set to null and ownership is consumed. All handles are
+/// single-owner and must not be used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_login_start(
+    submission: *mut *mut SecureKeypadSubmission,
+    output_login: *mut *mut SecureKeypadClientLogin,
+    output_request: *mut *mut SecureKeypadAuthMessage,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if submission.is_null() || output_login.is_null() || output_request.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: All output pointers are checked for null and must be writable.
+        unsafe {
+            *output_login = ptr::null_mut();
+            *output_request = ptr::null_mut();
+        }
+        // SAFETY: `submission` is checked and must point to a live submission
+        // handle owned by the caller.
+        let submission_pointer = unsafe { *submission };
+        if submission_pointer.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // Mark the caller's handle consumed before any protocol operation.
+        unsafe {
+            *submission = ptr::null_mut();
+        }
+        // SAFETY: Ownership was validated and transferred above.
+        let submission = unsafe { *Box::from_raw(submission_pointer) }.core;
+        let (state, request) = match client_login_start_from_submission(submission) {
+            Ok(result) => result,
+            Err(error) => return map_auth_error(error),
+        };
+        // SAFETY: Ownership transfers through the output slots.
+        unsafe {
+            *output_login = Box::into_raw(Box::new(SecureKeypadClientLogin { core: state }));
+            *output_request = Box::into_raw(Box::new(SecureKeypadAuthMessage { core: request }));
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Aborts and frees a native OPAQUE login handle.
+///
+/// # Safety
+///
+/// `login` must be null or a live handle returned by
+/// [`secure_keypad_client_login_start`] that has not already been consumed or
+/// freed.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_login_free(login: *mut SecureKeypadClientLogin) {
+    let _ = contain_panic(|| {
+        if !login.is_null() {
+            // SAFETY: The caller contract requires ownership of a live handle.
+            unsafe { drop(Box::from_raw(login)) };
+        }
+        SecureKeypadError::Ok
+    });
+}
+
+/// Finishes native OPAQUE login and returns only the finalization message.
+///
+/// The derived client session key is immediately dropped and zeroized inside
+/// Rust. The application should exchange the finalization message over its
+/// native transport and receive an ordinary application session token from the
+/// server rather than exposing the OPAQUE key to a framework bridge.
+///
+/// # Safety
+///
+/// `login` must point to a live login pointer and is consumed on entry;
+/// `response` must be a live message handle; identifier buffers must be
+/// readable for their declared lengths; and `output_finalization` must be a
+/// valid writable pointer. All pointers must remain valid for this call and
+/// must not be used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_login_finish(
+    login: *mut *mut SecureKeypadClientLogin,
+    response: *const SecureKeypadAuthMessage,
+    client_identifier: *const u8,
+    client_identifier_len: usize,
+    server_identifier: *const u8,
+    server_identifier_len: usize,
+    output_finalization: *mut *mut SecureKeypadAuthMessage,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if login.is_null() || response.is_null() || output_finalization.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The output pointer is checked for null and must be writable.
+        unsafe {
+            *output_finalization = ptr::null_mut();
+        }
+        // SAFETY: `login` is checked and must point to a live owned handle.
+        let login_pointer = unsafe { *login };
+        if login_pointer.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        unsafe {
+            *login = ptr::null_mut();
+        }
+        // SAFETY: Ownership was validated and transferred above.
+        let login = unsafe { *Box::from_raw(login_pointer) }.core;
+        // SAFETY: The caller contract guarantees a live response handle.
+        let response = unsafe { &(*response).core };
+        // SAFETY: Identifier buffers are validated by the helper and remain
+        // readable for the duration of this call.
+        let client_identifier =
+            match unsafe { parse_public_id(client_identifier, client_identifier_len) } {
+                Ok(identifier) => identifier,
+                Err(error) => return error,
+            };
+        let server_identifier =
+            match unsafe { parse_public_id(server_identifier, server_identifier_len) } {
+                Ok(identifier) => identifier,
+                Err(error) => return error,
+            };
+        let (finalization, session_key) = match client_login_finish_from_native_state(
+            login,
+            response,
+            &client_identifier,
+            &server_identifier,
+        ) {
+            Ok(result) => result,
+            Err(error) => return map_auth_error(error),
+        };
+        drop(session_key);
+        // SAFETY: Ownership transfers through the output slot.
+        unsafe {
+            *output_finalization =
+                Box::into_raw(Box::new(SecureKeypadAuthMessage { core: finalization }));
         }
         SecureKeypadError::Ok
     })

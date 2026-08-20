@@ -61,6 +61,7 @@ Status: planned
 - [ ] Implement iOS native secure view and controller.
 - [ ] Implement Android native secure view and controller.
 - [ ] Keep key events and secret composition inside native/core code.
+- [x] Provide native submission-to-OPAQUE handoff without exposing a password or client session key.
 - [ ] Add background masking, screenshot/capture handling, autofill/clipboard restrictions, and accessibility review.
 - [ ] Add native UI snapshot tests that use only masked fixtures.
 

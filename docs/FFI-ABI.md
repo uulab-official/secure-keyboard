@@ -19,8 +19,10 @@ Android, React Native, and Flutter adapters.
 - use-after-free or double-free of handles.
 
 The submission handle is intentionally not serializable. Native authentication
-code consumes it inside the native/Rust boundary or releases it. The C ABI
-does not itself perform HTTP or expose OPAQUE session keys to framework code.
+code consumes it inside the native/Rust boundary or releases it. The native
+OPAQUE functions can turn that submission into request/finalization message
+handles for a native HTTP client; they never expose a password or derived
+client session key. The C ABI does not itself perform HTTP.
 
 The ABI catches Rust panics and converts them to `SECURE_KEYPAD_PANIC`, but it
 cannot make an invalid C pointer safe. Callers must satisfy the documented
