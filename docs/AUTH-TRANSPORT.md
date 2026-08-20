@@ -47,6 +47,12 @@ under an unguessable, short-lived handle and atomically consume/delete them
 before restoration. Serialization alone is not replay protection; Redis,
 database, or in-memory stores must provide the one-use operation.
 
+For an unknown account, pass `None` as the credential file to
+`server_login_start`; the pinned OPAQUE implementation produces the dummy
+processing path. The reference tests pin the registered and missing-account
+response shape to the same wire length. Applications must still use generic
+external errors and apply account/IP/deployment rate limits.
+
 The `secure-auth-server` crate includes `InMemoryOneTimeLoginStore` as a
 bounded reference implementation with 32-byte handles, TTL, capacity, and
 state-size limits. It is not a distributed production store; a multi-instance

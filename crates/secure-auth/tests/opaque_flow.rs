@@ -83,6 +83,53 @@ fn wrong_password_does_not_finish_login() {
 }
 
 #[test]
+fn missing_credentials_use_the_same_opaque_response_shape() {
+    let setup = ServerSetupBytes::generate().unwrap();
+    let (registration_state, registration_request) = client_registration_start(PASSWORD).unwrap();
+    let registration_response =
+        server_registration_start(&setup, &registration_request, CLIENT_ID).unwrap();
+    let (upload, _) = client_registration_finish(
+        registration_state,
+        PASSWORD,
+        &registration_response,
+        CLIENT_ID,
+        SERVER_ID,
+    )
+    .unwrap();
+    let credential_file = server_registration_finish(&upload).unwrap();
+
+    let (login_state, login_request) = client_login_start(PASSWORD).unwrap();
+    let (known_response, known_server_state) = server_login_start(
+        &setup,
+        Some(&credential_file),
+        &login_request,
+        CLIENT_ID,
+        CLIENT_ID,
+        SERVER_ID,
+    )
+    .unwrap();
+    let (missing_response, _missing_server_state) = server_login_start(
+        &setup,
+        None,
+        &login_request,
+        CLIENT_ID,
+        CLIENT_ID,
+        SERVER_ID,
+    )
+    .unwrap();
+
+    assert_eq!(
+        known_response.as_bytes().len(),
+        missing_response.as_bytes().len()
+    );
+    let (finalization, client_session_key) =
+        client_login_finish(login_state, PASSWORD, &known_response, CLIENT_ID, SERVER_ID).unwrap();
+    let server_session_key =
+        server_login_finish(known_server_state, &finalization, CLIENT_ID, SERVER_ID).unwrap();
+    assert!(client_session_key.constant_time_eq(&server_session_key));
+}
+
+#[test]
 fn setup_persistence_round_trips() {
     let setup = ServerSetupBytes::generate().unwrap();
     let restored = ServerSetupBytes::from_bytes(setup.as_bytes()).unwrap();

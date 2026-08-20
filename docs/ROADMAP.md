@@ -100,6 +100,7 @@ Status: OPAQUE engine and typed transport contract complete; HTTP/deployment lay
 - [x] Apply envelope bounds to both constructor and Serde deserialization paths.
 - [x] Add a bounded JSON decoder and generic external authentication error codes.
 - [x] Add a bounded fixed-window rate limiter and shared backend contract.
+- [x] Add a missing-account OPAQUE dummy-path response-shape regression test.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
 - [x] Add zeroizing server-login-state serialization and bounded public identifiers.
