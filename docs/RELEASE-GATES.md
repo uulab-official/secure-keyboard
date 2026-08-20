@@ -39,9 +39,10 @@ target or corpus regression before release.
 ## Artifact and platform gates
 
 CI also validates the C header, native Swift/Kotlin contracts, Flutter analyze
-and tests, and emits dependency metadata for the release SBOM. Before a public
-release, the artifact must include the exact Rust/Node/Flutter/native toolchain
-versions, license notices, threat model, and signed checksums.
+and tests, emits dependency metadata, and generates an SPDX SBOM through
+Syft/Anchore. Before a public release, the artifact must include the exact
+Rust/Node/Flutter/native toolchain versions, license notices, threat model, and
+signed checksums.
 
 ## Known release blockers
 

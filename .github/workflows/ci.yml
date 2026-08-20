@@ -94,6 +94,13 @@ jobs:
           mkdir -p artifacts
           cargo metadata --locked --format-version 1 > artifacts/cargo-metadata.json
           pnpm list --depth=-1 --json > artifacts/pnpm-dependencies.json
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: secure-keypad.sbom.spdx.json
+          upload-release-assets: false
       - uses: actions/upload-artifact@v4
         with:
           name: secure-keypad-dependency-metadata
