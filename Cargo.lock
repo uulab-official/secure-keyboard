@@ -428,6 +428,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "secure-auth-server"
+version = "0.1.0"
+dependencies = [
+ "rand",
+ "secure-auth",
+]
+
+[[package]]
 name = "secure-core"
 version = "0.1.0"
 dependencies = [

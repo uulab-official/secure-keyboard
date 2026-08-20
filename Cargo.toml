@@ -1,5 +1,10 @@
 [workspace]
-members = ["crates/secure-core", "crates/secure-auth", "crates/secure-ffi"]
+members = [
+    "crates/secure-core",
+    "crates/secure-auth",
+    "crates/secure-auth-server",
+    "crates/secure-ffi",
+]
 resolver = "2"
 
 [workspace.package]

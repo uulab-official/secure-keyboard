@@ -1,0 +1,15 @@
+[package]
+name = "secure-auth-server"
+version = "0.1.0"
+description = "Replay-resistant reference storage boundary for Secure Keypad server integrations"
+license = "MIT"
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rand = "0.8.7"
+secure-auth = { path = "../secure-auth", version = "0.1.0" }
+
+[lints]
+workspace = true
