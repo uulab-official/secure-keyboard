@@ -1,5 +1,7 @@
 use core::fmt;
 
+use zeroize::Zeroize;
+
 use crate::hangul;
 use crate::secret_buffer::{SecretBuffer, SecretTokenBuffer};
 
@@ -160,7 +162,10 @@ impl SecretInput {
     }
 
     pub(crate) fn rendered_length(&self) -> usize {
-        hangul::render(self.tokens.as_slice()).len()
+        let mut rendered = hangul::render(self.tokens.as_slice());
+        let length = rendered.len();
+        rendered.zeroize();
+        length
     }
 
     pub(crate) fn into_secret_buffer(self) -> SecretBuffer {

@@ -592,10 +592,12 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
             Ok(result) => result,
             Err(error) => return map_auth_error(error),
         };
+        let login_handle = Box::new(SecureKeypadClientLogin { core: state });
+        let request_handle = Box::new(SecureKeypadAuthMessage { core: request });
         // SAFETY: Ownership transfers through the output slots.
         unsafe {
-            *output_login = Box::into_raw(Box::new(SecureKeypadClientLogin { core: state }));
-            *output_request = Box::into_raw(Box::new(SecureKeypadAuthMessage { core: request }));
+            *output_login = Box::into_raw(login_handle);
+            *output_request = Box::into_raw(request_handle);
         }
         SecureKeypadError::Ok
     })
