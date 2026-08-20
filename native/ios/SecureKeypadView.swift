@@ -2,6 +2,17 @@ import Foundation
 import SecureKeypadFFI
 import UIKit
 
+/// Converts the ABI display state to the framework-neutral string contract.
+func secureKeypadDisplayStateName(_ value: UInt32) -> String {
+    switch value {
+    case 0: return "empty"
+    case 1: return "masked"
+    case 2: return "submitted"
+    case 3: return "cancelled"
+    default: return "empty"
+    }
+}
+
 /// Public presentation role. It never contains a secret value.
 public enum SecureKeyRole: String {
     case input
@@ -45,6 +56,8 @@ public struct SecureKeypadTheme {
     public var keyGap: CGFloat = 8
     public var keyRadius: CGFloat = 12
     public var contentPadding: CGFloat = 16
+    public var keyFontSize: CGFloat = 24
+    public var keyFontWeight: UIFont.Weight = .semibold
 
     public init() {}
 }
@@ -81,13 +94,15 @@ public enum SecureKeypadViewError: Error {
 /// The view never creates a UITextField. Key IDs are sent to the Rust C ABI,
 /// and only masked length/state are rendered. The submission callback remains
 /// native-only and must not be bridged to JavaScript or Dart.
-public final class SecureKeypadView: UIView {
+public class SecureKeypadView: UIView {
     private var session: OpaquePointer?
     private let displayLabel = UILabel()
     private let keypadStack = UIStackView()
+    private let rootContainer = UIStackView()
     private var theme = SecureKeypadTheme()
     private var protectedPresentation = false
     private var notificationTokens: [NSObjectProtocol] = []
+    private var contentPaddingConstraints: [NSLayoutConstraint] = []
 
     /// Called with a native-only submission that the host must close or authenticate natively.
     public var onSubmit: ((SecureKeypadSubmission) -> Void)?
@@ -164,6 +179,15 @@ public final class SecureKeypadView: UIView {
         }
         session = newSession
         self.theme = theme
+        rootContainer.spacing = theme.keyGap
+        keypadStack.spacing = theme.keyGap
+        if contentPaddingConstraints.count == 4 {
+            contentPaddingConstraints[0].constant = theme.contentPadding
+            contentPaddingConstraints[1].constant = -theme.contentPadding
+            contentPaddingConstraints[2].constant = theme.contentPadding
+            contentPaddingConstraints[3].constant = -theme.contentPadding
+        }
+        displayLabel.font = .systemFont(ofSize: theme.keyFontSize, weight: theme.keyFontWeight)
         render(layout: layout)
         refreshMaskedState()
     }
@@ -188,16 +212,19 @@ public final class SecureKeypadView: UIView {
         keypadStack.distribution = .fillEqually
         keypadStack.spacing = theme.keyGap
 
-        let root = UIStackView(arrangedSubviews: [displayLabel, keypadStack])
-        root.axis = .vertical
-        root.spacing = theme.keyGap
-        root.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(root)
-        NSLayoutConstraint.activate([
-            root.leadingAnchor.constraint(equalTo: leadingAnchor, constant: theme.contentPadding),
-            root.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -theme.contentPadding),
-            root.topAnchor.constraint(equalTo: topAnchor, constant: theme.contentPadding),
-            root.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -theme.contentPadding),
+        rootContainer.axis = .vertical
+        rootContainer.spacing = theme.keyGap
+        rootContainer.addArrangedSubview(displayLabel)
+        rootContainer.addArrangedSubview(keypadStack)
+        rootContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(rootContainer)
+        contentPaddingConstraints = [
+            rootContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: theme.contentPadding),
+            rootContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -theme.contentPadding),
+            rootContainer.topAnchor.constraint(equalTo: topAnchor, constant: theme.contentPadding),
+            rootContainer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -theme.contentPadding),
+        ]
+        NSLayoutConstraint.activate(contentPaddingConstraints + [
             displayLabel.heightAnchor.constraint(equalToConstant: 72),
         ])
     }
@@ -215,6 +242,7 @@ public final class SecureKeypadView: UIView {
                 let button = UIButton(type: .system)
                 let buttonTheme = theme
                 button.setTitle(key.label, for: .normal)
+                button.titleLabel?.font = .systemFont(ofSize: buttonTheme.keyFontSize, weight: buttonTheme.keyFontWeight)
                 var configuration = UIButton.Configuration.filled()
                 configuration.baseForegroundColor = buttonTheme.keyTextColor
                 configuration.baseBackgroundColor = buttonTheme.keyColor

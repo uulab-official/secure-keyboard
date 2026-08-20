@@ -12,6 +12,18 @@ and theme values, sends key IDs to the Rust C ABI, and renders only bullets and
 non-secret state. It masks presentation while the app is inactive or the
 screen is captured. The submission callback is native-only.
 
+`native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
+export file register the same view with React Native. The manager decodes only
+versioned public layout/theme dictionaries and exports masked state/result
+events. It never exports the opaque submission handle. Add both files to the
+host iOS target and link React Native plus the matching `secure-ffi` artifact.
+
+`native/ios/flutter/SecureKeypadFlutterPlugin.swift` registers a
+`secure_keypad/native` PlatformView and a per-view event channel. Creation
+arguments are public configuration only; the event channel carries masked state
+and result codes only. Add the file to the host Flutter iOS target and register
+the plugin with the same Rust artifact.
+
 Local typecheck:
 
 ```sh
@@ -21,6 +33,7 @@ swiftc -warnings-as-errors -typecheck \
   -target arm64-apple-ios26.0 \
   -I native/ios/SecureKeypadFFI \
   native/ios/SecureKeypadPresentation.swift \
+  native/ios/SecureKeypadBridgeConfig.swift \
   native/ios/SecureKeypadView.swift
 ```
 
@@ -54,12 +67,22 @@ cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
 excluded, and no `EditText` is created.
 
+`native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
+`SecureKeypadView` React Native component. Its `ReadableMap` conversion is
+bounded to public configuration fields and its events contain only masked
+length/state or non-secret result codes. `native/android/.../flutter/
+SecureKeypadFlutterPlugin.kt` registers the `secure_keypad/native`
+PlatformView and per-view EventChannel with the same restriction. Add the
+appropriate source set to the host Gradle module and link the matching JNI and
+Rust artifacts for every shipped ABI.
+
 Local checks with the Android SDK installed:
 
 ```sh
 ANDROID_JAR="$HOME/Library/Android/sdk/platforms/android-37.0/android.jar"
 KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
 "$KOTLINC" native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+  native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
   native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
   -classpath "$ANDROID_JAR" -jvm-target 17 -Werror -d /tmp/secure-keypad-android.jar
 ```
@@ -89,9 +112,11 @@ cargo build --release -p secure-ffi --target aarch64-linux-android
 
 ## Framework adapters
 
-React Native and Flutter adapters must wrap these native views as native
-components/PlatformViews. They may pass layout, theme, locale, accessibility,
-and masked state. They must not pass `SecureKeypadSubmission` handles or
-transport bytes through JavaScript/Dart serialization. Expo Go and ordinary
-Flutter hot-reload runtimes cannot host this security boundary without a
-custom native build.
+React Native and Flutter adapters now include reference native registration
+source under `native/ios/{react-native,flutter}` and
+`native/android/.../{reactnative,flutter}`. They may pass layout, theme, locale,
+accessibility, and masked state. They must not pass `SecureKeypadSubmission`
+handles or transport bytes through JavaScript/Dart serialization. Expo Go and
+ordinary Flutter hot-reload runtimes cannot host this security boundary without
+a custom native build. A host app must still compile the reference bridge in
+its own RN/Flutter target and run the device matrix before release.

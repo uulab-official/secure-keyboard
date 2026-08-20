@@ -43,6 +43,8 @@ public data class SecureKeypadTheme(
     val keyHeightPx: Int = 56,
     val keyGapPx: Int = 8,
     val keyRadiusPx: Float = 12f,
+    val keyFontSizePx: Float = 24f,
+    val contentPaddingPx: Int = 16,
 )
 
 /** Native-owned opaque submission. It cannot be serialized to JavaScript. */
@@ -61,13 +63,14 @@ public class SecureKeypadSubmission internal constructor(internal var handle: Lo
  * This view does not create an EditText, does not keep a password string, and
  * exposes only masked state and an opaque native submission callback.
  */
-public class SecureKeypadView @JvmOverloads constructor(
+public open class SecureKeypadView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
     private var sessionHandle: Long = 0L
     private val display: TextView
     private val keypad: LinearLayout
+    private val rootContainer: LinearLayout
     private var currentTheme: SecureKeypadTheme = SecureKeypadTheme()
 
     /** Called with a native-only submission that the host must close or authenticate natively. */
@@ -85,7 +88,7 @@ public class SecureKeypadView @JvmOverloads constructor(
         (context as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         setBackgroundColor(currentTheme.backgroundColor)
-        val root = LinearLayout(context).apply {
+        rootContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(16, 16, 16, 16)
@@ -101,9 +104,9 @@ public class SecureKeypadView @JvmOverloads constructor(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        root.addView(display, LinearLayout.LayoutParams(-1, 72))
-        root.addView(keypad, LinearLayout.LayoutParams(-1, -2))
-        addView(root, LayoutParams(-1, -2))
+        rootContainer.addView(display, LinearLayout.LayoutParams(-1, 72))
+        rootContainer.addView(keypad, LinearLayout.LayoutParams(-1, -2))
+        addView(rootContainer, LayoutParams(-1, -2))
     }
 
     /** Starts a numeric Secure Native session and renders the supplied layout. */
@@ -165,6 +168,13 @@ public class SecureKeypadView @JvmOverloads constructor(
     private fun render(layout: SecureKeypadLayout) {
         keypad.removeAllViews()
         setBackgroundColor(currentTheme.backgroundColor)
+        rootContainer.setPadding(
+            currentTheme.contentPaddingPx,
+            currentTheme.contentPaddingPx,
+            currentTheme.contentPaddingPx,
+            currentTheme.contentPaddingPx,
+        )
+        display.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, currentTheme.keyFontSizePx)
         layout.rows.forEach { row ->
             val rowView = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -174,6 +184,7 @@ public class SecureKeypadView @JvmOverloads constructor(
                 val button = Button(context).apply {
                     text = key.label
                     contentDescription = key.accessibilityLabel
+                    textSize = currentTheme.keyFontSizePx
                     setTextColor(currentTheme.keyTextColor)
                     background = keyBackground()
                     importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO

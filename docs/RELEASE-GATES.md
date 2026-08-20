@@ -46,8 +46,9 @@ signed checksums.
 
 ## Known release blockers
 
-- Native RN view-manager and Flutter PlatformView/FFI registration are not yet
-  complete.
+- Native RN view-manager and Flutter PlatformView/FFI registration reference
+  source is present, but each host application must compile it against its
+  chosen RN/Flutter versions and run the device matrix.
 - WebAuthn server-side challenge/origin/RP-ID verification examples are not
   yet shipped.
 - Device accessibility/screenshot/autofill verification and an independent

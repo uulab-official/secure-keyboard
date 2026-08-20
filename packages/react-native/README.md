@@ -36,6 +36,11 @@ export function PinEntry() {
 }
 ```
 
-This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The native view manager and `secure_ffi` artifact must be linked for each target; Expo Go and browser runtimes are not supported.
+This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The reference iOS/Android view managers are under `native/ios/react-native` and `native/android/.../reactnative`; add them to the host target and link the matching `secure_ffi` artifact for each ABI. Expo Go and browser runtimes are not supported.
+
+The `success` result means that the native keypad created an opaque submission
+and the native bridge accepted ownership. It is not a server authentication
+decision. A production app must consume that handle inside a host-native
+authentication service and report its own server result out-of-band.
 
 The package is MIT-licensed. See the repository security specification before exposing it to an authentication flow.

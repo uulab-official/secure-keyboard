@@ -70,9 +70,9 @@ Exit criteria: Secure Native Mode works without a secret crossing the framework 
 
 ### Phase 4 — React Native adapter
 
-Status: public contract package complete; native view-manager and release packaging pending
+Status: public contract and reference view-manager complete; host-app build and release packaging pending
 
-- [ ] Expose the native view through a TurboModule/native component.
+- [x] Provide reference iOS/Android native view-manager registration.
 - [x] Accept only serializable layout, theme, and policy objects.
 - [ ] Expose controller commands and masked state events.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
@@ -82,12 +82,13 @@ Exit criteria: RN users can customize the entire supported visual contract while
 
 ### Phase 5 — Flutter adapter
 
-Status: public contract package complete; PlatformView/FFI and device verification pending
+Status: public contract and reference PlatformView/FFI complete; host-app build and device verification pending
 
 - [x] Publish the Flutter-facing layout/theme/policy contract.
 - [x] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
 - [x] Mirror the RN masked-state/result-code contract and add Flutter analyze/test CI gates.
-- [ ] Expose the native renderer through PlatformView/FFI.
+- [x] Provide reference PlatformView/FFI registration that carries only public configuration and masked/result events.
+- [ ] Compile the registration in supported host apps and verify device behavior.
 - [ ] Provide examples for numeric PIN, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.

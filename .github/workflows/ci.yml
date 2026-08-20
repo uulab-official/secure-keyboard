@@ -134,6 +134,7 @@ jobs:
             -target arm64-apple-ios26.0 \
             -I native/ios/SecureKeypadFFI \
             native/ios/SecureKeypadPresentation.swift \
+            native/ios/SecureKeypadBridgeConfig.swift \
             native/ios/SecureKeypadView.swift
       - name: Android Kotlin typecheck
         run: |
@@ -148,6 +149,7 @@ jobs:
           test -x "$KOTLINC_BIN"
           "$KOTLINC_BIN" \
             native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
             native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
             -classpath "$ANDROID_JAR" \
             -jvm-target 17 -Werror -d /tmp/secure-keypad-android.jar
@@ -163,3 +165,23 @@ jobs:
             native/android/SubmissionOwnershipContractTest.kt \
             -include-runtime -d /tmp/secure-keypad-submission-contract.jar
           java -jar /tmp/secure-keypad-submission-contract.jar
+      - name: Android bridge configuration contract
+        run: |
+          ANDROID_ROOT="$HOME/Library/Android/sdk"
+          if [ -n "$ANDROID_HOME" ]; then ANDROID_ROOT="$ANDROID_HOME"; fi
+          ANDROID_JAR="$(find "$ANDROID_ROOT/platforms" -name android.jar -print | sort | tail -n 1)"
+          KOTLINC_BIN="$(command -v kotlinc || true)"
+          if [ -z "$KOTLINC_BIN" ]; then
+            KOTLINC_BIN="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+          fi
+          test -f "$ANDROID_JAR"
+          test -x "$KOTLINC_BIN"
+          "$KOTLINC_BIN" \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
+            native/android/SecureKeypadBridgeConfigContractTest.kt \
+            -classpath "$ANDROID_JAR" \
+            -include-runtime -jvm-target 17 -Werror \
+            -d /tmp/secure-keypad-bridge-config-contract.jar
+          java -jar /tmp/secure-keypad-bridge-config-contract.jar

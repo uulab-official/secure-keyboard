@@ -1,0 +1,2 @@
+# Fuzz corpus entries are arbitrary byte inputs, not source text.
+fuzz/corpus/** binary -text
