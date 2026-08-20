@@ -441,6 +441,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "secure-auth-http"
+version = "0.1.0"
+dependencies = [
+ "secure-auth",
+ "secure-auth-server",
+ "secure-core",
+ "serde",
+ "serde_json",
+ "zeroize",
+]
+
+[[package]]
 name = "secure-auth-server"
 version = "0.1.0"
 dependencies = [

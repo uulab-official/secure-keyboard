@@ -1,0 +1,372 @@
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+
+//! Bounded HTTP/JSON route contracts for the Secure Keypad OPAQUE service.
+//!
+//! This crate intentionally stops at a framework-neutral request/response
+//! boundary. It enforces HTTP method, media type, body size, JSON schema,
+//! generic public errors, and one-time login-handle consumption. TLS,
+//! certificate policy, connection limits, reverse-proxy hardening, and
+//! session-token issuance remain responsibilities of the embedding server.
+
+use secure_auth::{AuthEnvelope, CredentialFile, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES};
+use secure_auth_server::{
+    BoundOneTimeLoginStateStore, LoginStateHandle, PublicAuthCode, ServerAuthError,
+    ServerAuthService, StoreError,
+};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use zeroize::Zeroize;
+
+/// Exact API prefix used by the reference routes.
+pub const API_PREFIX: &str = "/v1/opaque";
+/// Maximum request body accepted by the route boundary.
+pub const MAX_HTTP_BODY_BYTES: usize = MAX_JSON_BODY_BYTES;
+/// JSON content type emitted by every response.
+pub const JSON_CONTENT_TYPE: &str = "application/json; charset=utf-8";
+/// Stable successful login response. It contains no session token or secret.
+pub const AUTHENTICATED_RESPONSE: &[u8] = br#"{"authenticated":true}"#;
+/// Stable successful registration-storage response. The credential file is
+/// persisted by the repository and is never returned to the HTTP caller.
+pub const REGISTRATION_STORED_RESPONSE: &[u8] = br#"{"credentialStored":true}"#;
+
+const REGISTRATION_START_PATH: &str = "/v1/opaque/registration/start";
+const REGISTRATION_FINISH_PATH: &str = "/v1/opaque/registration/finish";
+const LOGIN_START_PATH: &str = "/v1/opaque/login/start";
+const LOGIN_FINISH_PATH: &str = "/v1/opaque/login/finish";
+const HANDLE_BYTES: usize = 32;
+
+/// A borrowed HTTP request view suitable for an Axum, Actix, Go, Java, or
+/// ASP.NET adapter.
+#[derive(Clone, Copy)]
+pub struct HttpRequest<'a> {
+    /// HTTP method, expected to be `POST` for every auth route.
+    pub method: &'a str,
+    /// Exact route path without query parameters.
+    pub path: &'a str,
+    /// Request media type from the transport layer.
+    pub content_type: Option<&'a str>,
+    /// Raw request body. It is bounded before JSON deserialization.
+    pub body: &'a [u8],
+}
+
+/// An owned response. OPAQUE response bytes are zeroized when the response is
+/// dropped; callers should write the body to the TLS response stream promptly.
+pub struct HttpResponse {
+    /// HTTP status code selected by the generic route contract.
+    pub status: u16,
+    /// Always [`JSON_CONTENT_TYPE`] for this adapter.
+    pub content_type: &'static str,
+    /// JSON body bytes, zeroized on drop.
+    pub body: Vec<u8>,
+}
+
+impl Drop for HttpResponse {
+    fn drop(&mut self) {
+        self.body.zeroize();
+    }
+}
+
+/// Protected credential-file persistence boundary.
+pub trait CredentialRepository {
+    /// Loads and removes or clones the credential file for a public account
+    /// identifier. Unknown accounts must return `Ok(None)` so the OPAQUE dummy
+    /// path can run.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RepositoryError::Unavailable`] when the protected store
+    /// cannot safely serve the lookup.
+    fn load(&self, identifier: &[u8]) -> Result<Option<CredentialFile>, RepositoryError>;
+
+    /// Stores a newly completed credential file under a public identifier.
+    /// Implementations must encrypt or access-control the file at rest.
+    ///
+    /// # Errors
+    ///
+    /// Returns a repository error when protected persistence is unavailable
+    /// or rejects the identifier.
+    fn store(&self, identifier: &[u8], credential: CredentialFile) -> Result<(), RepositoryError>;
+}
+
+/// Stable repository failure classes. Internal database errors must be mapped
+/// to these classes before reaching the route boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RepositoryError {
+    /// The protected credential backend cannot safely serve the request.
+    Unavailable,
+    /// The repository rejected the bounded public identifier.
+    InvalidIdentifier,
+}
+
+/// Framework-neutral OPAQUE HTTP route handler.
+pub struct HttpAuthRouter<S, R> {
+    service: ServerAuthService<S>,
+    repository: R,
+}
+
+impl<S, R> HttpAuthRouter<S, R>
+where
+    S: BoundOneTimeLoginStateStore,
+    R: CredentialRepository,
+{
+    /// Creates the route handler around a configured OPAQUE service and a
+    /// protected credential repository.
+    #[must_use]
+    pub fn new(service: ServerAuthService<S>, repository: R) -> Self {
+        Self {
+            service,
+            repository,
+        }
+    }
+
+    /// Handles one bounded request without logging its body, identifiers,
+    /// handles, or protocol errors.
+    #[must_use]
+    pub fn handle(&self, request: HttpRequest<'_>) -> HttpResponse {
+        if request.body.len() > MAX_HTTP_BODY_BYTES {
+            return error_response(413, PublicAuthCode::InvalidRequest);
+        }
+        if request.method != "POST" {
+            return error_response(405, PublicAuthCode::InvalidRequest);
+        }
+        if !is_json_content_type(request.content_type) {
+            return error_response(415, PublicAuthCode::InvalidRequest);
+        }
+
+        match request.path {
+            REGISTRATION_START_PATH => self.registration_start(request.body),
+            REGISTRATION_FINISH_PATH => self.registration_finish(request.body),
+            LOGIN_START_PATH => self.login_start(request.body),
+            LOGIN_FINISH_PATH => self.login_finish(request.body),
+            _ => error_response(404, PublicAuthCode::InvalidRequest),
+        }
+    }
+
+    fn registration_start(&self, body: &[u8]) -> HttpResponse {
+        let request: RegistrationStartRequest = match parse_json(body) {
+            Ok(request) => request,
+            Err(response) => return response,
+        };
+        if !valid_identifier(request.identifier.as_bytes()) {
+            return error_response(400, PublicAuthCode::InvalidRequest);
+        }
+        let response = match self
+            .service
+            .begin_registration(request.envelope, request.identifier.as_bytes())
+        {
+            Ok(response) => response,
+            Err(error) => return auth_error_response(error),
+        };
+        json_response(RegistrationStartResponse { envelope: response })
+    }
+
+    fn registration_finish(&self, body: &[u8]) -> HttpResponse {
+        let request: EnvelopeRequest = match parse_json(body) {
+            Ok(request) => request,
+            Err(response) => return response,
+        };
+        let credential = match self.service.finish_registration(request.envelope) {
+            Ok(credential) => credential,
+            Err(error) => return auth_error_response(error),
+        };
+        if let Err(error) = self
+            .repository
+            .store(request.identifier.as_bytes(), credential)
+        {
+            return repository_error_response(error);
+        }
+        static_response(200, REGISTRATION_STORED_RESPONSE)
+    }
+
+    fn login_start(&self, body: &[u8]) -> HttpResponse {
+        let request: LoginStartRequest = match parse_json(body) {
+            Ok(request) => request,
+            Err(response) => return response,
+        };
+        if !valid_identifier(request.credential_identifier.as_bytes())
+            || !valid_identifier(request.client_identifier.as_bytes())
+            || !valid_identifier(request.server_identifier.as_bytes())
+        {
+            return error_response(400, PublicAuthCode::InvalidRequest);
+        }
+        let credential = match self
+            .repository
+            .load(request.credential_identifier.as_bytes())
+        {
+            Ok(credential) => credential,
+            Err(error) => return repository_error_response(error),
+        };
+        let (response, handle) = match self.service.begin_login(
+            request.envelope,
+            credential.as_ref(),
+            request.credential_identifier.as_bytes(),
+            request.client_identifier.as_bytes(),
+            request.server_identifier.as_bytes(),
+        ) {
+            Ok(result) => result,
+            Err(error) => return auth_error_response(error),
+        };
+        json_response(LoginStartResponse {
+            envelope: response,
+            handle: encode_handle(&handle),
+        })
+    }
+
+    fn login_finish(&self, body: &[u8]) -> HttpResponse {
+        let request: LoginFinishRequest = match parse_json(body) {
+            Ok(request) => request,
+            Err(response) => return response,
+        };
+        let Some(handle) = decode_handle(&request.handle) else {
+            return error_response(400, PublicAuthCode::InvalidRequest);
+        };
+        let output = match self.service.finish_login(request.envelope, &handle) {
+            Ok(output) => output,
+            Err(error) => return auth_error_response(error),
+        };
+        drop(output);
+        static_response(200, AUTHENTICATED_RESPONSE)
+    }
+}
+
+#[derive(Deserialize)]
+struct RegistrationStartRequest {
+    identifier: String,
+    envelope: AuthEnvelope,
+}
+
+#[derive(Deserialize)]
+struct EnvelopeRequest {
+    identifier: String,
+    envelope: AuthEnvelope,
+}
+
+#[derive(Deserialize)]
+struct LoginStartRequest {
+    credential_identifier: String,
+    client_identifier: String,
+    server_identifier: String,
+    envelope: AuthEnvelope,
+}
+
+#[derive(Deserialize)]
+struct LoginFinishRequest {
+    handle: String,
+    envelope: AuthEnvelope,
+}
+
+#[derive(Serialize)]
+struct RegistrationStartResponse {
+    envelope: AuthEnvelope,
+}
+
+#[derive(Serialize)]
+struct LoginStartResponse {
+    envelope: AuthEnvelope,
+    handle: String,
+}
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: &'static str,
+}
+
+fn parse_json<T: DeserializeOwned>(body: &[u8]) -> Result<T, HttpResponse> {
+    serde_json::from_slice(body).map_err(|_| error_response(400, PublicAuthCode::InvalidRequest))
+}
+
+fn valid_identifier(identifier: &[u8]) -> bool {
+    !identifier.is_empty() && identifier.len() <= MAX_IDENTIFIER_BYTES
+}
+
+fn is_json_content_type(content_type: Option<&str>) -> bool {
+    content_type
+        .and_then(|value| value.split(';').next())
+        .is_some_and(|media_type| media_type.trim().eq_ignore_ascii_case("application/json"))
+}
+
+fn auth_error_response(error: ServerAuthError) -> HttpResponse {
+    let code = error.public_code();
+    let status = match code {
+        PublicAuthCode::InvalidRequest => 400,
+        PublicAuthCode::AuthenticationFailed => 401,
+        PublicAuthCode::TemporarilyUnavailable => 503,
+    };
+    error_response(status, code)
+}
+
+fn repository_error_response(error: RepositoryError) -> HttpResponse {
+    let code = match error {
+        RepositoryError::Unavailable => PublicAuthCode::TemporarilyUnavailable,
+        RepositoryError::InvalidIdentifier => PublicAuthCode::InvalidRequest,
+    };
+    error_response(
+        match code {
+            PublicAuthCode::InvalidRequest => 400,
+            PublicAuthCode::AuthenticationFailed => 401,
+            PublicAuthCode::TemporarilyUnavailable => 503,
+        },
+        code,
+    )
+}
+
+fn error_response(status: u16, code: PublicAuthCode) -> HttpResponse {
+    json_response_with_status(
+        status,
+        ErrorResponse {
+            error: code.as_str(),
+        },
+    )
+}
+
+fn json_response<T: Serialize>(value: T) -> HttpResponse {
+    json_response_with_status(200, value)
+}
+
+fn json_response_with_status<T: Serialize>(status: u16, value: T) -> HttpResponse {
+    let body = serde_json::to_vec(&value)
+        .unwrap_or_else(|_| br#"{"error":"temporarily_unavailable"}"#.to_vec());
+    if body.len() > MAX_HTTP_BODY_BYTES {
+        return static_response(503, br#"{"error":"temporarily_unavailable"}"#);
+    }
+    HttpResponse {
+        status,
+        content_type: JSON_CONTENT_TYPE,
+        body,
+    }
+}
+
+fn static_response(status: u16, body: &[u8]) -> HttpResponse {
+    HttpResponse {
+        status,
+        content_type: JSON_CONTENT_TYPE,
+        body: body.to_vec(),
+    }
+}
+
+fn encode_handle(handle: &LoginStateHandle) -> String {
+    let mut output = String::with_capacity(HANDLE_BYTES * 2);
+    for byte in handle.as_bytes() {
+        use core::fmt::Write;
+        let _ = write!(&mut output, "{byte:02x}");
+    }
+    output
+}
+
+fn decode_handle(value: &str) -> Option<LoginStateHandle> {
+    if value.len() != HANDLE_BYTES * 2 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut bytes = [0u8; HANDLE_BYTES];
+    for (index, slot) in bytes.iter_mut().enumerate() {
+        let start = index * 2;
+        *slot = u8::from_str_radix(&value[start..start + 2], 16).ok()?;
+    }
+    LoginStateHandle::from_bytes(&bytes)
+}
+
+impl From<StoreError> for RepositoryError {
+    fn from(_: StoreError) -> Self {
+        Self::Unavailable
+    }
+}

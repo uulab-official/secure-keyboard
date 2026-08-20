@@ -41,6 +41,16 @@ pub const MAX_STORED_STATE_BYTES: usize = MAX_MESSAGE_BYTES + 256;
 pub struct LoginStateHandle([u8; HANDLE_BYTES]);
 
 impl LoginStateHandle {
+    /// Restores a handle from its fixed-size transport representation.
+    ///
+    /// The caller must keep the handle confidential. This method only checks
+    /// the representation length; it does not validate ownership or expiry.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        let bytes: [u8; HANDLE_BYTES] = bytes.try_into().ok()?;
+        Some(Self(bytes))
+    }
+
     /// Borrows the handle bytes for transport encoding.
     #[must_use]
     pub fn as_bytes(&self) -> &[u8; HANDLE_BYTES] {

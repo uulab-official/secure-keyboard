@@ -1,0 +1,21 @@
+[package]
+name = "secure-auth-http"
+version = "0.1.0"
+description = "Bounded HTTP/JSON route contract for Secure Keypad OPAQUE authentication"
+license = "MIT"
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+secure-auth = { path = "../secure-auth", version = "0.1.0" }
+secure-auth-server = { path = "../secure-auth-server", version = "0.1.0" }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+zeroize = "1.9.0"
+
+[dev-dependencies]
+secure-core = { path = "../secure-core", version = "0.1.0" }
+
+[lints]
+workspace = true

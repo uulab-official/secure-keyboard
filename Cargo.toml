@@ -3,6 +3,7 @@ members = [
     "crates/secure-core",
     "crates/secure-auth",
     "crates/secure-auth-server",
+    "crates/secure-auth-http",
     "crates/secure-ffi",
 ]
 resolver = "2"

@@ -72,8 +72,18 @@ must implement the check-and-count operation atomically in a shared backend.
 `ServerAuthService` provides the reference registration and
 request/finalization orchestration: it validates the expected envelope kind and
 server key, binds identifiers at login start, and consumes the bound state
-before server finalization. It does not create HTTP routes, TLS configuration,
-rate limits, account lookup, or application session tokens.
+before server finalization. The `secure-auth-http` crate adds a framework-neutral
+route contract for `POST` JSON registration/login endpoints. It enforces the
+128 KiB body limit, JSON media type, fixed-size hex handles, generic public
+errors, and zeroizing response buffers. Its registration finish body includes
+the public account identifier so the host repository can persist the protected
+credential file; it never returns that file.
+
+The HTTP route contract does not create TLS configuration, reverse-proxy
+limits, rate limits, account enrollment authorization, account lookup policy,
+or application session tokens. An embedding server must provide those controls;
+registration finish must not be exposed before the application's account
+creation policy has authorized it.
 
 Use `ServerAuthService::new_with_key_rotation` for a bounded rotation window:
 previous IDs are accepted only on inbound start messages, responses emit the

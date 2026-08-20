@@ -94,7 +94,7 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: OPAQUE engine and typed transport contract complete; HTTP/deployment layer pending
+Status: OPAQUE engine and verified HTTP/JSON route contract complete; deployment controls pending
 
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
@@ -105,13 +105,16 @@ Status: OPAQUE engine and typed transport contract complete; HTTP/deployment lay
 - [x] Add a missing-account OPAQUE dummy-path response-shape regression test.
 - [x] Add explicit active/previous key rotation and finalization downgrade tests.
 - [x] Add public opaque-handle generation and an executable atomic backend contract test.
+- [x] Add bounded HTTP/JSON routes for registration and one-time login finish.
+- [x] Enforce POST, JSON media type, 128 KiB body limit, fixed-size handle encoding, and generic public errors at the route boundary.
+- [x] Add end-to-end HTTP OPAQUE registration/login/replay tests without returning credential files or session keys.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
 - [x] Add zeroizing server-login-state serialization and bounded public identifiers.
 - [x] Add a bounded one-time reference store with TTL, capacity, and state-size tests.
 - [x] Add transport-neutral registration orchestration that returns protected credential files.
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
-- [ ] Add HTTP transport with TLS requirements and message-size limits.
+- [ ] Add framework-specific HTTP examples with mandatory TLS and reverse-proxy limits.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.
