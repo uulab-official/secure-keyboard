@@ -96,3 +96,42 @@ fn envelope_rejects_empty_or_oversized_transport_messages() {
         Err(AuthError::MessageTooLarge)
     ));
 }
+
+#[test]
+fn serde_deserialization_preserves_a_valid_envelope() {
+    let wire = serde_json::json!({
+        "protocol_version": PROTOCOL_VERSION,
+        "suite_id": CIPHER_SUITE_ID,
+        "message_kind": "CredentialRequest",
+        "server_key_id": "server-key-2026",
+        "payload": [102, 105, 120, 116, 117, 114, 101]
+    });
+
+    let envelope: AuthEnvelope = serde_json::from_value(wire).unwrap();
+    assert_eq!(envelope.message_kind(), AuthMessageKind::CredentialRequest);
+    let message = envelope
+        .into_message(AuthMessageKind::CredentialRequest, "server-key-2026")
+        .unwrap();
+    assert_eq!(message.as_bytes(), b"fixture");
+}
+
+#[test]
+fn serde_deserialization_rejects_invalid_payload_bounds() {
+    let empty = serde_json::json!({
+        "protocol_version": PROTOCOL_VERSION,
+        "suite_id": CIPHER_SUITE_ID,
+        "message_kind": "CredentialRequest",
+        "server_key_id": "server-key-2026",
+        "payload": []
+    });
+    assert!(serde_json::from_value::<AuthEnvelope>(empty).is_err());
+
+    let oversized = serde_json::json!({
+        "protocol_version": PROTOCOL_VERSION,
+        "suite_id": CIPHER_SUITE_ID,
+        "message_kind": "CredentialRequest",
+        "server_key_id": "server-key-2026",
+        "payload": vec![0u8; 16 * 1024 + 1]
+    });
+    assert!(serde_json::from_value::<AuthEnvelope>(oversized).is_err());
+}

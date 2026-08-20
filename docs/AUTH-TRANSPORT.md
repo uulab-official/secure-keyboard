@@ -19,6 +19,12 @@ The typed message kinds are `RegistrationRequest`, `RegistrationResponse`,
 `CredentialFinalization`. `ServerAuthService` provides registration start and
 finish methods as well as the one-time, identifier-bound login flow.
 
+`AuthEnvelope` implements validating `serde::Deserialize`; JSON or another
+Serde-supported transport cannot bypass the empty, 16 KiB, suite, and server
+key identifier bounds enforced by `AuthEnvelope::from_parts`. Applications
+should still enforce a request-body limit before parsing and reject malformed
+requests without logging their payloads.
+
 The current suite is pinned as
 `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2`. Raw OPAQUE payloads are
 limited to 16 KiB. The server must reject unsupported protocol versions and

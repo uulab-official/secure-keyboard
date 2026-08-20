@@ -15,7 +15,8 @@ use opaque_ke::{
     ServerLogin, ServerLoginParameters, ServerRegistration, ServerSetup,
 };
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
+use serde::de::{self, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -91,13 +92,109 @@ pub enum AuthMessageKind {
 /// suites, message kinds, and server key IDs before a protocol state machine
 /// consumes the payload. It does not itself provide replay storage, rate
 /// limiting, TLS, or session-token issuance.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct AuthEnvelope {
     protocol_version: u16,
     suite_id: String,
     message_kind: AuthMessageKind,
     server_key_id: String,
     payload: Vec<u8>,
+}
+
+#[derive(Deserialize)]
+struct AuthEnvelopeWire {
+    protocol_version: u16,
+    suite_id: String,
+    message_kind: AuthMessageKind,
+    server_key_id: String,
+    payload: BoundedPayload,
+}
+
+struct BoundedPayload(Vec<u8>);
+
+impl<'de> Deserialize<'de> for BoundedPayload {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct BoundedPayloadVisitor;
+
+        impl<'de> Visitor<'de> for BoundedPayloadVisitor {
+            type Value = BoundedPayload;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                formatter.write_str("an authentication payload no larger than 16 KiB")
+            }
+
+            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                if bytes.len() > MAX_MESSAGE_BYTES {
+                    return Err(E::custom("auth message too large"));
+                }
+                Ok(BoundedPayload(bytes.to_vec()))
+            }
+
+            fn visit_byte_buf<E>(self, bytes: Vec<u8>) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                if bytes.len() > MAX_MESSAGE_BYTES {
+                    return Err(E::custom("auth message too large"));
+                }
+                Ok(BoundedPayload(bytes))
+            }
+
+            fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut bytes = Vec::new();
+                loop {
+                    let next = sequence.next_element::<u8>();
+                    let byte = match next {
+                        Ok(Some(byte)) => byte,
+                        Ok(None) => return Ok(BoundedPayload(bytes)),
+                        Err(error) => {
+                            bytes.zeroize();
+                            return Err(error);
+                        }
+                    };
+                    if bytes.len() == MAX_MESSAGE_BYTES {
+                        bytes.zeroize();
+                        return Err(de::Error::custom("auth message too large"));
+                    }
+                    bytes.push(byte);
+                }
+            }
+        }
+
+        deserializer.deserialize_bytes(BoundedPayloadVisitor)
+    }
+}
+
+impl Drop for BoundedPayload {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl<'de> Deserialize<'de> for AuthEnvelope {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = AuthEnvelopeWire::deserialize(deserializer)?;
+        Self::from_parts(
+            wire.protocol_version,
+            &wire.suite_id,
+            wire.message_kind,
+            &wire.server_key_id,
+            &wire.payload.0,
+        )
+        .map_err(serde::de::Error::custom)
+    }
 }
 
 impl AuthEnvelope {
