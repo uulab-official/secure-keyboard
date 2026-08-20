@@ -74,6 +74,8 @@ pub enum AuthMessageKind {
     RegistrationRequest,
     /// Server-to-client registration response.
     RegistrationResponse,
+    /// Client-to-server registration upload.
+    RegistrationUpload,
     /// Client-to-server login request.
     CredentialRequest,
     /// Server-to-client login response.

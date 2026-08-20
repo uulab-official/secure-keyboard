@@ -14,6 +14,11 @@ serverKeyId
 payload
 ```
 
+The typed message kinds are `RegistrationRequest`, `RegistrationResponse`,
+`RegistrationUpload`, `CredentialRequest`, `CredentialResponse`, and
+`CredentialFinalization`. `ServerAuthService` provides registration start and
+finish methods as well as the one-time, identifier-bound login flow.
+
 The current suite is pinned as
 `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2`. Raw OPAQUE payloads are
 limited to 16 KiB. The server must reject unsupported protocol versions and
@@ -36,11 +41,11 @@ state-size limits. It is not a distributed production store; a multi-instance
 deployment must replace it with an atomic backend adapter that preserves the
 same `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics.
 
-`ServerAuthService` provides the reference request/finalization orchestration:
-it validates the expected envelope kind and server key, binds identifiers at
-login start, and consumes the bound state before server finalization. It does
-not create HTTP routes, TLS configuration, rate limits, account lookup, or
-application session tokens.
+`ServerAuthService` provides the reference registration and
+request/finalization orchestration: it validates the expected envelope kind and
+server key, binds identifiers at login start, and consumes the bound state
+before server finalization. It does not create HTTP routes, TLS configuration,
+rate limits, account lookup, or application session tokens.
 
 ## Required server controls
 

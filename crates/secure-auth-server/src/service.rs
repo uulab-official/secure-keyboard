@@ -1,7 +1,8 @@
 use crate::{BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, StoreError};
 use secure_auth::{
-    server_login_finish, server_login_start, AuthEnvelope, AuthError, AuthMessageKind,
-    CredentialFile, ServerSetupBytes, MAX_SERVER_KEY_ID_BYTES,
+    server_login_finish, server_login_start, server_registration_finish, server_registration_start,
+    AuthEnvelope, AuthError, AuthMessageKind, CredentialFile, ServerSetupBytes,
+    MAX_SERVER_KEY_ID_BYTES,
 };
 
 /// Errors produced by the transport-neutral server authentication service.
@@ -73,6 +74,49 @@ where
             server_key_id,
             state_store,
         })
+    }
+
+    /// Processes a client registration request and returns the response
+    /// envelope.
+    ///
+    /// The credential identifier is public account metadata. The password is
+    /// handled only by the client-side native OPAQUE boundary and never enters
+    /// this server service API.
+    ///
+    /// # Errors
+    ///
+    /// Returns an authentication or envelope validation error.
+    pub fn begin_registration(
+        &self,
+        request: AuthEnvelope,
+        credential_identifier: &[u8],
+    ) -> Result<AuthEnvelope, ServerAuthError> {
+        let request =
+            request.into_message(AuthMessageKind::RegistrationRequest, &self.server_key_id)?;
+        let response = server_registration_start(&self.setup, &request, credential_identifier)?;
+        AuthEnvelope::new(
+            AuthMessageKind::RegistrationResponse,
+            &self.server_key_id,
+            &response,
+        )
+        .map_err(ServerAuthError::from)
+    }
+
+    /// Consumes a client registration upload into a protected credential file.
+    ///
+    /// The returned credential file is password-equivalent server secret
+    /// material and must be encrypted or access-controlled by the application.
+    ///
+    /// # Errors
+    ///
+    /// Returns an authentication or envelope validation error.
+    pub fn finish_registration(
+        &self,
+        upload: AuthEnvelope,
+    ) -> Result<CredentialFile, ServerAuthError> {
+        let upload =
+            upload.into_message(AuthMessageKind::RegistrationUpload, &self.server_key_id)?;
+        server_registration_finish(&upload).map_err(ServerAuthError::from)
     }
 
     /// Processes a client credential request and returns the response envelope

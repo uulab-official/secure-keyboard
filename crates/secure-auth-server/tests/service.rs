@@ -35,6 +35,49 @@ fn registered_fixture_for(
 }
 
 #[test]
+fn service_completes_versioned_registration_without_exposing_server_state() {
+    let setup = ServerSetupBytes::generate().unwrap();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, std::time::Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+
+    let (registration_state, registration_request) = client_registration_start(PASSWORD).unwrap();
+    let request_envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationRequest,
+        CIPHER_SUITE_ID,
+        &registration_request,
+    )
+    .unwrap();
+    let response_envelope = service
+        .begin_registration(request_envelope, CLIENT_ID)
+        .unwrap();
+    let response = response_envelope
+        .into_message(AuthMessageKind::RegistrationResponse, CIPHER_SUITE_ID)
+        .unwrap();
+    let (upload, client_export_key) = client_registration_finish(
+        registration_state,
+        PASSWORD,
+        &response,
+        CLIENT_ID,
+        SERVER_ID,
+    )
+    .unwrap();
+    let upload_envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationUpload,
+        CIPHER_SUITE_ID,
+        &upload,
+    )
+    .unwrap();
+
+    let credential_file = service.finish_registration(upload_envelope).unwrap();
+    assert!(!credential_file.as_bytes().is_empty());
+    assert!(!client_export_key.is_empty());
+}
+
+#[test]
 fn service_completes_versioned_login_without_reaccepting_context() {
     let (setup, credential_file) = registered_fixture();
     let service = ServerAuthService::new(

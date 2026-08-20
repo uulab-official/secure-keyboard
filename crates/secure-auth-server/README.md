@@ -2,10 +2,11 @@
 
 Reference server-side storage primitives for the Secure Keypad OPAQUE flow.
 
-`ServerAuthService` handles the versioned credential-request and finalization
-envelopes. It stores the OPAQUE server state together with the client/server
-identifiers used at login start, so the finish call does not accept a second
-caller-supplied context.
+`ServerAuthService` handles the versioned registration and login envelopes. It
+stores the OPAQUE server state together with the client/server identifiers used
+at login start, so the login finish call does not accept a second
+caller-supplied context. Registration produces a `CredentialFile` that the
+application must protect at rest.
 
 `InMemoryOneTimeLoginStore` provides bounded, process-local one-use storage for
 `secure_auth::ServerLoginStateBytes`. It is useful for tests, a single-process
