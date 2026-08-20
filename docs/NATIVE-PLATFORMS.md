@@ -2,7 +2,8 @@
 
 The first Secure Native renderers are under `native/ios` and
 `native/android`. They share `crates/secure-ffi/include/secure_keypad.h` and
-never use a text input widget for the secret.
+never use a text input widget for the secret. The repository pins Rust
+1.97.1 and the device/simulator targets in `rust-toolchain.toml`.
 
 ## iOS
 
