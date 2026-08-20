@@ -10,6 +10,14 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 
+## Current packages
+
+- `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
+- `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF for native/server Rust integrations.
+- `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
+
+The native iOS/Android renderers and React Native/Flutter bindings are not released yet. Do not treat the current repository state as a drop-in production authentication component.
+
 ## Development
 
 ```sh

@@ -1,0 +1,17 @@
+[package]
+name = "secure-auth"
+version = "0.1.0"
+description = "Versioned OPAQUE authentication engine for native/server integrations"
+license = "MIT"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+opaque-ke = { version = "4.0.1", features = ["argon2", "ristretto255", "serde"] }
+rand = "0.8.7"
+sha2 = "0.10.9"
+subtle = "2.6.1"
+zeroize = "1.9.0"
+
+[lints]
+workspace = true

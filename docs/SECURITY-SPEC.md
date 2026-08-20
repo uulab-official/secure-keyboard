@@ -61,6 +61,8 @@ Numeric, alphabetic, symbol, and Hangul composition are separate policies. Hangu
 
 The server integration uses a versioned PAKE contract. OPAQUE is the preferred protocol family. The server stores protocol records and key IDs, not plaintext passwords and not a client-side hash that can be replayed as a password. Protocol messages, errors, and timing-sensitive details must not be logged.
 
+OPAQUE registration uploads, credential files, server setup material, and transport messages are sensitive. Registration uploads and credential files require protected transport/storage, while server setup material requires secret-store or HSM-backed handling. The protocol engine does not by itself provide HTTPS, rate limiting, replay policy, session-token issuance, or key rotation; those belong to the server integration layer.
+
 Minimum protocol metadata:
 
 ```json

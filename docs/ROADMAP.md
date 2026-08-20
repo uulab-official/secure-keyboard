@@ -90,10 +90,12 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: planned
+Status: OPAQUE engine complete; transport layer pending
 
-- [ ] Define the versioned OPAQUE registration and login message contract.
-- [ ] Implement a reference server SDK with pinned protocol suite and key IDs.
+- [x] Define the versioned OPAQUE registration and login message contract.
+- [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
+- [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
+- [ ] Add HTTP transport with TLS requirements and message-size limits.
 - [ ] Add replay, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.
