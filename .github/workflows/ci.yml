@@ -35,3 +35,11 @@ jobs:
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
       - run: pnpm --dir packages/contracts build
+
+  ffi-header:
+    name: Validate C ABI header
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile header contract
+        run: cc -std=c11 -Wall -Wextra -Werror -Icrates/secure-ffi/include -fsyntax-only crates/secure-ffi/tests/header_contract.c

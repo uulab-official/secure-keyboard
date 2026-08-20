@@ -37,9 +37,9 @@ Status: core contract complete
 - [x] Lock the initial canonical composition behavior with test vectors.
 - [x] Add explicit buffer clearing and a no-secret-API test harness.
 - [x] Add the monotonic inactivity timeout policy.
-- [ ] Add the native FFI boundary with explicit ownership and null-safety rules.
+- [x] Add the native FFI boundary with explicit ownership and null-safety rules.
 
-Exit criteria: core tests pass and the public API cannot return the accumulated secret.
+Exit criteria: core, authentication, FFI, and header-contract tests pass and the public API cannot return the accumulated secret.
 
 ### Phase 2 — Customization system
 

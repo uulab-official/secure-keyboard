@@ -14,6 +14,7 @@ Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROAD
 
 - `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF for native/server Rust integrations.
+- `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 
 The native iOS/Android renderers and React Native/Flutter bindings are not released yet. Do not treat the current repository state as a drop-in production authentication component.

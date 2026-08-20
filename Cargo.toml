@@ -1,11 +1,12 @@
 [workspace]
-members = ["crates/secure-core", "crates/secure-auth"]
+members = ["crates/secure-core", "crates/secure-auth", "crates/secure-ffi"]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
 license = "MIT"
 rust-version = "1.85"
+repository = "https://github.com/uulab/secure-keyboard"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

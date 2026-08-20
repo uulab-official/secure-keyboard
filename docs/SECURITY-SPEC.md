@@ -44,6 +44,12 @@ Consumers must not receive or provide:
 
 The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. State events expose only length, masked display state, validation state, and result codes.
 
+The native C ABI is an opaque-handle boundary. It accepts public key IDs as
+bounded pointer/length inputs and returns only masked state or stable error
+codes. A submission handle has no byte accessor; native authentication code
+must consume it inside the native boundary. ABI callers own each handle and
+must not use a handle concurrently or after its matching free function.
+
 ## Input policies
 
 Numeric, alphabetic, symbol, and Hangul composition are separate policies. Hangul composition happens in the secure core, not in JavaScript or Dart. The initial core accepts structured jamo key IDs and emits canonical Hangul syllable code points; arbitrary Unicode normalization is not silently enabled. Future Unicode policies must lock the Unicode version and normalization behavior. NFKC must not be enabled implicitly because compatibility normalization can change the user's intended secret.
@@ -68,7 +74,7 @@ Minimum protocol metadata:
 ```json
 {
   "protocolVersion": 1,
-  "suite": "opaque-3dh",
+  "suite": "opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2",
   "serverKeyId": "key-2026-01"
 }
 ```
