@@ -305,9 +305,28 @@ impl AuthEnvelope {
     /// Returns an explicit error when the envelope does not match the current
     /// version, suite, expected message kind, or server key ID.
     pub fn into_message(
-        mut self,
+        self,
         expected_kind: AuthMessageKind,
         expected_server_key_id: &str,
+    ) -> Result<Message, AuthError> {
+        self.into_message_for_server_keys(expected_kind, &[expected_server_key_id])
+    }
+
+    /// Validates metadata and consumes the payload when the server key ID is
+    /// in an explicitly accepted key set.
+    ///
+    /// This is intended for controlled key rotation. Applications should
+    /// accept previous IDs only for inbound start messages and emit the active
+    /// ID on responses; finalization should normally require the active ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an explicit error when the envelope does not match the current
+    /// version, suite, expected message kind, or any accepted server key ID.
+    pub fn into_message_for_server_keys(
+        mut self,
+        expected_kind: AuthMessageKind,
+        accepted_server_key_ids: &[&str],
     ) -> Result<Message, AuthError> {
         if self.protocol_version != PROTOCOL_VERSION {
             return Err(AuthError::UnsupportedVersion);
@@ -318,7 +337,7 @@ impl AuthEnvelope {
         if self.message_kind != expected_kind {
             return Err(AuthError::UnexpectedMessageKind);
         }
-        if self.server_key_id != expected_server_key_id {
+        if !accepted_server_key_ids.contains(&self.server_key_id.as_str()) {
             return Err(AuthError::UnexpectedServerKey);
         }
         Ok(Message(std::mem::take(&mut self.payload)))

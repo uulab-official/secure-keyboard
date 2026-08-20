@@ -58,6 +58,11 @@ bounded reference implementation with 32-byte handles, TTL, capacity, and
 state-size limits. It is not a distributed production store; a multi-instance
 deployment must replace it with an atomic backend adapter that preserves the
 same `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics.
+Adapters generate opaque handles with `LoginStateHandle::generate()`, persist
+the serialized state plus its bound identifiers, enforce the TTL, and retry a
+rare handle collision without logging handles or state bytes. The executable
+backend contract tests exercise atomic delete-and-return behavior under
+concurrency.
 
 It also includes `InMemoryRateLimiter` and the `RateLimiter` backend contract.
 Use separate bounded key namespaces for account, IP, and deployment-wide
@@ -69,6 +74,11 @@ request/finalization orchestration: it validates the expected envelope kind and
 server key, binds identifiers at login start, and consumes the bound state
 before server finalization. It does not create HTTP routes, TLS configuration,
 rate limits, account lookup, or application session tokens.
+
+Use `ServerAuthService::new_with_key_rotation` for a bounded rotation window:
+previous IDs are accepted only on inbound start messages, responses emit the
+active ID, and login finalization requires the active ID. This policy is
+covered by a downgrade regression test.
 
 ## Required server controls
 

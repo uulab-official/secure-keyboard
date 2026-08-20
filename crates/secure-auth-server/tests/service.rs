@@ -135,6 +135,65 @@ fn service_completes_versioned_login_without_reaccepting_context() {
 }
 
 #[test]
+fn service_rotates_server_key_without_accepting_downgraded_finalization() {
+    let (setup, credential_file) = registered_fixture();
+    let service = ServerAuthService::new_with_key_rotation(
+        setup,
+        "server-key-2026",
+        &["server-key-2025"],
+        InMemoryOneTimeLoginStore::new(8, std::time::Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+
+    let (login_state, login_request) = client_login_start(PASSWORD).unwrap();
+    let request_envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialRequest,
+        "server-key-2025",
+        &login_request,
+    )
+    .unwrap();
+    let (response_envelope, handle) = service
+        .begin_login(
+            request_envelope,
+            Some(&credential_file),
+            CLIENT_ID,
+            CLIENT_ID,
+            SERVER_ID,
+        )
+        .unwrap();
+    assert_eq!(response_envelope.server_key_id(), "server-key-2026");
+    let response = response_envelope
+        .into_message(AuthMessageKind::CredentialResponse, "server-key-2026")
+        .unwrap();
+    let (finalization, client_session_key) =
+        client_login_finish(login_state, PASSWORD, &response, CLIENT_ID, SERVER_ID).unwrap();
+
+    let downgraded_finalization = AuthEnvelope::new(
+        AuthMessageKind::CredentialFinalization,
+        "server-key-2025",
+        &finalization,
+    )
+    .unwrap();
+    assert!(matches!(
+        service.finish_login(downgraded_finalization, &handle),
+        Err(ServerAuthError::Auth(
+            secure_auth::AuthError::UnexpectedServerKey
+        ))
+    ));
+
+    let finalization_envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialFinalization,
+        "server-key-2026",
+        &finalization,
+    )
+    .unwrap();
+    let server_session_key = service
+        .finish_login(finalization_envelope, &handle)
+        .unwrap();
+    assert!(client_session_key.constant_time_eq(&server_session_key));
+}
+
+#[test]
 fn service_rejects_wrong_server_key_before_opaque_processing() {
     let (setup, credential_file) = registered_fixture();
     let service = ServerAuthService::new(
@@ -175,6 +234,17 @@ fn service_rejects_invalid_server_key_configuration() {
             InMemoryOneTimeLoginStore::new(1, std::time::Duration::from_secs(1)).unwrap(),
         ),
         Err(ServerAuthError::InvalidServerKeyId)
+    ));
+
+    let (setup, _) = registered_fixture();
+    assert!(matches!(
+        ServerAuthService::new_with_key_rotation(
+            setup,
+            "server-key-2026",
+            &["server-key-2026"],
+            InMemoryOneTimeLoginStore::new(1, std::time::Duration::from_secs(1)).unwrap(),
+        ),
+        Err(ServerAuthError::InvalidServerKeySet)
     ));
 }
 

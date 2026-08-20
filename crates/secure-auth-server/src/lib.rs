@@ -15,7 +15,7 @@ pub use rate_limit::{
     InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
     MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,
 };
-pub use service::{PublicAuthCode, ServerAuthError, ServerAuthService};
+pub use service::{PublicAuthCode, ServerAuthError, ServerAuthService, MAX_SERVER_KEY_IDS};
 
 use rand::{rngs::OsRng, RngCore};
 use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_MESSAGE_BYTES};
@@ -45,6 +45,13 @@ impl LoginStateHandle {
     #[must_use]
     pub fn as_bytes(&self) -> &[u8; HANDLE_BYTES] {
         &self.0
+    }
+
+    /// Generates a fresh 32-byte CSPRNG-backed handle for a distributed
+    /// backend adapter.
+    #[must_use]
+    pub fn generate() -> Self {
+        Self::random()
     }
 
     fn random() -> Self {
