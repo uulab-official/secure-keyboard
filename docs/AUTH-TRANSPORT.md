@@ -53,6 +53,11 @@ state-size limits. It is not a distributed production store; a multi-instance
 deployment must replace it with an atomic backend adapter that preserves the
 same `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics.
 
+It also includes `InMemoryRateLimiter` and the `RateLimiter` backend contract.
+Use separate bounded key namespaces for account, IP, and deployment-wide
+limits. The reference limiter is process-local; a multi-instance deployment
+must implement the check-and-count operation atomically in a shared backend.
+
 `ServerAuthService` provides the reference registration and
 request/finalization orchestration: it validates the expected envelope kind and
 server key, binds identifiers at login start, and consumes the bound state

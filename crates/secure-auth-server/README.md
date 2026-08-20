@@ -12,6 +12,11 @@ Use `PublicAuthCode` for client-facing error responses. `ServerAuthError` and
 its detailed display text are internal diagnostics and must not be returned to
 callers.
 
+`InMemoryRateLimiter` is a bounded fixed-window reference implementation. Use
+separate namespaces or instances for account, IP, and deployment-wide limits.
+It is atomic only within one process; a multi-instance deployment must
+implement the `RateLimiter` trait with an atomic shared backend.
+
 `InMemoryOneTimeLoginStore` provides bounded, process-local one-use storage for
 `secure_auth::ServerLoginStateBytes`. It is useful for tests, a single-process
 deployment, or as an executable contract for another backend adapter.

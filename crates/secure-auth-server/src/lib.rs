@@ -8,8 +8,13 @@
 //! instances must implement the same one-use `take` semantics with an atomic
 //! Redis, database, or equivalent store.
 
+mod rate_limit;
 mod service;
 
+pub use rate_limit::{
+    InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
+    MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,
+};
 pub use service::{PublicAuthCode, ServerAuthError, ServerAuthService};
 
 use rand::{rngs::OsRng, RngCore};
