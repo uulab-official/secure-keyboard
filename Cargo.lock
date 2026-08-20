@@ -433,6 +433,7 @@ version = "0.1.0"
 dependencies = [
  "rand",
  "secure-auth",
+ "secure-core",
 ]
 
 [[package]]

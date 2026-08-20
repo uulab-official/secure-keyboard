@@ -101,6 +101,7 @@ Status: OPAQUE engine and typed transport contract complete; HTTP/deployment lay
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
 - [x] Add zeroizing server-login-state serialization and bounded public identifiers.
 - [x] Add a bounded one-time reference store with TTL, capacity, and state-size tests.
+- [x] Add transport-neutral server orchestration with identifier-bound finalization.
 - [ ] Add HTTP transport with TLS requirements and message-size limits.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.

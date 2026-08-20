@@ -11,5 +11,8 @@ rust-version.workspace = true
 rand = "0.8.7"
 secure-auth = { path = "../secure-auth", version = "0.1.0" }
 
+[dev-dependencies]
+secure-core = { path = "../secure-core", version = "0.1.0" }
+
 [lints]
 workspace = true

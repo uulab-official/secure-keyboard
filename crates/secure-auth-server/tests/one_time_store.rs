@@ -1,7 +1,7 @@
 use secure_auth::ServerLoginStateBytes;
 use secure_auth_server::{
-    InMemoryOneTimeLoginStore, LoginStateHandle, OneTimeLoginStateStore, StoreError,
-    MAX_IN_MEMORY_ENTRIES, MAX_STORED_STATE_BYTES,
+    BoundLoginState, InMemoryOneTimeLoginStore, LoginStateHandle, OneTimeLoginStateStore,
+    StoreError, MAX_IN_MEMORY_ENTRIES, MAX_STORED_STATE_BYTES,
 };
 use std::time::Duration;
 
@@ -85,5 +85,40 @@ fn store_rejects_unsafe_capacity_ttl_and_state_size() {
     assert!(matches!(
         store.insert(ServerLoginStateBytes::from_bytes(&oversized)),
         Err(StoreError::StateTooLarge)
+    ));
+}
+
+#[test]
+fn bound_and_unbound_handles_cannot_be_consumed_through_the_wrong_contract() {
+    let store = InMemoryOneTimeLoginStore::new(2, Duration::from_secs(60)).unwrap();
+    let unbound = store
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-unbound"))
+        .unwrap();
+    let bound = store
+        .insert_bound(
+            BoundLoginState::new(
+                ServerLoginStateBytes::from_bytes(b"fixture-bound"),
+                b"fixture-client",
+                b"fixture-server",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        store.take_bound(&unbound),
+        Err(StoreError::StateTypeMismatch)
+    ));
+    assert!(matches!(
+        store.take(&bound),
+        Err(StoreError::StateTypeMismatch)
+    ));
+    assert!(matches!(
+        BoundLoginState::new(
+            ServerLoginStateBytes::from_bytes(b"fixture"),
+            b"",
+            b"server"
+        ),
+        Err(StoreError::InvalidIdentifier)
     ));
 }

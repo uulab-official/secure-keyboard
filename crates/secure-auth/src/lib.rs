@@ -29,7 +29,8 @@ pub const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 pub const MAX_IDENTIFIER_BYTES: usize = 256;
 /// Version of the serialized server-login state container.
 pub const SERVER_LOGIN_STATE_VERSION: u16 = 1;
-const MAX_SERVER_KEY_ID_BYTES: usize = 128;
+/// Maximum size of the public server key identifier.
+pub const MAX_SERVER_KEY_ID_BYTES: usize = 128;
 const MAX_SUITE_ID_BYTES: usize = 128;
 const SERVER_LOGIN_STATE_MAGIC: &[u8; 4] = b"SKLS";
 

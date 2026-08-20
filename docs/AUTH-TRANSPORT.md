@@ -34,7 +34,13 @@ The `secure-auth-server` crate includes `InMemoryOneTimeLoginStore` as a
 bounded reference implementation with 32-byte handles, TTL, capacity, and
 state-size limits. It is not a distributed production store; a multi-instance
 deployment must replace it with an atomic backend adapter that preserves the
-same `OneTimeLoginStateStore` `insert`/`take` semantics.
+same `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics.
+
+`ServerAuthService` provides the reference request/finalization orchestration:
+it validates the expected envelope kind and server key, binds identifiers at
+login start, and consumes the bound state before server finalization. It does
+not create HTTP routes, TLS configuration, rate limits, account lookup, or
+application session tokens.
 
 ## Required server controls
 

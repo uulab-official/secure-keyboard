@@ -14,7 +14,7 @@ Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROAD
 
 - `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
-- `secure-auth-server`: bounded one-time state-store reference implementation with TTL and capacity limits; distributed deployments must provide an atomic Redis/DB adapter.
+- `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 - `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.

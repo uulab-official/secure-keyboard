@@ -8,8 +8,12 @@
 //! instances must implement the same one-use `take` semantics with an atomic
 //! Redis, database, or equivalent store.
 
+mod service;
+
+pub use service::{ServerAuthError, ServerAuthService};
+
 use rand::{rngs::OsRng, RngCore};
-use secure_auth::{ServerLoginStateBytes, MAX_MESSAGE_BYTES};
+use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_MESSAGE_BYTES};
 use std::{
     collections::HashMap,
     sync::Mutex,
@@ -56,6 +60,10 @@ pub enum StoreError {
     CapacityReached,
     /// The serialized state exceeds the bounded store payload size.
     StateTooLarge,
+    /// A public identifier is empty or exceeds its bound.
+    InvalidIdentifier,
+    /// The caller used an unbound/bound API with the wrong state type.
+    StateTypeMismatch,
     /// The process-local lock is poisoned and the store cannot be used safely.
     Unavailable,
     /// A random handle collision occurred repeatedly.
@@ -69,6 +77,8 @@ impl core::fmt::Display for StoreError {
             Self::InvalidTtl => "invalid login state store ttl",
             Self::CapacityReached => "login state store capacity reached",
             Self::StateTooLarge => "login state store state too large",
+            Self::InvalidIdentifier => "invalid login state identifier",
+            Self::StateTypeMismatch => "login state store state type mismatch",
             Self::Unavailable => "login state store unavailable",
             Self::HandleCollision => "login state handle collision",
         })
@@ -77,9 +87,52 @@ impl core::fmt::Display for StoreError {
 
 impl std::error::Error for StoreError {}
 
+/// A server-login state bound to the identifiers used during OPAQUE start.
+///
+/// The binding prevents a finish operation from accepting caller-supplied
+/// identifiers that differ from the identifiers authenticated at start.
+pub struct BoundLoginState {
+    state: ServerLoginStateBytes,
+    client_identifier: Vec<u8>,
+    server_identifier: Vec<u8>,
+}
+
+impl BoundLoginState {
+    /// Creates a state record with bounded, non-empty public identifiers.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::InvalidIdentifier`] for an empty or oversized
+    /// identifier.
+    pub fn new(
+        state: ServerLoginStateBytes,
+        client_identifier: &[u8],
+        server_identifier: &[u8],
+    ) -> Result<Self, StoreError> {
+        validate_identifier(client_identifier)?;
+        validate_identifier(server_identifier)?;
+        Ok(Self {
+            state,
+            client_identifier: client_identifier.to_vec(),
+            server_identifier: server_identifier.to_vec(),
+        })
+    }
+
+    /// Consumes the record into the state and its authenticated identifiers.
+    #[must_use]
+    pub fn into_parts(self) -> (ServerLoginStateBytes, Vec<u8>, Vec<u8>) {
+        (self.state, self.client_identifier, self.server_identifier)
+    }
+}
+
+enum StoredState {
+    Unbound(ServerLoginStateBytes),
+    Bound(BoundLoginState),
+}
+
 struct Entry {
     expires_at: Instant,
-    state: ServerLoginStateBytes,
+    state: StoredState,
 }
 
 /// Backend contract for one-use serialized server-login state.
@@ -103,6 +156,25 @@ pub trait OneTimeLoginStateStore {
     /// Returns [`StoreError::Unavailable`] or the backend's equivalent when
     /// the atomic read-and-delete operation cannot be completed safely.
     fn take(&self, handle: &LoginStateHandle) -> Result<Option<ServerLoginStateBytes>, StoreError>;
+}
+
+/// Backend contract for login state bound to its OPAQUE identifiers.
+pub trait BoundOneTimeLoginStateStore {
+    /// Stores a bound state and returns its opaque handle.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StoreError`] when the backend rejects the state or cannot
+    /// create a handle.
+    fn insert_bound(&self, state: BoundLoginState) -> Result<LoginStateHandle, StoreError>;
+
+    /// Atomically removes and returns a bound state at most once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::Unavailable`] or the backend's equivalent when
+    /// the atomic read-and-delete operation cannot be completed safely.
+    fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError>;
 }
 
 /// A bounded, process-local one-time login state store.
@@ -150,7 +222,24 @@ impl InMemoryOneTimeLoginStore {
     /// or [`StoreError::StateTooLarge`] when the state exceeds the payload
     /// bound.
     pub fn insert(&self, state: ServerLoginStateBytes) -> Result<LoginStateHandle, StoreError> {
-        if state.as_bytes().len() > MAX_STORED_STATE_BYTES {
+        self.insert_stored(StoredState::Unbound(state))
+    }
+
+    /// Inserts a state bound to the OPAQUE start identifiers.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same capacity and payload errors as [`Self::insert`].
+    pub fn insert_bound(&self, state: BoundLoginState) -> Result<LoginStateHandle, StoreError> {
+        self.insert_stored(StoredState::Bound(state))
+    }
+
+    fn insert_stored(&self, state: StoredState) -> Result<LoginStateHandle, StoreError> {
+        let state_len = match &state {
+            StoredState::Unbound(state) => state.as_bytes().len(),
+            StoredState::Bound(state) => state.state.as_bytes().len(),
+        };
+        if state_len > MAX_STORED_STATE_BYTES {
             return Err(StoreError::StateTooLarge);
         }
         let now = Instant::now();
@@ -186,7 +275,38 @@ impl InMemoryOneTimeLoginStore {
         let Some(entry) = entries.remove(handle) else {
             return Ok(None);
         };
-        Ok((entry.expires_at > now).then_some(entry.state))
+        if entry.expires_at <= now {
+            return Ok(None);
+        }
+        match entry.state {
+            StoredState::Unbound(state) => Ok(Some(state)),
+            StoredState::Bound(_) => Err(StoreError::StateTypeMismatch),
+        }
+    }
+
+    /// Atomically removes and returns a bound state, at most once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::Unavailable`] if the process-local lock is
+    /// poisoned, or [`StoreError::StateTypeMismatch`] when the handle refers
+    /// to an unbound state.
+    pub fn take_bound(
+        &self,
+        handle: &LoginStateHandle,
+    ) -> Result<Option<BoundLoginState>, StoreError> {
+        let now = Instant::now();
+        let mut entries = self.entries.lock().map_err(|_| StoreError::Unavailable)?;
+        let Some(entry) = entries.remove(handle) else {
+            return Ok(None);
+        };
+        if entry.expires_at <= now {
+            return Ok(None);
+        }
+        match entry.state {
+            StoredState::Unbound(_) => Err(StoreError::StateTypeMismatch),
+            StoredState::Bound(state) => Ok(Some(state)),
+        }
     }
 
     /// Returns the number of currently live states.
@@ -221,6 +341,23 @@ impl OneTimeLoginStateStore for InMemoryOneTimeLoginStore {
     fn take(&self, handle: &LoginStateHandle) -> Result<Option<ServerLoginStateBytes>, StoreError> {
         InMemoryOneTimeLoginStore::take(self, handle)
     }
+}
+
+impl BoundOneTimeLoginStateStore for InMemoryOneTimeLoginStore {
+    fn insert_bound(&self, state: BoundLoginState) -> Result<LoginStateHandle, StoreError> {
+        InMemoryOneTimeLoginStore::insert_bound(self, state)
+    }
+
+    fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError> {
+        InMemoryOneTimeLoginStore::take_bound(self, handle)
+    }
+}
+
+fn validate_identifier(identifier: &[u8]) -> Result<(), StoreError> {
+    if identifier.is_empty() || identifier.len() > MAX_IDENTIFIER_BYTES {
+        return Err(StoreError::InvalidIdentifier);
+    }
+    Ok(())
 }
 
 fn purge_expired(entries: &mut HashMap<LoginStateHandle, Entry>, now: Instant) {
