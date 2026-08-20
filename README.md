@@ -9,6 +9,7 @@ This project is under active development. It is not a security certification and
 Mobile Secure Native Mode keeps input handling in the native/core layer and exposes only key IDs, masked state, and authentication results to framework code. Headless host rendering is an opt-in compatibility mode with a lower assurance level. Web applications should prefer WebAuthn/passkeys; a web keypad cannot make a browser page's JavaScript memory a trusted security boundary.
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
+Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers.
 
 ## Current packages
 

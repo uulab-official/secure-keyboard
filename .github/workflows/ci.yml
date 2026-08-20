@@ -32,6 +32,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
       - run: pnpm --dir packages/contracts build
@@ -59,6 +60,44 @@ jobs:
         working-directory: packages/flutter
       - run: flutter test
         working-directory: packages/flutter
+
+  fuzz:
+    name: Fuzz bounded auth decoder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly Rust
+        run: rustup toolchain install nightly --profile minimal
+      - name: Install cargo-fuzz
+        run: cargo +nightly install cargo-fuzz --locked
+      - name: Build fuzz target
+        run: cargo +nightly fuzz check auth_envelope
+      - name: Run bounded fuzz smoke test
+        run: cargo +nightly fuzz run auth_envelope -- -runs=2000
+
+  sbom:
+    name: Produce dependency SBOM artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate dependency metadata
+        run: |
+          mkdir -p artifacts
+          cargo metadata --locked --format-version 1 > artifacts/cargo-metadata.json
+          pnpm list --depth=-1 --json > artifacts/pnpm-dependencies.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secure-keypad-dependency-metadata
+          path: artifacts/
 
   ffi-header:
     name: Validate C ABI header

@@ -1,0 +1,21 @@
+[package]
+name = "secure-keypad-fuzz"
+version = "0.1.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+secure-auth = { path = "../crates/secure-auth" }
+
+[[bin]]
+name = "auth_envelope"
+path = "fuzz_targets/auth_envelope.rs"
+test = false
+doc = false
+bench = false

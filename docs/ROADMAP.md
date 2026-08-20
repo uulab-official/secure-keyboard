@@ -136,10 +136,11 @@ Exit criteria: web users get a safe default and understand the difference betwee
 
 ### Phase 8 — Verification and release
 
-Status: planned
+Status: release-gate automation in progress; independent/device review pending
 
 - [ ] Map tests to OWASP MASVS/MASTG controls.
-- [ ] Run static analysis, dependency scanning, fuzzing, and memory/leak tests.
+- [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
+- [ ] Run the fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.
 - [ ] Obtain an independent security review before claiming production readiness.
