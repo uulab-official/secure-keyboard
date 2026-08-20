@@ -91,7 +91,7 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: OPAQUE engine complete; transport layer pending
+Status: OPAQUE engine and typed transport contract complete; HTTP/deployment layer pending
 
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
