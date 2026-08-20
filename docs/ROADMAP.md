@@ -69,10 +69,10 @@ Exit criteria: Secure Native Mode works without a secret crossing the framework 
 
 ### Phase 4 — React Native adapter
 
-Status: planned
+Status: public contract package complete; native view-manager and release packaging pending
 
 - [ ] Expose the native view through a TurboModule/native component.
-- [ ] Accept only serializable layout, theme, and policy objects.
+- [x] Accept only serializable layout, theme, and policy objects.
 - [ ] Expose controller commands and masked state events.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.

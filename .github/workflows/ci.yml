@@ -35,6 +35,9 @@ jobs:
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
       - run: pnpm --dir packages/contracts build
+      - run: pnpm --dir packages/react-native typecheck
+      - run: pnpm --dir packages/react-native test
+      - run: pnpm --dir packages/react-native build
 
   ffi-header:
     name: Validate C ABI header

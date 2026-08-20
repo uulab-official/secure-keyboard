@@ -16,16 +16,19 @@ Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROAD
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
+- `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.
 
 The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 `DEFAULT_HANGUL_LAYOUT`, and `DEFAULT_THEME` as safe starting points for
 custom renderers. These objects contain labels and key IDs only; they do not
 contain password values.
 
-Native iOS/Android renderer sources now exist under `native/`, but the
-React Native/Flutter bindings, architecture-specific release packaging, and
-device-level security review are not released yet. Do not treat the current
-repository state as a drop-in production authentication component.
+Native iOS/Android renderer sources now exist under `native/`. The React
+Native package currently ships the public contract and lazy native-component
+resolver; the platform view-manager registration, architecture-specific
+release packaging, Flutter binding, and device-level security review remain
+release gates. Do not treat the current repository state as a drop-in
+production authentication component.
 
 ## Development
 
@@ -33,6 +36,7 @@ repository state as a drop-in production authentication component.
 cargo test --workspace
 pnpm install
 pnpm --dir packages/contracts test
+pnpm --dir packages/react-native test
 ```
 
 Do not use real credentials in tests, issues, logs, screenshots, or crash reports.

@@ -1,8 +1,8 @@
 {
-  "name": "@secure-keypad/contracts",
+  "name": "@secure-keypad/react-native",
   "version": "0.1.0",
   "type": "module",
-  "description": "Versioned, secret-free layout and theme contracts for secure keypad renderers",
+  "description": "Secure Native React Native adapter with secret-free props and masked state events",
   "license": "MIT",
   "publishConfig": { "access": "public" },
   "files": ["dist"],
@@ -16,8 +16,16 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
+    "prepack": "pnpm run build",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@secure-keypad/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.76"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
