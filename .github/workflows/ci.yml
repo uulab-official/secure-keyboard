@@ -21,6 +21,7 @@ jobs:
       - run: cargo test -p secure-webauthn-example
       - run: cargo test -p secure-auth-axum --all-features
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps
 
   durable-backends:
     name: Redis/PostgreSQL interoperability

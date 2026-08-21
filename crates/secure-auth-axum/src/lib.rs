@@ -6,7 +6,7 @@
 //! This adapter deliberately does not terminate TLS or infer trust from
 //! forwarded headers. The embedding application must validate the transport,
 //! proxy source, and connection limits, then pass a
-//! [`HttpDeploymentContext`](secure_auth_http::HttpDeploymentContext).
+//! [`HttpDeploymentContext`].
 
 use axum::{
     body::{to_bytes, Body},

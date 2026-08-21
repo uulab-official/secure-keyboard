@@ -13,6 +13,7 @@ cargo test -p secure-webauthn-example
 cargo test -p secure-webauthn-example --test storage_contract
 cargo test -p secure-auth-axum --all-features
 cargo clippy --workspace --all-targets --all-features -- -D warnings
+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps
 pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
