@@ -409,11 +409,11 @@ jobs:
           SECURE_KEYPAD_FFI_LIB_DIR: ${{ runner.temp }}/secure-keypad-ffi
         working-directory: ${{ runner.temp }}/secure-keypad-react-native-host
         run: |
-          npm install --no-audit --no-fund
+          npm install --install-links --no-audit --no-fund
           npx react-native config > "$RUNNER_TEMP/react-native-config.json"
           grep -q '"@secure-keypad/react-native"' "$RUNNER_TEMP/react-native-config.json"
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace \
+          ./gradlew assembleRelease --no-daemon --stacktrace \
             -PreactNativeArchitectures=arm64-v8a,x86_64
       - name: Emit React Native Android FFI checksum manifest
         run: |
@@ -429,7 +429,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-keypad-react-native-host-apk
-          path: ${{ runner.temp }}/secure-keypad-react-native-host/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ runner.temp }}/secure-keypad-react-native-host/android/app/build/outputs/apk/release/app-release.apk
 
   android-host-runtime-smoke:
     name: Launch Android RN and Flutter hosts in an emulator
@@ -465,7 +465,7 @@ jobs:
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter/app-debug.apk" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter.png"
             bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
-              "$RUNNER_TEMP/secure-keypad-android-runtime/react-native/app-debug.apk" \
+              "$RUNNER_TEMP/secure-keypad-android-runtime/react-native/app-release.apk" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/react-native.png"
       - name: Upload Android emulator runtime smoke evidence
         if: always()
@@ -804,7 +804,7 @@ jobs:
           SECURE_KEYPAD_FFI_XCFRAMEWORK: ${{ runner.temp }}/secure_ffi.xcframework
         working-directory: ${{ runner.temp }}/secure-keypad-react-native-ios-host
         run: |
-          npm install --no-audit --no-fund
+          npm install --install-links --no-audit --no-fund
           npx react-native config > "$RUNNER_TEMP/react-native-ios-config.json"
           grep -q '"@secure-keypad/react-native"' "$RUNNER_TEMP/react-native-ios-config.json"
           cd ios

@@ -31,6 +31,7 @@ export const NATIVE_PACKAGE_MIRRORS = Object.freeze([
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt"],
+  ["native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadReactPackage.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadReactPackage.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt", "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt"],
   ["native/android/src/main/cpp/secure_keypad_jni.c", "packages/react-native/android/src/main/cpp/secure_keypad_jni.c"],
   ["native/android/src/main/cpp/secure_keypad_jni.c", "packages/flutter/android/src/main/cpp/secure_keypad_jni.c"],

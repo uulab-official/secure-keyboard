@@ -234,6 +234,23 @@ export function runSecurityAudit() {
   }
 
   for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadReactPackage.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadReactPackage.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /class SecureKeypadReactPackage\s*:\s*ReactPackage/, "React Native Android package must be discoverable by CLI autolinking");
+    requireText(findings, file, contents, /createViewManagers\([\s\S]{0,240}SecureKeypadViewManager\(\)/, "React Native Android package must register the secure keypad view manager");
+  }
+  const reactNativeAbiBuild = source("packages/react-native/android/build.gradle", findings);
+  requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /secureKeypadAbiFilters/, "React Native Android native build must derive ABI filters from the host architecture contract");
+  requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "React Native Android native build must pass only selected ABI filters to CMake");
+  const androidRuntimeHierarchySmoke = source("scripts/android-emulator-runtime-smoke.sh", findings);
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /FLAG_SECURE/, "Android runtime evidence must acknowledge capture blocking by FLAG_SECURE");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /uiautomator dump/, "Android runtime evidence must verify the rendered native hierarchy");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /content-desc="No input"/, "Android runtime evidence must verify only the public empty-state label");
+  forbidText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /adb shell input|adb shell[^\n]*(?:getText|password|secret)/i, "Android runtime evidence must not query or serialize input values");
+
+  for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
     "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
   ]) {
@@ -274,6 +291,9 @@ export function runSecurityAudit() {
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /UIManagerHelper/, "RN Android events must use the New Architecture-compatible UIManagerHelper");
+    requireText(findings, file, contents, /dispatchEvent\(SecureKeypadEvent/, "RN Android events must pass through EventDispatcher");
+    forbidText(findings, file, contents, /getJSModule\(RCTEventEmitter/, "RN Android must not call the legacy RCTEventEmitter directly");
     requireText(findings, file, contents, /toPublicMap\(LAYOUT_KEYS\)/, "RN Android layout conversion must use an explicit allowlist");
     requireText(findings, file, contents, /toPublicMap\(THEME_KEYS\)/, "RN Android theme conversion must use an explicit allowlist");
     requireText(findings, file, contents, /require\(key in allowedKeys\)/, "RN Android must reject unknown keys before reading bridge values");
@@ -930,7 +950,11 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", source("scripts/ios-simulator-runtime-smoke.sh", findings), /simctl install/, "iOS runtime smoke must install the generated host app through simctl");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-host-runtime-smoke/, "CI must retain Android emulator runtime smoke evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/, "Android emulator runtime smoke must use an immutable action revision");
-  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", source("scripts/android-emulator-runtime-smoke.sh", findings), /adb install/, "Android runtime smoke must install the generated host APK");
+  const androidRuntimeSmoke = source("scripts/android-emulator-runtime-smoke.sh", findings);
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmoke, /adb install/, "Android runtime smoke must install the generated host APK");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmoke, /cmd package resolve-activity/, "Android runtime smoke must resolve the APK launcher activity");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmoke, /adb shell am start -W/, "Android runtime smoke must start the resolved launcher activity explicitly");
+  forbidText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmoke, /adb shell monkey/, "Android runtime smoke must not rely on monkey's non-deterministic exit status");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /SecureKeypadController\(\)/, "Flutter host smoke app must compile the native controller contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /controller: controller/, "Flutter host smoke app must link the controller to the PlatformView");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cancelRequest=\{0\}/, "React Native host smoke app must compile the native cancel prop");

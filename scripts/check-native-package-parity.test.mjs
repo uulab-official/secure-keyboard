@@ -25,6 +25,7 @@ test("framework manifests publish native source and fail-closed build inputs", (
     "ios",
     "SecureKeypadReactNative.podspec",
     "app.plugin.js",
+    "react-native.config.cjs",
     "secure_ffi.xcframework",
     "libsecure_ffi.a",
     "LICENSE",

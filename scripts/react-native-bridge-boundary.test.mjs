@@ -8,6 +8,21 @@ const SOURCE = readFileSync(
   new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt", import.meta.url),
   "utf8",
 );
+const PACKAGE_SOURCE = readFileSync(
+  new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadReactPackage.kt", import.meta.url),
+  "utf8",
+);
+const PACKAGE_CONFIG = readFileSync(
+  new URL("../packages/react-native/react-native.config.cjs", import.meta.url),
+  "utf8",
+);
+const PACKAGE_MANIFEST = JSON.parse(
+  readFileSync(new URL("../packages/react-native/package.json", import.meta.url), "utf8"),
+);
+const ANDROID_BUILD_GRADLE = readFileSync(
+  new URL("../packages/react-native/android/build.gradle", import.meta.url),
+  "utf8",
+);
 const ANDROID_VIEW_SOURCE = readFileSync(
   new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
   "utf8",
@@ -34,6 +49,25 @@ test("React Native Android bridge rejects unknown keys before reading values", (
   assert.ok(keyGuard >= 0, "bridge must check the key allowlist");
   assert.ok(valueRead >= 0, "bridge must read values through one boundary helper");
   assert.ok(keyGuard < valueRead, "unknown keys must be rejected before their values are read");
+});
+
+test("React Native Android bridge exposes its view manager through an autolinkable package", () => {
+  assert.match(PACKAGE_SOURCE, /class SecureKeypadReactPackage\s*:\s*ReactPackage/);
+  assert.match(PACKAGE_SOURCE, /createNativeModules\(/);
+  assert.match(PACKAGE_SOURCE, /createViewManagers\(/);
+  assert.match(PACKAGE_SOURCE, /SecureKeypadViewManager\(\)/);
+  assert.match(PACKAGE_CONFIG, /packageImportPath/);
+  assert.match(PACKAGE_CONFIG, /com\.uulab\.securekeypad\.reactnative\.SecureKeypadReactPackage/);
+  assert.ok(PACKAGE_MANIFEST.files.includes("react-native.config.cjs"));
+  assert.match(ANDROID_BUILD_GRADLE, /reactNativeArchitectures/);
+  assert.match(ANDROID_BUILD_GRADLE, /abiFilters/);
+});
+
+test("React Native Android bridge dispatches events through the New Architecture event dispatcher", () => {
+  assert.match(SOURCE, /UIManagerHelper/);
+  assert.match(SOURCE, /Event<SecureKeypadEvent>/);
+  assert.match(SOURCE, /dispatchEvent\(SecureKeypadEvent/);
+  assert.doesNotMatch(SOURCE, /getJSModule\(RCTEventEmitter/);
 });
 
 test("React Native Android bridge bounds defensive public-value conversion", () => {

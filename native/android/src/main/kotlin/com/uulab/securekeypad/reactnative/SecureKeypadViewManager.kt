@@ -8,8 +8,10 @@ import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
+import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.annotations.ReactProp
-import com.facebook.react.uimanager.events.RCTEventEmitter
+import com.facebook.react.uimanager.events.Event
+import com.facebook.react.uimanager.events.EventDispatcher
 import com.facebook.react.module.annotations.ReactModule
 import com.uulab.securekeypad.SecureKeypadBridgeConfigParser
 import com.uulab.securekeypad.SecureKeypadNativeSubmissionRouter
@@ -54,12 +56,12 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         setConfigurationValue(view, "theme") { value?.toPublicMap(THEME_KEYS) }
     }
 
-    @ReactProp(name = "inputPolicy", defaultString = "numeric")
+    @ReactProp(name = "inputPolicy")
     public fun setInputPolicy(view: SecureKeypadView, value: String?) {
         setConfigurationValue(view, "inputPolicy", value ?: "numeric")
     }
 
-    @ReactProp(name = "mode", defaultString = "secure-native")
+    @ReactProp(name = "mode")
     public fun setMode(view: SecureKeypadView, value: String?) {
         setConfigurationValue(view, "mode", value ?: "secure-native")
     }
@@ -159,13 +161,27 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     private fun emit(view: SecureKeypadView, eventName: String, payload: WritableMap) {
         val context = view.context as? ReactContext ?: return
         if (view.id == NO_ID) return
-        context.getJSModule(RCTEventEmitter::class.java).receiveEvent(view.id, eventName, payload)
+        val dispatcher: EventDispatcher = UIManagerHelper.getEventDispatcher(context) ?: return
+        dispatcher.dispatchEvent(SecureKeypadEvent(UIManagerHelper.getSurfaceId(view), view.id, eventName, payload))
     }
 
     private companion object {
         const val NAME = "SecureKeypadView"
         const val NO_ID = -1
     }
+}
+
+private class SecureKeypadEvent(
+    surfaceId: Int,
+    viewTag: Int,
+    private val name: String,
+    private val data: WritableMap,
+) : Event<SecureKeypadEvent>(surfaceId, viewTag) {
+    override fun getEventName(): String = name
+
+    override fun canCoalesce(): Boolean = false
+
+    override fun getEventData(): WritableMap = data
 }
 
 private const val MAX_PUBLIC_BRIDGE_DEPTH = 8

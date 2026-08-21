@@ -28,7 +28,15 @@ test -n "$package_name"
 mkdir -p "$(dirname "$SCREENSHOT_PATH")"
 adb install -r "$APK_PATH"
 adb shell am force-stop "$package_name"
-adb shell monkey -p "$package_name" 1 >/dev/null
+launcher_activity="$(adb shell cmd package resolve-activity --brief "$package_name" | tr -d '\r' | awk 'NF { value = $0 } END { print value }')"
+case "$launcher_activity" in
+  "$package_name/"*) ;;
+  *)
+    echo "could not resolve a launcher activity for $package_name: $launcher_activity" >&2
+    exit 1
+    ;;
+esac
+adb shell am start -W -n "$launcher_activity" >/dev/null
 
 for _ in $(seq 1 30); do
   if adb shell pidof "$package_name" | tr -d '\r' | grep -q .; then
@@ -40,3 +48,12 @@ done
 adb shell pidof "$package_name" | tr -d '\r' | grep -q .
 adb exec-out screencap -p > "$SCREENSHOT_PATH"
 test -s "$SCREENSHOT_PATH"
+
+# FLAG_SECURE intentionally makes the content area unreadable to screencap. Verify the
+# rendered native hierarchy through public accessibility metadata instead; no input value is
+# queried or serialized here.
+ui_dump_path="/sdcard/secure_keypad_ui.xml"
+adb shell uiautomator dump "$ui_dump_path" >/dev/null
+ui_dump="$(adb shell cat "$ui_dump_path" | tr -d '\r')"
+printf '%s' "$ui_dump" | grep -Fq 'content-desc="No input"'
+printf '%s' "$ui_dump" | grep -Fq 'content-desc="1"'

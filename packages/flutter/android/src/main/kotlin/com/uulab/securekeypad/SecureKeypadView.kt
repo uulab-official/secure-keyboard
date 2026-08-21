@@ -94,14 +94,14 @@ public class SecureKeypadSubmission internal constructor(internal var handle: Lo
 }
 
 /** Native-only handoff registry for framework adapters. */
-public object SecureKeypadNativeSubmissionRouter {
-    public typealias Consumer = (SecureKeypadSubmission) -> Boolean
+public typealias SecureKeypadSubmissionConsumer = (SecureKeypadSubmission) -> Boolean
 
+public object SecureKeypadNativeSubmissionRouter {
     @Volatile
-    private var consumer: Consumer? = null
+    private var consumer: SecureKeypadSubmissionConsumer? = null
 
     /** Installs the native-only consumer and replaces any previous consumer. */
-    public fun install(consumer: Consumer) {
+    public fun install(consumer: SecureKeypadSubmissionConsumer) {
         this.consumer = consumer
     }
 

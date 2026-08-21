@@ -5,7 +5,7 @@
   "description": "Secure Native React Native adapter with secret-free props and masked state events",
   "license": "MIT",
   "publishConfig": { "access": "public" },
-  "files": ["dist", "android", "ios", "SecureKeypadReactNative.podspec", "app.plugin.js", "secure_ffi.xcframework", "libsecure_ffi.a", "LICENSE"],
+  "files": ["dist", "android", "ios", "SecureKeypadReactNative.podspec", "app.plugin.js", "react-native.config.cjs", "secure_ffi.xcframework", "libsecure_ffi.a", "LICENSE"],
   "main": "./dist/index.js",
   "app.plugin": "./app.plugin.js",
   "react-native": "./dist/index.js",
