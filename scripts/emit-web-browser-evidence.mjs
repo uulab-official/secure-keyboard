@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { MAX_DEVICE_EVIDENCE_FILE_BYTES } from "./check-device-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -58,6 +59,9 @@ function orderedLogs(logs) {
     }
     const bytes = Buffer.from(log.bytes);
     if (bytes.length === 0) throw new Error("browser log bytes must not be empty");
+    if (bytes.length > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
+      throw new Error(`browser log bytes must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
+    }
     byBrowser.set(log.browser, { browser: log.browser, path: log.path, bytes });
   });
   return BROWSERS.map((browser) => {
@@ -123,6 +127,17 @@ function containedFile(root, relativePath) {
   return realFile;
 }
 
+function readBoundedBrowserLog(root, relativePath) {
+  const filePath = containedFile(root, relativePath);
+  const stats = statSync(filePath);
+  if (!stats.isFile()) throw new Error("browser log path must reference a regular file");
+  if (stats.size === 0) throw new Error("browser log file must not be empty");
+  if (stats.size > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
+    throw new Error(`browser log file must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
+  }
+  return readFileSync(filePath);
+}
+
 function writeJson(root, relativePath, bytes) {
   if (!isSafeRelativePath(relativePath)) throw new Error("output path must be a safe relative path");
   const realRoot = realpathSync(root);
@@ -165,7 +180,7 @@ export function writeWebBrowserEvidence(input) {
   const logs = input.logs.map((log) => ({
     browser: log?.browser,
     path: log?.path,
-    bytes: readFileSync(containedFile(root, log?.path)),
+    bytes: readBoundedBrowserLog(root, log?.path),
   }));
   const record = buildWebBrowserEvidence({ ...input, logs });
   const evidenceBytes = Buffer.from(`${JSON.stringify(record, null, 2)}\n`, "utf8");

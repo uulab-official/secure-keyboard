@@ -1022,6 +1022,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /independentReview/, "release evidence merging must preserve the independent reviewer attestation");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /realpathSync/, "release evidence merging must contain fragment and output paths");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /MAX_RELEASE_FRAGMENT_BYTES/, "release evidence merging must bound fragment materialization");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /statSync/, "release evidence merging must inspect fragment size before reading");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /verifyReleaseEvidenceFiles/, "release evidence merging must verify referenced files after assembly");
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
@@ -1033,10 +1035,17 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /createHash\("sha256"\)/, "release evidence emitter must hash exact evidence bytes");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /secret-bearing evidence fields/, "release evidence emitter must reject secret-bearing evidence fields");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /match the fragment gate/, "release evidence emitter must reject cross-gate evidence reuse");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /MAX_GATE_EVIDENCE_BYTES/, "release evidence emitter must bound gate evidence materialization");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /readBoundedEvidenceFile/, "release evidence emitter must bound evidence files before reading");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence emitter must reject sentinel and raw-input field names");
+  const browserEvidenceEmitter = source("scripts/emit-web-browser-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", browserEvidenceEmitter, /MAX_DEVICE_EVIDENCE_FILE_BYTES/, "browser evidence emitter must bound log materialization");
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", browserEvidenceEmitter, /readBoundedBrowserLog/, "browser evidence emitter must bound log files before reading");
   const releaseSigner = source("scripts/sign-release.mjs", findings);
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");
+  requireText(findings, "scripts/sign-release.mjs", releaseSigner, /MAX_RELEASE_ARTIFACT_BYTES/, "release signing must bound release artifact materialization");
+  requireText(findings, "scripts/sign-release.mjs", releaseSigner, /readBoundedFile/, "release signing must bound files before reading");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /sign\(null, artifact, privateKey\)/, "release signing must create a detached signature over the artifact");
   const signedReleaseEvidence = source("scripts/emit-signed-release-evidence.mjs", findings);
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /verify\(null, bundle, publicKey, signature\)/, "signed-release evidence must verify the detached signature");

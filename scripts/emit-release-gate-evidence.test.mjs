@@ -153,6 +153,20 @@ test("rejects unsupported gates, stale records, unsafe paths, and secret fields"
   );
 });
 
+test("rejects oversized gate evidence before JSON parsing or hashing", () => {
+  assert.throws(
+    () =>
+      buildReleaseGateFragment({
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        gateName: "rust-workspace",
+        evidencePath: "evidence/gate.json",
+        evidenceBytes: Buffer.alloc(1 * 1024 * 1024 + 1, 0x20),
+      }),
+    /must not exceed 1048576 bytes/,
+  );
+});
+
 test("CLI emits a fragment from the current checkout and package version", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-gate-"));
   mkdirSync(join(root, "evidence"), { recursive: true });

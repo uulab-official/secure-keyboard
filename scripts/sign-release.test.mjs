@@ -45,3 +45,19 @@ test("rejects a non-Ed25519 signing key", () => {
     /Ed25519/,
   );
 });
+
+test("rejects an empty release artifact before signing", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-sign-release-empty-artifact-"));
+  const artifactPath = join(root, "release.tar.gz");
+  const privateKeyPath = join(root, "signing-key.pem");
+  const signaturePath = join(root, "release.sig");
+  const publicKeyPath = join(root, "release.pub.der");
+  const { privateKey } = generateKeyPairSync("ed25519");
+  writeFileSync(artifactPath, Buffer.alloc(0));
+  writeFileSync(privateKeyPath, privateKey.export({ format: "pem", type: "pkcs8" }));
+
+  assert.throws(
+    () => signReleaseArtifact(artifactPath, privateKeyPath, signaturePath, publicKeyPath),
+    /artifact must be non-empty/,
+  );
+});

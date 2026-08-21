@@ -148,6 +148,12 @@ Ed25519 public keys to 1 KiB, detached signatures to 64 bytes, and the signed
 release bundle and other release artifacts to 512 MiB. Oversized files fail
 closed before materialization or cryptographic verification.
 
+The checked-in gate-fragment emitter and evidence merger apply the same 1 MiB
+bound to gate JSON and fragments before parsing them. The browser evidence
+emitter bounds each browser log to the 32 MiB device-evidence limit, and the
+release signer bounds the signed bundle to 512 MiB and the private-key input
+to 64 KiB.
+
 The standalone device-evidence validator also requires `status: "pass"` on
 every platform record; a record with passing test-case fields but a missing or
 non-passing top-level status cannot be used as device evidence.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -335,4 +335,22 @@ test("CLI assembles and verifies a signed evidence root", () => {
   assert.match(output, /release evidence merged and verified/);
   const manifest = JSON.parse(readFileSync(join(root, "release-evidence.json"), "utf8"));
   assert.deepEqual(validateReleaseEvidence(manifest, { expectedCommit: commit, expectedPackageVersion: "0.1.0" }), []);
+});
+
+test("rejects an oversized fragment before parsing it", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-fragment-"));
+  mkdirSync(join(root, "fragments"), { recursive: true });
+  const fragmentPath = "fragments/oversized.json";
+  const absolutePath = join(root, fragmentPath);
+  writeFileSync(absolutePath, Buffer.from("{", "utf8"));
+  truncateSync(absolutePath, 1 * 1024 * 1024 + 1);
+
+  const result = spawnSync(
+    process.execPath,
+    [MERGE_SCRIPT, root, "release-evidence.json", fragmentPath],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must not exceed 1048576 bytes/);
 });

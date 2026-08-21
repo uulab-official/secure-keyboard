@@ -10,6 +10,7 @@ import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-devic
 import { buildWebBrowserEvidence, writeWebBrowserEvidence } from "./emit-web-browser-evidence.mjs";
 
 const COMMIT = "d".repeat(40);
+const BROWSERS = ["chromium", "firefox", "webkit"];
 const CI_WORKFLOW = readFileSync(fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url)), "utf8");
 const LOGS = [
   { browser: "chromium", path: "browser/chromium.log", bytes: Buffer.from("chromium secure-context pass\n") },
@@ -81,6 +82,26 @@ test("rejects incomplete browser matrices and unsafe log references", () => {
         logs: LOGS.map((log, index) => (index === 0 ? { ...log, path: "../raw.log" } : log)),
       }),
     /safe relative path/,
+  );
+});
+
+test("rejects oversized browser logs before hashing evidence", () => {
+  const logs = BROWSERS.map((browser, index) => ({
+    browser,
+    path: `browser/${browser}.log`,
+    bytes: index === 0 ? Buffer.alloc(32 * 1024 * 1024 + 1, 0x20) : Buffer.from(`${browser}\n`, "utf8"),
+  }));
+
+  assert.throws(
+    () =>
+      buildWebBrowserEvidence({
+        commit: COMMIT,
+        frameworkVersion: "playwright-1.62.1",
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        logs,
+      }),
+    /must not exceed 33554432 bytes/,
   );
 });
 

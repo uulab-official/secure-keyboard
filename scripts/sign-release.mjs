@@ -1,7 +1,18 @@
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+export const MAX_RELEASE_ARTIFACT_BYTES = 512 * 1024 * 1024;
+const MAX_PRIVATE_KEY_BYTES = 64 * 1024;
+
+function readBoundedFile(filePath, label, maximumBytes) {
+  const stats = statSync(filePath);
+  if (!stats.isFile()) throw new Error(`${label} must reference a regular file`);
+  if (stats.size === 0) throw new Error(`${label} must be non-empty`);
+  if (stats.size > maximumBytes) throw new Error(`${label} must not exceed ${maximumBytes} bytes`);
+  return readFileSync(filePath);
+}
 
 /**
  * Creates the detached Ed25519 material required by the release evidence
@@ -15,7 +26,7 @@ import { fileURLToPath } from "node:url";
  * @returns {{algorithm: "ed25519", signatureBytes: number, publicKeySha256: string}}
  */
 export function signReleaseArtifact(artifactPath, privateKeyPath, signaturePath, publicKeyPath) {
-  const privateKeyBytes = readFileSync(privateKeyPath);
+  const privateKeyBytes = readBoundedFile(privateKeyPath, "private key", MAX_PRIVATE_KEY_BYTES);
   let privateKey;
   try {
     privateKey = createPrivateKey(privateKeyBytes);
@@ -25,7 +36,7 @@ export function signReleaseArtifact(artifactPath, privateKeyPath, signaturePath,
   if (privateKey.asymmetricKeyType !== "ed25519") {
     throw new TypeError("release signing key must be Ed25519");
   }
-  const artifact = readFileSync(artifactPath);
+  const artifact = readBoundedFile(artifactPath, "release artifact", MAX_RELEASE_ARTIFACT_BYTES);
   const signature = sign(null, artifact, privateKey);
   const publicKeyDer = createPublicKey(privateKey).export({ format: "der", type: "spki" });
   writeFileSync(signaturePath, signature, { mode: 0o644 });

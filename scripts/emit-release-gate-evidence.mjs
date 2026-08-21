@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +13,7 @@ const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)/i;
 const TOOLCHAIN_NAMES = new Set(["rust", "node", "flutter", "reactNative", "ndk"]);
 const CI_CHECK_LABEL = /^[a-z0-9][a-z0-9._-]{0,80}$/;
+export const MAX_GATE_EVIDENCE_BYTES = 1 * 1024 * 1024;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -95,6 +96,18 @@ function validateToolchains(toolchains) {
   return Object.keys(normalized).length === 0 ? undefined : normalized;
 }
 
+function normalizeEvidenceBytes(evidenceBytes) {
+  if (!(typeof evidenceBytes === "string" || evidenceBytes instanceof Uint8Array)) {
+    throw new Error("evidenceBytes must be a string or byte array");
+  }
+  const normalized = Buffer.from(evidenceBytes);
+  if (normalized.length === 0) throw new Error("evidenceBytes must not be empty");
+  if (normalized.length > MAX_GATE_EVIDENCE_BYTES) {
+    throw new Error(`evidenceBytes must not exceed ${MAX_GATE_EVIDENCE_BYTES} bytes`);
+  }
+  return normalized;
+}
+
 /**
  * Builds one release evidence fragment from an already-produced JSON gate
  * record. The record bytes are hashed exactly as supplied; the caller must
@@ -118,13 +131,11 @@ export function buildReleaseGateFragment(input) {
   if (!isSafeRelativePath(evidencePath)) {
     throw new Error("evidencePath must be a safe relative path");
   }
-  if (!(typeof evidenceBytes === "string" || evidenceBytes instanceof Uint8Array)) {
-    throw new Error("evidenceBytes must be a string or byte array");
-  }
+  const normalizedEvidenceBytes = normalizeEvidenceBytes(evidenceBytes);
 
   let record;
   try {
-    record = JSON.parse(Buffer.from(evidenceBytes).toString("utf8"));
+    record = JSON.parse(normalizedEvidenceBytes.toString("utf8"));
   } catch (error) {
     throw new Error(`gate evidence must be valid JSON: ${error.message}`);
   }
@@ -143,7 +154,7 @@ export function buildReleaseGateFragment(input) {
         commit,
         status: "pass",
         evidencePath,
-        sha256: createHash("sha256").update(evidenceBytes).digest("hex"),
+        sha256: createHash("sha256").update(normalizedEvidenceBytes).digest("hex"),
       },
     ],
   };
@@ -200,6 +211,16 @@ function currentPackageVersion() {
   return packageJson.version;
 }
 
+function readBoundedEvidenceFile(filePath) {
+  const stats = statSync(filePath);
+  if (!stats.isFile()) throw new Error("gate evidence path must reference a regular file");
+  if (stats.size === 0) throw new Error("gate evidence file must not be empty");
+  if (stats.size > MAX_GATE_EVIDENCE_BYTES) {
+    throw new Error(`gate evidence file must not exceed ${MAX_GATE_EVIDENCE_BYTES} bytes`);
+  }
+  return normalizeEvidenceBytes(readFileSync(filePath));
+}
+
 function parseToolchains(argumentsList) {
   const toolchains = {};
   for (let index = 0; index < argumentsList.length; index += 1) {
@@ -228,7 +249,7 @@ function main() {
   try {
     const root = realpathSync(path.resolve(process.cwd(), rootArgument));
     const evidenceFile = containedFile(root, evidencePath);
-    const evidenceBytes = readFileSync(evidenceFile);
+    const evidenceBytes = readBoundedEvidenceFile(evidenceFile);
     const fragment = buildReleaseGateFragment({
       commit: currentCommit(),
       packageVersion: currentPackageVersion(),

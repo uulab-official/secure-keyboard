@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateReleaseEvidence, verifyReleaseEvidenceFiles } from "./check-release-evidence.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+export const MAX_RELEASE_FRAGMENT_BYTES = 1 * 1024 * 1024;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -44,7 +45,14 @@ function containedPath(root, relativePath, label) {
 
 function readFragment(root, relativePath) {
   try {
-    return JSON.parse(readFileSync(containedPath(root, relativePath, "fragment path"), "utf8"));
+    const filePath = containedPath(root, relativePath, "fragment path");
+    const stats = statSync(filePath);
+    if (!stats.isFile()) throw new Error("fragment path must reference a regular file");
+    if (stats.size === 0) throw new Error("fragment file must not be empty");
+    if (stats.size > MAX_RELEASE_FRAGMENT_BYTES) {
+      throw new Error(`fragment file must not exceed ${MAX_RELEASE_FRAGMENT_BYTES} bytes`);
+    }
+    return JSON.parse(readFileSync(filePath, "utf8"));
   } catch (error) {
     throw new Error(`could not read evidence fragment ${relativePath}: ${error.message}`);
   }

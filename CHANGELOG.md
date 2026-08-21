@@ -52,6 +52,9 @@ exact release-candidate commit by the release evidence manifest.
   artifacts, detached signatures, public keys, and signed reports before
   hashing, parsing, or cryptographic verification; oversized evidence fails
   closed.
+- Intermediate release evidence emitters, fragment merging, browser-log
+  ingestion, and release signing now enforce the same bounded-read policy
+  before parsing, hashing, or signing input files.
 - Independent review findings now require affected scope, reproduction,
   remediation-owner, and retest-evidence fields before a signed report can
   satisfy the release gate.
