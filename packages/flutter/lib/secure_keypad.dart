@@ -32,8 +32,10 @@ enum SecureKeypadResultCode { success, cancelled, invalid, locked, error }
 
 /// Maximum masked length accepted at the Flutter/native event boundary.
 const int secureKeypadMaxRenderedLength = 4096;
+
 /// Maximum UTF-8 byte length of one public key label.
 const int secureKeypadMaxKeyLabelBytes = 16;
+
 /// Maximum UTF-8 byte length of one public accessibility label.
 const int secureKeypadMaxAccessibilityLabelBytes = 80;
 
@@ -52,7 +54,11 @@ bool _hasSecureKeypadExactKeys(
 bool isSecureKeypadNativeEventShapeValid(Map<Object?, Object?> event) {
   final type = event['type'];
   if (type == 'state') {
-    return _hasSecureKeypadExactKeys(event, <String>{'type', 'length', 'displayState'});
+    return _hasSecureKeypadExactKeys(event, <String>{
+      'type',
+      'length',
+      'displayState',
+    });
   }
   if (type == 'result') {
     return _hasSecureKeypadExactKeys(event, <String>{'type', 'code'});
@@ -127,22 +133,22 @@ class SecureKeypadTheme {
   final int maskRevealDurationMs;
 
   static SecureKeypadTheme defaultTheme() => const SecureKeypadTheme(
-        colors: <String, String>{
-          'background': '#101114',
-          'keyBackground': '#23262D',
-          'keyForeground': '#FFFFFF',
-          'keyPressedBackground': '#3B82F6',
-          'keyDisabledBackground': '#4B5563',
-          'error': '#F87171',
-        },
-        metrics: <String, double>{
-          'keyHeight': 56,
-          'keyGap': 8,
-          'keyRadius': 12,
-          'contentPadding': 16,
-        },
-        keyFontSize: 24,
-      );
+    colors: <String, String>{
+      'background': '#101114',
+      'keyBackground': '#23262D',
+      'keyForeground': '#FFFFFF',
+      'keyPressedBackground': '#3B82F6',
+      'keyDisabledBackground': '#4B5563',
+      'error': '#F87171',
+    },
+    metrics: <String, double>{
+      'keyHeight': 56,
+      'keyGap': 8,
+      'keyRadius': 12,
+      'contentPadding': 16,
+    },
+    keyFontSize: 24,
+  );
 }
 
 enum HapticFeedbackStyle { none, light, medium, heavy }
@@ -158,11 +164,18 @@ bool _hasExactKeys(Iterable<String> keys, Set<String> expected) {
 }
 
 bool _isBoundedNumber(num? value, num minimum, num maximum) {
-  return value != null && value.isFinite && value >= minimum && value <= maximum;
+  return value != null &&
+      value.isFinite &&
+      value >= minimum &&
+      value <= maximum;
 }
 
 bool _isBoundedInteger(num? value, int minimum, int maximum) {
-  return value != null && value.isFinite && value == value.round() && value >= minimum && value <= maximum;
+  return value != null &&
+      value.isFinite &&
+      value == value.round() &&
+      value >= minimum &&
+      value <= maximum;
 }
 
 class MaskedState {
@@ -203,11 +216,15 @@ class SecureKeypadController {
     final action = _headlessKeyPressAction;
     if (action == null) {
       return Future<void>.error(
-        StateError('SecureKeypadController is not attached to acknowledged headless mode'),
+        StateError(
+          'SecureKeypadController is not attached to acknowledged headless mode',
+        ),
       );
     }
     if (_nextHeadlessKeyPressToken > secureKeypadMaxHeadlessKeyPressToken) {
-      return Future<void>.error(StateError('SecureKeypadController command budget exhausted'));
+      return Future<void>.error(
+        StateError('SecureKeypadController command budget exhausted'),
+      );
     }
     final token = _nextHeadlessKeyPressToken;
     _nextHeadlessKeyPressToken++;
@@ -323,7 +340,9 @@ class SecureKeypadConfiguration {
         },
       },
       'inputPolicy': inputPolicy.name,
-      'mode': mode == SecureKeypadMode.secureNative ? 'secure-native' : 'headless-host',
+      'mode': mode == SecureKeypadMode.secureNative
+          ? 'secure-native'
+          : 'headless-host',
       'acknowledgeLowerAssurance': acknowledgeLowerAssurance,
       'maxTokens': maxTokens,
       'timeoutMs': timeoutMs,
@@ -334,14 +353,16 @@ class SecureKeypadConfiguration {
   /// error text, which keeps host logs from echoing arbitrary labels.
   List<String> validate() {
     final errors = <String>[];
-    if (layout.schemaVersion != 1) errors.add('layout.schemaVersion is unsupported');
+    if (layout.schemaVersion != 1)
+      errors.add('layout.schemaVersion is unsupported');
     if (layout.id != null && !_keyIdPattern.hasMatch(layout.id!)) {
       errors.add('layout.id is invalid');
     }
     if (layout.locale != null && !_localePattern.hasMatch(layout.locale!)) {
       errors.add('layout.locale is invalid');
     }
-    if (layout.rows.isEmpty || layout.rows.length > 16) errors.add('layout.rows is invalid');
+    if (layout.rows.isEmpty || layout.rows.length > 16)
+      errors.add('layout.rows is invalid');
     final keyIds = <String>{};
     for (var rowIndex = 0; rowIndex < layout.rows.length; rowIndex++) {
       final row = layout.rows[rowIndex];
@@ -354,19 +375,25 @@ class SecureKeypadConfiguration {
         final path = 'layout.rows[$rowIndex][$keyIndex]';
         if (!_keyIdPattern.hasMatch(key.id)) errors.add('$path.id is invalid');
         if (!keyIds.add(key.id)) errors.add('$path.id is duplicated');
-        if (key.label != null && utf8.encode(key.label!).length > secureKeypadMaxKeyLabelBytes) {
+        if (key.label != null &&
+            utf8.encode(key.label!).length > secureKeypadMaxKeyLabelBytes) {
           errors.add('$path.label is invalid');
         }
-        if (key.icon != null && !_keyIdPattern.hasMatch(key.icon!)) errors.add('$path.icon is invalid');
+        if (key.icon != null && !_keyIdPattern.hasMatch(key.icon!))
+          errors.add('$path.icon is invalid');
         if (key.accessibilityLabel != null &&
-            utf8.encode(key.accessibilityLabel!).length > secureKeypadMaxAccessibilityLabelBytes) {
+            utf8.encode(key.accessibilityLabel!).length >
+                secureKeypadMaxAccessibilityLabelBytes) {
           errors.add('$path.accessibilityLabel is invalid');
         }
-        if (key.testId != null && !_keyIdPattern.hasMatch(key.testId!)) errors.add('$path.testId is invalid');
+        if (key.testId != null && !_keyIdPattern.hasMatch(key.testId!))
+          errors.add('$path.testId is invalid');
       }
     }
-    if (!_isBoundedInteger(maxTokens, 1, 4096)) errors.add('maxTokens is invalid');
-    if (!_isBoundedInteger(timeoutMs, 1, 86400000)) errors.add('timeoutMs is invalid');
+    if (!_isBoundedInteger(maxTokens, 1, 4096))
+      errors.add('maxTokens is invalid');
+    if (!_isBoundedInteger(timeoutMs, 1, 86400000))
+      errors.add('timeoutMs is invalid');
     if ((mode == SecureKeypadMode.secureNative && acknowledgeLowerAssurance) ||
         (mode == SecureKeypadMode.headlessHost && !acknowledgeLowerAssurance)) {
       errors.add('mode acknowledgement is invalid');
@@ -385,7 +412,12 @@ class SecureKeypadConfiguration {
       errors.add('theme.colors is invalid');
     }
 
-    const metricKeys = <String>{'keyHeight', 'keyGap', 'keyRadius', 'contentPadding'};
+    const metricKeys = <String>{
+      'keyHeight',
+      'keyGap',
+      'keyRadius',
+      'contentPadding',
+    };
     if (!_hasExactKeys(theme.metrics.keys, metricKeys) ||
         !_isBoundedNumber(theme.metrics['keyHeight'], 32, 160) ||
         !_isBoundedNumber(theme.metrics['keyGap'], 0, 48) ||
@@ -394,8 +426,12 @@ class SecureKeypadConfiguration {
       errors.add('theme.metrics is invalid');
     }
 
-    if (!_isBoundedNumber(theme.keyFontSize, 10, 72)) errors.add('theme.keyFontSize is invalid');
-    if (theme.keyFontWeight != 400 && theme.keyFontWeight != 500 && theme.keyFontWeight != 600 && theme.keyFontWeight != 700) {
+    if (!_isBoundedNumber(theme.keyFontSize, 10, 72))
+      errors.add('theme.keyFontSize is invalid');
+    if (theme.keyFontWeight != 400 &&
+        theme.keyFontWeight != 500 &&
+        theme.keyFontWeight != 600 &&
+        theme.keyFontWeight != 700) {
       errors.add('theme.keyFontWeight is invalid');
     }
     if (!_isBoundedInteger(theme.pressDurationMs, 0, 500)) {
@@ -475,9 +511,7 @@ class _SecureKeypadState extends State<SecureKeypad> {
     }
 
     final params = widget.configuration.toPlatformCreationParams();
-    final key = ValueKey<String>(
-      '${widget.viewType}:${jsonEncode(params)}',
-    );
+    final key = ValueKey<String>('${widget.viewType}:${jsonEncode(params)}');
     if (defaultTargetPlatform == TargetPlatform.android) {
       return AndroidView(
         key: key,
@@ -502,33 +536,40 @@ class _SecureKeypadState extends State<SecureKeypad> {
     _eventSubscription?.cancel();
     _eventSubscription = EventChannel('secure_keypad/events/$viewId')
         .receiveBroadcastStream()
-        .listen(_onNativeEvent, onError: (_, __) {
-      _emitResult(SecureKeypadResultCode.error);
-    });
+        .listen(
+          _onNativeEvent,
+          onError: (_, __) {
+            _emitResult(SecureKeypadResultCode.error);
+          },
+        );
   }
 
   void _attachController() {
     final controller = widget.controller;
     if (controller == null) return;
-    controller._attach(() async {
-      final channel = _controlChannel;
-      if (channel == null) {
-        throw StateError('SecureKeypad native view is not ready');
-      }
-      await channel.invokeMethod<void>('cancel');
-    }, headlessKeyPressAction: widget.configuration.mode == SecureKeypadMode.headlessHost &&
-            widget.configuration.acknowledgeLowerAssurance
-        ? (token, keyId) async {
-            final channel = _controlChannel;
-            if (channel == null) {
-              throw StateError('SecureKeypad native view is not ready');
+    controller._attach(
+      () async {
+        final channel = _controlChannel;
+        if (channel == null) {
+          throw StateError('SecureKeypad native view is not ready');
+        }
+        await channel.invokeMethod<void>('cancel');
+      },
+      headlessKeyPressAction:
+          widget.configuration.mode == SecureKeypadMode.headlessHost &&
+              widget.configuration.acknowledgeLowerAssurance
+          ? (token, keyId) async {
+              final channel = _controlChannel;
+              if (channel == null) {
+                throw StateError('SecureKeypad native view is not ready');
+              }
+              await channel.invokeMethod<void>('pressKey', <String, Object?>{
+                'token': token,
+                'keyId': keyId,
+              });
             }
-            await channel.invokeMethod<void>('pressKey', <String, Object?>{
-              'token': token,
-              'keyId': keyId,
-            });
-          }
-        : null);
+          : null,
+    );
   }
 
   void _onNativeEvent(dynamic event) {

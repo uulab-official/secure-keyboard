@@ -2,15 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:secure_keypad_flutter/secure_keypad.dart';
 
 void main() {
-  test('default numeric configuration is valid and contains no secret channel', () {
-    final configuration = SecureKeypadConfiguration.defaultNumeric();
+  test(
+    'default numeric configuration is valid and contains no secret channel',
+    () {
+      final configuration = SecureKeypadConfiguration.defaultNumeric();
 
-    expect(configuration.validate(), isEmpty);
-    expect(configuration.inputPolicy, InputPolicy.numeric);
-    expect(configuration.layout.rows.expand((row) => row).any((key) => key.role == KeyRole.input), isTrue);
-    expect(configuration.onMaskedStateChanged, isNull);
-    expect(configuration.onResult, isNull);
-  });
+      expect(configuration.validate(), isEmpty);
+      expect(configuration.inputPolicy, InputPolicy.numeric);
+      expect(
+        configuration.layout.rows
+            .expand((row) => row)
+            .any((key) => key.role == KeyRole.input),
+        isTrue,
+      );
+      expect(configuration.onMaskedStateChanged, isNull);
+      expect(configuration.onResult, isNull);
+    },
+  );
 
   test('default theme supplies the bounded typography required by native rendering', () {
     final theme = SecureKeypadTheme.defaultTheme();
@@ -31,44 +39,56 @@ void main() {
     expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
   });
 
-  test('headless host mode requires explicit lower-assurance acknowledgement', () {
-    final rejected = SecureKeypadConfiguration(
-      layout: defaultNumericLayout,
-      theme: SecureKeypadTheme.defaultTheme(),
-      mode: SecureKeypadMode.headlessHost,
-    );
-    expect(rejected.validate(), contains('mode acknowledgement is invalid'));
+  test(
+    'headless host mode requires explicit lower-assurance acknowledgement',
+    () {
+      final rejected = SecureKeypadConfiguration(
+        layout: defaultNumericLayout,
+        theme: SecureKeypadTheme.defaultTheme(),
+        mode: SecureKeypadMode.headlessHost,
+      );
+      expect(rejected.validate(), contains('mode acknowledgement is invalid'));
 
-    final accepted = SecureKeypadConfiguration(
-      layout: defaultNumericLayout,
-      theme: SecureKeypadTheme.defaultTheme(),
-      mode: SecureKeypadMode.headlessHost,
-      acknowledgeLowerAssurance: true,
-    );
-    expect(accepted.validate(), isEmpty);
-    expect(accepted.toPlatformCreationParams()['mode'], 'headless-host');
-    expect(accepted.toPlatformCreationParams()['acknowledgeLowerAssurance'], isTrue);
-  });
+      final accepted = SecureKeypadConfiguration(
+        layout: defaultNumericLayout,
+        theme: SecureKeypadTheme.defaultTheme(),
+        mode: SecureKeypadMode.headlessHost,
+        acknowledgeLowerAssurance: true,
+      );
+      expect(accepted.validate(), isEmpty);
+      expect(accepted.toPlatformCreationParams()['mode'], 'headless-host');
+      expect(
+        accepted.toPlatformCreationParams()['acknowledgeLowerAssurance'],
+        isTrue,
+      );
+    },
+  );
 
-  test('configuration rejects unsafe bounds and unsupported schema versions', () {
-    final configuration = SecureKeypadConfiguration(
-      layout: KeypadLayout(
-        schemaVersion: 2,
-        rows: <List<KeySpec>>[
-          <KeySpec>[const KeySpec(id: 'digit-1', role: KeyRole.input)],
-        ],
-      ),
-      theme: SecureKeypadTheme.defaultTheme(),
-      maxTokens: 0,
-      timeoutMs: 0,
-    );
+  test(
+    'configuration rejects unsafe bounds and unsupported schema versions',
+    () {
+      final configuration = SecureKeypadConfiguration(
+        layout: KeypadLayout(
+          schemaVersion: 2,
+          rows: <List<KeySpec>>[
+            <KeySpec>[const KeySpec(id: 'digit-1', role: KeyRole.input)],
+          ],
+        ),
+        theme: SecureKeypadTheme.defaultTheme(),
+        maxTokens: 0,
+        timeoutMs: 0,
+      );
 
-    expect(configuration.validate(), containsAll(<String>[
-      'layout.schemaVersion is unsupported',
-      'maxTokens is invalid',
-      'timeoutMs is invalid',
-    ]));
-  });
+      expect(
+        configuration.validate(),
+        containsAll(<String>[
+          'layout.schemaVersion is unsupported',
+          'maxTokens is invalid',
+          'timeoutMs is invalid',
+        ]),
+      );
+    },
+  );
 
   test('configuration bounds public labels by UTF-8 bytes', () {
     final configuration = SecureKeypadConfiguration(
@@ -88,7 +108,10 @@ void main() {
       theme: SecureKeypadTheme.defaultTheme(),
     );
 
-    expect(configuration.validate(), contains('layout.rows[0][0].label is invalid'));
+    expect(
+      configuration.validate(),
+      contains('layout.rows[0][0].label is invalid'),
+    );
   });
 
   test('callbacks expose masked state and result codes only', () {
@@ -99,7 +122,9 @@ void main() {
       onResult: results.add,
     );
 
-    configuration.onMaskedStateChanged!(const MaskedState(length: 2, displayState: DisplayState.masked));
+    configuration.onMaskedStateChanged!(
+      const MaskedState(length: 2, displayState: DisplayState.masked),
+    );
     configuration.onResult!(SecureKeypadResultCode.success);
 
     expect(states.single.length, 2);
@@ -111,13 +136,16 @@ void main() {
 
     final params = configuration.toPlatformCreationParams();
 
-    expect(params.keys, containsAll(<String>[
-      'layout',
-      'theme',
-      'inputPolicy',
-      'maxTokens',
-      'timeoutMs',
-    ]));
+    expect(
+      params.keys,
+      containsAll(<String>[
+        'layout',
+        'theme',
+        'inputPolicy',
+        'maxTokens',
+        'timeoutMs',
+      ]),
+    );
     expect(params.keys, isNot(contains('value')));
     expect(params.keys, isNot(contains('password')));
     expect(params.keys, isNot(contains('secret')));
@@ -125,16 +153,22 @@ void main() {
     expect((params['layout'] as Map<String, Object?>)['schemaVersion'], 1);
   });
 
-  test('controller rejects commands before an acknowledged headless attach', () async {
-    final controller = SecureKeypadController();
+  test(
+    'controller rejects commands before an acknowledged headless attach',
+    () async {
+      final controller = SecureKeypadController();
 
-    await expectLater(
-      controller.cancel(),
-      throwsA(isA<StateError>()),
-    );
-    await expectLater(controller.pressKey('digit-1'), throwsA(isA<StateError>()));
-    await expectLater(controller.pressKey('../secret'), throwsA(isA<ArgumentError>()));
-  });
+      await expectLater(controller.cancel(), throwsA(isA<StateError>()));
+      await expectLater(
+        controller.pressKey('digit-1'),
+        throwsA(isA<StateError>()),
+      );
+      await expectLater(
+        controller.pressKey('../secret'),
+        throwsA(isA<ArgumentError>()),
+      );
+    },
+  );
 
   test('masked state length is bounded at the framework event boundary', () {
     expect(isSecureKeypadRenderedLengthValid(0), isTrue);
@@ -171,28 +205,31 @@ void main() {
     );
   });
 
-  test('rejects secret-bearing nested theme fields before bridge serialization', () {
-    final baseTheme = SecureKeypadTheme.defaultTheme();
-    final colors = Map<String, String>.of(baseTheme.colors)
-      ..['secret'] = '#000000';
-    final configuration = SecureKeypadConfiguration(
-      layout: defaultNumericLayout,
-      theme: SecureKeypadTheme(
-        colors: colors,
-        metrics: baseTheme.metrics,
-        keyFontSize: baseTheme.keyFontSize,
-        keyFontWeight: baseTheme.keyFontWeight,
-        haptic: baseTheme.haptic,
-        sound: baseTheme.sound,
-        pressDurationMs: baseTheme.pressDurationMs,
-        maskRevealDurationMs: baseTheme.maskRevealDurationMs,
-      ),
-    );
+  test(
+    'rejects secret-bearing nested theme fields before bridge serialization',
+    () {
+      final baseTheme = SecureKeypadTheme.defaultTheme();
+      final colors = Map<String, String>.of(baseTheme.colors)
+        ..['secret'] = '#000000';
+      final configuration = SecureKeypadConfiguration(
+        layout: defaultNumericLayout,
+        theme: SecureKeypadTheme(
+          colors: colors,
+          metrics: baseTheme.metrics,
+          keyFontSize: baseTheme.keyFontSize,
+          keyFontWeight: baseTheme.keyFontWeight,
+          haptic: baseTheme.haptic,
+          sound: baseTheme.sound,
+          pressDurationMs: baseTheme.pressDurationMs,
+          maskRevealDurationMs: baseTheme.maskRevealDurationMs,
+        ),
+      );
 
-    expect(configuration.validate(), contains('theme.colors is invalid'));
-    expect(
-      () => configuration.toPlatformCreationParams(),
-      throwsA(isA<ArgumentError>()),
-    );
-  });
+      expect(configuration.validate(), contains('theme.colors is invalid'));
+      expect(
+        () => configuration.toPlatformCreationParams(),
+        throwsA(isA<ArgumentError>()),
+      );
+    },
+  );
 }
