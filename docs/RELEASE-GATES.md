@@ -142,11 +142,16 @@ rejects duplicate gate names, artifact kinds, and referenced paths, refuses
 symlink escapes, and fails if the resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
-The final verifier bounds every referenced file before hashing or parsing it:
-gate records and independent-review reports are limited to 1 MiB, detached
-Ed25519 public keys to 1 KiB, detached signatures to 64 bytes, and the signed
-release bundle and other release artifacts to 512 MiB. Oversized files fail
-closed before materialization or cryptographic verification.
+The final verifier bounds the top-level manifest and every referenced file
+before parsing or hashing it: the manifest, gate records, and independent-
+review reports are limited to 1 MiB, detached Ed25519 public keys to 1 KiB,
+detached signatures to 64 bytes, and the signed release bundle and other
+release artifacts to 512 MiB. Oversized files fail closed before materialization
+or cryptographic verification.
+
+The standalone device-evidence validator also bounds its top-level JSON record
+to 1 MiB before parsing. It separately bounds every referenced device log and
+artifact to 32 MiB before hashing or content scanning.
 
 The checked-in gate-fragment emitter and evidence merger apply the same 1 MiB
 bound to gate JSON and fragments before parsing them. The browser evidence

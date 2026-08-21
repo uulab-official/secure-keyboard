@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, realpathSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +12,7 @@ const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
  * literal so a test sentinel cannot accidentally be retained in an artifact.
  */
 export const SANITIZED_TEST_SENTINEL = "secure-keypad-test-sentinel-7f2c4e";
+export const MAX_DEVICE_EVIDENCE_RECORD_BYTES = 1 * 1024 * 1024;
 export const MAX_DEVICE_EVIDENCE_FILE_BYTES = 32 * 1024 * 1024;
 const NATIVE_TESTS = Object.freeze([
   "maskedStateOnly",
@@ -312,6 +313,13 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
 function checkFile(filePath, options, evidenceRoot = ROOT) {
   let evidence;
   try {
+    if (lstatSync(filePath).isSymbolicLink()) throw new Error("evidence file must not be a symbolic link");
+    const fileStats = statSync(filePath);
+    if (!fileStats.isFile()) throw new Error("evidence file must reference a regular file");
+    if (fileStats.size === 0) throw new Error("evidence file must not be empty");
+    if (fileStats.size > MAX_DEVICE_EVIDENCE_RECORD_BYTES) {
+      throw new Error(`evidence file must not exceed ${MAX_DEVICE_EVIDENCE_RECORD_BYTES} bytes`);
+    }
     evidence = JSON.parse(readFileSync(filePath, "utf8"));
   } catch (error) {
     process.stderr.write(`device evidence could not be read: ${error.message}\n`);

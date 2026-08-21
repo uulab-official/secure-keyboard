@@ -55,6 +55,8 @@ exact release-candidate commit by the release evidence manifest.
 - Intermediate release evidence emitters, fragment merging, browser-log
   ingestion, and release signing now enforce the same bounded-read policy
   before parsing, hashing, or signing input files.
+- Top-level release manifests and device evidence records now fail closed at
+  1 MiB before JSON parsing.
 - Independent review findings now require affected scope, reproduction,
   remediation-owner, and retest-evidence fields before a signed report can
   satisfy the release gate.

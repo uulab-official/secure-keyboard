@@ -378,6 +378,21 @@ test("trusted-key CLI mode fails closed when protected fingerprints are absent",
   assert.match(result.stderr, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/);
 });
 
+test("rejects an oversized top-level release manifest before JSON parsing", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-release-manifest-"));
+  const manifestPath = join(root, "manifest.json");
+  writeFileSync(manifestPath, Buffer.from("{}\n", "utf8"));
+  truncateSync(manifestPath, 1 * 1024 * 1024 + 1);
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT, manifestPath], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /manifest must not exceed 1048576 bytes/);
+});
+
 test("CLI verifies referenced files relative to a nested evidence manifest", () => {
   const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
   const container = mkdtempSync(join(tmpdir(), "secure-keypad-nested-release-evidence-"));

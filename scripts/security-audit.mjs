@@ -808,6 +808,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /secure-keypad-test-sentinel-7f2c4e/, "device verification must define the canonical disposable sentinel");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /MAX_DEVICE_EVIDENCE_RECORD_BYTES/, "device evidence CLI must bound the top-level record before parsing");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /verifyDeviceEvidenceFiles/, "device evidence tooling must recompute referenced file digests");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /ISO_TIMESTAMP/, "device evidence tooling must require canonical timestamps");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /value\.length <= 120/, "device evidence tooling must bound metadata labels");
@@ -979,6 +980,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-version-parity.mjs", releaseVersionCheck, /RELEASE_ARTIFACTS/, "release tooling must enumerate public artifacts for version parity");
   requireText(findings, "scripts/check-release-version-parity.mjs", releaseVersionCheck, /findReleaseVersionMismatches/, "release tooling must compare artifact versions");
   const releaseEvidenceCheck = source("scripts/check-release-evidence.mjs", findings);
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /MAX_RELEASE_MANIFEST_BYTES/, "release evidence CLI must bound the top-level manifest before parsing");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate\.commit/, "release evidence must bind every gate to the manifest commit");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-security-review/, "release evidence must require an independent security review");

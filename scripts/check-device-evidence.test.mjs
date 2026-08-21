@@ -67,6 +67,19 @@ test("CLI verifies an evidence root outside the repository when explicitly provi
   assert.equal(result.status, 0, result.stderr);
 });
 
+test("rejects an oversized top-level device record before JSON parsing", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-device-record-"));
+  writeFileSync(join(root, "evidence.json"), Buffer.from("{}\n", "utf8"));
+  truncateSync(join(root, "evidence.json"), 1 * 1024 * 1024 + 1);
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT, "--root", root, "evidence.json"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /evidence file must not exceed 1048576 bytes/);
+});
+
 test("can require a physical device for a native release gate", () => {
   const simulator = structuredClone(VALID_NATIVE);
   simulator.physicalDevice = false;

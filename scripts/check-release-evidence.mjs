@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { readFileSync, realpathSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,7 @@ const REVIEW_DECISIONS = new Set(["approved", "approved-with-residual-risk", "no
 const REVIEW_FINDING_SEVERITIES = new Set(["critical", "high", "medium", "low", "informational"]);
 const REVIEW_FINDING_STATUSES = new Set(["open", "accepted", "remediated"]);
 const REVIEW_REPORT_MAX_BYTES = 1 * 1024 * 1024;
+export const MAX_RELEASE_MANIFEST_BYTES = 1 * 1024 * 1024;
 const MAX_GATE_EVIDENCE_BYTES = 1 * 1024 * 1024;
 const MAX_RELEASE_ARTIFACT_BYTES = 512 * 1024 * 1024;
 const MAX_PUBLIC_KEY_BYTES = 1_024;
@@ -450,6 +451,18 @@ function readBoundedFile(findings, absolutePath, field, maximumBytes) {
   }
 }
 
+function readBoundedManifest(filePath) {
+  const directoryEntry = lstatSync(filePath);
+  if (directoryEntry.isSymbolicLink()) throw new Error("manifest must not be a symbolic link");
+  const fileStats = statSync(filePath);
+  if (!fileStats.isFile()) throw new Error("manifest must reference a regular file");
+  if (fileStats.size === 0) throw new Error("manifest must not be empty");
+  if (fileStats.size > MAX_RELEASE_MANIFEST_BYTES) {
+    throw new Error(`manifest must not exceed ${MAX_RELEASE_MANIFEST_BYTES} bytes`);
+  }
+  return readFileSync(filePath);
+}
+
 function verifyGateEvidenceRecord(findings, root, field, gate) {
   if (!isSafeRelativePath(gate.evidencePath) || !COMMIT.test(String(gate.commit))) return;
   const absolutePath = containedFilePath(findings, root, field, gate.evidencePath);
@@ -810,7 +823,7 @@ function main() {
   const absoluteManifestPath = path.resolve(process.cwd(), manifestPath);
   let evidence;
   try {
-    evidence = JSON.parse(readFileSync(absoluteManifestPath, "utf8"));
+    evidence = JSON.parse(readBoundedManifest(absoluteManifestPath).toString("utf8"));
   } catch (error) {
     console.error(`release evidence could not be read: ${error.message}`);
     process.exitCode = 1;
