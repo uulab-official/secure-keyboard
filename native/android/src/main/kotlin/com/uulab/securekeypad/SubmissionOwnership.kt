@@ -9,6 +9,7 @@ internal fun <T> deliverOrRelease(
     value: T,
     callback: ((T) -> Unit)?,
     release: (T) -> Unit,
+    isConsumed: (T) -> Boolean,
 ) {
     if (callback == null) {
         release(value)
@@ -16,7 +17,7 @@ internal fun <T> deliverOrRelease(
         try {
             callback(value)
         } catch (error: Throwable) {
-            release(value)
+            if (!isConsumed(value)) release(value)
             throw error
         }
     }

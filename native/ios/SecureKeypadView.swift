@@ -77,6 +77,10 @@ public final class SecureKeypadSubmission {
         self.raw = raw
     }
 
+    fileprivate var isConsumed: Bool {
+        raw == nil
+    }
+
     /// Releases the native submission and zeroizes its secret buffer.
     public func close() {
         if let raw {
@@ -129,7 +133,8 @@ public enum SecureKeypadNativeSubmissionRouter {
         lock.lock()
         let current = consumer
         lock.unlock()
-        return current?(submission) ?? false
+        guard let current else { return false }
+        return current(submission) && submission.isConsumed
     }
 }
 

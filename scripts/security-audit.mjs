@@ -186,6 +186,13 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_finish/, "C ABI must expose native-only registration completion");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
+  const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);
+  requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
+  const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");
+  const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
+
   const coreBuffer = source("crates/secure-core/src/secret_buffer.rs", findings);
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /SecretTokenBuffer/, "core must keep secret token storage behind a dedicated buffer type");
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /tokens\[self\.len\]\.zeroize\(\)/, "core must zeroize tokens removed by backspace");

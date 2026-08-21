@@ -54,8 +54,9 @@ does not provide a production-safe native registration path.
 
 RN and Flutter bridges require an explicitly installed native submission
 consumer. Without one, submit zeroizes/releases the opaque handle and emits an
-error result; a framework success event means only that native ownership was
-accepted, never that server authentication succeeded.
+error result. A framework success event is emitted only after the consumer has
+actually taken ownership of the opaque handle; it still never means that server
+authentication succeeded.
 
 ## Input policies
 

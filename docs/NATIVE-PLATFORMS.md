@@ -137,8 +137,10 @@ opaque capability to the ABI v2 native OPAQUE registration or login handoff
 (`secure_keypad_client_registration_start` or
 `secure_keypad_client_login_start`). If no consumer is
 installed, submit is released and the framework receives `error`; a framework
-`success` event therefore means only that native ownership was accepted. The
-handle and the consumer callback never cross JavaScript, Dart, or JSON.
+`success` event is emitted only when the consumer both accepts the callback and
+transfers the opaque handle with `takeOpaqueHandle()`/`takeNativeHandle()`.
+The bridge releases an unconsumed handle and the handle/callback never cross
+JavaScript, Dart, or JSON.
 
 React Native package paths:
 

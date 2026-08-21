@@ -69,6 +69,9 @@ private fun Context.findActivity(): Activity? {
 
 /** Native-owned opaque submission. It cannot be serialized to JavaScript. */
 public class SecureKeypadSubmission internal constructor(internal var handle: Long) : AutoCloseable {
+    internal val isConsumed: Boolean
+        get() = handle == 0L
+
     override fun close() {
         if (handle != 0L) {
             SecureKeypadNative.submissionFree(handle)
@@ -101,8 +104,10 @@ public object SecureKeypadNativeSubmissionRouter {
         consumer = null
     }
 
-    internal fun deliver(submission: SecureKeypadSubmission): Boolean =
-        consumer?.invoke(submission) == true
+    internal fun deliver(submission: SecureKeypadSubmission): Boolean {
+        val current = consumer ?: return false
+        return current(submission) && submission.isConsumed
+    }
 }
 
 /**
@@ -313,11 +318,13 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.BACKSPACE -> status = SecureKeypadNative.sessionBackspace(sessionHandle)
             SecureKeyRole.CLEAR -> status = SecureKeypadNative.sessionClear(sessionHandle)
             SecureKeyRole.SUBMIT -> {
-                val submission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return
+                val rawSubmission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return
+                val submission = SecureKeypadSubmission(rawSubmission)
                 deliverOrRelease(
                     submission,
-                    onSubmit?.let { callback -> { handle -> callback(SecureKeypadSubmission(handle)) } },
-                    SecureKeypadNative::submissionFree,
+                    onSubmit,
+                    SecureKeypadSubmission::close,
+                    { it.isConsumed },
                 )
             }
             SecureKeyRole.CANCEL -> status = SecureKeypadNative.sessionCancel(sessionHandle)
