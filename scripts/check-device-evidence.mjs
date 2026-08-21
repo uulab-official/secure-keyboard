@@ -6,6 +6,11 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
+/**
+ * Public disposable value for device runs. Evidence scanners reject this
+ * literal so a test sentinel cannot accidentally be retained in an artifact.
+ */
+export const SANITIZED_TEST_SENTINEL = "secure-keypad-test-sentinel-7f2c4e";
 const NATIVE_TESTS = Object.freeze([
   "maskedStateOnly",
   "captureAndBackground",
@@ -37,6 +42,7 @@ const ALLOWED_FRAMEWORKS = Object.freeze({
   web: new Set(["web"]),
 });
 const FORBIDDEN_KEYS = /password|secret|passphrase|sentinel|plaintext|credentialValue|input(?:Value|Text|Bytes)|^value$/i;
+const FORBIDDEN_TEXT_FIELDS = /["']?(?:password|secret|passphrase|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes))["']?\s*[:=]/i;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -222,6 +228,31 @@ function verifyDigest(findings, root, field, relativePath, expectedHash) {
   }
 }
 
+function scanEvidenceFileContent(findings, root, field, relativePath) {
+  if (!isSafeRelativePath(relativePath)) return;
+  const filePath = containedFilePath(findings, root, field, relativePath);
+  if (!filePath) return;
+  let bytes;
+  try {
+    bytes = readFileSync(filePath);
+  } catch (error) {
+    add(findings, `${field}.path`, `could not read ${relativePath}: ${error.message}`);
+    return;
+  }
+
+  if (bytes.includes(Buffer.from(SANITIZED_TEST_SENTINEL, "utf8"))) {
+    add(findings, `${field}.content`, "contains the canonical test sentinel");
+  }
+
+  // Binary artifacts are still checked for the canonical sentinel, but text
+  // field heuristics are limited to NUL-free files to avoid decoding arbitrary
+  // native/image bytes as evidence text. OCR and human artifact review remain
+  // required for screenshots and crash reports.
+  if (!bytes.includes(0) && FORBIDDEN_TEXT_FIELDS.test(bytes.toString("utf8"))) {
+    add(findings, `${field}.content`, "contains secret-bearing content fields");
+  }
+}
+
 /**
  * Recomputes the digest of every log and native artifact referenced by an
  * otherwise valid evidence record. Symlinks resolving outside the evidence
@@ -235,10 +266,12 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
   if (!isRecord(evidence)) return ["root: file verification requires an evidence object"];
   const findings = [];
   verifyDigest(findings, root, "log", evidence.logPath, evidence.logSha256);
+  scanEvidenceFileContent(findings, root, "log", evidence.logPath);
   if (Array.isArray(evidence.artifacts)) {
     evidence.artifacts.forEach((artifact, index) => {
       if (!isRecord(artifact)) return;
       verifyDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
+      scanEvidenceFileContent(findings, root, `artifacts[${index}]`, artifact.path);
     });
   }
   return findings;

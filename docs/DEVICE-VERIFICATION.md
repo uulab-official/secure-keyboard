@@ -102,6 +102,14 @@ The validator also recomputes the log and artifact digests inside the evidence
 root and rejects symlinks that resolve outside it. This still does not replace
 independent review of screenshots or the physical-device run.
 
+Use the checked-in disposable sentinel `secure-keypad-test-sentinel-7f2c4e` for
+the device matrix. `check-device-evidence.mjs` recomputes every referenced
+digest and rejects that sentinel plus common secret-bearing text fields in
+NUL-free logs and artifacts. This is a byte-level preflight: it cannot detect
+OCR-visible text in screenshots, compressed/binary leaks, or an operator's
+different sentinel, so human screenshot/crash review and the independent
+assessment remain mandatory.
+
 When a device record is used as a release gate, its JSON `commit` is checked
 again by `check-release-evidence.mjs` against the gate's exact commit. A valid
 device record from another checkout therefore cannot satisfy the current

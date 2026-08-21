@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
+import {
+  SANITIZED_TEST_SENTINEL,
+  validateDeviceEvidence,
+  verifyDeviceEvidenceFiles,
+} from "./check-device-evidence.mjs";
 
 const VALID_NATIVE = {
   schemaVersion: 1,
@@ -103,6 +107,24 @@ test("recomputes log and artifact digests inside the evidence root", () => {
   writeFileSync(join(root, evidence.logPath), Buffer.from("tampered", "utf8"));
   const findings = verifyDeviceEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("logSha256")));
+});
+
+test("rejects the canonical sentinel and secret-bearing fields in referenced text artifacts", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-evidence-content-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  const log = Buffer.from(`sanitized runtime log: ${SANITIZED_TEST_SENTINEL}\n`, "utf8");
+  const artifact = Buffer.from('{"secret":"must not be uploaded"}\n', "utf8");
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, evidence.logPath), log);
+  writeFileSync(join(root, evidence.artifacts[0].path), artifact);
+  evidence.logSha256 = createHash("sha256").update(log).digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256").update(artifact).digest("hex");
+
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("canonical test sentinel")));
+  assert.ok(findings.some((finding) => finding.includes("secret-bearing content")));
 });
 
 test("rejects duplicate evidence paths before file verification", () => {

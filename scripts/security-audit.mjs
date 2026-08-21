@@ -500,8 +500,12 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /crashReportReview/, "device verification must require crash-report review evidence");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /protocolDowngrade/, "device verification must require protocol downgrade evidence");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /replay, expired-state,[\s\S]*rate-limit/i, "device verification must cover server replay and rate-limit behavior");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /secure-keypad-test-sentinel-7f2c4e/, "device verification must define the canonical disposable sentinel");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /verifyDeviceEvidenceFiles/, "device evidence tooling must recompute referenced file digests");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /SANITIZED_TEST_SENTINEL/, "device evidence tooling must reject the canonical test sentinel");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /scanEvidenceFileContent/, "device evidence tooling must scan referenced content for secret-bearing text");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");

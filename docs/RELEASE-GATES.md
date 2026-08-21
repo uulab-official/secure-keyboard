@@ -139,6 +139,12 @@ revalidated as a Web record. The verifier also revalidates nested log and artifa
 inside those device records, so changing a screenshot, report,
 or sanitized log invalidates the release gate.
 
+Nested device files also undergo a byte-level preflight for the canonical
+disposable sentinel `secure-keypad-test-sentinel-7f2c4e` and common
+secret-bearing text fields. This catches accidental retention in logs and
+text artifacts; it cannot replace OCR, crash-dump, screenshot, or independent
+review of the actual device evidence.
+
 Use the checked-in emitter after the gate command has completed successfully;
 it reads the current immutable checkout SHA and Contracts package version, then
 hashes the exact evidence bytes without accepting a caller-supplied commit:
