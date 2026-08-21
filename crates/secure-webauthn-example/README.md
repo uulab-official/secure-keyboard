@@ -21,6 +21,8 @@ layer adds:
 - static no-store, no-sniff, no-referrer, and API-safe CSP response headers.
 - `WebAuthnService<C, S>` storage injection for durable credential records and
   serialized one-time ceremony state, with atomic backend contracts.
+- opt-in `redis-backend` and `postgres-backend` adapters with bounded pools,
+  TLS-first constructors, atomic ceremony consume, and credential CAS rules.
 
 `WebAuthnExampleService` is deliberately process-local. It is a reference
 configuration, not a drop-in production database. A production deployment
@@ -28,6 +30,20 @@ should construct `WebAuthnService<C, S>::new_with_stores` with an
 encrypted/access-controlled `CredentialStore` and an atomic
 `CeremonyStateStore`. Never log ceremony handles, client responses, credential
 IDs, or serialized passkeys/ceremony states.
+
+The concrete adapters are feature-gated because they add database client
+dependencies:
+
+```toml
+secure-webauthn-example = { version = "0.1.0", features = ["redis-backend", "postgres-backend"] }
+```
+
+`RedisWebAuthnStore::from_url` requires `rediss://`; the explicit
+`from_insecure_url_for_local_testing` and PostgreSQL `NoTls` constructors are
+for isolated development only. Apply `POSTGRES_SCHEMA_SQL` through the host's
+migration system before constructing a PostgreSQL store. These adapters expose
+blocking operations and must run on a blocking worker when called from an
+async framework.
 
 The pinned `webauthn-rs` `danger-allow-state-serialisation` feature is enabled
 because a distributed server must serialize ceremony state between instances.

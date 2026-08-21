@@ -133,7 +133,7 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: passkey-first adapter, reference server, bounded HTTP route, compile-tested Axum integration, injectable storage contracts, and deployment baseline complete; CSP/supply-chain and durable store hardening pending
+Status: passkey-first adapter, reference server, bounded HTTP route, compile-tested Axum integration, injectable storage contracts, and feature-gated Redis/PostgreSQL adapters complete; host/device and independent review pending
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
@@ -152,6 +152,8 @@ Status: release-gate automation in progress; independent/device review pending
 - [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
 - [x] Add bounded auth-decoder and native/core state-machine fuzz targets with retained corpora.
 - [x] Add a bounded WebAuthn versioned-ceremony-state fuzz target and CI smoke gate.
+- [x] Add feature-gated Redis/PostgreSQL storage adapters with bounded pools, atomic consume, credential uniqueness, and post-authentication CAS updates.
+- [x] Add isolated Redis/PostgreSQL service interoperability tests to CI.
 - [x] Complete local 10,000-iteration smoke campaigns for the auth-envelope and core-sequence targets; keep CI at a bounded 2,000-iteration smoke gate.
 - [x] Complete the local 10,000-iteration smoke campaign for the WebAuthn state target and retain its minimized corpus.
 - [ ] Run the full fuzz campaign across parser/native-boundary corpora and add memory/leak tests.

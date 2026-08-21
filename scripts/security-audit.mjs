@@ -143,8 +143,11 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1/, "WebAuthn ceremony state format must be version-pinned");
   const webauthnManifest = source("crates/secure-webauthn-example/Cargo.toml", findings);
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /danger-allow-state-serialisation/, "WebAuthn state serialization must be an explicit pinned server dependency feature");
+  requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /redis-backend/, "Redis storage must be explicitly feature-gated");
+  requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /postgres-backend/, "PostgreSQL storage must be explicitly feature-gated");
   const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
+  requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",

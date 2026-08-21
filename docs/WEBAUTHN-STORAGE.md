@@ -14,6 +14,13 @@ and single-process development. A production service must construct
 framework-neutral HTTP router and the Axum adapter are generic over the same
 service type, so a durable backend remains inside the server boundary.
 
+The reference crate also ships opt-in `redis-backend` and `postgres-backend`
+implementations. They use bounded `r2d2` pools, require TLS-first constructors,
+and keep plaintext/`NoTls` constructors explicitly named for local testing.
+They are blocking adapters; async hosts must invoke them on a blocking worker.
+The PostgreSQL migration is exported as `POSTGRES_SCHEMA_SQL` and must be
+applied by the deployment migration system.
+
 ## Ceremony state
 
 The serialized state is server-owned challenge state wrapped in the pinned
@@ -35,9 +42,11 @@ The backend must:
 5. bind and verify the account principal before response parsing; and
 6. map malformed, expired, or unavailable records to generic server errors.
 
-For Redis, use `GETDEL` or a server-side atomic script. For PostgreSQL, use a
-single `DELETE ... WHERE handle = $1 AND kind = $2 AND expires_at > now()
-RETURNING user_id, state`. Do not use a separate `GET` followed by `DEL`.
+The Redis adapter uses a server-side atomic `GET` + `DEL` script and
+`SET NX PX`. For PostgreSQL, the adapter uses a single `DELETE ... WHERE
+namespace = $1 AND handle = $2 AND kind = $3 AND expires_at > now()
+RETURNING user_id, state`. Do not replace either operation with a separate
+read followed by delete.
 
 ## Credential records
 

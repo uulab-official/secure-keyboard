@@ -64,6 +64,15 @@ native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
 
+## Durable backend gate
+
+The feature-gated Redis and PostgreSQL adapters must compile under
+`cargo test --workspace --all-features`. The ignored interoperability tests
+must run against isolated Redis and PostgreSQL services in CI or a release
+environment with `--ignored`; they verify one-time consume, namespace/kind
+isolation, and replay rejection. Plaintext Redis/`NoTls` constructors are
+allowed only in that isolated test job, never in a production configuration.
+
 ## Artifact and platform gates
 
 CI also builds the iOS `secure_ffi` device/simulator libraries into an
@@ -80,9 +89,9 @@ Rust/Node/Flutter/native toolchain versions, the notices in
   each host application must compile it against its chosen RN/Flutter versions,
   install a native submission consumer, and run the device matrix.
 - WebAuthn reference verification service, injectable storage contracts,
-  bounded framework-neutral HTTP contract, and compile-tested Axum integration
-  are shipped, but a real durable credential backend, host-session/CSRF
-  integration, and distributed ceremony-state interoperability tests remain
-  deployment gates.
+  feature-gated Redis/PostgreSQL adapters, bounded framework-neutral HTTP
+  contract, and compile-tested Axum integration are shipped. Host-session/CSRF
+  integration, deployment TLS configuration, and the isolated durable-backend
+  interoperability job remain deployment gates.
 - Device accessibility/screenshot/autofill verification and an independent
   security review remain mandatory.

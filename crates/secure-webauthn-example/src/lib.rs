@@ -31,10 +31,24 @@ use zeroize::{Zeroize, Zeroizing};
 
 mod storage;
 
+#[cfg(feature = "postgres-backend")]
+mod storage_postgres;
+
+#[cfg(feature = "redis-backend")]
+mod storage_redis;
+
 pub use storage::{
     CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
     CredentialStoreError, InMemoryCeremonyStateStore, InMemoryCredentialStore,
 };
+
+#[cfg(feature = "postgres-backend")]
+pub use storage_postgres::{
+    PostgresStorageConfigError, PostgresWebAuthnStore, POSTGRES_SCHEMA_SQL,
+};
+
+#[cfg(feature = "redis-backend")]
+pub use storage_redis::{RedisStorageConfigError, RedisWebAuthnStore};
 
 /// Maximum JSON response body accepted by the reference boundary.
 pub const MAX_CLIENT_RESPONSE_BYTES: usize = 128 * 1024;

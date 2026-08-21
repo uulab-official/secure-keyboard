@@ -22,6 +22,39 @@ jobs:
       - run: cargo test -p secure-auth-axum --all-features
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
+  durable-backends:
+    name: Redis/PostgreSQL interoperability
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run isolated durable backend interoperability tests
+        env:
+          SECURE_KEYPAD_REDIS_URL: redis://127.0.0.1:6379
+          SECURE_KEYPAD_POSTGRES_URL: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres
+        run: cargo test -p secure-webauthn-example --all-features --test durable_storage -- --ignored --nocapture
+
   contracts:
     runs-on: ubuntu-latest
     steps:

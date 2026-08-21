@@ -20,6 +20,75 @@ pub enum CeremonyKind {
     Authentication,
 }
 
+pub(crate) const CEREMONY_RECORD_VERSION: u8 = 1;
+const CEREMONY_RECORD_HEADER_BYTES: usize = 1 + 1 + 16 + 4;
+
+pub(crate) const fn ceremony_kind_tag(kind: CeremonyKind) -> u8 {
+    match kind {
+        CeremonyKind::Registration => 1,
+        CeremonyKind::Authentication => 2,
+    }
+}
+
+fn ceremony_kind_from_tag(tag: u8) -> Option<CeremonyKind> {
+    match tag {
+        1 => Some(CeremonyKind::Registration),
+        2 => Some(CeremonyKind::Authentication),
+        _ => None,
+    }
+}
+
+pub(crate) fn validate_backend_ttl(ttl: Duration) -> Result<u64, CeremonyStoreError> {
+    let millis = u64::try_from(ttl.as_millis()).map_err(|_| CeremonyStoreError::InvalidTtl)?;
+    if millis == 0 || millis > i64::MAX as u64 {
+        return Err(CeremonyStoreError::InvalidTtl);
+    }
+    Ok(millis)
+}
+
+pub(crate) fn encode_ceremony_record(
+    kind: CeremonyKind,
+    user_id: Uuid,
+    state: &[u8],
+) -> Result<zeroize::Zeroizing<Vec<u8>>, CeremonyStoreError> {
+    validate_state(state)?;
+    let length = u32::try_from(state.len()).map_err(|_| CeremonyStoreError::StateTooLarge)?;
+    let mut record = Vec::with_capacity(CEREMONY_RECORD_HEADER_BYTES + state.len());
+    record.push(CEREMONY_RECORD_VERSION);
+    record.push(ceremony_kind_tag(kind));
+    record.extend_from_slice(user_id.as_bytes());
+    record.extend_from_slice(&length.to_be_bytes());
+    record.extend_from_slice(state);
+    Ok(zeroize::Zeroizing::new(record))
+}
+
+pub(crate) fn decode_ceremony_record(encoded: &[u8]) -> Result<CeremonyState, CeremonyStoreError> {
+    if encoded.len() < CEREMONY_RECORD_HEADER_BYTES
+        || encoded.len() > CEREMONY_RECORD_HEADER_BYTES + MAX_CEREMONY_STATE_BYTES
+    {
+        return Err(CeremonyStoreError::InvalidState);
+    }
+    let encoded = zeroize::Zeroizing::new(encoded.to_vec());
+    if encoded[0] != CEREMONY_RECORD_VERSION {
+        return Err(CeremonyStoreError::InvalidState);
+    }
+    let kind = ceremony_kind_from_tag(encoded[1]).ok_or(CeremonyStoreError::InvalidState)?;
+    let user_id =
+        Uuid::from_slice(&encoded[2..18]).map_err(|_| CeremonyStoreError::InvalidState)?;
+    let state_len = u32::from_be_bytes(
+        encoded[18..22]
+            .try_into()
+            .map_err(|_| CeremonyStoreError::InvalidState)?,
+    ) as usize;
+    if state_len == 0
+        || state_len > MAX_CEREMONY_STATE_BYTES
+        || encoded.len() != CEREMONY_RECORD_HEADER_BYTES + state_len
+    {
+        return Err(CeremonyStoreError::InvalidState);
+    }
+    CeremonyState::new(kind, user_id, encoded[22..].to_vec())
+}
+
 /// Errors returned by a ceremony state backend.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CeremonyStoreError {
@@ -421,9 +490,12 @@ impl CredentialStore for InMemoryCredentialStore {
             .ok_or(CredentialStoreError::InvalidRecord)?;
         for credential in user_credentials {
             if let Some(changed) = credential.update_credential(result) {
+                if result.needs_update() && !changed {
+                    return Err(CredentialStoreError::InvalidRecord);
+                }
                 return Ok(changed);
             }
         }
-        Ok(false)
+        Err(CredentialStoreError::InvalidRecord)
     }
 }
