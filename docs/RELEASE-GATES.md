@@ -119,6 +119,12 @@ rejects duplicate gate names, artifact kinds, and referenced paths, refuses
 symlink escapes, and fails if the resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
+Every `gate.evidencePath` must point to a JSON object with
+`{schemaVersion: 1, commit: <same gate SHA>, status: "pass"}`. The final file
+verification recomputes its digest and checks that embedded commit, status, and
+secret-field policy, so a current manifest cannot be assembled from an older
+or secret-bearing gate record.
+
 Create the detached Ed25519 signature and public-key material with a protected
 maintainer key. The private key is read only and is never copied into the
 release bundle or printed:

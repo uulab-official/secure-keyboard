@@ -92,6 +92,11 @@ The validator also recomputes the log and artifact digests inside the evidence
 root and rejects symlinks that resolve outside it. This still does not replace
 independent review of screenshots or the physical-device run.
 
+When a device record is used as a release gate, its JSON `commit` is checked
+again by `check-release-evidence.mjs` against the gate's exact commit. A valid
+device record from another checkout therefore cannot satisfy the current
+release manifest merely by being copied into the evidence root.
+
 The repository also contains a real-browser smoke harness:
 
 ```sh

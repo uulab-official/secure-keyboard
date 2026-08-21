@@ -138,7 +138,10 @@ test("CLI assembles and verifies a signed evidence root", () => {
 
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const context = { ...baseContext(), commit };
-  const evidenceBytes = Buffer.from("sanitized evidence", "utf8");
+  const evidenceBytes = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit, status: "pass" }),
+    "utf8",
+  );
   const evidenceHash = createHash("sha256").update(evidenceBytes).digest("hex");
   const releaseBytes = Buffer.from("signed release bundle", "utf8");
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");

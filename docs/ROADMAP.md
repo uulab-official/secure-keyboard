@@ -180,6 +180,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a machine-readable release evidence manifest contract for sanitizer, durable-backend, device, independent-review, and signed-release gates.
 - [x] Add conflict-checked release evidence fragment merging before final manifest validation.
 - [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
+- [x] Bind each referenced JSON gate record's embedded commit and pass status to its manifest gate.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
 - [x] Restrict release signing workflow dispatch to a verified immutable 40-character commit SHA.

@@ -201,7 +201,10 @@ test("trusted-key CLI mode fails closed when protected fingerprints are absent",
 test("verifies every referenced release evidence and artifact digest", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-"));
   const evidence = completeEvidence();
-  const payload = Buffer.from("release-evidence-fixture", "utf8");
+  const payload = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit: evidence.commit, status: "pass" }),
+    "utf8",
+  );
   const sha256 = createHash("sha256").update(payload).digest("hex");
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const releasePayload = Buffer.from("signed-release-fixture", "utf8");
@@ -250,6 +253,23 @@ test("verifies every referenced release evidence and artifact digest", () => {
   writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("tampered", "utf8"));
   const findings = verifyReleaseEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
+});
+
+test("rejects a gate evidence record bound to a different commit", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-commit-"));
+  const evidence = completeEvidence();
+  const gate = evidence.gates[0];
+  const payload = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit: "c".repeat(40), status: "pass" }),
+    "utf8",
+  );
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("gate evidence commit")));
 });
 
 test("rejects a tampered detached release signature", () => {

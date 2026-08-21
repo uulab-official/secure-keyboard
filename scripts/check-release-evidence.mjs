@@ -337,6 +337,36 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
   }
 }
 
+function verifyGateEvidenceRecord(findings, root, field, gate) {
+  if (!isSafeRelativePath(gate.evidencePath) || !COMMIT.test(String(gate.commit))) return;
+  const absolutePath = containedFilePath(findings, root, field, gate.evidencePath);
+  if (!absolutePath) return;
+
+  let record;
+  try {
+    record = JSON.parse(readFileSync(absolutePath, "utf8"));
+  } catch (error) {
+    add(findings, `${field}.evidencePath`, `gate evidence must be a JSON record: ${error.message}`);
+    return;
+  }
+  if (!isRecord(record)) {
+    add(findings, `${field}.evidencePath`, "gate evidence must be a JSON object");
+    return;
+  }
+  checkSecretKeys(findings, record, `${field}.evidence`);
+  if (record.schemaVersion !== 1) {
+    add(findings, `${field}.evidence.schemaVersion`, "gate evidence schemaVersion must equal 1");
+  }
+  if (record.status !== "pass") {
+    add(findings, `${field}.evidence.status`, "gate evidence status must equal pass");
+  }
+  if (typeof record.commit !== "string" || !COMMIT.test(record.commit)) {
+    add(findings, `${field}.evidence.commit`, "gate evidence commit must be a 40-character lowercase commit SHA");
+  } else if (record.commit !== gate.commit) {
+    add(findings, `${field}.evidence.commit`, "gate evidence commit must match the gate commit");
+  }
+}
+
 function verifyDetachedSignature(findings, evidence, root, fieldName) {
   if (!isRecord(evidence?.[fieldName])) return;
   const descriptor = evidence[fieldName];
@@ -385,6 +415,7 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
   for (const [index, gate] of evidence.gates.entries()) {
     if (!isRecord(gate)) continue;
     verifyFileDigest(findings, root, `gates[${index}]`, gate.evidencePath, gate.sha256);
+    verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate);
   }
   for (const [index, artifact] of evidence.artifacts.entries()) {
     if (!isRecord(artifact)) continue;
