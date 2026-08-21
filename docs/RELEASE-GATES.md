@@ -75,11 +75,11 @@ native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
 
-As an additional local stability check on 2026-08-21 using the CI-equivalent
-arguments and the clean tracked corpora, each target completed 1,000,000
-iterations without a crash artifact: auth-envelope reached 1,062 coverage
-counters with 510 MB final RSS, core-sequence reached 125 with 540 MB, and
-WebAuthn-state reached 1,219 with 544 MB using `-max_len=131073`.
+On 2026-08-21, a local arm64 run using the exact CI-pinned
+`nightly-2026-08-19` toolchain and the same 1,000,000-iteration arguments
+completed without a crash artifact: auth-envelope reached `cov 1130` with
+469 MB final RSS, core-sequence reached `cov 96` with 476 MB, and
+WebAuthn-state reached `cov 1269` with 498 MB using `-max_len=131073`.
 Those RSS values are libFuzzer process measurements that include its evolving
 corpus and coverage tables; they are not an SDK memory ceiling or a leak
 result. The Linux leak-sanitizer job remains mandatory.
