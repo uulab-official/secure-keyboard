@@ -59,7 +59,8 @@ exact release-candidate commit by the release evidence manifest.
   obtaining oversized JVM buffers before the Rust ABI can reject them.
 - Bound release evidence CI records to their owning job check groups, sanitized
   runner labels, and commit-bound timestamps so an under-specified `pass`
-  record cannot satisfy a CI release gate.
+  record cannot satisfy a CI release gate; direct durable/fuzz command groups
+  remain accepted for the job-local emitter path.
 
 ### Verification
 

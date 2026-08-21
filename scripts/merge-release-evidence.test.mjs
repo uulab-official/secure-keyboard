@@ -155,7 +155,7 @@ function gateEvidence(gateName, commit) {
           evidenceKind: "ci-command",
           runner: "ci-aggregate",
           recordedAt: "2026-08-21T00:00:00.000Z",
-          checks,
+          checks: checks[0],
         }),
   };
 }

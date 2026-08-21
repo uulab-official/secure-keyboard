@@ -45,19 +45,30 @@ export const DEVICE_RELEASE_GATE_POLICIES = Object.freeze({
  * satisfying a release gate without naming the required command group.
  */
 export const CI_RELEASE_GATE_CHECKS = Object.freeze({
-  "rust-workspace": Object.freeze(["job-rust"]),
-  "javascript-contracts": Object.freeze(["job-contracts"]),
-  "native-parity": Object.freeze(["job-contracts"]),
-  "release-version-parity": Object.freeze(["job-contracts"]),
+  "rust-workspace": Object.freeze([Object.freeze(["job-rust"])]),
+  "javascript-contracts": Object.freeze([Object.freeze(["job-contracts"])]),
+  "native-parity": Object.freeze([Object.freeze(["job-contracts"])]),
+  "release-version-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "framework-host-builds": Object.freeze([
-    "job-flutter-host-build",
-    "job-react-native-host-build",
-    "job-ios-host-builds",
-    "job-android-host-runtime-smoke",
+    Object.freeze([
+      "job-flutter-host-build",
+      "job-react-native-host-build",
+      "job-ios-host-builds",
+      "job-android-host-runtime-smoke",
+    ]),
   ]),
-  "fuzz-stability": Object.freeze(["job-fuzz"]),
-  "linux-leak-sanitizer": Object.freeze(["job-fuzz"]),
-  "durable-backends": Object.freeze(["job-durable-backends"]),
+  "fuzz-stability": Object.freeze([
+    Object.freeze(["job-fuzz"]),
+    Object.freeze(["auth_envelope", "core_sequence", "ffi_sequence", "webauthn_state"]),
+  ]),
+  "linux-leak-sanitizer": Object.freeze([
+    Object.freeze(["job-fuzz"]),
+    Object.freeze(["auth_envelope", "core_sequence", "ffi_sequence", "webauthn_state"]),
+  ]),
+  "durable-backends": Object.freeze([
+    Object.freeze(["job-durable-backends"]),
+    Object.freeze(["durable_storage", "durable_rate_limit", "durable_one_time_state"]),
+  ]),
 });
 
 const CI_CHECK_LABEL = /^[a-z0-9][a-z0-9._-]{0,80}$/;
@@ -400,8 +411,8 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
     add(findings, `${field}.evidence.gate`, "gate evidence gate must match the release gate");
   }
 
-  const requiredCiChecks = CI_RELEASE_GATE_CHECKS[gate.name];
-  if (requiredCiChecks !== undefined) {
+  const requiredCiCheckSets = CI_RELEASE_GATE_CHECKS[gate.name];
+  if (requiredCiCheckSets !== undefined) {
     if (record.evidenceKind !== "ci-command") {
       add(findings, `${field}.evidence.evidenceKind`, "CI gate evidenceKind must equal ci-command");
     }
@@ -424,10 +435,12 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
           break;
         }
       }
-      for (const requiredCheck of requiredCiChecks) {
-        if (!record.checks.includes(requiredCheck)) {
-          add(findings, `${field}.evidence.checks`, `CI gate checks must include ${requiredCheck}`);
-        }
+      if (!requiredCiCheckSets.some((requiredChecks) => requiredChecks.every((check) => record.checks.includes(check)))) {
+        add(
+          findings,
+          `${field}.evidence.checks`,
+          "CI gate checks must include one complete owning job or command group",
+        );
       }
     }
   }

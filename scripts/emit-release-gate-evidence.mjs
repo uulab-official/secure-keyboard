@@ -54,8 +54,8 @@ function validateEvidenceRecord(record, commit, gateName) {
     findings.push("gate evidence commit must match the gate commit");
   }
   if (record.gate !== gateName) findings.push("gate evidence gate must match the fragment gate");
-  const requiredCiChecks = CI_RELEASE_GATE_CHECKS[gateName];
-  if (requiredCiChecks !== undefined) {
+  const requiredCiCheckSets = CI_RELEASE_GATE_CHECKS[gateName];
+  if (requiredCiCheckSets !== undefined) {
     if (record.evidenceKind !== "ci-command") findings.push("CI gate evidenceKind must equal ci-command");
     if (typeof record.runner !== "string" || !CI_CHECK_LABEL.test(record.runner)) {
       findings.push("CI gate runner must be a sanitized label");
@@ -73,10 +73,8 @@ function validateEvidenceRecord(record, commit, gateName) {
       if (record.checks.some((check) => typeof check !== "string" || !CI_CHECK_LABEL.test(check))) {
         findings.push("CI gate checks must contain sanitized labels only");
       }
-      for (const requiredCheck of requiredCiChecks) {
-        if (!record.checks.includes(requiredCheck)) {
-          findings.push(`CI gate checks must include ${requiredCheck}`);
-        }
+      if (!requiredCiCheckSets.some((requiredChecks) => requiredChecks.every((check) => record.checks.includes(check)))) {
+        findings.push("CI gate checks must include one complete owning job or command group");
       }
     }
   }

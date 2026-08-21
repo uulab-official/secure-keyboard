@@ -28,7 +28,7 @@ function evidenceRecord(commit = COMMIT, gate = "rust-workspace") {
           evidenceKind: "ci-command",
           runner: "ci-aggregate",
           recordedAt: "2026-08-22T00:00:00.000Z",
-          checks,
+          checks: checks[0],
         }),
   };
 }
