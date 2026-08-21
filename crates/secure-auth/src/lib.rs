@@ -109,6 +109,13 @@ where
     bytes
 }
 
+fn secret_output_from_zeroizing<T>(mut serialized: T) -> SecretOutput
+where
+    T: AsRef<[u8]> + Zeroize,
+{
+    SecretOutput(copy_and_zeroize_serialized(&mut serialized))
+}
+
 impl Drop for Message {
     fn drop(&mut self) {
         self.0.zeroize();
@@ -800,10 +807,9 @@ pub fn client_registration_finish(
             ),
         )
         .map_err(|_| AuthError::Protocol)?;
-    Ok((
-        message_from_serialized(result.message.serialize())?,
-        SecretOutput(result.export_key.to_vec()),
-    ))
+    let message = message_from_serialized(result.message.serialize())?;
+    let export_key = secret_output_from_zeroizing(result.export_key);
+    Ok((message, export_key))
 }
 
 /// Starts client registration directly from a secure keypad submission.
@@ -878,10 +884,9 @@ pub fn client_registration_finish_from_native_state(
         result.ok_or(AuthError::Protocol)?
     }
     .map_err(|_| AuthError::Protocol)?;
-    Ok((
-        message_from_serialized(result.message.serialize())?,
-        SecretOutput(result.export_key.to_vec()),
-    ))
+    let message = message_from_serialized(result.message.serialize())?;
+    let export_key = secret_output_from_zeroizing(result.export_key);
+    Ok((message, export_key))
 }
 
 /// Finalizes a server credential file from the client upload.
@@ -1020,10 +1025,9 @@ pub fn client_login_finish(
             ),
         )
         .map_err(|_| AuthError::InvalidLogin)?;
-    Ok((
-        message_from_serialized(result.message.serialize())?,
-        SecretOutput(result.session_key.to_vec()),
-    ))
+    let message = message_from_serialized(result.message.serialize())?;
+    let session_key = secret_output_from_zeroizing(result.session_key);
+    Ok((message, session_key))
 }
 
 /// Finishes a native-only login without returning the password to the caller.
@@ -1064,10 +1068,9 @@ pub fn client_login_finish_from_native_state(
         result.ok_or(AuthError::InvalidLogin)?
     }
     .map_err(|_| AuthError::InvalidLogin)?;
-    Ok((
-        message_from_serialized(result.message.serialize())?,
-        SecretOutput(result.session_key.to_vec()),
-    ))
+    let message = message_from_serialized(result.message.serialize())?;
+    let session_key = secret_output_from_zeroizing(result.session_key);
+    Ok((message, session_key))
 }
 
 /// Finishes server login and returns the server session key.
@@ -1098,34 +1101,58 @@ pub fn server_login_finish(
             },
         )
         .map_err(|_| AuthError::InvalidLogin)?;
-    Ok(SecretOutput(result.session_key.to_vec()))
+    Ok(secret_output_from_zeroizing(result.session_key))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::copy_and_zeroize_serialized;
+    use super::{copy_and_zeroize_serialized, secret_output_from_zeroizing};
+    use std::cell::Cell;
+    use std::rc::Rc;
     use zeroize::Zeroize;
 
-    struct SensitiveSerialized(Vec<u8>);
+    struct SensitiveSerialized {
+        bytes: Vec<u8>,
+        zeroized: Rc<Cell<bool>>,
+    }
 
     impl AsRef<[u8]> for SensitiveSerialized {
         fn as_ref(&self) -> &[u8] {
-            &self.0
+            &self.bytes
         }
     }
 
     impl Zeroize for SensitiveSerialized {
         fn zeroize(&mut self) {
-            self.0.zeroize();
+            self.bytes.zeroize();
+            self.zeroized.set(true);
         }
     }
 
     #[test]
     fn serialized_message_source_is_zeroized_after_copying() {
-        let mut serialized = SensitiveSerialized(vec![1, 2, 3, 4]);
+        let zeroized = Rc::new(Cell::new(false));
+        let mut serialized = SensitiveSerialized {
+            bytes: vec![1, 2, 3, 4],
+            zeroized: Rc::clone(&zeroized),
+        };
         let bytes = copy_and_zeroize_serialized(&mut serialized);
 
         assert_eq!(bytes, &[1, 2, 3, 4]);
-        assert!(serialized.0.iter().all(|byte| *byte == 0));
+        assert!(serialized.bytes.iter().all(|byte| *byte == 0));
+        assert!(zeroized.get());
+    }
+
+    #[test]
+    fn secret_output_source_is_zeroized_after_copying() {
+        let zeroized = Rc::new(Cell::new(false));
+        let serialized = SensitiveSerialized {
+            bytes: vec![5, 6, 7, 8],
+            zeroized: Rc::clone(&zeroized),
+        };
+        let output = secret_output_from_zeroizing(serialized);
+
+        assert_eq!(output.len(), 4);
+        assert!(zeroized.get());
     }
 }
