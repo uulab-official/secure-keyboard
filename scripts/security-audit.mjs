@@ -328,6 +328,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent-review-(?:report|public-key|signature)/, "release gates must bind the reviewer report to a detached signature");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /--require-trusted-keys/, "release gates must provide a trusted-key validation mode");
   const thirdPartyNotices = source("docs/THIRD-PARTY-NOTICES.md", findings);
   requireText(findings, "docs/THIRD-PARTY-NOTICES.md", thirdPartyNotices, /playwright.*verification-only/i, "browser verification dependencies must be identified as non-shipped tooling");
   const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);
@@ -452,6 +453,9 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-review-report/, "release evidence must require a hashed independent review report");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independentReview/, "release evidence must verify the independent reviewer attestation descriptor");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release evidence must support a protected maintainer-key fingerprint");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release evidence must support a protected reviewer-key fingerprint");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");

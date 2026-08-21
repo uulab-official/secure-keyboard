@@ -101,6 +101,18 @@ pnpm merge:release-evidence \
 node scripts/check-release-evidence.mjs release-evidence/release-evidence.json
 ```
 
+For the final production-candidate validation, provide the independently
+verified SHA-256 fingerprints of the maintainer and reviewer DER public keys
+and require both pins. These values must come from the protected release
+process, not from the evidence bundle itself:
+
+```sh
+SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256=<maintainer-fingerprint> \
+SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256=<reviewer-fingerprint> \
+node scripts/check-release-evidence.mjs --require-trusted-keys \
+  release-evidence/release-evidence.json
+```
+
 The merger requires one exact commit, package version, and toolchain set,
 rejects duplicate gate names, artifact kinds, and referenced paths, refuses
 symlink escapes, and fails if the resulting manifest is incomplete. It never
@@ -131,9 +143,10 @@ required statuses, recomputes SHA-256 for every referenced evidence/artifact
 file, rejects duplicate evidence paths, ensures the manifest commit/version
 match the current checkout, and verifies both the detached release signature and
 the detached `independentReview` signature over the exact review report. It does
-not establish trust in the maintainer or reviewer key identity or verify CI
-provenance; trusted fingerprints, CI attestation, and reviewer identity must
-still be verified independently against the exact commit.
+not establish CI provenance; trusted fingerprints, CI attestation, and reviewer
+identity must still be verified independently against the exact commit. The
+`--require-trusted-keys` mode fails closed when either protected fingerprint is
+missing or does not match the corresponding descriptor.
 
 ## Fuzz gate
 

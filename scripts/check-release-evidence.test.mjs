@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -12,6 +14,7 @@ import {
 } from "./check-release-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
+const CHECK_SCRIPT = fileURLToPath(new URL("./check-release-evidence.mjs", import.meta.url));
 
 function completeEvidence() {
   return {
@@ -124,6 +127,39 @@ test("binds release evidence to the exact commit and package version", () => {
 
   assert.ok(findings.some((finding) => finding.includes("commit") && finding.includes("current")));
   assert.ok(findings.some((finding) => finding.includes("packageVersion") && finding.includes("current")));
+});
+
+test("binds release and reviewer signatures to trusted public-key fingerprints", () => {
+  const findings = validateReleaseEvidence(completeEvidence(), {
+    expectedReleasePublicKeySha256: "b".repeat(64),
+    expectedReviewerPublicKeySha256: "c".repeat(64),
+  });
+
+  assert.ok(findings.some((finding) => finding.includes("signature.publicKeySha256") && finding.includes("trusted")));
+  assert.ok(
+    findings.some(
+      (finding) => finding.includes("independentReview.publicKeySha256") && finding.includes("trusted"),
+    ),
+  );
+});
+
+test("trusted-key CLI mode fails closed when protected fingerprints are absent", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-trusted-release-"));
+  const manifestPath = join(root, "manifest.json");
+  writeFileSync(manifestPath, "{}\n");
+  const environment = { ...process.env };
+  delete environment.SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256;
+  delete environment.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256;
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT, "--require-trusted-keys", manifestPath], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    env: environment,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/);
+  assert.match(result.stderr, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/);
 });
 
 test("verifies every referenced release evidence and artifact digest", () => {

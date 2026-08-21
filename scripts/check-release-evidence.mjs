@@ -92,7 +92,7 @@ function checkSecretKeys(findings, value, field = "manifest") {
  * release-process responsibilities.
  *
  * @param {unknown} evidence
- * @param {{expectedCommit?: string, expectedPackageVersion?: string}} [context]
+ * @param {{expectedCommit?: string, expectedPackageVersion?: string, expectedReleasePublicKeySha256?: string, expectedReviewerPublicKeySha256?: string}} [context]
  * @returns {string[]}
  */
 export function validateReleaseEvidence(evidence, context = {}) {
@@ -208,21 +208,42 @@ export function validateReleaseEvidence(evidence, context = {}) {
     }
   }
 
-  validateSignatureDescriptor(findings, "signature", evidence.signature, artifactsByPath, {
-    signedArtifactKind: "release-bundle",
-    publicKeyKind: "release-public-key",
-    signatureKind: "release-signature",
-  });
-  validateSignatureDescriptor(findings, "independentReview", evidence.independentReview, artifactsByPath, {
-    signedArtifactKind: "independent-review-report",
-    publicKeyKind: "independent-review-public-key",
-    signatureKind: "independent-review-signature",
-  });
+  validateSignatureDescriptor(
+    findings,
+    "signature",
+    evidence.signature,
+    artifactsByPath,
+    {
+      signedArtifactKind: "release-bundle",
+      publicKeyKind: "release-public-key",
+      signatureKind: "release-signature",
+    },
+    context.expectedReleasePublicKeySha256,
+  );
+  validateSignatureDescriptor(
+    findings,
+    "independentReview",
+    evidence.independentReview,
+    artifactsByPath,
+    {
+      signedArtifactKind: "independent-review-report",
+      publicKeyKind: "independent-review-public-key",
+      signatureKind: "independent-review-signature",
+    },
+    context.expectedReviewerPublicKeySha256,
+  );
 
   return findings;
 }
 
-function validateSignatureDescriptor(findings, fieldName, descriptor, artifactsByPath, expectedKinds) {
+function validateSignatureDescriptor(
+  findings,
+  fieldName,
+  descriptor,
+  artifactsByPath,
+  expectedKinds,
+  trustedPublicKeySha256,
+) {
   if (!isRecord(descriptor)) {
     add(findings, fieldName, "must contain an Ed25519 detached-signature descriptor");
     return;
@@ -234,6 +255,9 @@ function validateSignatureDescriptor(findings, fieldName, descriptor, artifactsB
     checkEvidencePath(findings, `${fieldName}.${field}`, descriptor[field]);
   }
   checkHash(findings, `${fieldName}.publicKeySha256`, descriptor.publicKeySha256);
+  if (trustedPublicKeySha256 !== undefined && descriptor.publicKeySha256 !== trustedPublicKeySha256) {
+    add(findings, `${fieldName}.publicKeySha256`, "must match the trusted public-key fingerprint");
+  }
   const signedArtifact = artifactsByPath.get(descriptor.signedArtifactPath);
   if (signedArtifact?.kind !== expectedKinds.signedArtifactKind) {
     add(
@@ -361,10 +385,22 @@ function currentPackageVersion(root) {
   }
 }
 
+function readTrustedFingerprint(findings, environmentName, required) {
+  const value = process.env[environmentName];
+  if (required && !value) {
+    add(findings, environmentName, "must be provided in trusted-key mode");
+  }
+  if (value !== undefined) checkHash(findings, environmentName, value);
+  return value;
+}
+
 function main() {
-  const manifestPath = process.argv[2];
+  const requireTrustedKeys = process.argv.includes("--require-trusted-keys");
+  const manifestPath = process.argv.slice(2).find((argument) => argument !== "--require-trusted-keys");
   if (!manifestPath) {
-    console.error("usage: node scripts/check-release-evidence.mjs path/to/release-evidence.json");
+    console.error(
+      "usage: node scripts/check-release-evidence.mjs [--require-trusted-keys] path/to/release-evidence.json",
+    );
     process.exitCode = 64;
     return;
   }
@@ -383,9 +419,24 @@ function main() {
   const contextFindings = [];
   if (!expectedCommit) add(contextFindings, "commit", "current checkout commit could not be determined");
   if (!expectedPackageVersion) add(contextFindings, "packageVersion", "current release version could not be determined");
+  const expectedReleasePublicKeySha256 = readTrustedFingerprint(
+    contextFindings,
+    "SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256",
+    requireTrustedKeys,
+  );
+  const expectedReviewerPublicKeySha256 = readTrustedFingerprint(
+    contextFindings,
+    "SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256",
+    requireTrustedKeys,
+  );
   const findings = [
     ...contextFindings,
-    ...validateReleaseEvidence(evidence, { expectedCommit, expectedPackageVersion }),
+    ...validateReleaseEvidence(evidence, {
+      expectedCommit,
+      expectedPackageVersion,
+      expectedReleasePublicKeySha256,
+      expectedReviewerPublicKeySha256,
+    }),
   ];
   if (findings.length > 0) {
     console.error(findings.map((finding) => `- ${finding}`).join("\n"));
