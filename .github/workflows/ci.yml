@@ -87,6 +87,10 @@ jobs:
         run: cargo +nightly fuzz check core_sequence
       - name: Run bounded native/core fuzz smoke test
         run: cargo +nightly fuzz run core_sequence -- -runs=2000
+      - name: Build WebAuthn state fuzz target
+        run: cargo +nightly fuzz check webauthn_state
+      - name: Run bounded WebAuthn state fuzz smoke test
+        run: cargo +nightly fuzz run webauthn_state -- -runs=2000 -max_len=131073
 
   sbom:
     name: Produce dependency SBOM artifact

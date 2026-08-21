@@ -12,7 +12,11 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 secure-auth = { path = "../crates/secure-auth" }
+secure-auth-server = { path = "../crates/secure-auth-server" }
 secure-core = { path = "../crates/secure-core" }
+secure-webauthn-example = { path = "../crates/secure-webauthn-example" }
+uuid = { version = "1.11", features = ["v4"] }
+webauthn-rs = { version = "=0.5.4", default-features = false, features = ["danger-allow-state-serialisation"] }
 
 [[bin]]
 name = "auth_envelope"
@@ -24,6 +28,13 @@ bench = false
 [[bin]]
 name = "core_sequence"
 path = "fuzz_targets/core_sequence.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "webauthn_state"
+path = "fuzz_targets/webauthn_state.rs"
 test = false
 doc = false
 bench = false

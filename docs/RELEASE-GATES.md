@@ -53,14 +53,16 @@ set. HTTP deployments must also be reviewed against
 ## Fuzz gate
 
 The `fuzz/auth_envelope` target exercises the raw-body and bounded-payload
-decoder, while `fuzz/core_sequence` exercises the native/core state machine.
-CI builds both with `cargo-fuzz` on nightly and runs a bounded 2,000-iteration
-smoke campaign. The current local verification also completed 10,000
-iterations for each target, with the resulting inputs retained under
-`fuzz/corpus/`. Any new parser or native-boundary decoder must add a
-corresponding target or corpus regression before release; this is not a
-substitute for the full campaign and memory/leak testing listed in the
-roadmap.
+decoder, `fuzz/core_sequence` exercises the native/core state machine, and
+`fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
+CI builds all three with `cargo-fuzz` on nightly and runs a bounded
+2,000-iteration smoke campaign. The current local verification completed
+10,000 iterations for all three targets: auth-envelope, core-sequence, and
+webauthn-state. The runs retained their minimized corpora under
+`fuzz/corpus/` and produced no crash artifact. Any new parser or
+native-boundary decoder must add a corresponding target or corpus regression
+before release. These smoke campaigns are not a substitute for the full
+campaign and memory/leak testing listed in the roadmap.
 
 ## Artifact and platform gates
 
