@@ -51,21 +51,41 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.13.0'
       - name: Run isolated durable backend interoperability tests
         env:
           SECURE_KEYPAD_REDIS_URL: redis://127.0.0.1:6379
           SECURE_KEYPAD_POSTGRES_URL: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres
-        run: cargo test -p secure-webauthn-example --all-features --test durable_storage -- --ignored --nocapture
+        run: cargo test --locked -p secure-webauthn-example --all-features --test durable_storage -- --ignored --nocapture
       - name: Run isolated distributed rate-limit interoperability tests
         env:
           SECURE_KEYPAD_REDIS_URL: redis://127.0.0.1:6379
           SECURE_KEYPAD_POSTGRES_URL: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres
-        run: cargo test -p secure-auth-server --all-features --test durable_rate_limit -- --ignored --nocapture
+        run: cargo test --locked -p secure-auth-server --all-features --test durable_rate_limit -- --ignored --nocapture
       - name: Run isolated distributed OPAQUE one-time-state interoperability tests
         env:
           SECURE_KEYPAD_REDIS_URL: redis://127.0.0.1:6379
           SECURE_KEYPAD_POSTGRES_URL: host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres
-        run: cargo test -p secure-auth-server --all-features --test durable_one_time_state -- --ignored --nocapture
+        run: cargo test --locked -p secure-auth-server --all-features --test durable_one_time_state -- --ignored --nocapture
+      - name: Emit durable backend CI release evidence
+        run: |
+          node scripts/emit-ci-gate-evidence.mjs \
+            "$RUNNER_TEMP/secure-keypad-ci-evidence" \
+            durable-backends \
+            "ci/durable-backends.json" \
+            "fragments/durable-backends.json" \
+            --runner ubuntu-24.04 \
+            --check durable_storage \
+            --check durable_rate_limit \
+            --check durable_one_time_state
+      - uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: secure-keypad-ci-gate-durable-backends
+          path: ${{ runner.temp }}/secure-keypad-ci-evidence
+          if-no-files-found: warn
 
   contracts:
     runs-on: ubuntu-24.04
@@ -88,6 +108,8 @@ jobs:
       - run: pnpm test:release-candidate-metadata
       - run: pnpm test:expo-development-build
       - run: pnpm test:emit-release-gate-evidence
+      - run: pnpm test:emit-ci-gate-evidence
+      - run: pnpm test:emit-web-browser-evidence
       - run: pnpm test:merge-release-evidence
       - run: pnpm test:sign-release
       - run: pnpm test:device-evidence
@@ -135,7 +157,7 @@ jobs:
         if: always()
         with:
           name: secure-keypad-browser-smoke-${{ matrix.browser }}
-          path: ${{ runner.temp }}/secure-keypad-browser-smoke
+          path: ${{ runner.temp }}/secure-keypad-browser-smoke/${{ matrix.browser }}.log
           if-no-files-found: error
 
   flutter:
@@ -450,6 +472,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.13.0'
       - name: Install pinned nightly Rust
         run: rustup toolchain install nightly-2026-08-19 --profile minimal
       - name: Install cargo-fuzz
@@ -495,9 +520,42 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: secure-keypad-fuzz-logs
+          name: secure-keypad-fuzz-logs-pre-evidence
           path: ${{ runner.temp }}/secure-keypad-fuzz-logs
 
+      - name: Emit fuzz CI release evidence
+        run: |
+          node scripts/emit-ci-gate-evidence.mjs \
+            "$RUNNER_TEMP/secure-keypad-ci-evidence" \
+            fuzz-stability \
+            "ci/fuzz-stability.json" \
+            "fragments/fuzz-stability.json" \
+            --runner ubuntu-24.04 \
+            --check auth_envelope \
+            --check core_sequence \
+            --check ffi_sequence \
+            --check webauthn_state
+          node scripts/emit-ci-gate-evidence.mjs \
+            "$RUNNER_TEMP/secure-keypad-ci-evidence" \
+            linux-leak-sanitizer \
+            "ci/linux-leak-sanitizer.json" \
+            "fragments/linux-leak-sanitizer.json" \
+            --runner ubuntu-24.04 \
+            --check auth_envelope \
+            --check core_sequence \
+            --check ffi_sequence \
+            --check webauthn_state
+      - uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: secure-keypad-ci-gate-fuzz
+          path: ${{ runner.temp }}/secure-keypad-ci-evidence
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: secure-keypad-fuzz-logs
+          path: ${{ runner.temp }}/secure-keypad-fuzz-logs
   sbom:
     name: Produce dependency SBOM artifact
     runs-on: ubuntu-24.04
@@ -803,3 +861,76 @@ jobs:
           name: secure-keypad-ios-simulator-runtime
           path: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime
           if-no-files-found: warn
+  ci-release-evidence:
+    name: Assemble CI release evidence fragments
+    needs:
+      [
+        rust,
+        durable-backends,
+        contracts,
+        web-browser-matrix,
+        flutter,
+        flutter-host-build,
+        react-native-host-build,
+        android-host-runtime-smoke,
+        fuzz,
+        sbom,
+        ffi-header,
+        native-platforms,
+        ios-host-builds,
+      ]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.13.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: secure-keypad-browser-smoke-*
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/browser
+          merge-multiple: true
+      - name: Emit source and service CI release evidence fragments
+        run: |
+          EVIDENCE_ROOT="$RUNNER_TEMP/secure-keypad-ci-release-evidence"
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" rust-workspace \
+            "ci/rust-workspace.json" "fragments/rust-workspace.json" \
+            --runner ci-aggregate --check job-rust
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" javascript-contracts \
+            "ci/javascript-contracts.json" "fragments/javascript-contracts.json" \
+            --runner ci-aggregate --check job-contracts
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" native-parity \
+            "ci/native-parity.json" "fragments/native-parity.json" \
+            --runner ci-aggregate --check job-contracts
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" release-version-parity \
+            "ci/release-version-parity.json" "fragments/release-version-parity.json" \
+            --runner ci-aggregate --check job-contracts
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" framework-host-builds \
+            "ci/framework-host-builds.json" "fragments/framework-host-builds.json" \
+            --runner ci-aggregate --check job-flutter-host-build --check job-react-native-host-build --check job-ios-host-builds --check job-android-host-runtime-smoke
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" durable-backends \
+            "ci/durable-backends-aggregate.json" "fragments/durable-backends-aggregate.json" \
+            --runner ci-aggregate --check job-durable-backends
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" fuzz-stability \
+            "ci/fuzz-stability-aggregate.json" "fragments/fuzz-stability-aggregate.json" \
+            --runner ci-aggregate --check job-fuzz
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" linux-leak-sanitizer \
+            "ci/linux-leak-sanitizer-aggregate.json" "fragments/linux-leak-sanitizer-aggregate.json" \
+            --runner ci-aggregate --check job-fuzz
+      - name: Emit web browser CI release evidence
+        run: |
+          EVIDENCE_ROOT="$RUNNER_TEMP/secure-keypad-ci-release-evidence"
+          node scripts/emit-web-browser-evidence.mjs "$EVIDENCE_ROOT" \
+            "ci/web-browser-matrix.json" "fragments/web-browser-matrix.json" \
+            --framework-version playwright-1.62.1 \
+            --runner ubuntu-24.04 \
+            --log chromium=browser/chromium.log \
+            --log firefox=browser/firefox.log \
+            --log webkit=browser/webkit.log
+      - uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-ci-release-evidence
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence
+          if-no-files-found: error

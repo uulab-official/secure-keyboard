@@ -521,6 +521,14 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS/, "physical device evidence must require categorized review artifacts");
+  const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /sanitized CI gate record/, "CI gate evidence must reject raw log payloads");
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /realpathSync/, "CI gate evidence paths must be contained after symlink resolution");
+  const webEvidenceEmitter = source("scripts/emit-web-browser-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /chromium.*firefox.*webkit/, "web evidence must require the complete browser matrix");
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /verifyDeviceEvidenceFiles|buildReleaseGateFragment/, "web evidence must bind hashed files to the release gate contract");
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /secureContext: true/, "web evidence must record secure-context verification");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
@@ -588,6 +596,10 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-ci-gate-evidence/, "CI must validate CI gate evidence emission");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-web-browser-evidence/, "CI must validate web browser evidence emission");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-ci-release-evidence/, "CI must retain an aggregated release evidence artifact");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-web-browser-evidence\.mjs/, "CI must emit a validator-compatible web browser evidence record");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation accessibility contract/, "CI must execute the Android presentation accessibility contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /web-browser-matrix/, "CI must include a real browser adapter smoke matrix");

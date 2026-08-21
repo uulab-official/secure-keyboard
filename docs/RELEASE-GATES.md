@@ -162,6 +162,29 @@ Repeat it for each gate and merge the resulting fragments. The emitter does not
 claim that a command ran; the gate job remains responsible for producing and
 reviewing the sanitized JSON record before invoking it.
 
+The CI workflow now emits the `secure-keypad-ci-release-evidence` artifact after
+all source, service, host-build, fuzz, and browser jobs succeed. It contains
+commit-bound fragments for those CI gates and browser records whose log files
+are referenced by digest rather than copied into JSON. Download that artifact
+and merge its `fragments/*.json` with the separately collected physical-device,
+independent-review, and signed-release fragments; the resulting manifest is
+still expected to fail until every required external gate is present.
+
+For a browser-only evidence root, the checked-in web emitter accepts the three
+sanitized Playwright logs and creates the validator-compatible matrix record:
+
+```sh
+node scripts/emit-web-browser-evidence.mjs \
+  "$RUNNER_TEMP/release-evidence" \
+  "evidence/web-browser-matrix.json" \
+  "fragments/web-browser-matrix.json" \
+  --framework-version playwright-1.62.1 \
+  --runner ubuntu-24.04 \
+  --log chromium=browser/chromium.log \
+  --log firefox=browser/firefox.log \
+  --log webkit=browser/webkit.log
+```
+
 Create the detached Ed25519 signature and public-key material with a protected
 maintainer key. The private key is read only and is never copied into the
 release bundle or printed:

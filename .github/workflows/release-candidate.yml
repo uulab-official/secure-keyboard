@@ -94,6 +94,8 @@ jobs:
           pnpm test:release-candidate-metadata
           pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence
+          pnpm test:emit-ci-gate-evidence
+          pnpm test:emit-web-browser-evidence
           pnpm test:merge-release-evidence
           pnpm test:sign-release
           pnpm test:device-evidence

@@ -186,6 +186,8 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a reproducible CI 1,000,000-iteration campaign with a bounded libFuzzer RSS guard.
 - [x] Add a machine-readable release evidence manifest contract for sanitizer, durable-backend, device, independent-review, and signed-release gates.
 - [x] Add conflict-checked release evidence fragment merging before final manifest validation.
+- [x] Emit commit-bound CI fragments for durable backends, fuzz/LSAN, source gates, host builds, and browser-matrix logs.
+- [x] Convert the three-browser Playwright smoke logs into a validator-compatible Web evidence record without embedding raw logs.
 - [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
 - [x] Bind each referenced JSON gate record's embedded commit and pass status to its manifest gate.
 - [x] Revalidate iOS/Android/Web gate records, physical-device artifact categories, and nested log/artifact digests during final release verification.

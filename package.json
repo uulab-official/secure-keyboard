@@ -11,6 +11,8 @@
     "test:release-candidate-metadata": "node --test scripts/release-candidate-metadata.test.mjs",
     "test:expo-development-build": "node --test scripts/expo-development-build.test.mjs",
     "test:emit-release-gate-evidence": "node --test scripts/emit-release-gate-evidence.test.mjs",
+    "test:emit-ci-gate-evidence": "node --test scripts/emit-ci-gate-evidence.test.mjs",
+    "test:emit-web-browser-evidence": "node --test scripts/emit-web-browser-evidence.test.mjs",
     "merge:release-evidence": "node scripts/merge-release-evidence.mjs",
     "test:merge-release-evidence": "node --test scripts/merge-release-evidence.test.mjs",
     "test:sign-release": "node --test scripts/sign-release.test.mjs",
