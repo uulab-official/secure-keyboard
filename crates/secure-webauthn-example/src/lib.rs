@@ -106,7 +106,11 @@ struct OneTimeCeremonyStore<T> {
 
 impl<T> OneTimeCeremonyStore<T> {
     fn new(max_entries: usize, ttl: Duration) -> Result<Self, WebAuthnExampleError> {
-        if max_entries == 0 || max_entries > MAX_PENDING_CEREMONIES || ttl.is_zero() {
+        if max_entries == 0
+            || max_entries > MAX_PENDING_CEREMONIES
+            || ttl.is_zero()
+            || Instant::now().checked_add(ttl).is_none()
+        {
             return Err(WebAuthnExampleError::InvalidConfiguration);
         }
         Ok(Self {
@@ -134,7 +138,9 @@ impl<T> OneTimeCeremonyStore<T> {
             let handle = fresh_handle();
             if let std::collections::hash_map::Entry::Vacant(slot) = entries.entry(handle) {
                 slot.insert(PendingState {
-                    expires_at: now + self.ttl,
+                    expires_at: now
+                        .checked_add(self.ttl)
+                        .ok_or(WebAuthnExampleError::StoreUnavailable)?,
                     value,
                 });
                 return Ok(handle);
@@ -793,13 +799,13 @@ where
     T: Serialize,
 {
     match serde_json::to_vec(value) {
-        Ok(body) => WebAuthnHttpResponse {
+        Ok(body) if body.len() <= MAX_CLIENT_RESPONSE_BYTES => WebAuthnHttpResponse {
             status,
             content_type: WEBAUTHN_JSON_CONTENT_TYPE,
             headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
             body,
         },
-        Err(_) => webauthn_http_error(500, "temporarily_unavailable"),
+        Ok(_) | Err(_) => webauthn_http_error(500, "temporarily_unavailable"),
     }
 }
 
@@ -922,6 +928,13 @@ mod tests {
             Duration::from_secs(60),
         )
         .is_ok());
+        assert!(WebAuthnExampleService::new(
+            "localhost",
+            "http://localhost:3000",
+            "Example",
+            Duration::MAX,
+        )
+        .is_err());
     }
 
     #[test]
@@ -964,6 +977,14 @@ mod tests {
             service.finish_registration(&start.handle, &oversized),
             Err(WebAuthnExampleError::InvalidRequest)
         );
+    }
+
+    #[test]
+    fn response_body_limit_is_enforced_on_json_serialization() {
+        let value = "x".repeat(MAX_CLIENT_RESPONSE_BYTES + 1);
+        let response = webauthn_json_response(200, &value);
+        assert_eq!(response.status, 500);
+        assert_eq!(response.body, br#"{"error":"temporarily_unavailable"}"#);
     }
 
     proptest! {
