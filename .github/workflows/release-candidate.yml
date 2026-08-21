@@ -155,13 +155,14 @@ jobs:
         run: |
           test -n "$RELEASE_SIGNING_KEY_PEM"
           umask 077
-          printf '%s' "$RELEASE_SIGNING_KEY_PEM" > "$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
+          KEY_FILE="$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s' "$RELEASE_SIGNING_KEY_PEM" > "$KEY_FILE"
           node scripts/sign-release.mjs \
             "$RELEASE_DIR/secure-keypad-release.tar.gz" \
-            "$RUNNER_TEMP/secure-keypad-release-signing-key.pem" \
+            "$KEY_FILE" \
             "$RELEASE_DIR/secure-keypad-release.sig" \
             "$RELEASE_DIR/secure-keypad-release.pub.der"
-          rm -f "$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
       - name: Emit release artifact checksums
         run: |
           (
