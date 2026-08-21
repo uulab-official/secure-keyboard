@@ -41,6 +41,7 @@ pnpm check:native-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence
+pnpm test:release-candidate-metadata
 pnpm test:sign-release
 pnpm test:device-evidence
 pnpm test:security-audit
@@ -169,6 +170,14 @@ The checked-in release-candidate workflow runs the bundle job in the
 `secure-keypad-release` GitHub Environment. Repository administrators must
 configure that environment with required reviewers and the signing secret;
 the workflow file alone cannot establish those GitHub-side protections.
+
+The workflow also embeds `release-candidate-metadata.json` inside the signed
+source bundle. That record is deliberately marked `candidate-only`: it binds
+the exact checkout and package version, enumerates every final gate, and
+records the protected-key inputs and verifier command, but it does not mark
+external device, sanitizer, or independent-review gates as passed. Operators
+must merge the separately emitted evidence fragments and run the trusted-key
+verification before making a production claim.
 
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license

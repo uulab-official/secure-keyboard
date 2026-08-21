@@ -8,6 +8,7 @@
     "check:release-version-parity": "node scripts/check-release-version-parity.mjs",
     "test:release-version-parity": "node --test scripts/check-release-version-parity.test.mjs",
     "test:release-evidence": "node --test scripts/check-release-evidence.test.mjs",
+    "test:release-candidate-metadata": "node --test scripts/release-candidate-metadata.test.mjs",
     "test:emit-release-gate-evidence": "node --test scripts/emit-release-gate-evidence.test.mjs",
     "merge:release-evidence": "node scripts/merge-release-evidence.mjs",
     "test:merge-release-evidence": "node --test scripts/merge-release-evidence.test.mjs",

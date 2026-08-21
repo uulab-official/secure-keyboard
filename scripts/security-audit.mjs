@@ -472,6 +472,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/release-candidate-metadata\.mjs/, "release candidate must embed immutable candidate metadata in the signed bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /release-candidate-metadata\.json/, "release candidate must retain the candidate metadata record");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /services:/, "release candidate must provide isolated durable backend services");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_storage/, "release candidate must execute WebAuthn durable interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_rate_limit/, "release candidate must execute distributed rate-limit interoperability tests");
@@ -569,6 +571,11 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /nested log and artifact digests/, "release gates must revalidate nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
+  const releaseCandidateMetadata = source("scripts/release-candidate-metadata.mjs", findings);
+  requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /candidate-only/, "candidate metadata must not claim production readiness");
+  requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /requiredFinalGates/, "candidate metadata must enumerate final release gates");
+  requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /currentCommit/, "candidate metadata must bind to the checked-out commit");
+  requireText(findings, "package.json", rootPackage, /"test:release-candidate-metadata"/, "the workspace must expose the release candidate metadata test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
