@@ -73,9 +73,10 @@ The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
 notices, a Linux LeakSanitizer result, physical iOS/Android and Web browser
 matrix results, an independent security review, and signed-release evidence.
-The validator checks shape, paths, hashes, and required statuses only; it does
-not verify referenced files, CI provenance, signatures, or reviewer identity.
-Those references must be verified independently against the exact commit.
+The command checks shape, paths, required statuses, and recomputes SHA-256 for
+every referenced evidence/artifact file. It does not verify CI provenance,
+signatures, or reviewer identity; those references must still be verified
+independently against the exact commit.
 
 ## Fuzz gate
 

@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 import {
   REQUIRED_RELEASE_GATES,
+  verifyReleaseEvidenceFiles,
   validateReleaseEvidence,
 } from "./check-release-evidence.mjs";
 
@@ -70,4 +75,28 @@ test("rejects unsafe paths, bad hashes, failed statuses, and secret-bearing fiel
   assert.ok(findings.some((finding) => finding.includes("sha256")));
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].path")));
   assert.ok(findings.some((finding) => finding.includes("password")));
+});
+
+test("verifies every referenced release evidence and artifact digest", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-"));
+  const evidence = completeEvidence();
+  const payload = Buffer.from("release-evidence-fixture", "utf8");
+  const sha256 = createHash("sha256").update(payload).digest("hex");
+
+  for (const gate of evidence.gates) {
+    mkdirSync(join(root, "evidence"), { recursive: true });
+    writeFileSync(join(root, gate.evidencePath), payload);
+    gate.sha256 = sha256;
+  }
+  for (const artifact of evidence.artifacts) {
+    mkdirSync(join(root, "artifacts"), { recursive: true });
+    writeFileSync(join(root, artifact.path), payload);
+    artifact.sha256 = sha256;
+  }
+
+  assert.deepEqual(verifyReleaseEvidenceFiles(evidence, root), []);
+
+  writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("tampered", "utf8"));
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+  assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
 });

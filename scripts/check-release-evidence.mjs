@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -177,6 +178,47 @@ export function validateReleaseEvidence(evidence) {
   return findings;
 }
 
+function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
+  if (!isSafeRelativePath(relativePath) || !SHA256.test(String(expectedHash))) {
+    return;
+  }
+  const absolutePath = path.resolve(root, relativePath);
+  try {
+    const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
+    if (actualHash !== expectedHash) {
+      add(findings, `${field}.sha256`, `does not match ${relativePath}`);
+    }
+  } catch (error) {
+    add(findings, `${field}.path`, `could not read ${relativePath}: ${error.message}`);
+  }
+}
+
+/**
+ * Recomputes digests for all referenced gate and artifact files.
+ *
+ * Call [`validateReleaseEvidence`] first so malformed paths and hashes are
+ * reported as schema findings rather than being used for filesystem access.
+ *
+ * @param {unknown} evidence
+ * @param {string} root
+ * @returns {string[]}
+ */
+export function verifyReleaseEvidenceFiles(evidence, root) {
+  const findings = [];
+  if (!isRecord(evidence) || !Array.isArray(evidence.gates) || !Array.isArray(evidence.artifacts)) {
+    return ["manifest: file verification requires a structurally valid manifest"];
+  }
+  for (const [index, gate] of evidence.gates.entries()) {
+    if (!isRecord(gate)) continue;
+    verifyFileDigest(findings, root, `gates[${index}]`, gate.evidencePath, gate.sha256);
+  }
+  for (const [index, artifact] of evidence.artifacts.entries()) {
+    if (!isRecord(artifact)) continue;
+    verifyFileDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
+  }
+  return findings;
+}
+
 function main() {
   const manifestPath = process.argv[2];
   if (!manifestPath) {
@@ -197,6 +239,12 @@ function main() {
   const findings = validateReleaseEvidence(evidence);
   if (findings.length > 0) {
     console.error(findings.map((finding) => `- ${finding}`).join("\n"));
+    process.exitCode = 1;
+    return;
+  }
+  const fileFindings = verifyReleaseEvidenceFiles(evidence, process.cwd());
+  if (fileFindings.length > 0) {
+    console.error(fileFindings.map((finding) => `- ${finding}`).join("\n"));
     process.exitCode = 1;
     return;
   }
