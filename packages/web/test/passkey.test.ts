@@ -194,6 +194,17 @@ describe("passkey registration", () => {
     ).rejects.toMatchObject({ code: "invalid-options" });
   });
 
+  it("rejects prototype-pollution keys in server extension JSON", async () => {
+    const extensions = JSON.parse('{"__proto__":{"polluted":true}}');
+
+    await expect(
+      createPasskey(
+        { ...creationOptions, extensions },
+        environment({ create: async () => null, get: async () => null }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+  });
+
   it("bounds browser extension results before serializing them", async () => {
     const api: WebAuthnCredentialApi = {
       create: async () => ({

@@ -333,7 +333,14 @@ function copyBoundedExtensionValue(
   }
   const result: Record<string, unknown> = {};
   for (const key of keys) {
-    if (key.length > 128) throw new WebAuthnClientError(errorCode, `${field} has an invalid key`);
+    if (
+      key.length > 128 ||
+      key === "__proto__" ||
+      key === "constructor" ||
+      key === "prototype"
+    ) {
+      throw new WebAuthnClientError(errorCode, `${field} has an invalid key`);
+    }
     result[key] = copyBoundedExtensionValue(value[key], field, errorCode, depth + 1, budget);
   }
   return result;

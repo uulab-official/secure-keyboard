@@ -191,6 +191,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /createPasskey/, "Web adapter must expose passkey-first registration");
   requireText(findings, "packages/web/src/index.ts", web, /MAX_WEBAUTHN_EXTENSION_NODES/, "WebAuthn extension JSON must be bounded");
   requireText(findings, "packages/web/src/index.ts", web, /copyBoundedExtensionValue/, "WebAuthn extension JSON must be defensively copied");
+  requireText(findings, "packages/web/src/index.ts", web, /__proto__|constructor|prototype/, "WebAuthn extension copying must reject prototype-pollution keys");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
