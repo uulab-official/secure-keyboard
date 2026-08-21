@@ -4,13 +4,14 @@ on:
   push:
     branches: [main, "codex/**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   rust:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
@@ -25,7 +26,7 @@ jobs:
 
   durable-backends:
     name: Redis/PostgreSQL interoperability
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       redis:
         image: redis:7.2-alpine
@@ -62,7 +63,7 @@ jobs:
         run: cargo test -p secure-auth-server --all-features --test durable_rate_limit -- --ignored --nocapture
 
   contracts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
@@ -95,7 +96,7 @@ jobs:
 
   flutter:
     name: Validate Flutter contract
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -115,7 +116,7 @@ jobs:
 
   flutter-host-build:
     name: Compile Flutter Android host integration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -226,7 +227,7 @@ jobs:
 
   react-native-host-build:
     name: Compile React Native Android host integration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
@@ -357,7 +358,7 @@ jobs:
   android-host-runtime-smoke:
     name: Launch Android RN and Flutter hosts in an emulator
     needs: [flutter-host-build, react-native-host-build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -400,7 +401,7 @@ jobs:
 
   fuzz:
     name: Fuzz parser, core, and native boundaries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -454,7 +455,7 @@ jobs:
 
   sbom:
     name: Produce dependency SBOM artifact
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
@@ -485,7 +486,7 @@ jobs:
 
   ffi-header:
     name: Validate C ABI header
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Compile header contract
@@ -493,7 +494,7 @@ jobs:
 
   native-platforms:
     name: Validate native platform contracts
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
@@ -602,7 +603,7 @@ jobs:
 
   ios-host-builds:
     name: Compile iOS RN and Flutter host integrations
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0

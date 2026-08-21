@@ -5,8 +5,10 @@ green and the platform/security review items are signed off. A passing unit
 test suite alone is not a production claim.
 
 Every GitHub Action in the release workflow is pinned to a 40-character commit
-SHA. The adjacent version comment is informational only; changing an action
-requires an explicit revision update and a passing security audit.
+SHA, and CI jobs use the explicit `ubuntu-24.04` or `macos-15` runner image
+labels. The adjacent action version comment is informational only; changing an
+action or runner requires an explicit revision update and a passing security
+audit.
 
 ## Reproducible local gates
 

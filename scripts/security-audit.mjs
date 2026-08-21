@@ -318,6 +318,9 @@ export function runSecurityAudit() {
   }
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*ubuntu-24\.04/, "Linux CI jobs must use the repository-pinned runner image");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*macos-15/, "Apple CI jobs must use the repository-pinned runner image");
+  forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*(?:ubuntu|macos)-latest/, "CI must not float on a latest runner image");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /27\.1\.12297006/, "Android host builds must use the repository-pinned NDK");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /ANDROID_NDK_LATEST_HOME|find[^\n]*SDK_ROOT\/ndk/, "Android host builds must not select an unpinned latest NDK");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /nightly-2026-08-19/, "Fuzz CI must use the repository-pinned nightly toolchain");
