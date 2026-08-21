@@ -388,6 +388,19 @@ jobs:
             -headers crates/secure-ffi/include \
             -output "$RUNNER_TEMP/secure_ffi.xcframework"
           plutil -extract AvailableLibraries xml1 -o - "$RUNNER_TEMP/secure_ffi.xcframework/Info.plist"
+      - name: Emit native artifact checksum manifest
+        run: |
+          find "$RUNNER_TEMP/secure_ffi.xcframework" -type f -print0 \
+            | sort -z \
+            | xargs -0 shasum -a 256 \
+            > "$RUNNER_TEMP/secure_ffi.xcframework.sha256"
+          cat "$RUNNER_TEMP/secure_ffi.xcframework.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secure-ffi-xcframework-and-checksum
+          path: |
+            ${{ runner.temp }}/secure_ffi.xcframework
+            ${{ runner.temp }}/secure_ffi.xcframework.sha256
       - name: Parse package Podspecs against the release XCFramework
         run: |
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
