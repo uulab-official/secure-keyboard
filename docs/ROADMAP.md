@@ -50,7 +50,7 @@ Status: schema contract complete
 - [x] Define masked state and result event contracts.
 - [x] Define locale, RTL, accessibility, haptic, sound, animation, and masking policy fields.
 - [x] Add schema validation and secret-field rejection tests.
-- [x] Ship a default theme and numeric/Hangul examples.
+- [x] Ship a default theme and numeric/printable-ASCII/Hangul examples.
 
 Exit criteria: an external consumer can create a branded keypad without changing secure-core code.
 
@@ -101,7 +101,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the Flutter plugin and XCFramework.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
 - [ ] Compile the registration in supported host apps and verify device behavior.
-- [x] Provide examples for numeric PIN, Hangul password, and branded themes.
+- [x] Provide examples for numeric PIN, printable-ASCII password, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 

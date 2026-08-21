@@ -5,6 +5,8 @@ export const LOCALE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
 export const COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 
 export type KeyRole = "input" | "backspace" | "submit" | "clear" | "cancel" | "spacer";
+/** Native-only input policy. Browser custom keypads are intentionally excluded. */
+export type InputPolicy = "numeric" | "ascii" | "hangul";
 export type LayoutDirection = "ltr" | "rtl";
 
 export interface KeySpec {

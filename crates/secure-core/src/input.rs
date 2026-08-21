@@ -33,6 +33,8 @@ impl KeyId {
 pub enum ResolvedKey {
     /// A numeric digit from zero to nine.
     Digit(u8),
+    /// A printable ASCII code point from U+0020 through U+007E.
+    Ascii(u8),
     /// A Hangul leading consonant index.
     Leading(u8),
     /// A Hangul vowel index.
@@ -56,6 +58,15 @@ pub enum InputPolicy {
         /// Normalization policy locked into the session.
         normalization: NormalizationPolicy,
     },
+    /// Printable ASCII characters with a maximum number of input tokens.
+    ///
+    /// Key IDs use the public form `ascii-XX`, where `XX` is a lowercase
+    /// two-digit hexadecimal code point. The label shown by a native host is
+    /// never used as the secret input value.
+    Ascii {
+        /// Maximum number of input tokens.
+        max_tokens: usize,
+    },
 }
 
 impl InputPolicy {
@@ -75,6 +86,15 @@ impl InputPolicy {
         Self::Hangul {
             max_tokens: max_tokens.clamp(1, crate::MAX_INPUT_TOKENS),
             normalization: NormalizationPolicy::Nfc,
+        }
+    }
+
+    /// Creates a printable-ASCII policy. The token count is clamped to the
+    /// supported `1..=MAX_INPUT_TOKENS` range to keep secret storage bounded.
+    #[must_use]
+    pub fn ascii(max_tokens: usize) -> Self {
+        Self::Ascii {
+            max_tokens: max_tokens.clamp(1, crate::MAX_INPUT_TOKENS),
         }
     }
 
@@ -99,12 +119,33 @@ impl InputPolicy {
                     .ok_or(InputError::InvalidKey)
             }
             Self::Hangul { .. } => hangul::resolve_key(key).ok_or(InputError::InvalidKey),
+            Self::Ascii { .. } => {
+                let Some(codepoint) = key.strip_prefix("ascii-") else {
+                    return Err(InputError::InvalidKey);
+                };
+                if codepoint.len() != 2
+                    || !codepoint
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+                {
+                    return Err(InputError::InvalidKey);
+                }
+                let Ok(value) = u8::from_str_radix(codepoint, 16) else {
+                    return Err(InputError::InvalidKey);
+                };
+                (0x20..=0x7e)
+                    .contains(&value)
+                    .then_some(ResolvedKey::Ascii(value))
+                    .ok_or(InputError::InvalidKey)
+            }
         }
     }
 
     pub(crate) fn max_tokens(&self) -> usize {
         match self {
-            Self::Numeric { max_tokens } | Self::Hangul { max_tokens, .. } => *max_tokens,
+            Self::Numeric { max_tokens }
+            | Self::Hangul { max_tokens, .. }
+            | Self::Ascii { max_tokens } => *max_tokens,
         }
     }
 }

@@ -152,6 +152,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
+    requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
   }
   for (const file of [
@@ -166,10 +167,12 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
+    requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
+  requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_new_ascii/, "C ABI must expose the bounded printable-ASCII policy");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_submission_free/, "C ABI must expose submission ownership release");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_cancel/, "C ABI must expose explicit cancellation and zeroization");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_login_start/, "C ABI must expose native-only auth handoff");
@@ -181,6 +184,7 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /Box<\[u32\]>/, "core token storage must avoid secret-bearing Vec reallocation");
   const coreInput = source("crates/secure-core/src/input.rs", findings);
   requireText(findings, "crates/secure-core/src/input.rs", coreInput, /MAX_INPUT_TOKENS/, "core input policy must retain a bounded token limit");
+  requireText(findings, "crates/secure-core/src/input.rs", coreInput, /Self::Ascii/, "core input policy must retain the explicit printable-ASCII policy");
   requireText(findings, "crates/secure-core/src/input.rs", coreInput, /SecretBuffer::with_capacity/, "core rendered secret output must be preallocated");
   const coreHangul = source("crates/secure-core/src/hangul.rs", findings);
   requireText(findings, "crates/secure-core/src/hangul.rs", coreHangul, /bytes\.zeroize\(\)/, "core UTF-8 conversion must clear its temporary secret bytes");
@@ -206,6 +210,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /encodedCredentialBinary/, "WebAuthn browser credential output must be bounded before serialization");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const contracts = source("packages/contracts/src/index.ts", findings);
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /"ascii"/, "public contracts must enumerate the native printable-ASCII policy");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
   const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
@@ -366,6 +371,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAndroidBuild, /externalNativeBuild/, "React Native package must retain its native Android build boundary");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
+  requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy=\"ascii\"/, "customization guide must cover printable-ASCII native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
   forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
   const migrationGuide = source("docs/MIGRATION-FROM-PASSWORD.md", findings);

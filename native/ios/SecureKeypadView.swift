@@ -63,6 +63,12 @@ public struct SecureKeypadTheme {
     public init() {}
 }
 
+private enum SecureKeypadInputPolicy {
+    case numeric
+    case ascii
+    case hangul
+}
+
 /// Native-owned opaque submission. It cannot be serialized to JavaScript.
 public final class SecureKeypadSubmission {
     fileprivate var raw: OpaquePointer?
@@ -189,7 +195,17 @@ public class SecureKeypadView: UIView {
         maxTokens: Int = 8,
         timeoutMs: UInt64 = 60_000
     ) throws {
-        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, hangul: false)
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .numeric)
+    }
+
+    /// Starts a printable-ASCII Secure Native session.
+    public func configureAscii(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme = SecureKeypadTheme(),
+        maxTokens: Int = 32,
+        timeoutMs: UInt64 = 60_000
+    ) throws {
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .ascii)
     }
 
     /// Starts a structured Hangul Secure Native session.
@@ -199,7 +215,7 @@ public class SecureKeypadView: UIView {
         maxTokens: Int = 32,
         timeoutMs: UInt64 = 60_000
     ) throws {
-        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, hangul: true)
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .hangul)
     }
 
     private func configure(
@@ -207,7 +223,7 @@ public class SecureKeypadView: UIView {
         theme: SecureKeypadTheme,
         maxTokens: Int,
         timeoutMs: UInt64,
-        hangul: Bool
+        policy: SecureKeypadInputPolicy
     ) throws {
         guard maxTokens > 0, maxTokens <= 4_096, timeoutMs > 0, timeoutMs <= 86_400_000 else {
             throw SecureKeypadViewError.invalidLayout
@@ -219,10 +235,13 @@ public class SecureKeypadView: UIView {
         }
         var newSession: OpaquePointer?
         let status: UInt32
-        if hangul {
-            status = secure_keypad_session_new_hangul(UInt32(maxTokens), timeoutMs, &newSession)
-        } else {
+        switch policy {
+        case .numeric:
             status = secure_keypad_session_new_numeric(UInt32(maxTokens), timeoutMs, &newSession)
+        case .ascii:
+            status = secure_keypad_session_new_ascii(UInt32(maxTokens), timeoutMs, &newSession)
+        case .hangul:
+            status = secure_keypad_session_new_hangul(UInt32(maxTokens), timeoutMs, &newSession)
         }
         guard status == 0, let newSession else {
             throw SecureKeypadViewError.nativeFailure(status)

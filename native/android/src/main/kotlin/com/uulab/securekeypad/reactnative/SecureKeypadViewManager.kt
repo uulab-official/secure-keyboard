@@ -99,6 +99,8 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
             if (parsed.inputPolicy == "hangul") {
                 view.configureHangul(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
+            } else if (parsed.inputPolicy == "ascii") {
+                view.configureAscii(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             } else {
                 view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             }

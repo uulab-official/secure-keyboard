@@ -3,6 +3,7 @@ import {
   validateLayout,
   validateTheme,
   type KeypadLayout,
+  type InputPolicy as ContractInputPolicy,
   type MaskedState,
   type SecureKeypadEvent,
   type ThemeTokens,
@@ -12,7 +13,7 @@ import {
 /** The native view-manager name registered by the platform adapters. */
 export const SECURE_KEYPAD_NATIVE_VIEW_NAME = "SecureKeypadView" as const;
 
-export type InputPolicy = "numeric" | "hangul";
+export type InputPolicy = ContractInputPolicy;
 
 export interface SecureKeypadProps {
   /** Versioned, serializable layout data. It never contains the entered secret. */
@@ -89,7 +90,12 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
   const themeResult = validateTheme(value.theme);
   if (!themeResult.valid) errors.push(...themeResult.errors);
 
-  if (value.inputPolicy !== undefined && value.inputPolicy !== "numeric" && value.inputPolicy !== "hangul") {
+  if (
+    value.inputPolicy !== undefined &&
+    value.inputPolicy !== "numeric" &&
+    value.inputPolicy !== "ascii" &&
+    value.inputPolicy !== "hangul"
+  ) {
     errors.push("props.inputPolicy is invalid");
   }
   if (value.maxTokens !== undefined && !isBoundedInteger(value.maxTokens, 1, 4096)) {

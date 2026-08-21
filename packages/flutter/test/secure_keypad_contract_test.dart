@@ -12,6 +12,18 @@ void main() {
     expect(configuration.onResult, isNull);
   });
 
+  test('ASCII policy remains a native-only policy', () {
+    final configuration = SecureKeypadConfiguration(
+      layout: SecureKeypadConfiguration.defaultNumeric().layout,
+      theme: SecureKeypadTheme.defaultTheme(),
+      inputPolicy: InputPolicy.ascii,
+      maxTokens: 32,
+    );
+
+    expect(configuration.validate(), isEmpty);
+    expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
+  });
+
   test('configuration rejects unsafe bounds and unsupported schema versions', () {
     final configuration = SecureKeypadConfiguration(
       layout: KeypadLayout(

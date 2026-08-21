@@ -10,11 +10,11 @@ use secure_ffi::{
     secure_keypad_client_login_finish, secure_keypad_client_login_free,
     secure_keypad_client_login_start, secure_keypad_session_backspace,
     secure_keypad_session_cancel, secure_keypad_session_clear, secure_keypad_session_free,
-    secure_keypad_session_new_hangul, secure_keypad_session_new_numeric,
-    secure_keypad_session_press_key, secure_keypad_session_refresh, secure_keypad_session_submit,
-    secure_keypad_submission_free, SecureKeypadAuthMessage, SecureKeypadClientLogin,
-    SecureKeypadDisplayState, SecureKeypadError, SecureKeypadMaskedState, SecureKeypadSession,
-    SecureKeypadSubmission,
+    secure_keypad_session_new_ascii, secure_keypad_session_new_hangul,
+    secure_keypad_session_new_numeric, secure_keypad_session_press_key,
+    secure_keypad_session_refresh, secure_keypad_session_submit, secure_keypad_submission_free,
+    SecureKeypadAuthMessage, SecureKeypadClientLogin, SecureKeypadDisplayState, SecureKeypadError,
+    SecureKeypadMaskedState, SecureKeypadSession, SecureKeypadSubmission,
 };
 
 #[test]
@@ -89,6 +89,17 @@ fn ffi_rejects_null_and_invalid_public_key_inputs() {
         SecureKeypadError::InvalidKey
     );
 
+    unsafe { secure_keypad_session_free(session) };
+}
+
+#[test]
+fn ascii_constructor_accepts_bounded_policy() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_ascii(8, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    assert!(!session.is_null());
     unsafe { secure_keypad_session_free(session) };
 }
 

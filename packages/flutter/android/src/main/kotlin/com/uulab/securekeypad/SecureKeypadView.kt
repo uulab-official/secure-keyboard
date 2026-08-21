@@ -49,6 +49,12 @@ public data class SecureKeypadTheme(
     val contentPaddingPx: Int = 16,
 )
 
+private enum class SecureKeypadInputPolicy {
+    NUMERIC,
+    ASCII,
+    HANGUL,
+}
+
 /** Resolves an Activity through framework ContextWrappers without assuming a host type. */
 private fun Context.findActivity(): Activity? {
     var current: Context = this
@@ -159,7 +165,17 @@ public open class SecureKeypadView @JvmOverloads constructor(
         maxTokens: Int = 8,
         timeoutMs: Long = 60_000L,
     ) {
-        configure(layout, theme, maxTokens, timeoutMs, hangul = false)
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.NUMERIC)
+    }
+
+    /** Starts a printable-ASCII Secure Native session. */
+    public fun configureAscii(
+        layout: SecureKeypadLayout,
+        theme: SecureKeypadTheme = SecureKeypadTheme(),
+        maxTokens: Int = 32,
+        timeoutMs: Long = 60_000L,
+    ) {
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.ASCII)
     }
 
     /** Starts a structured Hangul Secure Native session. */
@@ -169,7 +185,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         maxTokens: Int = 32,
         timeoutMs: Long = 60_000L,
     ) {
-        configure(layout, theme, maxTokens, timeoutMs, hangul = true)
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.HANGUL)
     }
 
     private fun configure(
@@ -177,16 +193,16 @@ public open class SecureKeypadView @JvmOverloads constructor(
         theme: SecureKeypadTheme,
         maxTokens: Int,
         timeoutMs: Long,
-        hangul: Boolean,
+        policy: SecureKeypadInputPolicy,
     ) {
         require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
         validateLayout(layout)
         releaseSession()
-        val handle = if (hangul) {
-            SecureKeypadNative.sessionNewHangul(maxTokens, timeoutMs)
-        } else {
-            SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
+        val handle = when (policy) {
+            SecureKeypadInputPolicy.NUMERIC -> SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
+            SecureKeypadInputPolicy.ASCII -> SecureKeypadNative.sessionNewAscii(maxTokens, timeoutMs)
+            SecureKeypadInputPolicy.HANGUL -> SecureKeypadNative.sessionNewHangul(maxTokens, timeoutMs)
         }
             ?: error("secure keypad native session could not be created")
         sessionHandle = handle
@@ -332,6 +348,11 @@ private object SecureKeypadNative {
         return nativeSessionNewNumeric(maxTokens, timeoutMs).takeIf { it != 0L }
     }
 
+    fun sessionNewAscii(maxTokens: Int, timeoutMs: Long): Long? {
+        ensureLoaded()
+        return nativeSessionNewAscii(maxTokens, timeoutMs).takeIf { it != 0L }
+    }
+
     fun sessionNewHangul(maxTokens: Int, timeoutMs: Long): Long? {
         ensureLoaded()
         return nativeSessionNewHangul(maxTokens, timeoutMs).takeIf { it != 0L }
@@ -378,6 +399,7 @@ private object SecureKeypadNative {
     }
 
     private external fun nativeSessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long
+    private external fun nativeSessionNewAscii(maxTokens: Int, timeoutMs: Long): Long
     private external fun nativeSessionNewHangul(maxTokens: Int, timeoutMs: Long): Long
     private external fun nativeSessionFree(handle: Long)
     private external fun nativeSessionPressKey(handle: Long, keyId: ByteArray): Int

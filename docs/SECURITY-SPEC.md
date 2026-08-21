@@ -57,7 +57,7 @@ accepted, never that server authentication succeeded.
 
 ## Input policies
 
-Numeric, alphabetic, symbol, and Hangul composition are separate policies. Hangul composition happens in the secure core, not in JavaScript or Dart. The initial core accepts structured jamo key IDs and emits canonical Hangul syllable code points; arbitrary Unicode normalization is not silently enabled. Future Unicode policies must lock the Unicode version and normalization behavior. NFKC must not be enabled implicitly because compatibility normalization can change the user's intended secret.
+Numeric, printable-ASCII, and Hangul composition are separate native policies. Printable ASCII keys use a public `ascii-XX` identifier with a lowercase hexadecimal code point; labels are not interpreted as secret input. Hangul composition happens in the secure core, not in JavaScript or Dart. The initial core accepts structured jamo key IDs and emits canonical Hangul syllable code points; arbitrary Unicode normalization is not silently enabled. Future Unicode policies must lock the Unicode version and normalization behavior. NFKC must not be enabled implicitly because compatibility normalization can change the user's intended secret.
 
 ## Memory and leakage rules
 

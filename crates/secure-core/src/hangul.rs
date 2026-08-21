@@ -6,6 +6,7 @@ const TAG_DIGIT: u32 = 0x1000;
 const TAG_LEADING: u32 = 0x2000;
 const TAG_VOWEL: u32 = 0x3000;
 const TAG_TRAILING: u32 = 0x4000;
+const TAG_ASCII: u32 = 0x5000;
 const TAG_MASK: u32 = 0xF000;
 
 const LEADING_KEYS: [&str; 19] = [
@@ -90,6 +91,7 @@ pub(crate) fn resolve_key(key: &str) -> Option<ResolvedKey> {
 pub(crate) fn encode_key(key: ResolvedKey) -> u32 {
     match key {
         ResolvedKey::Digit(value) => TAG_DIGIT | u32::from(value),
+        ResolvedKey::Ascii(value) => TAG_ASCII | u32::from(value),
         ResolvedKey::Leading(value) => TAG_LEADING | u32::from(value),
         ResolvedKey::Vowel(value) => TAG_VOWEL | u32::from(value),
         ResolvedKey::Trailing(value) => TAG_TRAILING | u32::from(value),
@@ -145,6 +147,9 @@ pub(crate) fn render(tokens: &[u32]) -> Vec<u32> {
         if let Some(digit) = tokens.get(index).and_then(|token| digit(*token)) {
             rendered.push(u32::from(b'0' + digit));
         }
+        if let Some(ascii) = tokens.get(index).and_then(|token| ascii(*token)) {
+            rendered.push(u32::from(ascii));
+        }
         index += 1;
     }
     rendered
@@ -176,6 +181,12 @@ fn vowel(token: u32) -> Option<u8> {
 
 fn trailing(token: u32) -> Option<u8> {
     (token & TAG_MASK == TAG_TRAILING)
+        .then(|| u8::try_from(token & !TAG_MASK).ok())
+        .flatten()
+}
+
+fn ascii(token: u32) -> Option<u8> {
+    (token & TAG_MASK == TAG_ASCII)
         .then(|| u8::try_from(token & !TAG_MASK).ok())
         .flatten()
 }

@@ -53,6 +53,11 @@ secure_keypad_error_t secure_keypad_session_new_numeric(
     uint64_t timeout_ms,
     secure_keypad_session_t **output);
 
+secure_keypad_error_t secure_keypad_session_new_ascii(
+    uint32_t max_tokens,
+    uint64_t timeout_ms,
+    secure_keypad_session_t **output);
+
 secure_keypad_error_t secure_keypad_session_new_hangul(
     uint32_t max_tokens,
     uint64_t timeout_ms,

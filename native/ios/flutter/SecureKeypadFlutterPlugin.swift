@@ -99,6 +99,13 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
                     maxTokens: config.maxTokens,
                     timeoutMs: config.timeoutMs
                 )
+            } else if config.inputPolicy == "ascii" {
+                try keypad.configureAscii(
+                    layout: config.layout,
+                    theme: config.theme,
+                    maxTokens: config.maxTokens,
+                    timeoutMs: config.timeoutMs
+                )
             } else {
                 try keypad.configureNumeric(
                     layout: config.layout,

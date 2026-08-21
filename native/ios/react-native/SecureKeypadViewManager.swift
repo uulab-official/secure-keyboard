@@ -78,6 +78,13 @@ final class SecureKeypadReactView: SecureKeypadView {
                     maxTokens: parsed.maxTokens,
                     timeoutMs: parsed.timeoutMs
                 )
+            } else if parsed.inputPolicy == "ascii" {
+                try configureAscii(
+                    layout: parsed.layout,
+                    theme: parsed.theme,
+                    maxTokens: parsed.maxTokens,
+                    timeoutMs: parsed.timeoutMs
+                )
             } else {
                 try configureNumeric(
                     layout: parsed.layout,

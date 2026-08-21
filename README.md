@@ -21,7 +21,7 @@ Systems migrating from ordinary password endpoints should follow the
 
 ## Current packages
 
-- `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
+- `secure-core`: key-ID-only input state, numeric/printable-ASCII input, Hangul composition, timeout, and explicit clearing.
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
 - `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context and an explicit host-validated CSRF result, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
@@ -47,7 +47,7 @@ review remain release gates; the Axum WebAuthn integration is compile-tested
 behind the optional feature. Do not treat the current repository state as a
 drop-in production authentication component.
 See [customization examples](docs/CUSTOMIZATION-EXAMPLES.md) for numeric,
-Hangul, and branded native layouts.
+printable ASCII, Hangul, and branded native layouts.
 
 ## Development
 

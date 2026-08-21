@@ -22,7 +22,7 @@ public struct SecureKeypadBridgeConfiguration {
         theme = try Self.parseTheme(themeValue)
 
         let policy = (dictionary["inputPolicy"] as? String) ?? "numeric"
-        guard policy == "numeric" || policy == "hangul" else {
+        guard policy == "numeric" || policy == "ascii" || policy == "hangul" else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         inputPolicy = policy

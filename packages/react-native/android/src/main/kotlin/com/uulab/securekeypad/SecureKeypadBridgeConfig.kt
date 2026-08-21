@@ -23,7 +23,7 @@ internal object SecureKeypadBridgeConfigParser {
         val layout = parseLayout(value["layout"] as? Map<*, *> ?: invalid())
         val theme = parseTheme(value["theme"] as? Map<*, *> ?: invalid())
         val inputPolicy = (value["inputPolicy"] as? String) ?: "numeric"
-        require(inputPolicy == "numeric" || inputPolicy == "hangul")
+        require(inputPolicy == "numeric" || inputPolicy == "ascii" || inputPolicy == "hangul")
         val maxTokens = (value["maxTokens"] as? Number)?.toInt() ?: 8
         val timeoutMs = (value["timeoutMs"] as? Number)?.toLong() ?: 60_000L
         require(maxTokens in 1..4_096)

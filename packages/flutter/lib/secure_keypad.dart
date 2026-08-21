@@ -12,7 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-enum InputPolicy { numeric, hangul }
+/// Native-only policies. Web custom keypads are intentionally not represented.
+enum InputPolicy { numeric, ascii, hangul }
 
 enum KeyRole { input, backspace, submit, clear, cancel, spacer }
 

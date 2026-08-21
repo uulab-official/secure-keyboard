@@ -91,6 +91,13 @@ private class SecureKeypadFlutterPlatformView(
                     configuration.maxTokens,
                     configuration.timeoutMs,
                 )
+            } else if (configuration.inputPolicy == "ascii") {
+                keypad.configureAscii(
+                    configuration.layout,
+                    configuration.theme,
+                    configuration.maxTokens,
+                    configuration.timeoutMs,
+                )
             } else {
                 keypad.configureNumeric(
                     configuration.layout,

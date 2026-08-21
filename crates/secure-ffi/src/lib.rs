@@ -227,6 +227,31 @@ pub unsafe extern "C" fn secure_keypad_session_new_numeric(
     })
 }
 
+/// Creates a printable-ASCII keypad session.
+///
+/// The native caller supplies public IDs in the `ascii-XX` form, where `XX`
+/// is a lowercase hexadecimal printable-ASCII code point. Labels and host
+/// strings are never used as secret input values.
+///
+/// # Safety
+///
+/// `output` must be a valid, writable pointer to a `*mut SecureKeypadSession`.
+/// The returned handle must be freed exactly once with
+/// [`secure_keypad_session_free`], and must not be used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_session_new_ascii(
+    max_tokens: u32,
+    timeout_ms: u64,
+    output: *mut *mut SecureKeypadSession,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if max_tokens == 0 || max_tokens > MAX_TOKENS {
+            return SecureKeypadError::InvalidArgument;
+        }
+        create_session(InputPolicy::ascii(max_tokens as usize), timeout_ms, output)
+    })
+}
+
 /// Creates a Hangul jamo keypad session with the locked NFC-oriented policy.
 ///
 /// # Safety

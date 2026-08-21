@@ -14,6 +14,7 @@ int main(void) {
     size_t message_written = 0;
 
     (void)secure_keypad_session_new_numeric(4, 60000, &session);
+    (void)secure_keypad_session_new_ascii(8, 60000, &session);
     (void)secure_keypad_session_press_key(session, (const uint8_t *)"digit-1", 7);
     (void)secure_keypad_session_refresh(session, &state);
     (void)secure_keypad_session_cancel(session);

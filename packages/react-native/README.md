@@ -38,6 +38,11 @@ export function PinEntry() {
 }
 ```
 
+For native passwords containing letters and symbols, use `inputPolicy: "ascii"`
+with public `ascii-XX` key IDs. The label is presentation-only; browser
+JavaScript is not a trusted secret-memory boundary, so use the passkey adapter
+on the web.
+
 This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
 
 `cancelRequest` is a monotonic, non-secret command token. The first value is

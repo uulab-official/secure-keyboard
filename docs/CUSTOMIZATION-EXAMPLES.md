@@ -94,3 +94,38 @@ The native parser rejects unknown fields, duplicate IDs, oversized labels, and
 unsupported policy values before the session is created. Theme values can be
 changed freely within the bounded schema; the input buffer and native
 submission ownership do not change with the theme.
+
+## Printable ASCII policy (native only)
+
+For passwords that need letters and symbols, use the native `ascii` policy.
+Input keys use a public `ascii-XX` identifier, where `XX` is lowercase
+hexadecimal for a printable ASCII code point (`20` through `7e`). The visible
+label is presentation-only and is never interpreted as the secret by the
+framework layer.
+
+```tsx
+const asciiLayout: KeypadLayout = {
+  schemaVersion: 1,
+  id: "ascii-example",
+  rows: [[
+    { id: "ascii-41", label: "A", role: "input" },
+    { id: "ascii-62", label: "b", role: "input" },
+    { id: "ascii-21", label: "!", role: "input" },
+  ], [
+    { id: "backspace", label: "Delete", role: "backspace" },
+    { id: "clear", label: "Clear", role: "clear" },
+    { id: "submit", label: "Continue", role: "submit" },
+  ]],
+};
+
+<SecureKeypadView
+  layout={asciiLayout}
+  theme={DEFAULT_THEME}
+  inputPolicy="ascii"
+  maxTokens={64}
+/>
+```
+
+This policy is deliberately unavailable as a browser password API. Browser
+JavaScript and extensions remain outside the native memory boundary; prefer
+the passkey adapter on the web.
