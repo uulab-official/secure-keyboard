@@ -73,8 +73,8 @@ function createValidStaging() {
   writeFile(root, "source/Cargo.lock", "# cargo lock fixture\n");
   writeFile(root, "source/pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
   writeFile(root, "source/CHANGELOG.md", "# Changelog\n\n## Unreleased\n");
-  writeFile(root, "source/README.md", "# Secure Keypad SDK\n");
-  writeFile(root, "source/SECURITY.md", "# Security Policy\n");
+  writeFile(root, "source/README.md", "# Secure Keypad SDK\n\nSecure Native Mode\n");
+  writeFile(root, "source/SECURITY.md", "# Security Policy\n\n## Reporting a vulnerability\n\nDo not open a public issue. Use the private GitHub Security Advisory form.\n\nhttps://github.com/uulab-official/secure-keyboard/security/advisories/new\n");
   writeFile(root, "source/LICENSE-MIT", "MIT License\n");
   writeFile(root, "source/THIRD-PARTY-NOTICES.md", "# Third-party notices\n");
   writeFile(root, "source/secure-keypad.sbom.spdx.json", JSON.stringify({
@@ -141,6 +141,19 @@ test("release staging requires the public README and vulnerability policy", () =
     const findings = checkReleaseStaging(root);
     assert.ok(findings.some((finding) => finding.includes("source/README.md")));
     assert.ok(findings.some((finding) => finding.includes("source/SECURITY.md")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging rejects placeholder public security documents", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/README.md", "# Secure Keypad SDK\n");
+    writeFile(root, "source/SECURITY.md", "# Security Policy\n");
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("Secure Native Mode")));
+    assert.ok(findings.some((finding) => finding.includes("private GitHub Security Advisory")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

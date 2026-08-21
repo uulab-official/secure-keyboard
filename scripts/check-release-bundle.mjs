@@ -164,6 +164,37 @@ function validateChangelog(root, findings) {
   }
 }
 
+function validatePublicDocuments(root, findings) {
+  const documents = [
+    [
+      "source/README.md",
+      [[/Secure Native Mode/, "must describe Secure Native Mode"]],
+    ],
+    [
+      "source/SECURITY.md",
+      [
+        [/## Reporting a vulnerability/, "must contain a vulnerability reporting section"],
+        [/private GitHub Security Advisory/, "must document the private GitHub Security Advisory channel"],
+        [/security\/advisories\/new/, "must contain the private Security Advisory URL"],
+      ],
+    ],
+  ];
+  for (const [relativePath, checks] of documents) {
+    const absolutePath = regularFile(root, relativePath, findings);
+    if (!absolutePath) continue;
+    let contents;
+    try {
+      contents = readFileSync(absolutePath, "utf8");
+    } catch (error) {
+      findings.push(`${relativePath}: cannot be read (${error.message})`);
+      continue;
+    }
+    for (const [pattern, detail] of checks) {
+      if (!pattern.test(contents)) findings.push(`${relativePath}: ${detail}`);
+    }
+  }
+}
+
 function archiveEntries(absolutePath, findings) {
   try {
     return execFileSync("tar", ["-tzf", absolutePath], { encoding: "utf8" })
@@ -228,6 +259,7 @@ export function checkReleaseStaging(root) {
 
   for (const relativePath of REQUIRED_SOURCE_FILES) regularFile(root, relativePath, findings);
   validateChangelog(root, findings);
+  validatePublicDocuments(root, findings);
   const metadata = readJson(root, "source/release-candidate-metadata.json", findings);
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);
