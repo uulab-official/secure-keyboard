@@ -34,9 +34,13 @@ export function PinEntry() {
     },
   }), []);
 
-  return <SecureKeypadView {...props} />;
+  return <SecureKeypadView style={{ flex: 1 }} {...props} />;
 }
 ```
+
+`style` is the presentation-only React Native layout prop. Give the view an
+explicit size (for example, `flex: 1`) from the host layout; it is not part of
+the native secret/session contract.
 
 For native passwords containing letters and symbols, use `inputPolicy: "ascii"`
 with public `ascii-XX` key IDs. The label is presentation-only; browser
@@ -50,9 +54,13 @@ captured as the baseline; changing it calls the native cancellation path,
 zeroizes the pending session, and emits only `cancelled` plus an empty masked
 state. It never carries or derives an input value.
 
-Build integration is intentionally fail-closed. Before `pod install`, set
-`SECURE_KEYPAD_FFI_XCFRAMEWORK` to a matching Rust `secure_ffi` XCFramework.
-`SECURE_KEYPAD_FFI_LIB` is supported only for a single-platform host build.
+Build integration is intentionally fail-closed. Before `pod install`, copy the
+matching Rust `secure_ffi` XCFramework into the installed package directory
+as `secure_ffi.xcframework` (or stage `libsecure_ffi.a` there for a
+single-platform fallback), then set `SECURE_KEYPAD_FFI_XCFRAMEWORK` or
+`SECURE_KEYPAD_FFI_LIB` to the source artifact path. CocoaPods receives only
+the staged relative path inside the package; an arbitrary absolute vendored
+path is rejected.
 Before the Android external-native build, set
 `SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
 `<abi>/libsecure_ffi.a` for every ABI shipped by the app. The library must be

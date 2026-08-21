@@ -9,6 +9,12 @@ declare const require: (moduleName: string) => unknown;
  * install a React Native runtime. Published consumers resolve the real peer
  * package and its declarations. */
 declare module "react-native" {
+  export interface ViewStyle {
+    readonly [property: string]: unknown;
+  }
+
+  export type StyleProp<Style> = Style | readonly (Style | false | null | undefined)[];
+
   export interface HostComponent<Props = unknown> {
     readonly __secureKeypadProps?: Props;
   }

@@ -10,7 +10,7 @@ the matrix below.
 
 | Surface | Minimum coverage | Required host modes |
 |---|---|---|
-| iOS | iOS 15 and the current supported iOS release; at least one physical device | React Native native view and Flutter PlatformView |
+| iOS | iOS 15.1 and the current supported iOS release; at least one physical device | React Native native view and Flutter PlatformView |
 | Android | API 24 and the current supported API; at least one physical device | React Native native view and Flutter PlatformView |
 | Web | Current supported Chromium, WebKit, and Gecko in secure contexts | WebAuthn/passkey path; acknowledged custom fallback only when explicitly enabled |
 

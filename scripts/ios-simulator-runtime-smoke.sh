@@ -58,6 +58,8 @@ fi
 mkdir -p "$(dirname "$SCREENSHOT_PATH")"
 xcrun simctl install "$booted_device_id" "$APP_PATH"
 xcrun simctl launch "$booted_device_id" "$BUNDLE_ID"
-sleep 2
+# Allow the embedded/bundled framework UI to complete its first layout pass
+# before capturing evidence on slower CI simulators.
+sleep 5
 xcrun simctl io "$booted_device_id" screenshot "$SCREENSHOT_PATH"
 test -s "$SCREENSHOT_PATH"

@@ -210,6 +210,25 @@ export function runSecurityAudit() {
   const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
 
+  for (const file of [
+    "native/ios/react-native/SecureKeypadViewManager.m",
+    "packages/react-native/ios/SecureKeypadViewManager.m",
+  ]) {
+    const manager = source(file, findings);
+    requireText(findings, file, manager, /@interface RCT_EXTERN_MODULE\(SecureKeypadViewManager, RCTViewManager\)/, "React Native Objective-C export must use the current RCT_EXTERN_MODULE interface form");
+    requireText(findings, file, manager, /@end\s*$/, "React Native Objective-C export must close its extern interface");
+  }
+
+  for (const file of [
+    "packages/react-native/SecureKeypadReactNative.podspec",
+    "packages/flutter/ios/secure_keypad_flutter.podspec",
+  ]) {
+    const podspec = source(file, findings);
+    requireText(findings, file, podspec, /File\.join\(__dir__, ['"]secure_ffi\.xcframework['"]\)/, "iOS podspec must validate the staged FFI XCFramework path");
+    requireText(findings, file, podspec, /spec\.vendored_frameworks\s*=\s*['"]secure_ffi\.xcframework['"]/, "iOS podspec must pass a relative staged FFI XCFramework path to CocoaPods");
+    forbidText(findings, file, podspec, /spec\.vendored_frameworks\s*=\s*ffi_xcframework/, "iOS podspec must not pass an absolute FFI XCFramework path to CocoaPods");
+  }
+
   const coreBuffer = source("crates/secure-core/src/secret_buffer.rs", findings);
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /SecretTokenBuffer/, "core must keep secret token storage behind a dedicated buffer type");
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /tokens\[self\.len\]\.zeroize\(\)/, "core must zeroize tokens removed by backspace");

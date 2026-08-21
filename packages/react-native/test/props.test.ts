@@ -22,6 +22,16 @@ describe("React Native public prop boundary", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts presentation-only React Native styles without creating a secret channel", () => {
+    const result = validateSecureKeypadProps({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      style: { flex: 1, minHeight: 240 },
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
   it("accepts the native printable-ASCII policy without creating a value prop", () => {
     const result = validateSecureKeypadProps({
       layout: DEFAULT_NUMERIC_LAYOUT,

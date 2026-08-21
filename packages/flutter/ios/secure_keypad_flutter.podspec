@@ -7,10 +7,14 @@ Pod::Spec.new do |spec|
   spec.license = { :type => 'MIT' }
   spec.author = { 'UULab' => 'security@uulab.dev' }
   spec.source = { :path => '.' }
-  spec.platforms = { :ios => '15.0' }
+  spec.platforms = { :ios => '15.1' }
   spec.swift_version = '5.9'
   spec.source_files = 'Classes/**/*.{h,m,swift}'
-  spec.preserve_paths = 'Classes/SecureKeypadFFI/**/*'
+  spec.preserve_paths = [
+    'Classes/SecureKeypadFFI/**/*',
+    'secure_ffi.xcframework',
+    'libsecure_ffi.a'
+  ]
   spec.public_header_files = 'Classes/SecureKeypadFFI/secure_keypad.h'
   spec.dependency 'Flutter'
   spec.frameworks = 'UIKit'
@@ -21,10 +25,12 @@ Pod::Spec.new do |spec|
 
   ffi_xcframework = ENV['SECURE_KEYPAD_FFI_XCFRAMEWORK']
   ffi_library = ENV['SECURE_KEYPAD_FFI_LIB']
-  if ffi_xcframework && Dir.exist?(ffi_xcframework)
-    spec.vendored_frameworks = ffi_xcframework
-  elsif ffi_library && File.file?(ffi_library)
-    spec.vendored_libraries = ffi_library
+  staged_xcframework = File.join(__dir__, 'secure_ffi.xcframework')
+  staged_library = File.join(__dir__, 'libsecure_ffi.a')
+  if ffi_xcframework && Dir.exist?(ffi_xcframework) && Dir.exist?(staged_xcframework)
+    spec.vendored_frameworks = 'secure_ffi.xcframework'
+  elsif ffi_library && File.file?(ffi_library) && File.file?(staged_library)
+    spec.vendored_libraries = 'libsecure_ffi.a'
   else
     raise 'SECURE_KEYPAD_FFI_XCFRAMEWORK or SECURE_KEYPAD_FFI_LIB must point to matching secure_ffi artifacts before pod install'
   end

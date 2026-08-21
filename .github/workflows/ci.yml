@@ -351,6 +351,7 @@ jobs:
             return (
               <SafeAreaView style={styles.root}>
                 <SecureKeypadView
+                  style={styles.keypad}
                   layout={DEFAULT_NUMERIC_LAYOUT}
                   theme={DEFAULT_THEME}
                   inputPolicy="numeric"
@@ -362,7 +363,7 @@ jobs:
             );
           }
 
-          const styles = StyleSheet.create({ root: { flex: 1 } });
+          const styles = StyleSheet.create({ root: { flex: 1 }, keypad: { flex: 1 } });
           ''')
           PY
       - name: Build the React Native host APK with the native FFI boundary
@@ -695,6 +696,7 @@ jobs:
           mkdir -p "$RN_PACKAGE_DIR" "$CONTRACTS_PACKAGE_DIR"
           cp -R "$GITHUB_WORKSPACE/packages/react-native/." "$RN_PACKAGE_DIR/"
           cp -R "$GITHUB_WORKSPACE/packages/contracts/." "$CONTRACTS_PACKAGE_DIR/"
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$RN_PACKAGE_DIR/secure_ffi.xcframework"
           python3 - <<'PY'
           import json
           import os
@@ -713,9 +715,9 @@ jobs:
           host_manifest.setdefault("dependencies", {})["@secure-keypad/react-native"] = f"file:{rn_package}"
           host_manifest_path.write_text(json.dumps(host_manifest, indent=2) + "\n")
           podfile = host / "ios/Podfile"
-          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.0'", podfile.read_text(), flags=re.MULTILINE))
+          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.1'", podfile.read_text(), flags=re.MULTILINE))
           project = host / "ios/SecureKeypadHost.xcodeproj/project.pbxproj"
-          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.0;", project.read_text()))
+          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.1;", project.read_text()))
           PY
       - name: Link and compile the React Native iOS host
         env:
@@ -730,13 +732,15 @@ jobs:
           xcodebuild -workspace SecureKeypadHost.xcworkspace \
             -scheme SecureKeypadHost \
             -sdk iphonesimulator \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/secure-keypad-rn-ios-derived" \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            ARCHS=arm64 build
       - name: Launch the React Native host in an iOS Simulator
         env:
-          APP_PATH: ${{ runner.temp }}/secure-keypad-rn-ios-derived/Build/Products/Debug-iphonesimulator/SecureKeypadHost.app
+          APP_PATH: ${{ runner.temp }}/secure-keypad-rn-ios-derived/Build/Products/Release-iphonesimulator/SecureKeypadHost.app
           SCREENSHOT_PATH: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime/react-native.png
         run: |
           test -d "$APP_PATH"
@@ -746,8 +750,12 @@ jobs:
       - name: Create and compile the Flutter iOS host
         env:
           HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host
+          FLUTTER_PACKAGE_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-package
         run: |
           flutter create --platforms=ios --org dev.uulab --project-name secure_keypad_host "$HOST_DIR"
+          mkdir -p "$FLUTTER_PACKAGE_DIR"
+          cp -R "$GITHUB_WORKSPACE/packages/flutter/." "$FLUTTER_PACKAGE_DIR/"
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$FLUTTER_PACKAGE_DIR/ios/secure_ffi.xcframework"
           python3 - <<'PY'
           import os
           import re
@@ -759,13 +767,13 @@ jobs:
           dependency = (
               "dependencies:\n"
               "  secure_keypad_flutter:\n"
-              f"    path: {Path(os.environ['GITHUB_WORKSPACE']) / 'packages/flutter'}\n"
+              f"    path: {Path(os.environ['FLUTTER_PACKAGE_DIR'])}\n"
           )
           pubspec.write_text(contents.replace("dependencies:\n", dependency, 1))
           podfile = host / "ios/Podfile"
-          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.0'", podfile.read_text(), flags=re.MULTILINE))
+          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.1'", podfile.read_text(), flags=re.MULTILINE))
           project = host / "ios/Runner.xcodeproj/project.pbxproj"
-          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.0;", project.read_text()))
+          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.1;", project.read_text()))
           PY
           cd "$HOST_DIR"
           flutter pub get

@@ -28,9 +28,12 @@ and call `await controller.cancel()`. The controller contains no input and
 uses the per-view native method channel; native code clears and zeroizes the
 session before emitting the normal masked `cancelled` state/result events.
 
-The plugin build is fail-closed. Set `SECURE_KEYPAD_FFI_XCFRAMEWORK` to the
-matching Rust `secure_ffi` XCFramework before iOS CocoaPods integration.
-`SECURE_KEYPAD_FFI_LIB` is supported only for a single-platform host build. Set
+The plugin build is fail-closed. Before iOS CocoaPods integration, copy the
+matching Rust `secure_ffi` XCFramework into the plugin's `ios/` directory as
+`ios/secure_ffi.xcframework` (or stage `ios/libsecure_ffi.a` for a
+single-platform fallback), then set `SECURE_KEYPAD_FFI_XCFRAMEWORK` or
+`SECURE_KEYPAD_FFI_LIB` to the source artifact path. CocoaPods receives only
+the staged relative path inside the plugin package. Set
 `SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
 `<abi>/libsecure_ffi.a` before the Android external-native build. Build the
 library from the same source revision and release profile as the plugin.

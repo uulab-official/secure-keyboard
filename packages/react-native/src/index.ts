@@ -1,4 +1,4 @@
-import type { HostComponent } from "react-native";
+import type { HostComponent, StyleProp, ViewStyle } from "react-native";
 import {
   MAX_RENDERED_LENGTH,
   validateLayout,
@@ -19,6 +19,8 @@ export const SECURE_KEYPAD_NATIVE_VIEW_NAME = "SecureKeypadView" as const;
 export type InputPolicy = ContractInputPolicy;
 
 export interface SecureKeypadProps {
+  /** React Native presentation style; it never crosses into the secret/session contract. */
+  readonly style?: StyleProp<ViewStyle>;
   /** Versioned, serializable layout data. It never contains the entered secret. */
   readonly layout: KeypadLayout;
   /** Versioned, serializable visual tokens. */
@@ -86,6 +88,7 @@ export function createSecureKeypadEventHandlers(
 }
 
 const ALLOWED_PROP_NAMES = [
+  "style",
   "layout",
   "theme",
   "inputPolicy",
