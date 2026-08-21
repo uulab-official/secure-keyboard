@@ -88,6 +88,7 @@ Status: publishable contract, native source packaging, parity gate, and Expo Dev
 - [x] Expose an explicit native `cancel` layout action that clears input without a framework secret channel.
 - [x] Expose masked state events and non-secret native cancel controller commands.
 - [x] Revalidate RN/Flutter bridge masked-state bounds and stable result-code shapes before host callbacks.
+- [x] Bound the Android RN public configuration conversion with allowlisted keys and aggregate/depth limits before native parsing.
 - [x] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.
 
