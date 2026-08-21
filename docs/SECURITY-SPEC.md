@@ -79,6 +79,7 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Do not write the secret to persistent storage, clipboard, accessibility values, notifications, logs, analytics, crash breadcrumbs, or debug output.
 - Never include the secret in exceptions, snapshots, test failure messages, or serialized component props.
 - Clear intermediate buffers where the underlying platform permits; document that garbage-collected runtimes and optimized copies cannot be proven fully zeroized.
+- Native submission and OPAQUE secret-output handoffs invoke a `FnOnce(&[u8])` callback that returns no value; callers must consume the bytes immediately in native/server cryptographic code and cannot use the public API as a secret getter.
 - Mobile background snapshots must be masked. Android secure-window protection and iOS capture/background handling are platform-specific controls, not universal guarantees.
 - Android Secure Native construction must fail closed if the host `Activity` window cannot be resolved for `FLAG_SECURE`; a keypad that cannot establish the secure window boundary must not accept input.
 

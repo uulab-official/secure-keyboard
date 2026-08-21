@@ -25,6 +25,13 @@ fn no_secret_getter_exists_in_the_public_contract() {
 }
 
 #[test]
+fn native_submission_handoff_cannot_return_a_secret_value() {
+    let public_api = include_str!("../src/lib.rs");
+    assert!(!public_api.contains("with_native_bytes<R>"));
+    assert!(public_api.contains("pub fn with_native_bytes(&self, operation: impl FnOnce(&[u8]))"));
+}
+
+#[test]
 fn submit_seals_the_session_and_returns_only_opaque_state() {
     let mut session = SecureSession::begin(InputPolicy::numeric(8));
     session.press_key(&KeyId::new("digit-1")).unwrap();

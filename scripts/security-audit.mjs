@@ -229,6 +229,7 @@ export function runSecurityAudit() {
     forbidText(findings, file, podspec, /spec\.vendored_frameworks\s*=\s*ffi_xcframework/, "iOS podspec must not pass an absolute FFI XCFramework path to CocoaPods");
   }
 
+  const core = source("crates/secure-core/src/lib.rs", findings);
   const coreBuffer = source("crates/secure-core/src/secret_buffer.rs", findings);
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /SecretTokenBuffer/, "core must keep secret token storage behind a dedicated buffer type");
   requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /tokens\[self\.len\]\.zeroize\(\)/, "core must zeroize tokens removed by backspace");
@@ -245,6 +246,10 @@ export function runSecurityAudit() {
   requireText(findings, "fuzz/fuzz_targets/ffi_sequence.rs", ffiFuzz, /secure_keypad_session_new_ascii/, "FFI fuzzing must exercise the printable-ASCII constructor");
 
   const auth = source("crates/secure-auth/src/lib.rs", findings);
+  requireText(findings, "crates/secure-core/src/lib.rs", core, /pub fn with_native_bytes\(&self, operation: impl FnOnce\(&\[u8\]\)\)/, "native submission handoff must not return secret bytes");
+  forbidText(findings, "crates/secure-core/src/lib.rs", core, /with_native_bytes<R>/, "native submission handoff must not expose a generic secret-returning callback");
+  requireText(findings, "crates/secure-auth/src/lib.rs", auth, /pub fn with_bytes\(&self, operation: impl FnOnce\(&\[u8\]\)\)/, "OPAQUE secret-output handoff must not return secret bytes");
+  forbidText(findings, "crates/secure-auth/src/lib.rs", auth, /pub fn with_bytes<R>/, "OPAQUE secret-output handoff must not expose a generic secret-returning callback");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_JSON_BODY_BYTES: usize = 128 \* 1024/, "auth JSON body must be bounded");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_SERVER_SETUP_BYTES/, "server setup persistence must be bounded");

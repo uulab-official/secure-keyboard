@@ -219,9 +219,12 @@ impl Submission {
     /// Provides the sealed bytes to native/server Rust code for immediate
     /// cryptographic consumption.
     ///
+    /// The callback intentionally returns `()`, so this public handoff cannot
+    /// return a secret slice or a copied secret value to its caller.
+    ///
     /// This must not be exposed through a JavaScript, Dart, or UI binding and
     /// must not be used to create strings, logs, JSON, analytics, or storage.
-    pub fn with_native_bytes<R>(&self, operation: impl FnOnce(&[u8]) -> R) -> R {
-        operation(self.buffer.as_slice())
+    pub fn with_native_bytes(&self, operation: impl FnOnce(&[u8])) {
+        operation(self.buffer.as_slice());
     }
 }

@@ -508,10 +508,13 @@ impl SecretOutput {
 
     /// Provides bytes to native/server cryptographic code for immediate use.
     ///
+    /// The callback intentionally returns `()`, so this public handoff cannot
+    /// return a secret slice or a copied secret value to its caller.
+    ///
     /// This method must not be exposed through a framework bridge or used to
     /// create logs, strings, JSON, analytics fields, or persistent plaintext.
-    pub fn with_bytes<R>(&self, operation: impl FnOnce(&[u8]) -> R) -> R {
-        operation(&self.0)
+    pub fn with_bytes(&self, operation: impl FnOnce(&[u8])) {
+        operation(&self.0);
     }
 }
 
@@ -797,9 +800,14 @@ pub fn client_registration_start_from_submission(
     submission: secure_core::Submission,
 ) -> Result<(NativeClientRegistrationState, Message), AuthError> {
     let mut rng = OsRng;
-    let result = submission
-        .with_native_bytes(|password| ClientRegistration::<SecureSuite>::start(&mut rng, password))
-        .map_err(|_| AuthError::Protocol)?;
+    let result = {
+        let mut result = None;
+        submission.with_native_bytes(|password| {
+            result = Some(ClientRegistration::<SecureSuite>::start(&mut rng, password));
+        });
+        result.ok_or(AuthError::Protocol)?
+    }
+    .map_err(|_| AuthError::Protocol)?;
     Ok((
         NativeClientRegistrationState {
             state: Some(result.state),
@@ -832,9 +840,10 @@ pub fn client_registration_finish_from_native_state(
     let mut rng = OsRng;
     let registration_state = state.state.take().ok_or(AuthError::Protocol)?;
     let submission = state.submission.take().ok_or(AuthError::Protocol)?;
-    let result = submission
-        .with_native_bytes(|password| {
-            registration_state.finish(
+    let result = {
+        let mut result = None;
+        submission.with_native_bytes(|password| {
+            result = Some(registration_state.finish(
                 &mut rng,
                 password,
                 response,
@@ -845,9 +854,11 @@ pub fn client_registration_finish_from_native_state(
                     },
                     None,
                 ),
-            )
-        })
-        .map_err(|_| AuthError::Protocol)?;
+            ));
+        });
+        result.ok_or(AuthError::Protocol)?
+    }
+    .map_err(|_| AuthError::Protocol)?;
     Ok((
         message_from_serialized(result.message.serialize().to_vec())?,
         SecretOutput(result.export_key.to_vec()),
@@ -896,9 +907,14 @@ pub fn client_login_start_from_submission(
     submission: secure_core::Submission,
 ) -> Result<(NativeClientLoginState, Message), AuthError> {
     let mut rng = OsRng;
-    let result = submission
-        .with_native_bytes(|password| ClientLogin::<SecureSuite>::start(&mut rng, password))
-        .map_err(|_| AuthError::Protocol)?;
+    let result = {
+        let mut result = None;
+        submission.with_native_bytes(|password| {
+            result = Some(ClientLogin::<SecureSuite>::start(&mut rng, password));
+        });
+        result.ok_or(AuthError::Protocol)?
+    }
+    .map_err(|_| AuthError::Protocol)?;
     Ok((
         NativeClientLoginState {
             state: Some(result.state),
@@ -1007,9 +1023,10 @@ pub fn client_login_finish_from_native_state(
     let mut rng = OsRng;
     let login_state = state.state.take().ok_or(AuthError::InvalidLogin)?;
     let submission = state.submission.take().ok_or(AuthError::InvalidLogin)?;
-    let result = submission
-        .with_native_bytes(|password| {
-            login_state.finish(
+    let result = {
+        let mut result = None;
+        submission.with_native_bytes(|password| {
+            result = Some(login_state.finish(
                 &mut rng,
                 password,
                 response,
@@ -1021,9 +1038,11 @@ pub fn client_login_finish_from_native_state(
                     },
                     None,
                 ),
-            )
-        })
-        .map_err(|_| AuthError::InvalidLogin)?;
+            ));
+        });
+        result.ok_or(AuthError::InvalidLogin)?
+    }
+    .map_err(|_| AuthError::InvalidLogin)?;
     Ok((
         message_from_serialized(result.message.serialize().to_vec())?,
         SecretOutput(result.session_key.to_vec()),
