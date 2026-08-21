@@ -381,6 +381,9 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /CHECK \(octet_length\(state\) BETWEEN 1 AND 32802\)/, "PostgreSQL OPAQUE state schema must enforce bounded encrypted records");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /protector\.seal/, "PostgreSQL OPAQUE state must encrypt before storage");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /protector\.open/, "PostgreSQL OPAQUE state must authenticate before decoding");
+  const durableOneTimeStateTest = source("crates/secure-auth-server/tests/durable_one_time_state.rs", findings);
+  requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /SKPE/, "durable OPAQUE service tests must verify encrypted storage records");
+  requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /second_store|cross_instance_handle/, "durable OPAQUE service tests must verify same-key cross-instance consumption");
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /Sha256/, "Redis rate-limit keys must be hashed before storage");
