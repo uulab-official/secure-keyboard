@@ -123,15 +123,19 @@ jobs:
           targets: aarch64-linux-android
       - name: Build the matching Android arm64 FFI library
         run: |
-          ANDROID_NDK_ROOT="${ANDROID_NDK_ROOT:-${ANDROID_NDK_LATEST_HOME:-}}"
-          if [ -z "$ANDROID_NDK_ROOT" ]; then
-            SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-            ANDROID_NDK_ROOT="$(find "$SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d -print | sort | tail -n 1)"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          NDK_VERSION="27.1.12297006"
+          test -n "$SDK_ROOT"
+          ANDROID_NDK_ROOT="$SDK_ROOT/ndk/$NDK_VERSION"
+          if [ ! -d "$ANDROID_NDK_ROOT" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+            test -n "$SDKMANAGER"
+            yes | "$SDKMANAGER" "ndk;$NDK_VERSION"
           fi
           test -d "$ANDROID_NDK_ROOT"
           NDK_BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          test -x "$NDK_BIN/aarch64-linux-android35-clang"
-          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android35-clang"
+          test -x "$NDK_BIN/aarch64-linux-android24-clang"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android24-clang"
           cargo build --locked --release -p secure-ffi --target aarch64-linux-android
           mkdir -p "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a"
           cp target/aarch64-linux-android/release/libsecure_ffi.a \
@@ -216,15 +220,19 @@ jobs:
       - run: pnpm --dir packages/react-native build
       - name: Build the matching Android arm64 FFI library
         run: |
-          ANDROID_NDK_ROOT="${ANDROID_NDK_ROOT:-${ANDROID_NDK_LATEST_HOME:-}}"
-          if [ -z "$ANDROID_NDK_ROOT" ]; then
-            SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-            ANDROID_NDK_ROOT="$(find "$SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d -print | sort | tail -n 1)"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          NDK_VERSION="27.1.12297006"
+          test -n "$SDK_ROOT"
+          ANDROID_NDK_ROOT="$SDK_ROOT/ndk/$NDK_VERSION"
+          if [ ! -d "$ANDROID_NDK_ROOT" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+            test -n "$SDKMANAGER"
+            yes | "$SDKMANAGER" "ndk;$NDK_VERSION"
           fi
           test -d "$ANDROID_NDK_ROOT"
           NDK_BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          test -x "$NDK_BIN/aarch64-linux-android35-clang"
-          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android35-clang"
+          test -x "$NDK_BIN/aarch64-linux-android24-clang"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android24-clang"
           cargo build --locked --release -p secure-ffi --target aarch64-linux-android
           mkdir -p "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a"
           cp target/aarch64-linux-android/release/libsecure_ffi.a \
