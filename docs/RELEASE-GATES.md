@@ -259,9 +259,12 @@ match the current checkout, and verifies both the detached release signature and
 the detached `independentReview` signature over the exact review report. The
 `independentReview` descriptor must also carry `reviewedCommit` and
 `reviewedPackageVersion`, each matching the manifest commit and package version;
-a signed report for a different checkout or an empty signed artifact cannot
-satisfy the gate. It does not establish CI provenance; trusted fingerprints, CI
-attestation, and reviewer identity must still be verified independently against the exact commit. The
+a signed report for a different checkout or an empty referenced gate/artifact
+file cannot satisfy the gate. Every referenced file must be a regular,
+non-empty file; device and browser evidence files are additionally bounded by
+the device-verification limits. It does not establish CI provenance; trusted
+fingerprints, CI attestation, and reviewer identity must still be verified
+independently against the exact commit. The
 `--require-trusted-keys` mode fails closed when either protected fingerprint is
 missing or does not match the corresponding descriptor.
 

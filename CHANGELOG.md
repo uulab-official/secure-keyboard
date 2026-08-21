@@ -39,6 +39,8 @@ exact release-candidate commit by the release evidence manifest.
   malformed or tampered ceremony records.
 - Device and browser evidence emitters and file verifiers now reject empty
   logs or artifacts before a release gate can hash them as valid evidence.
+- Release evidence file verification now rejects empty gate and artifact files
+  before accepting their SHA-256 digest.
 - Bounded PostgreSQL credential loads at the configured per-account limit plus
   one row and the credential-record byte limit in SQL before materialization,
   so legacy or invalid excess rows/records cannot turn a credential read into

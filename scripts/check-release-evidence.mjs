@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -370,6 +370,15 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
   const absolutePath = containedFilePath(findings, root, field, relativePath);
   if (!absolutePath) return;
   try {
+    const fileStats = statSync(absolutePath);
+    if (!fileStats.isFile()) {
+      add(findings, `${field}.path`, "must reference a regular file");
+      return;
+    }
+    if (fileStats.size === 0) {
+      add(findings, `${field}.path`, "must not be empty");
+      return;
+    }
     const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
     if (actualHash !== expectedHash) {
       add(findings, `${field}.sha256`, `does not match ${relativePath}`);

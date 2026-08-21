@@ -461,6 +461,25 @@ test("verifies every referenced release evidence and artifact digest", () => {
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
 });
 
+test("rejects empty release artifacts before accepting their digest", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-empty-release-artifact-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const artifactIndex = evidence.artifacts.findIndex(({ kind }) => kind === "sbom");
+  const artifact = evidence.artifacts[artifactIndex];
+  const emptyBytes = Buffer.alloc(0);
+
+  writeFileSync(join(root, artifact.path), emptyBytes);
+  artifact.sha256 = createHash("sha256").update(emptyBytes).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(
+    findings.some(
+      (finding) => finding.includes(`artifacts[${artifactIndex}].path`) && finding.includes("must not be empty"),
+    ),
+  );
+});
+
 test("rejects a gate evidence record bound to a different commit", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-commit-"));
   const evidence = completeEvidence();
