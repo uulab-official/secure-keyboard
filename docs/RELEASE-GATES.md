@@ -274,19 +274,21 @@ C ABI and all three policy constructors, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
 CI builds all four with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign
-with a 1 GiB libFuzzer RSS guard. The current local verification completed
-100,000 iterations for the original three targets: auth-envelope,
-core-sequence, and webauthn-state; the WebAuthn run used `-max_len=131073` to
-exercise the 128 KiB rejection boundary. Their minimized seed corpora are
-tracked under `fuzz/corpus/`; generated campaign additions are ephemeral and
-must not be treated as release evidence by themselves. Those runs produced no
-crash artifact and observed peak RSS below 131 MB on the local arm64 runner.
+with a 1 GiB libFuzzer RSS guard. A fresh local arm64 verification completed
+1,000,000 iterations for all four targets without a crash artifact; the
+WebAuthn run used `-max_len=131073` to exercise the 128 KiB rejection boundary.
+Every target has at least one bounded, checked-in seed corpus under
+`fuzz/corpus/`; the FFI corpus includes numeric, printable-ASCII, and Hangul
+constructor paths. Generated campaign additions are ephemeral and must not be
+treated as release evidence by themselves. A separate seeded FFI smoke run
+completed 2,000 iterations with no crash artifact. These local arm64 results
+are supplemental; Linux LeakSanitizer evidence remains mandatory.
 Any new parser or
 native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
 
-On 2026-08-21, a local arm64 run using the exact CI-pinned
+On 2026-08-21, an earlier local arm64 run using the exact CI-pinned
 `nightly-2026-08-19` toolchain and the same 1,000,000-iteration arguments
 completed without a crash artifact: auth-envelope reached `cov 1130` with
 469 MB final RSS, core-sequence reached `cov 96` with 476 MB, native FFI

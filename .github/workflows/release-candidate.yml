@@ -102,6 +102,7 @@ jobs:
           pnpm test:merge-release-evidence
           pnpm test:sign-release
           pnpm test:device-evidence
+          pnpm test:fuzz-corpus
           pnpm test:security-audit
           pnpm security-audit
           pnpm -r test

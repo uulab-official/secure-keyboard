@@ -61,6 +61,9 @@ exact release-candidate commit by the release evidence manifest.
   runner labels, and commit-bound timestamps so an under-specified `pass`
   record cannot satisfy a CI release gate; direct durable/fuzz command groups
   remain accepted for the job-local emitter path.
+- Added bounded, checked-in native FFI fuzz seeds for numeric, printable-ASCII,
+  and Hangul constructor paths, with a CI contract test preventing any fuzz
+  target from silently falling back to an empty corpus.
 
 ### Verification
 
