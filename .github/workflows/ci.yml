@@ -23,6 +23,10 @@ jobs:
       - run: cargo test --locked -p secure-auth-axum --all-features
       - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - run: RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
+      - name: Audit Rust dependencies with pinned RustSec tooling
+        run: |
+          cargo install cargo-audit --locked --version 0.22.2
+          cargo audit
 
   durable-backends:
     name: Redis/PostgreSQL interoperability

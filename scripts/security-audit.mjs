@@ -848,6 +848,10 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo clippy --locked --workspace/, "CI Rust lint must use the locked dependency graph");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo install cargo-audit --locked --version 0\.22\.2/, "CI must install the pinned RustSec audit tool");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo audit/, "CI must run the RustSec dependency audit");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo install cargo-audit --locked --version 0\.22\.2/, "release candidate must install the pinned RustSec audit tool");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo audit/, "release candidate must run the RustSec dependency audit");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*ubuntu-24\.04/, "Linux CI jobs must use the repository-pinned runner image");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*macos-15/, "Apple CI jobs must use the repository-pinned runner image");

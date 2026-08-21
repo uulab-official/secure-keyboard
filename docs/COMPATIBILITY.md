@@ -35,9 +35,9 @@ opaque submission handle.
 
 1. Review the lockfile and this matrix together; do not update `opaque-ke`,
    `webauthn-rs`, or the C ABI independently of the release notes.
-2. Run `pnpm test:native-parity` and `pnpm check:native-parity` before building
-   framework packages, followed by `pnpm test:security-audit` and
-   `pnpm security-audit`.
+2. Run `cargo audit`, `pnpm test:native-parity`, and
+   `pnpm check:native-parity` before building framework packages, followed by
+   `pnpm test:security-audit` and `pnpm security-audit`.
 3. Rebuild `secure_ffi` for every target ABI and verify the host's static
    library checksum against the release manifest.
 4. Run the full Rust/JS/Flutter gates, then the RN and Flutter host app builds

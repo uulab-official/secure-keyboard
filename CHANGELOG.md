@@ -57,3 +57,5 @@ exact release-candidate commit by the release evidence manifest.
   transferring them into the native-only `SecretOutput` container.
 - Static security audit now rejects direct OPAQUE export/session-key
   `GenericArray` copies that bypass the zeroizing helper.
+- CI and release-candidate workflows now run the pinned RustSec dependency
+  audit alongside the existing JavaScript dependency audit.

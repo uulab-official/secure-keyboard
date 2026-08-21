@@ -85,6 +85,8 @@ jobs:
             cargo test --locked -p secure-auth-server --all-features --test durable_one_time_state -- --ignored --nocapture
           cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
           RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
+          cargo install cargo-audit --locked --version 0.22.2
+          cargo audit
           pnpm audit --audit-level high
           pnpm test:native-parity
           pnpm check:native-parity
