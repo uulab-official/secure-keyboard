@@ -1,14 +1,6 @@
 package com.uulab.securekeypad
 
 /** Public framework configuration decoded before it reaches the native view. */
-internal fun secureKeypadDisplayStateName(value: Int): String = when (value) {
-    0 -> "empty"
-    1 -> "masked"
-    2 -> "submitted"
-    3 -> "cancelled"
-    else -> "empty"
-}
-
 internal data class SecureKeypadBridgeConfiguration(
     val layout: SecureKeypadLayout,
     val theme: SecureKeypadTheme,

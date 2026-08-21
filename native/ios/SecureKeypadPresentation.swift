@@ -19,6 +19,17 @@ func secureKeypadIsValidDisplayState(_ value: UInt32) -> Bool {
     (0...3).contains(value)
 }
 
+/// Converts a native display-state code without normalizing invalid values.
+func secureKeypadDisplayStateName(_ value: UInt32) -> String {
+    switch value {
+    case 0: return "empty"
+    case 1: return "masked"
+    case 2: return "submitted"
+    case 3: return "cancelled"
+    default: return "invalid"
+    }
+}
+
 /// Produces masked display text from length only.
 func secureKeypadMaskedDisplayText(length: Int, protected: Bool) -> String {
     precondition(secureKeypadIsValidRenderedLength(length))

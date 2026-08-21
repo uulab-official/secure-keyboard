@@ -2,17 +2,6 @@ import Foundation
 import SecureKeypadFFI
 import UIKit
 
-/// Converts the ABI display state to the framework-neutral string contract.
-func secureKeypadDisplayStateName(_ value: UInt32) -> String {
-    switch value {
-    case 0: return "empty"
-    case 1: return "masked"
-    case 2: return "submitted"
-    case 3: return "cancelled"
-    default: return "empty"
-    }
-}
-
 /// Public presentation role. It never contains a secret value.
 public enum SecureKeyRole: String {
     case input

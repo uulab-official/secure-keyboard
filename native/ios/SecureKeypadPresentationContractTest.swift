@@ -17,5 +17,8 @@ struct SecureKeypadPresentationContractTest {
         precondition(secureKeypadIsValidDisplayState(0))
         precondition(secureKeypadIsValidDisplayState(3))
         precondition(!secureKeypadIsValidDisplayState(4))
+        precondition(secureKeypadDisplayStateName(0) == "empty")
+        precondition(secureKeypadDisplayStateName(3) == "cancelled")
+        precondition(secureKeypadDisplayStateName(4) == "invalid")
     }
 }

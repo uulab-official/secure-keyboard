@@ -13,4 +13,7 @@ fun main() {
     check(secureKeypadIsValidDisplayState(0))
     check(secureKeypadIsValidDisplayState(3))
     check(!secureKeypadIsValidDisplayState(4))
+    check(secureKeypadDisplayStateName(0) == "empty")
+    check(secureKeypadDisplayStateName(3) == "cancelled")
+    check(secureKeypadDisplayStateName(4) == "invalid")
 }
