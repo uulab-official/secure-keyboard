@@ -107,7 +107,7 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, and injectable WebAuthn storage contracts complete; durable/distributed controls pending
+Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, injectable WebAuthn storage contracts, and durable/distributed control implementations complete; isolated service execution and deployment evidence pending
 
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
@@ -135,7 +135,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, a
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
 - [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
-- [ ] Add distributed replay-store, downgrade, enumeration, and key-rotation tests.
+- [x] Add bounded replay-store, downgrade, enumeration, and key-rotation tests; wire isolated durable interoperability checks into CI.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [x] Provide migration guidance for systems that currently receive ordinary passwords.
 
@@ -156,7 +156,7 @@ Exit criteria: web users get a safe default and understand the difference betwee
 
 ### Phase 8 — Verification and release
 
-Status: release-gate automation in progress; independent/device review pending
+Status: release-gate automation complete; actual CI evidence, device review, and independent security review pending
 
 - [x] Create an OWASP MASVS/MASTG evidence map; independent assessor sign-off remains pending.
 - [x] Define v1 TLS/pinning ownership and compromised-runtime residual-risk policy without unsupported SDK claims.
