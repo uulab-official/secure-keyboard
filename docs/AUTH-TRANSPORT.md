@@ -19,11 +19,14 @@ The typed message kinds are `RegistrationRequest`, `RegistrationResponse`,
 `CredentialFinalization`. `ServerAuthService` provides registration start and
 finish methods as well as the one-time, identifier-bound login flow.
 
-`AuthEnvelope` implements validating `serde::Deserialize`; JSON or another
-Serde-supported transport cannot bypass the empty, 16 KiB, suite, and server
-key identifier bounds enforced by `AuthEnvelope::from_parts`. Applications
-should still enforce a request-body limit before parsing and reject malformed
-requests without logging their payloads.
+`AuthEnvelope` implements validating `serde::Deserialize` with unknown-field
+rejection; JSON or another Serde-supported transport cannot bypass the empty,
+16 KiB, suite, and server key identifier bounds enforced by
+`AuthEnvelope::from_parts`. The OPAQUE HTTP request DTOs also reject unknown
+fields, so a `password`, `rawInput`, or similar secret-bearing field cannot be
+silently accepted as an ignored extension. Applications should still enforce
+a request-body limit before parsing and reject malformed requests without
+logging their payloads.
 
 For JSON endpoints, use `AuthEnvelope::from_json`, which applies the 128 KiB
 raw-body limit before parsing and returns generic `MalformedTransport` errors
@@ -62,14 +65,15 @@ external errors and apply account/IP/deployment rate limits.
 
 The `secure-auth-server` crate includes `InMemoryOneTimeLoginStore` as a
 bounded reference implementation with 32-byte handles, TTL, capacity, and
-state-size limits. It is not a distributed production store; a multi-instance
-deployment must replace it with an atomic backend adapter that preserves the
-same `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics.
-Adapters generate opaque handles with `LoginStateHandle::generate()`, persist
-the serialized state plus its bound identifiers, enforce the TTL, and retry a
-rare handle collision without logging handles or state bytes. The executable
-backend contract tests exercise atomic delete-and-return behavior under
-concurrency.
+state-size limits. Its feature-gated `RedisOneTimeLoginStateStore` and
+`PostgresOneTimeLoginStateStore` adapters use bounded versioned records,
+hashed handles, TLS-first constructors, and atomic consume/delete. A custom
+multi-instance backend must preserve the same
+`BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics. Adapters
+generate opaque handles with `LoginStateHandle::generate()`, enforce the TTL,
+and retry a rare handle collision without logging handles or state bytes. The
+executable backend contract tests exercise atomic delete-and-return behavior
+under concurrency; the Redis/PostgreSQL service tests are mandatory CI gates.
 
 It also includes `InMemoryRateLimiter` and the `RateLimiter` backend contract.
 Use separate bounded key namespaces for account, IP, and deployment-wide
