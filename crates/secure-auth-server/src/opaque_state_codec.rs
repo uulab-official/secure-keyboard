@@ -28,13 +28,13 @@ const MAX_PROTECTED_RECORD_BYTES: usize = MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BY
 ///
 /// Keep this value in a secret manager or KMS-backed configuration. It has no
 /// byte getter or `Debug` implementation so it cannot be accidentally logged.
-pub struct OpaqueStateKey([u8; 32]);
+pub struct OpaqueStateKey(Zeroizing<[u8; 32]>);
 
 impl OpaqueStateKey {
     /// Restores a key only when the representation is exactly 32 bytes.
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        Some(Self(bytes.try_into().ok()?))
+        Some(Self(Zeroizing::new(bytes.try_into().ok()?)))
     }
 
     /// Generates a key with the operating-system CSPRNG.
@@ -42,30 +42,27 @@ impl OpaqueStateKey {
     pub fn generate() -> Self {
         let mut bytes = [0u8; 32];
         OsRng.fill_bytes(&mut bytes);
-        Self(bytes)
-    }
-}
-
-impl Drop for OpaqueStateKey {
-    fn drop(&mut self) {
-        self.0.zeroize();
+        Self(Zeroizing::new(bytes))
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct StateProtector {
-    cipher: Arc<Aes256Gcm>,
+    key: Arc<Zeroizing<[u8; 32]>>,
 }
 
 impl StateProtector {
     pub(crate) fn new(key: OpaqueStateKey) -> Self {
-        let Ok(cipher) = Aes256Gcm::new_from_slice(&key.0) else {
+        Self {
+            key: Arc::new(key.0),
+        }
+    }
+
+    fn cipher(&self) -> Aes256Gcm {
+        let Ok(cipher) = Aes256Gcm::new_from_slice(&self.key[..]) else {
             unreachable!("a fixed 32-byte key always initializes AES-256-GCM");
         };
-        drop(key);
-        Self {
-            cipher: Arc::new(cipher),
-        }
+        cipher
     }
 
     pub(crate) fn seal(&self, plaintext: &[u8]) -> Result<Zeroizing<Vec<u8>>, StoreError> {
@@ -75,7 +72,7 @@ impl StateProtector {
         let mut nonce = [0u8; 12];
         OsRng.fill_bytes(&mut nonce);
         let mut ciphertext = Zeroizing::new(plaintext.to_vec());
-        self.cipher
+        self.cipher()
             .encrypt_in_place(Nonce::from_slice(&nonce), PROTECTED_AAD, &mut *ciphertext)
             .map_err(|_| StoreError::Unavailable)?;
         let total = PROTECTED_HEADER_BYTES
@@ -107,7 +104,7 @@ impl StateProtector {
         }
         let nonce = Nonce::from_slice(&protected[6..PROTECTED_HEADER_BYTES]);
         let mut ciphertext = Zeroizing::new(protected[PROTECTED_HEADER_BYTES..].to_vec());
-        self.cipher
+        self.cipher()
             .decrypt_in_place(nonce, PROTECTED_AAD, &mut *ciphertext)
             .map_err(|_| StoreError::Unavailable)?;
         Ok(Zeroizing::new(core::mem::take(&mut *ciphertext)))
