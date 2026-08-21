@@ -495,9 +495,10 @@ function main() {
     return;
   }
 
+  const absoluteManifestPath = path.resolve(process.cwd(), manifestPath);
   let evidence;
   try {
-    evidence = JSON.parse(readFileSync(path.resolve(process.cwd(), manifestPath), "utf8"));
+    evidence = JSON.parse(readFileSync(absoluteManifestPath, "utf8"));
   } catch (error) {
     console.error(`release evidence could not be read: ${error.message}`);
     process.exitCode = 1;
@@ -533,7 +534,8 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  const fileFindings = verifyReleaseEvidenceFiles(evidence, process.cwd());
+  const evidenceRoot = path.dirname(absoluteManifestPath);
+  const fileFindings = verifyReleaseEvidenceFiles(evidence, evidenceRoot);
   if (fileFindings.length > 0) {
     console.error(fileFindings.map((finding) => `- ${finding}`).join("\n"));
     process.exitCode = 1;

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -130,6 +130,80 @@ function writeDeviceGateEvidence(root, gate, platform) {
   writeFileSync(join(root, gate.evidencePath), payload);
   gate.sha256 = createHash("sha256").update(payload).digest("hex");
   return record;
+}
+
+function writeCompleteEvidenceFixture(root) {
+  const evidence = completeEvidence();
+  const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+  const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
+  evidence.commit = commit;
+  evidence.gates.forEach((gate) => {
+    gate.commit = commit;
+  });
+  evidence.independentReview.reviewedCommit = commit;
+
+  const payload = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit, gate: "rust-workspace", status: "pass" }),
+    "utf8",
+  );
+  const sha256 = createHash("sha256").update(payload).digest("hex");
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const releasePayload = Buffer.from("signed-release-fixture", "utf8");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const signature = sign(null, releasePayload, privateKey);
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  const { privateKey: reviewPrivateKey, publicKey: reviewPublicKey } = generateKeyPairSync("ed25519");
+  const reviewPayload = Buffer.from("independent-review-fixture", "utf8");
+  const reviewPublicKeyDer = reviewPublicKey.export({ format: "der", type: "spki" });
+  const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
+  const reviewPublicKeySha256 = createHash("sha256").update(reviewPublicKeyDer).digest("hex");
+
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  const platformByGate = {
+    "ios-device-matrix": "ios",
+    "android-device-matrix": "android",
+    "web-browser-matrix": "web",
+  };
+  for (const gate of evidence.gates) {
+    const platform = platformByGate[gate.name];
+    if (platform) {
+      writeDeviceGateEvidence(root, gate, platform);
+    } else {
+      const gatePayload = Buffer.from(
+        JSON.stringify({ schemaVersion: 1, commit, gate: gate.name, status: "pass" }),
+        "utf8",
+      );
+      writeFileSync(join(root, gate.evidencePath), gatePayload);
+      gate.sha256 = createHash("sha256").update(gatePayload).digest("hex");
+    }
+  }
+
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  for (const artifact of evidence.artifacts) {
+    if (artifact.kind === "release-bundle") {
+      writeFileSync(join(root, artifact.path), releasePayload);
+      artifact.sha256 = createHash("sha256").update(releasePayload).digest("hex");
+    } else if (artifact.kind === "release-signature") {
+      writeFileSync(join(root, artifact.path), signature);
+      artifact.sha256 = createHash("sha256").update(signature).digest("hex");
+    } else if (artifact.kind === "independent-review-report") {
+      writeFileSync(join(root, artifact.path), reviewPayload);
+      artifact.sha256 = createHash("sha256").update(reviewPayload).digest("hex");
+    } else if (artifact.kind === "independent-review-signature") {
+      writeFileSync(join(root, artifact.path), reviewSignature);
+      artifact.sha256 = createHash("sha256").update(reviewSignature).digest("hex");
+    } else {
+      writeFileSync(join(root, artifact.path), payload);
+      artifact.sha256 = sha256;
+    }
+  }
+  writeFileSync(join(root, evidence.signature.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), reviewPublicKeyDer);
+  evidence.signature.publicKeySha256 = publicKeySha256;
+  evidence.independentReview.publicKeySha256 = reviewPublicKeySha256;
+  evidence.artifacts.find((artifact) => artifact.kind === "release-public-key").sha256 = publicKeySha256;
+  evidence.artifacts.find((artifact) => artifact.kind === "independent-review-public-key").sha256 = reviewPublicKeySha256;
+  return evidence;
 }
 
 test("accepts a complete release evidence manifest", () => {
@@ -267,6 +341,25 @@ test("trusted-key CLI mode fails closed when protected fingerprints are absent",
   assert.equal(result.status, 1);
   assert.match(result.stderr, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/);
   assert.match(result.stderr, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/);
+});
+
+test("CLI verifies referenced files relative to a nested evidence manifest", () => {
+  const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+  const container = mkdtempSync(join(tmpdir(), "secure-keypad-nested-release-evidence-"));
+  const evidenceRoot = join(container, "release-evidence");
+  mkdirSync(evidenceRoot, { recursive: true });
+  const evidence = writeCompleteEvidenceFixture(evidenceRoot);
+  const manifestPath = join(evidenceRoot, "release-evidence.json");
+  writeFileSync(manifestPath, `${JSON.stringify(evidence, null, 2)}\n`);
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT, manifestPath], {
+    cwd: repositoryRoot,
+    env: process.env,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /release evidence schema valid/);
 });
 
 test("verifies every referenced release evidence and artifact digest", () => {

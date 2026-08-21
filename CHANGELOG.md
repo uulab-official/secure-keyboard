@@ -46,3 +46,6 @@ exact release-candidate commit by the release evidence manifest.
 
 - Release staging now requires this changelog, the pinned lockfiles, SBOM,
   third-party notices, and the complete candidate metadata set.
+- Release evidence CLI verification now resolves gate, artifact, signature, and
+  nested device files relative to the manifest's evidence root, matching the
+  documented fragment-merge workflow.
