@@ -60,6 +60,16 @@ fn redis_ceremony_state_is_atomic_and_one_time() {
             std::time::Duration::from_secs(30),
         )
         .expect("Redis insert should succeed");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    let pending_index = format!("{namespace}:webauthn:v1:pending");
+    let pending_count: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis pending count should succeed");
+    assert_eq!(pending_count, 1);
     assert!(store
         .take(CeremonyKind::Authentication, &handle)
         .expect("Redis kind lookup should succeed")
@@ -72,6 +82,11 @@ fn redis_ceremony_state_is_atomic_and_one_time() {
             .user_id(),
         user_id
     );
+    let pending_count: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis pending count after consume should succeed");
+    assert_eq!(pending_count, 0);
     assert!(store
         .take(CeremonyKind::Registration, &handle)
         .expect("Redis replay lookup should succeed")
@@ -95,6 +110,15 @@ fn postgres_ceremony_state_is_atomic_and_one_time() {
     )
     .expect("PostgreSQL store should construct");
     let user_id = uuid::Uuid::new_v4();
+    let expired = store
+        .insert(
+            CeremonyKind::Authentication,
+            user_id,
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_millis(1),
+        )
+        .expect("PostgreSQL expired insert should succeed");
+    std::thread::sleep(std::time::Duration::from_millis(5));
     let handle = store
         .insert(
             CeremonyKind::Registration,
@@ -103,6 +127,20 @@ fn postgres_ceremony_state_is_atomic_and_one_time() {
             std::time::Duration::from_secs(30),
         )
         .expect("PostgreSQL insert should succeed");
+    let mut inspection = postgres::Client::connect(&url, postgres::NoTls)
+        .expect("PostgreSQL inspection connection should succeed");
+    let pending_count: i64 = inspection
+        .query_one(
+            "SELECT count(*) FROM secure_keypad_webauthn_ceremonies WHERE namespace = $1",
+            &[&namespace],
+        )
+        .expect("PostgreSQL pending count should succeed")
+        .get(0);
+    assert_eq!(pending_count, 1);
+    assert!(store
+        .take(CeremonyKind::Authentication, &expired)
+        .expect("expired PostgreSQL lookup should succeed")
+        .is_none());
     assert!(store
         .take(CeremonyKind::Authentication, &handle)
         .expect("PostgreSQL kind lookup should succeed")

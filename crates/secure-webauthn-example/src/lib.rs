@@ -54,6 +54,8 @@ pub use storage_redis::{RedisStorageConfigError, RedisWebAuthnStore};
 pub const MAX_CLIENT_RESPONSE_BYTES: usize = 128 * 1024;
 /// Maximum number of credentials associated with one example account.
 pub const MAX_CREDENTIALS_PER_USER: usize = 64;
+/// Maximum serialized credential record accepted by a durable backend.
+pub const MAX_CREDENTIAL_RECORD_BYTES: usize = 256 * 1024;
 /// Maximum number of pending ceremony states in one example process.
 pub const MAX_PENDING_CEREMONIES: usize = 100_000;
 /// Maximum serialized ceremony state accepted by a backend.

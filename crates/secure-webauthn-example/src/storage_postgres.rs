@@ -3,7 +3,8 @@ use crate::{
         CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
         CredentialStoreError,
     },
-    MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER,
+    MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
+    MAX_PENDING_CEREMONIES,
 };
 use postgres::{tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
@@ -44,7 +45,8 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_credentials (
     passkey JSONB NOT NULL,
     revision BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (namespace, user_id, credential_id),
-    CHECK (octet_length(credential_id) BETWEEN 1 AND 1024)
+    CHECK (octet_length(credential_id) BETWEEN 1 AND 1024),
+    CHECK (octet_length(passkey::text) BETWEEN 2 AND 262144)
 );
 ";
 
@@ -183,11 +185,39 @@ where
             .filter(|millis| *millis > 0)
             .ok_or(CeremonyStoreError::InvalidTtl)?;
         let mut client = self.connection()?;
+        let mut transaction = client
+            .transaction()
+            .map_err(|_| CeremonyStoreError::Unavailable)?;
+        let namespace_lock = format!("{}:ceremonies", self.namespace);
+        transaction
+            .execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+                &[&namespace_lock],
+            )
+            .map_err(|_| CeremonyStoreError::Unavailable)?;
+        transaction
+            .execute(
+                "DELETE FROM secure_keypad_webauthn_ceremonies
+                 WHERE namespace = $1 AND expires_at <= now()",
+                &[&self.namespace],
+            )
+            .map_err(|_| CeremonyStoreError::Unavailable)?;
+        let pending: i64 = transaction
+            .query_one(
+                "SELECT count(*) FROM secure_keypad_webauthn_ceremonies
+                 WHERE namespace = $1 AND expires_at > now()",
+                &[&self.namespace],
+            )
+            .map_err(|_| CeremonyStoreError::Unavailable)?
+            .get(0);
+        if pending >= i64::try_from(MAX_PENDING_CEREMONIES).unwrap_or(i64::MAX) {
+            return Err(CeremonyStoreError::CapacityReached);
+        }
         for _ in 0..HANDLE_ATTEMPTS {
             let handle = LoginStateHandle::generate();
             let handle_bytes = handle.as_bytes().as_slice();
             let kind_tag = kind_tag(kind);
-            let rows = client
+            let rows = transaction
                 .execute(
                     "INSERT INTO secure_keypad_webauthn_ceremonies
                      (namespace, handle, kind, user_id, state, expires_at)
@@ -201,9 +231,12 @@ where
                         &state,
                         &ttl_millis,
                     ],
-                )
+            )
                 .map_err(|_| CeremonyStoreError::Unavailable)?;
             if rows == 1 {
+                transaction
+                    .commit()
+                    .map_err(|_| CeremonyStoreError::Unavailable)?;
                 return Ok(handle);
             }
         }
@@ -260,6 +293,13 @@ where
             let encoded: serde_json::Value = row
                 .try_get(0)
                 .map_err(|_| CredentialStoreError::InvalidRecord)?;
+            if serde_json::to_vec(&encoded)
+                .map_err(|_| CredentialStoreError::InvalidRecord)?
+                .len()
+                > MAX_CREDENTIAL_RECORD_BYTES
+            {
+                return Err(CredentialStoreError::InvalidRecord);
+            }
             credentials.push(
                 serde_json::from_value(encoded).map_err(|_| CredentialStoreError::InvalidRecord)?,
             );
@@ -312,6 +352,13 @@ where
         }
         let encoded =
             serde_json::to_value(&passkey).map_err(|_| CredentialStoreError::InvalidRecord)?;
+        if serde_json::to_vec(&encoded)
+            .map_err(|_| CredentialStoreError::InvalidRecord)?
+            .len()
+            > MAX_CREDENTIAL_RECORD_BYTES
+        {
+            return Err(CredentialStoreError::InvalidRecord);
+        }
         let inserted = transaction
             .execute(
                 "INSERT INTO secure_keypad_webauthn_credentials
@@ -369,6 +416,15 @@ where
                 .map_err(|_| CredentialStoreError::Unavailable)?;
             return Ok(false);
         }
+        let updated_credential =
+            serde_json::to_value(&credential).map_err(|_| CredentialStoreError::InvalidRecord)?;
+        if serde_json::to_vec(&updated_credential)
+            .map_err(|_| CredentialStoreError::InvalidRecord)?
+            .len()
+            > MAX_CREDENTIAL_RECORD_BYTES
+        {
+            return Err(CredentialStoreError::InvalidRecord);
+        }
         let updated = transaction
             .execute(
                 "UPDATE secure_keypad_webauthn_credentials
@@ -378,8 +434,7 @@ where
                     &self.namespace,
                     &user_id,
                     &credential_id,
-                    &serde_json::to_value(&credential)
-                        .map_err(|_| CredentialStoreError::InvalidRecord)?,
+                    &updated_credential,
                     &revision,
                 ],
             )

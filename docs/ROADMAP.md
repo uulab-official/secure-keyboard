@@ -153,6 +153,7 @@ Status: release-gate automation in progress; independent/device review pending
 - [x] Add bounded auth-decoder and native/core state-machine fuzz targets with retained corpora.
 - [x] Add a bounded WebAuthn versioned-ceremony-state fuzz target and CI smoke gate.
 - [x] Add feature-gated Redis/PostgreSQL storage adapters with bounded pools, atomic consume, credential uniqueness, and post-authentication CAS updates.
+- [x] Bound durable credential record bytes and per-namespace pending ceremonies; clean expired durable ceremony rows/index entries during atomic writes/consumes.
 - [x] Add isolated Redis/PostgreSQL service interoperability tests to CI.
 - [x] Complete local 10,000-iteration smoke campaigns for the auth-envelope and core-sequence targets; keep CI at a bounded 2,000-iteration smoke gate.
 - [x] Complete the local 10,000-iteration smoke campaign for the WebAuthn state target and retain its minimized corpus.

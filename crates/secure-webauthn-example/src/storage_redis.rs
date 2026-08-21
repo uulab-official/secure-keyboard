@@ -4,7 +4,8 @@ use crate::{
         CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
         CredentialStoreError,
     },
-    MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER,
+    MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
+    MAX_PENDING_CEREMONIES,
 };
 use r2d2::{Pool, PooledConnection};
 use redis::{Commands, Script};
@@ -15,10 +16,33 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey};
 
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
+const PENDING_INDEX_SUFFIX: &str = "pending";
+const INSERT_SCRIPT: &str = r"
+local time = redis.call('TIME')
+local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[3]) then
+  return 0
+end
+local inserted = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2])
+if not inserted then
+  return -1
+end
+redis.call('ZADD', KEYS[2], now_ms + tonumber(ARGV[2]), KEYS[1])
+local index_ttl = redis.call('PTTL', KEYS[2])
+if index_ttl < tonumber(ARGV[2]) then
+  redis.call('PEXPIRE', KEYS[2], ARGV[2])
+end
+return 1
+";
 const CONSUME_SCRIPT: &str = r"
+local time = redis.call('TIME')
+local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 local value = redis.call('GET', KEYS[1])
 if value then
   redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], KEYS[1])
 end
 return value
 ";
@@ -152,6 +176,10 @@ impl RedisWebAuthnStore {
     fn credential_key(&self, user_id: Uuid) -> String {
         format!("{}:webauthn:v1:credentials:{user_id}", self.namespace)
     }
+
+    fn pending_index_key(&self) -> String {
+        format!("{}:webauthn:v1:{PENDING_INDEX_SUFFIX}", self.namespace)
+    }
 }
 
 impl CeremonyStateStore for RedisWebAuthnStore {
@@ -171,16 +199,19 @@ impl CeremonyStateStore for RedisWebAuthnStore {
         for _ in 0..HANDLE_ATTEMPTS {
             let handle = LoginStateHandle::generate();
             let key = self.ceremony_key(kind, &handle);
-            let inserted: Option<String> = redis::cmd("SET")
-                .arg(key)
+            let inserted: i64 = Script::new(INSERT_SCRIPT)
+                .key(key)
+                .key(self.pending_index_key())
                 .arg(encoded.as_slice())
-                .arg("NX")
-                .arg("PX")
                 .arg(ttl_millis)
-                .query(&mut *connection)
+                .arg(MAX_PENDING_CEREMONIES)
+                .invoke(&mut *connection)
                 .map_err(|_| CeremonyStoreError::Unavailable)?;
-            if inserted.is_some() {
+            if inserted == 1 {
                 return Ok(handle);
+            }
+            if inserted == 0 {
+                return Err(CeremonyStoreError::CapacityReached);
             }
         }
         Err(CeremonyStoreError::HandleCollision)
@@ -195,11 +226,13 @@ impl CeremonyStateStore for RedisWebAuthnStore {
         let mut connection = self.connection()?;
         let encoded: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
             .key(key)
+            .key(self.pending_index_key())
             .invoke(&mut *connection)
             .map_err(|_| CeremonyStoreError::Unavailable)?;
         let Some(encoded) = encoded else {
             return Ok(None);
         };
+        let encoded = zeroize::Zeroizing::new(encoded);
         let state = decode_ceremony_record(&encoded)?;
         if state.kind() != kind {
             return Ok(None);
@@ -241,13 +274,13 @@ impl CredentialStore for RedisWebAuthnStore {
                     return Ok(Some(Err(CredentialStoreError::CapacityReached)));
                 }
                 credentials.push(passkey.clone());
-                let encoded = serde_json::to_vec(&credentials).map_err(|_| {
+                let encoded = encode_credentials(&credentials).map_err(|_| {
                     redis_error(
                         redis::ErrorKind::UnexpectedReturnType,
                         "credential encode failed",
                     )
                 })?;
-                pipe.set(&key, encoded)
+                pipe.set(&key, encoded.as_slice())
                     .ignore()
                     .query(connection)
                     .map(|()| Some(Ok(())))
@@ -294,13 +327,13 @@ impl CredentialStore for RedisWebAuthnStore {
                 if !changed {
                     return Ok(Some(Ok(false)));
                 }
-                let encoded = serde_json::to_vec(&credentials).map_err(|_| {
+                let encoded = encode_credentials(&credentials).map_err(|_| {
                     redis_error(
                         redis::ErrorKind::UnexpectedReturnType,
                         "credential encode failed",
                     )
                 })?;
-                pipe.set(&key, encoded)
+                pipe.set(&key, encoded.as_slice())
                     .ignore()
                     .query(connection)
                     .map(|()| Some(Ok(true)))
@@ -314,12 +347,26 @@ fn decode_credentials(encoded: Option<&[u8]>) -> Result<Vec<Passkey>, Credential
     let Some(encoded) = encoded else {
         return Ok(Vec::new());
     };
+    if encoded.len() > MAX_CREDENTIAL_RECORD_BYTES {
+        return Err(CredentialStoreError::InvalidRecord);
+    }
     let credentials: Vec<Passkey> =
         serde_json::from_slice(encoded).map_err(|_| CredentialStoreError::InvalidRecord)?;
     if credentials.len() > MAX_CREDENTIALS_PER_USER {
         return Err(CredentialStoreError::InvalidRecord);
     }
     Ok(credentials)
+}
+
+fn encode_credentials(
+    credentials: &[Passkey],
+) -> Result<zeroize::Zeroizing<Vec<u8>>, CredentialStoreError> {
+    let encoded =
+        serde_json::to_vec(credentials).map_err(|_| CredentialStoreError::InvalidRecord)?;
+    if encoded.len() > MAX_CREDENTIAL_RECORD_BYTES {
+        return Err(CredentialStoreError::InvalidRecord);
+    }
+    Ok(zeroize::Zeroizing::new(encoded))
 }
 
 fn validate_namespace(namespace: &str) -> Result<(), RedisStorageConfigError> {

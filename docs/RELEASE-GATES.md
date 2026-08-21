@@ -72,8 +72,10 @@ The feature-gated Redis and PostgreSQL adapters must compile under
 `cargo test --workspace --all-features`. The ignored interoperability tests
 must run against isolated Redis and PostgreSQL services in CI or a release
 environment with `--ignored`; they verify one-time consume, namespace/kind
-isolation, and replay rejection. Plaintext Redis/`NoTls` constructors are
-allowed only in that isolated test job, never in a production configuration.
+isolation, replay rejection, and expired-state cleanup. Durable adapters also
+bound pending ceremony count per namespace and credential-record size.
+Plaintext Redis/`NoTls` constructors are allowed only in that isolated test
+job, never in a production configuration.
 
 The Linux fuzz job also runs all three targets under Rust's leak sanitizer.
 The local macOS arm64 runner cannot execute that sanitizer because the target
