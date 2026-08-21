@@ -1,7 +1,8 @@
 # secure-auth-axum
 
 Compile-tested Axum adapters for the Secure Keypad OPAQUE and, behind the
-optional `webauthn` feature, WebAuthn HTTP contracts.
+optional `webauthn` feature, WebAuthn HTTP contracts. The WebAuthn adapter is
+generic over the injected `WebAuthnService<C, S>` storage contracts.
 
 ```rust,no_run
 let app = secure_auth_axum::router(

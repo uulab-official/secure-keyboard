@@ -10,6 +10,7 @@ test suite alone is not a production claim.
 cargo fmt --all -- --check
 cargo test --workspace --all-features
 cargo test -p secure-webauthn-example
+cargo test -p secure-webauthn-example --test storage_contract
 cargo test -p secure-auth-axum --all-features
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 pnpm install --frozen-lockfile
@@ -76,9 +77,10 @@ Rust/Node/Flutter/native toolchain versions, the notices in
   source is included in both publishable packages and checked for parity, but
   each host application must compile it against its chosen RN/Flutter versions,
   install a native submission consumer, and run the device matrix.
-- WebAuthn reference verification service, bounded framework-neutral HTTP
-  contract, and compile-tested Axum integration are shipped, but durable
-  credential storage, host-session/CSRF integration, and distributed
-  ceremony-state tests remain deployment gates.
+- WebAuthn reference verification service, injectable storage contracts,
+  bounded framework-neutral HTTP contract, and compile-tested Axum integration
+  are shipped, but a real durable credential backend, host-session/CSRF
+  integration, and distributed ceremony-state interoperability tests remain
+  deployment gates.
 - Device accessibility/screenshot/autofill verification and an independent
   security review remain mandatory.

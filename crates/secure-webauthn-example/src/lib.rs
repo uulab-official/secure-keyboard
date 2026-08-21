@@ -9,26 +9,32 @@
 //! JSON bodies, one-time ceremony handles, generic public errors, credential
 //! uniqueness, and counter/backup-state persistence.
 //!
-//! The included state and credential stores are process-local examples. A
-//! production deployment must replace them with an encrypted, access
-//! controlled store and an atomic consume operation for ceremony state.
+//! The default state and credential stores are process-local examples. The
+//! [`WebAuthnService`] type accepts external [`CeremonyStateStore`] and
+//! [`CredentialStore`] implementations so a production deployment can use an
+//! encrypted durable credential repository and an atomic distributed ceremony
+//! store. The server-only `webauthn-rs` state serialization feature is used
+//! only for protected backend bytes; no ceremony state is accepted from the
+//! browser.
 
-use rand::{rngs::OsRng, RngCore};
 use secure_auth_server::LoginStateHandle;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    sync::Mutex,
-    time::{Duration, Instant},
-};
+use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
-    AuthenticationResult, Passkey, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
+    AuthenticationResult, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
     RegisterPublicKeyCredential, Webauthn, WebauthnBuilder,
 };
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
+
+mod storage;
+
+pub use storage::{
+    CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
+    CredentialStoreError, InMemoryCeremonyStateStore, InMemoryCredentialStore,
+};
 
 /// Maximum JSON response body accepted by the reference boundary.
 pub const MAX_CLIENT_RESPONSE_BYTES: usize = 128 * 1024;
@@ -36,10 +42,13 @@ pub const MAX_CLIENT_RESPONSE_BYTES: usize = 128 * 1024;
 pub const MAX_CREDENTIALS_PER_USER: usize = 64;
 /// Maximum number of pending ceremony states in one example process.
 pub const MAX_PENDING_CEREMONIES: usize = 100_000;
+/// Maximum serialized ceremony state accepted by a backend.
+pub const MAX_CEREMONY_STATE_BYTES: usize = 128 * 1024;
+/// Current server-side serialized ceremony state format version.
+pub const WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1;
 /// Maximum user name or display name accepted by the example boundary.
 pub const MAX_USER_FIELD_BYTES: usize = 256;
 const HANDLE_BYTES: usize = 32;
-const HANDLE_ATTEMPTS: usize = 4;
 
 /// Generic public error for the server boundary.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -54,6 +63,8 @@ pub enum WebAuthnExampleError {
     StoreUnavailable,
     /// The configured process-local capacity has been reached.
     CapacityReached,
+    /// A serialized ceremony state exceeded the configured bound.
+    StateTooLarge,
     /// The credential cannot be added to this account.
     CredentialLimit,
 }
@@ -93,132 +104,63 @@ pub struct AuthenticationOutcome {
     pub credential_updated: bool,
 }
 
-struct PendingState<T> {
-    expires_at: Instant,
-    value: T,
+#[derive(Deserialize, Serialize)]
+struct CeremonyStateEnvelope<T> {
+    version: u16,
+    state: T,
 }
 
-struct OneTimeCeremonyStore<T> {
-    entries: Mutex<HashMap<LoginStateHandle, PendingState<T>>>,
-    max_entries: usize,
-    ttl: Duration,
-}
-
-impl<T> OneTimeCeremonyStore<T> {
-    fn new(max_entries: usize, ttl: Duration) -> Result<Self, WebAuthnExampleError> {
-        if max_entries == 0
-            || max_entries > MAX_PENDING_CEREMONIES
-            || ttl.is_zero()
-            || Instant::now().checked_add(ttl).is_none()
-        {
-            return Err(WebAuthnExampleError::InvalidConfiguration);
-        }
-        Ok(Self {
-            entries: Mutex::new(HashMap::new()),
-            max_entries,
-            ttl,
-        })
-    }
-
-    fn prune_expired(entries: &mut HashMap<LoginStateHandle, PendingState<T>>, now: Instant) {
-        entries.retain(|_, entry| entry.expires_at > now);
-    }
-
-    fn insert(&self, value: T) -> Result<LoginStateHandle, WebAuthnExampleError> {
-        let now = Instant::now();
-        let mut entries = self
-            .entries
-            .lock()
-            .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
-        Self::prune_expired(&mut entries, now);
-        if entries.len() >= self.max_entries {
-            return Err(WebAuthnExampleError::CapacityReached);
-        }
-        for _ in 0..HANDLE_ATTEMPTS {
-            let handle = fresh_handle();
-            if let std::collections::hash_map::Entry::Vacant(slot) = entries.entry(handle) {
-                slot.insert(PendingState {
-                    expires_at: now
-                        .checked_add(self.ttl)
-                        .ok_or(WebAuthnExampleError::StoreUnavailable)?,
-                    value,
-                });
-                return Ok(handle);
-            }
-        }
-        Err(WebAuthnExampleError::StoreUnavailable)
-    }
-
-    fn take(&self, handle: &LoginStateHandle) -> Result<T, WebAuthnExampleError> {
-        let now = Instant::now();
-        let mut entries = self
-            .entries
-            .lock()
-            .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
-        Self::prune_expired(&mut entries, now);
-        entries
-            .remove(handle)
-            .map(|entry| entry.value)
-            .ok_or(WebAuthnExampleError::Replay)
-    }
-}
-
-struct RegistrationPending {
-    user_id: Uuid,
-    state: PasskeyRegistration,
-}
-
-struct AuthenticationPending {
-    user_id: Uuid,
-    state: PasskeyAuthentication,
-}
-
-/// An in-memory passkey-first reference service.
-pub struct WebAuthnExampleService {
+/// A passkey-first `WebAuthn` service parameterized by its persistence backends.
+///
+/// `C` stores public credential records and `S` stores serialized one-time
+/// ceremony states. The default [`WebAuthnExampleService`] alias uses bounded
+/// process-local stores for tests and development; production applications
+/// should instantiate this type with shared encrypted/access-controlled
+/// implementations of [`CredentialStore`] and [`CeremonyStateStore`].
+pub struct WebAuthnService<C, S> {
     webauthn: Webauthn,
-    registration_states: OneTimeCeremonyStore<RegistrationPending>,
-    authentication_states: OneTimeCeremonyStore<AuthenticationPending>,
-    credentials: Mutex<HashMap<Uuid, Vec<Passkey>>>,
+    registration_states: S,
+    authentication_states: S,
+    credentials: C,
+    ceremony_ttl: Duration,
 }
 
-impl WebAuthnExampleService {
-    /// Builds a service with strict origin/RP-ID binding.
+/// The default process-local reference service retained for compatibility.
+pub type WebAuthnExampleService =
+    WebAuthnService<InMemoryCredentialStore, InMemoryCeremonyStateStore>;
+
+impl<C, S> WebAuthnService<C, S>
+where
+    C: CredentialStore,
+    S: CeremonyStateStore,
+{
+    /// Builds a service with caller-supplied durable storage contracts.
     ///
-    /// HTTPS is required. `http://localhost` and loopback origins are allowed
-    /// only for local development and must never be used in production.
+    /// The ceremony stores may be separate namespace wrappers over one shared
+    /// backend. Each must apply the supplied TTL and implement atomic
+    /// consume-once semantics; the credential store must implement atomic
+    /// uniqueness and post-authentication counter updates.
     ///
     /// # Errors
     ///
-    /// Returns [`WebAuthnExampleError::InvalidConfiguration`] for an invalid
-    /// origin, RP ID, display name, or ceremony TTL.
-    pub fn new(
+    /// Returns [`WebAuthnExampleError::InvalidConfiguration`] for invalid RP
+    /// configuration or an unrepresentable/zero ceremony TTL.
+    pub fn new_with_stores(
         rp_id: &str,
         origin: &str,
         rp_name: &str,
         ceremony_ttl: Duration,
+        registration_states: S,
+        authentication_states: S,
+        credentials: C,
     ) -> Result<Self, WebAuthnExampleError> {
-        if rp_id.is_empty()
-            || rp_id.len() > 253
-            || rp_id.bytes().any(|byte| byte.is_ascii_whitespace())
-        {
-            return Err(WebAuthnExampleError::InvalidConfiguration);
-        }
-        validate_user_field(rp_name).map_err(|_| WebAuthnExampleError::InvalidConfiguration)?;
-        let parsed_origin =
-            Url::parse(origin).map_err(|_| WebAuthnExampleError::InvalidConfiguration)?;
-        if !is_allowed_origin(&parsed_origin) {
-            return Err(WebAuthnExampleError::InvalidConfiguration);
-        }
-        let webauthn = WebauthnBuilder::new(rp_id, &parsed_origin)
-            .map_err(|_| WebAuthnExampleError::InvalidConfiguration)?
-            .rp_name(rp_name)
-            .build()
-            .map_err(|_| WebAuthnExampleError::InvalidConfiguration)?;
+        validate_ceremony_ttl(ceremony_ttl)?;
         Ok(Self {
-            webauthn,
-            registration_states: OneTimeCeremonyStore::new(MAX_PENDING_CEREMONIES, ceremony_ttl)?,
-            authentication_states: OneTimeCeremonyStore::new(MAX_PENDING_CEREMONIES, ceremony_ttl)?,
-            credentials: Mutex::new(HashMap::new()),
+            webauthn: build_webauthn(rp_id, origin, rp_name)?,
+            registration_states,
+            authentication_states,
+            credentials,
+            ceremony_ttl,
         })
     }
 
@@ -237,7 +179,13 @@ impl WebAuthnExampleService {
     ) -> Result<CeremonyStart, WebAuthnExampleError> {
         validate_user_field(user_name)?;
         validate_user_field(display_name)?;
-        let existing = self.credentials_for(user_id)?;
+        let existing = self
+            .credentials
+            .load(user_id)
+            .map_err(map_credential_error)?;
+        if existing.len() > MAX_CREDENTIALS_PER_USER {
+            return Err(WebAuthnExampleError::CredentialLimit);
+        }
         let exclude_credentials = if existing.is_empty() {
             None
         } else {
@@ -252,11 +200,18 @@ impl WebAuthnExampleService {
             .webauthn
             .start_passkey_registration(user_id, user_name, display_name, exclude_credentials)
             .map_err(|_| WebAuthnExampleError::InvalidRequest)?;
-        let handle = self
-            .registration_states
-            .insert(RegistrationPending { user_id, state })?;
         let options =
             serde_json::to_value(options).map_err(|_| WebAuthnExampleError::InvalidRequest)?;
+        let state = serialize_state(&state)?;
+        let handle = self
+            .registration_states
+            .insert(
+                CeremonyKind::Registration,
+                user_id,
+                &state,
+                self.ceremony_ttl,
+            )
+            .map_err(map_ceremony_error)?;
         Ok(CeremonyStart {
             handle: encode_handle(&handle),
             options,
@@ -302,30 +257,26 @@ impl WebAuthnExampleService {
         response_body: &[u8],
     ) -> Result<RegistrationOutcome, WebAuthnExampleError> {
         let handle = decode_handle(handle)?;
-        let pending = self.registration_states.take(&handle)?;
-        if expected_principal.is_some_and(|principal| principal != pending.user_id) {
+        let pending = self
+            .registration_states
+            .take(CeremonyKind::Registration, &handle)
+            .map_err(map_ceremony_error)?
+            .ok_or(WebAuthnExampleError::Replay)?;
+        let (_, user_id, state_bytes) = pending.into_parts();
+        if expected_principal.is_some_and(|principal| principal != user_id) {
             return Err(WebAuthnExampleError::InvalidRequest);
         }
+        let state_bytes = Zeroizing::new(state_bytes);
+        let state: PasskeyRegistration = deserialize_state(&state_bytes)?;
         let response: RegisterPublicKeyCredential = parse_response(response_body)?;
         let passkey = self
             .webauthn
-            .finish_passkey_registration(&response, &pending.state)
+            .finish_passkey_registration(&response, &state)
             .map_err(|_| WebAuthnExampleError::InvalidRequest)?;
-        let mut credentials = self
-            .credentials
-            .lock()
-            .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
-        let user_credentials = credentials.entry(pending.user_id).or_default();
-        if user_credentials.iter().any(|existing| existing == &passkey) {
-            return Err(WebAuthnExampleError::InvalidRequest);
-        }
-        if user_credentials.len() >= MAX_CREDENTIALS_PER_USER {
-            return Err(WebAuthnExampleError::CredentialLimit);
-        }
-        user_credentials.push(passkey);
-        Ok(RegistrationOutcome {
-            user_id: pending.user_id,
-        })
+        self.credentials
+            .insert(user_id, passkey)
+            .map_err(map_credential_error)?;
+        Ok(RegistrationOutcome { user_id })
     }
 
     /// Starts passkey authentication for a known account.
@@ -341,7 +292,13 @@ impl WebAuthnExampleService {
         &self,
         user_id: Uuid,
     ) -> Result<CeremonyStart, WebAuthnExampleError> {
-        let credentials = self.credentials_for(user_id)?;
+        let credentials = self
+            .credentials
+            .load(user_id)
+            .map_err(map_credential_error)?;
+        if credentials.len() > MAX_CREDENTIALS_PER_USER {
+            return Err(WebAuthnExampleError::CredentialLimit);
+        }
         if credentials.is_empty() {
             return Err(WebAuthnExampleError::InvalidRequest);
         }
@@ -349,11 +306,18 @@ impl WebAuthnExampleService {
             .webauthn
             .start_passkey_authentication(&credentials)
             .map_err(|_| WebAuthnExampleError::InvalidRequest)?;
-        let handle = self
-            .authentication_states
-            .insert(AuthenticationPending { user_id, state })?;
         let options =
             serde_json::to_value(options).map_err(|_| WebAuthnExampleError::InvalidRequest)?;
+        let state = serialize_state(&state)?;
+        let handle = self
+            .authentication_states
+            .insert(
+                CeremonyKind::Authentication,
+                user_id,
+                &state,
+                self.ceremony_ttl,
+            )
+            .map_err(map_ceremony_error)?;
         Ok(CeremonyStart {
             handle: encode_handle(&handle),
             options,
@@ -400,33 +364,60 @@ impl WebAuthnExampleService {
         response_body: &[u8],
     ) -> Result<AuthenticationOutcome, WebAuthnExampleError> {
         let handle = decode_handle(handle)?;
-        let pending = self.authentication_states.take(&handle)?;
-        if expected_principal.is_some_and(|principal| principal != pending.user_id) {
+        let pending = self
+            .authentication_states
+            .take(CeremonyKind::Authentication, &handle)
+            .map_err(map_ceremony_error)?
+            .ok_or(WebAuthnExampleError::Replay)?;
+        let (_, user_id, state_bytes) = pending.into_parts();
+        if expected_principal.is_some_and(|principal| principal != user_id) {
             return Err(WebAuthnExampleError::InvalidRequest);
         }
+        let state_bytes = Zeroizing::new(state_bytes);
+        let state: PasskeyAuthentication = deserialize_state(&state_bytes)?;
         let response: PublicKeyCredential = parse_response(response_body)?;
         let result: AuthenticationResult = self
             .webauthn
-            .finish_passkey_authentication(&response, &pending.state)
+            .finish_passkey_authentication(&response, &state)
             .map_err(|_| WebAuthnExampleError::InvalidRequest)?;
-        let mut credentials = self
+        let updated = self
             .credentials
-            .lock()
-            .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
-        let user_credentials = credentials
-            .get_mut(&pending.user_id)
-            .ok_or(WebAuthnExampleError::InvalidRequest)?;
-        let mut updated = false;
-        for credential in user_credentials {
-            if let Some(changed) = credential.update_credential(&result) {
-                updated = changed;
-                break;
-            }
-        }
+            .update_after_auth(user_id, &result)
+            .map_err(map_credential_error)?;
         Ok(AuthenticationOutcome {
-            user_id: pending.user_id,
+            user_id,
             credential_updated: updated,
         })
+    }
+}
+
+impl WebAuthnService<InMemoryCredentialStore, InMemoryCeremonyStateStore> {
+    /// Builds the bounded process-local reference service.
+    ///
+    /// HTTPS is required. `http://localhost` and loopback origins are allowed
+    /// only for local development and must never be used in production.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WebAuthnExampleError::InvalidConfiguration`] for an invalid
+    /// origin, RP ID, display name, or ceremony TTL.
+    pub fn new(
+        rp_id: &str,
+        origin: &str,
+        rp_name: &str,
+        ceremony_ttl: Duration,
+    ) -> Result<Self, WebAuthnExampleError> {
+        Self::new_with_stores(
+            rp_id,
+            origin,
+            rp_name,
+            ceremony_ttl,
+            InMemoryCeremonyStateStore::new(MAX_PENDING_CEREMONIES)
+                .map_err(|_| WebAuthnExampleError::InvalidConfiguration)?,
+            InMemoryCeremonyStateStore::new(MAX_PENDING_CEREMONIES)
+                .map_err(|_| WebAuthnExampleError::InvalidConfiguration)?,
+            InMemoryCredentialStore::new(),
+        )
     }
 
     /// Returns the number of credentials in the reference store for tests and
@@ -437,15 +428,87 @@ impl WebAuthnExampleService {
     /// Returns [`WebAuthnExampleError::StoreUnavailable`] if the store lock is
     /// poisoned.
     pub fn credential_count(&self, user_id: Uuid) -> Result<usize, WebAuthnExampleError> {
-        Ok(self.credentials_for(user_id)?.len())
+        self.credentials
+            .credential_count(user_id)
+            .map_err(map_credential_error)
     }
+}
 
-    fn credentials_for(&self, user_id: Uuid) -> Result<Vec<Passkey>, WebAuthnExampleError> {
-        let credentials = self
-            .credentials
-            .lock()
-            .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
-        Ok(credentials.get(&user_id).cloned().unwrap_or_default())
+fn build_webauthn(
+    rp_id: &str,
+    origin: &str,
+    rp_name: &str,
+) -> Result<Webauthn, WebAuthnExampleError> {
+    if rp_id.is_empty() || rp_id.len() > 253 || rp_id.bytes().any(|byte| byte.is_ascii_whitespace())
+    {
+        return Err(WebAuthnExampleError::InvalidConfiguration);
+    }
+    validate_user_field(rp_name).map_err(|_| WebAuthnExampleError::InvalidConfiguration)?;
+    let parsed_origin =
+        Url::parse(origin).map_err(|_| WebAuthnExampleError::InvalidConfiguration)?;
+    if !is_allowed_origin(&parsed_origin) {
+        return Err(WebAuthnExampleError::InvalidConfiguration);
+    }
+    WebauthnBuilder::new(rp_id, &parsed_origin)
+        .map_err(|_| WebAuthnExampleError::InvalidConfiguration)?
+        .rp_name(rp_name)
+        .build()
+        .map_err(|_| WebAuthnExampleError::InvalidConfiguration)
+}
+
+fn validate_ceremony_ttl(ttl: Duration) -> Result<(), WebAuthnExampleError> {
+    if ttl.is_zero() || std::time::Instant::now().checked_add(ttl).is_none() {
+        return Err(WebAuthnExampleError::InvalidConfiguration);
+    }
+    Ok(())
+}
+
+fn serialize_state<T: Serialize>(state: &T) -> Result<Zeroizing<Vec<u8>>, WebAuthnExampleError> {
+    let bytes = serde_json::to_vec(&CeremonyStateEnvelope {
+        version: WEBAUTHN_CEREMONY_STATE_VERSION,
+        state,
+    })
+    .map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
+    if bytes.len() > MAX_CEREMONY_STATE_BYTES {
+        return Err(WebAuthnExampleError::StateTooLarge);
+    }
+    Ok(Zeroizing::new(bytes))
+}
+
+fn deserialize_state<T: serde::de::DeserializeOwned>(
+    state: &[u8],
+) -> Result<T, WebAuthnExampleError> {
+    if state.is_empty() || state.len() > MAX_CEREMONY_STATE_BYTES {
+        return Err(WebAuthnExampleError::StoreUnavailable);
+    }
+    let envelope: CeremonyStateEnvelope<T> =
+        serde_json::from_slice(state).map_err(|_| WebAuthnExampleError::StoreUnavailable)?;
+    if envelope.version != WEBAUTHN_CEREMONY_STATE_VERSION {
+        return Err(WebAuthnExampleError::StoreUnavailable);
+    }
+    Ok(envelope.state)
+}
+
+fn map_ceremony_error(error: CeremonyStoreError) -> WebAuthnExampleError {
+    match error {
+        CeremonyStoreError::CapacityReached | CeremonyStoreError::HandleCollision => {
+            WebAuthnExampleError::CapacityReached
+        }
+        CeremonyStoreError::StateTooLarge => WebAuthnExampleError::StateTooLarge,
+        CeremonyStoreError::InvalidCapacity
+        | CeremonyStoreError::InvalidTtl
+        | CeremonyStoreError::InvalidState
+        | CeremonyStoreError::Unavailable => WebAuthnExampleError::StoreUnavailable,
+    }
+}
+
+fn map_credential_error(error: CredentialStoreError) -> WebAuthnExampleError {
+    match error {
+        CredentialStoreError::Unavailable => WebAuthnExampleError::StoreUnavailable,
+        CredentialStoreError::CapacityReached => WebAuthnExampleError::CredentialLimit,
+        CredentialStoreError::Duplicate | CredentialStoreError::InvalidRecord => {
+            WebAuthnExampleError::InvalidRequest
+        }
     }
 }
 
@@ -629,14 +692,22 @@ impl WebAuthnHttpResponse {
 }
 
 /// Framework-neutral bounded `WebAuthn` route handler.
-pub struct WebAuthnHttpRouter<'a> {
-    service: &'a WebAuthnExampleService,
+pub struct WebAuthnHttpRouter<'a, C = InMemoryCredentialStore, S = InMemoryCeremonyStateStore>
+where
+    C: CredentialStore,
+    S: CeremonyStateStore,
+{
+    service: &'a WebAuthnService<C, S>,
 }
 
-impl<'a> WebAuthnHttpRouter<'a> {
-    /// Creates a router around a configured reference service.
+impl<'a, C, S> WebAuthnHttpRouter<'a, C, S>
+where
+    C: CredentialStore,
+    S: CeremonyStateStore,
+{
+    /// Creates a router around a configured service and its storage contracts.
     #[must_use]
-    pub const fn new(service: &'a WebAuthnExampleService) -> Self {
+    pub const fn new(service: &'a WebAuthnService<C, S>) -> Self {
         Self { service }
     }
 
@@ -816,7 +887,9 @@ fn webauthn_http_error(status: u16, code: &'static str) -> WebAuthnHttpResponse 
 fn webauthn_service_error(error: WebAuthnExampleError) -> WebAuthnHttpResponse {
     match error {
         WebAuthnExampleError::Replay => webauthn_http_error(401, "authentication_failed"),
-        WebAuthnExampleError::StoreUnavailable | WebAuthnExampleError::CapacityReached => {
+        WebAuthnExampleError::StoreUnavailable
+        | WebAuthnExampleError::CapacityReached
+        | WebAuthnExampleError::StateTooLarge => {
             webauthn_http_error(503, "temporarily_unavailable")
         }
         WebAuthnExampleError::CredentialLimit => webauthn_http_error(409, "invalid_request"),
@@ -824,12 +897,6 @@ fn webauthn_service_error(error: WebAuthnExampleError) -> WebAuthnHttpResponse {
             webauthn_http_error(400, "invalid_request")
         }
     }
-}
-
-fn fresh_handle() -> LoginStateHandle {
-    let mut bytes = [0u8; HANDLE_BYTES];
-    OsRng.fill_bytes(&mut bytes);
-    LoginStateHandle::from_bytes(&bytes).expect("fixed handle length")
 }
 
 fn encode_handle(handle: &LoginStateHandle) -> String {
@@ -985,6 +1052,17 @@ mod tests {
         let response = webauthn_json_response(200, &value);
         assert_eq!(response.status, 500);
         assert_eq!(response.body, br#"{"error":"temporarily_unavailable"}"#);
+    }
+
+    #[test]
+    fn ceremony_state_serialization_is_versioned_and_rejects_downgrades() {
+        let encoded = serialize_state(&7u8).expect("serialize");
+        let json: Value = serde_json::from_slice(&encoded).expect("json");
+        assert_eq!(json["version"], WEBAUTHN_CEREMONY_STATE_VERSION);
+        assert_eq!(
+            deserialize_state::<u8>(br#"{"version":0,"state":7}"#),
+            Err(WebAuthnExampleError::StoreUnavailable)
+        );
     }
 
     proptest! {

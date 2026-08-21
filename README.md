@@ -14,7 +14,8 @@ Pin framework/native/protocol combinations using the [compatibility policy](docs
 Use the [HTTP deployment baseline](docs/HTTP-DEPLOYMENT.md) when embedding the
 server routes behind TLS or a reverse proxy.
 For multi-instance deployments, follow the [distributed backend contract](docs/DISTRIBUTED-BACKENDS.md)
-and the [web deployment baseline](docs/WEB-DEPLOYMENT.md).
+and the [web deployment baseline](docs/WEB-DEPLOYMENT.md). WebAuthn server
+implementations must also follow the [WebAuthn storage contract](docs/WEBAUTHN-STORAGE.md).
 
 ## Current packages
 
@@ -23,7 +24,7 @@ and the [web deployment baseline](docs/WEB-DEPLOYMENT.md).
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
 - `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
 - `secure-auth-axum`: compile-tested Axum adapter that bounds streaming request bodies and preserves the OPAQUE route's generic errors and security headers; its optional `webauthn` feature adds the passkey route adapter with a body-free host-principal resolver.
-- `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication reference with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, and atomic one-time ceremony state.
+- `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication service with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, atomic one-time ceremony state, and injectable credential/ceremony storage contracts.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 - `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.

@@ -19,12 +19,22 @@ layer adds:
 - a mandatory deployment context for TLS, pre-buffering body limits, and
   connection/read limits.
 - static no-store, no-sniff, no-referrer, and API-safe CSP response headers.
+- `WebAuthnService<C, S>` storage injection for durable credential records and
+  serialized one-time ceremony state, with atomic backend contracts.
 
 `WebAuthnExampleService` is deliberately process-local. It is a reference
-contract, not a drop-in production database. A deployment must replace both
-stores with an encrypted/access-controlled credential store and an atomic
-read-and-delete ceremony store. Never log ceremony handles, client responses,
-credential IDs, or serialized passkeys.
+configuration, not a drop-in production database. A production deployment
+should construct `WebAuthnService<C, S>::new_with_stores` with an
+encrypted/access-controlled `CredentialStore` and an atomic
+`CeremonyStateStore`. Never log ceremony handles, client responses, credential
+IDs, or serialized passkeys/ceremony states.
+
+The pinned `webauthn-rs` `danger-allow-state-serialisation` feature is enabled
+because a distributed server must serialize ceremony state between instances.
+This is safe only when the bytes remain server-side, bounded, access
+controlled, and consumed once. Do not put them in cookies, browser storage, or
+any client-controlled field. See [WebAuthn storage](../../docs/WEBAUTHN-STORAGE.md)
+for the backend contract.
 
 The HTTP route contract does not implement a network listener. Every call must
 pass `WebAuthnDeploymentContext::direct_tls()` or

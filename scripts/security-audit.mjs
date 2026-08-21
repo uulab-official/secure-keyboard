@@ -127,7 +127,7 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /RESPONSE_SECURITY_HEADERS/, "Axum adapter must preserve static response security headers");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /Fn\(&Parts\) -> Option<Uuid>/, "WebAuthn Axum principal resolver must receive request parts without the body");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(body, body_limit\)/, "WebAuthn Axum adapter must bound streaming request bodies before principal resolution");
-  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /WebAuthnHttpRouter::new/, "WebAuthn Axum adapter must delegate to the framework-neutral route contract");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /WebAuthnHttpRouter(?:::<[^>]+>)?::new/, "WebAuthn Axum adapter must delegate to the framework-neutral route contract");
   forbidText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /X-Forwarded-Proto|x-forwarded-proto/i, "Axum adapter must not parse forwarded transport headers");
 
   const webauthnHttp = source("crates/secure-webauthn-example/src/lib.rs", findings);
@@ -135,6 +135,16 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WebAuthnTransportSecurity::TrustedProxyTls/, "WebAuthn HTTP routes must define trusted-proxy TLS handling");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /connection_limits_enforced/, "WebAuthn HTTP routes must require connection/read limits");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_RESPONSE_SECURITY_HEADERS/, "WebAuthn responses must carry cache and MIME security headers");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /new_with_stores/, "WebAuthn service must wire storage contracts into the service boundary");
+  const webauthnStorage = source("crates/secure-webauthn-example/src/storage.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub trait CeremonyStateStore/, "WebAuthn service must expose an injectable ceremony state backend contract");
+  requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub trait CredentialStore/, "WebAuthn service must expose an injectable credential backend contract");
+  requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /atomically delete and return|atomically consume/, "WebAuthn ceremony backend must document atomic consume semantics");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1/, "WebAuthn ceremony state format must be version-pinned");
+  const webauthnManifest = source("crates/secure-webauthn-example/Cargo.toml", findings);
+  requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /danger-allow-state-serialisation/, "WebAuthn state serialization must be an explicit pinned server dependency feature");
+  const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
+  requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",

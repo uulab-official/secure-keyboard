@@ -17,7 +17,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 url = "2.5.7"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
-webauthn-rs = { version = "=0.5.4", default-features = false }
+webauthn-rs = { version = "=0.5.4", default-features = false, features = ["danger-allow-state-serialisation"] }
 zeroize = "1.9.0"
 
 [dev-dependencies]

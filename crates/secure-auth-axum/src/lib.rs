@@ -152,14 +152,15 @@ mod webauthn_adapter {
     use axum::http::request::Parts;
     use axum::response::IntoResponse;
     use secure_webauthn_example::{
-        WebAuthnDeploymentContext, WebAuthnExampleService, WebAuthnHttpRequest,
-        WebAuthnHttpResponse, WEBAUTHN_JSON_CONTENT_TYPE, WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+        CeremonyStateStore, CredentialStore, WebAuthnDeploymentContext, WebAuthnHttpRequest,
+        WebAuthnHttpResponse, WebAuthnHttpRouter, WebAuthnService, WEBAUTHN_JSON_CONTENT_TYPE,
+        WEBAUTHN_RESPONSE_SECURITY_HEADERS,
     };
     use std::sync::Arc;
     use uuid::Uuid;
 
-    struct AppState<P> {
-        service: Arc<WebAuthnExampleService>,
+    struct AppState<C, S, P> {
+        service: Arc<WebAuthnService<C, S>>,
         context: WebAuthnDeploymentContext,
         principal: Arc<P>,
     }
@@ -173,12 +174,14 @@ mod webauthn_adapter {
     /// principal from request fields. TLS, proxy validation, CSRF, session
     /// issuance, and durable ceremony/credential stores remain application
     /// responsibilities.
-    pub fn router<P>(
-        service: Arc<WebAuthnExampleService>,
+    pub fn router<C, S, P>(
+        service: Arc<WebAuthnService<C, S>>,
         context: WebAuthnDeploymentContext,
         principal: P,
     ) -> Router
     where
+        C: CredentialStore + Send + Sync + 'static,
+        S: CeremonyStateStore + Send + Sync + 'static,
         P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
     {
         let state = Arc::new(AppState {
@@ -187,15 +190,17 @@ mod webauthn_adapter {
             principal: Arc::new(principal),
         });
         Router::new()
-            .fallback(handle_request::<P>)
+            .fallback(handle_request::<C, S, P>)
             .with_state(state)
     }
 
-    async fn handle_request<P>(
-        State(state): State<Arc<AppState<P>>>,
+    async fn handle_request<C, S, P>(
+        State(state): State<Arc<AppState<C, S, P>>>,
         request: Request<Body>,
     ) -> Response
     where
+        C: CredentialStore + Send + Sync + 'static,
+        S: CeremonyStateStore + Send + Sync + 'static,
         P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
     {
         if !state.context.is_ready() {
@@ -236,17 +241,16 @@ mod webauthn_adapter {
             });
         };
         let principal = (state.principal)(&parts);
-        let response = secure_webauthn_example::WebAuthnHttpRouter::new(state.service.as_ref())
-            .handle(
-                WebAuthnHttpRequest {
-                    method: &method,
-                    path: &path,
-                    content_type: content_type.as_deref(),
-                    principal,
-                    body: &body,
-                },
-                state.context,
-            );
+        let response = WebAuthnHttpRouter::<C, S>::new(state.service.as_ref()).handle(
+            WebAuthnHttpRequest {
+                method: &method,
+                path: &path,
+                content_type: content_type.as_deref(),
+                principal,
+                body: &body,
+            },
+            state.context,
+        );
         response_from(response)
     }
 
