@@ -88,8 +88,9 @@ independently against the exact commit.
 ## Fuzz gate
 
 The `fuzz/auth_envelope` target exercises the raw-body and bounded-payload
-decoder, `fuzz/core_sequence` exercises the core state machine,
-`fuzz/ffi_sequence` exercises the exported native C ABI, and
+decoder, `fuzz/core_sequence` exercises the numeric, printable-ASCII, and
+Hangul core state machines, `fuzz/ffi_sequence` exercises the exported native
+C ABI and all three policy constructors, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
 CI builds all four with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign

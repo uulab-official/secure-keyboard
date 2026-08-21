@@ -33,6 +33,7 @@ Status: core contract complete
 - [x] Create the Rust core workspace.
 - [x] Add an opaque submission type; no secret getter exists.
 - [x] Implement numeric input, delete, clear, submit, and cancellation.
+- [x] Implement bounded printable-ASCII input using public `ascii-XX` key IDs.
 - [x] Implement primitive Hangul jamo composition behind an input-policy interface.
 - [x] Lock the initial canonical composition behavior with test vectors.
 - [x] Add explicit buffer clearing and a no-secret-API test harness.

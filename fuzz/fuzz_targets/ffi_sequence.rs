@@ -3,8 +3,9 @@
 use libfuzzer_sys::fuzz_target;
 use secure_ffi::{
     secure_keypad_session_backspace, secure_keypad_session_cancel, secure_keypad_session_clear,
-    secure_keypad_session_free, secure_keypad_session_new_hangul,
-    secure_keypad_session_new_numeric, secure_keypad_session_press_key,
+    secure_keypad_session_free, secure_keypad_session_new_ascii,
+    secure_keypad_session_new_hangul, secure_keypad_session_new_numeric,
+    secure_keypad_session_press_key,
     secure_keypad_session_refresh, secure_keypad_session_submit,
     secure_keypad_submission_free, SecureKeypadError, SecureKeypadMaskedState,
     SecureKeypadSession, SecureKeypadSubmission,
@@ -25,6 +26,14 @@ const NUMERIC_KEYS: [&[u8]; 10] = [
 ];
 
 const HANGUL_KEYS: [&[u8]; 3] = [b"jamo-giyeok", b"vowel-a", b"tail-giyeok"];
+const ASCII_KEYS: [&[u8]; 6] = [
+    b"ascii-20",
+    b"ascii-21",
+    b"ascii-41",
+    b"ascii-5a",
+    b"ascii-62",
+    b"ascii-7e",
+];
 
 // Exercises the exported C ABI with valid and malformed public pointers while
 // keeping all accepted input inside the native opaque session. The harness
@@ -32,7 +41,9 @@ const HANGUL_KEYS: [&[u8]; 3] = [b"jamo-giyeok", b"vowel-a", b"tail-giyeok"];
 // reads a submission or logs the fuzz bytes.
 fuzz_target!(|input: &[u8]| {
     let first = input.first().copied().unwrap_or_default();
-    let hangul = first & 1 == 1;
+    let policy = first % 3;
+    let hangul = policy == 2;
+    let ascii = policy == 1;
     let max_tokens = 1 + u32::from(first >> 1) % 64;
     let timeout_ms = 1 + u64::from(first);
     let mut session: *mut SecureKeypadSession = ptr::null_mut();
@@ -42,6 +53,8 @@ fuzz_target!(|input: &[u8]| {
     let constructor = unsafe {
         if hangul {
             secure_keypad_session_new_hangul(max_tokens, timeout_ms, &mut session)
+        } else if ascii {
+            secure_keypad_session_new_ascii(max_tokens, timeout_ms, &mut session)
         } else {
             secure_keypad_session_new_numeric(max_tokens, timeout_ms, &mut session)
         }
@@ -59,7 +72,13 @@ fuzz_target!(|input: &[u8]| {
         unsafe {
             match action % 6 {
                 0 => {
-                    let keys = if hangul { &HANGUL_KEYS[..] } else { &NUMERIC_KEYS[..] };
+                    let keys = if hangul {
+                        &HANGUL_KEYS[..]
+                    } else if ascii {
+                        &ASCII_KEYS[..]
+                    } else {
+                        &NUMERIC_KEYS[..]
+                    };
                     if action & 2 == 0 {
                         let key = keys[usize::from(action >> 2) % keys.len()];
                         let _ = secure_keypad_session_press_key(session, key.as_ptr(), key.len());

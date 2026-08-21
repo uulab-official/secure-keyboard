@@ -188,6 +188,10 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-core/src/input.rs", coreInput, /SecretBuffer::with_capacity/, "core rendered secret output must be preallocated");
   const coreHangul = source("crates/secure-core/src/hangul.rs", findings);
   requireText(findings, "crates/secure-core/src/hangul.rs", coreHangul, /bytes\.zeroize\(\)/, "core UTF-8 conversion must clear its temporary secret bytes");
+  const coreFuzz = source("fuzz/fuzz_targets/core_sequence.rs", findings);
+  requireText(findings, "fuzz/fuzz_targets/core_sequence.rs", coreFuzz, /ASCII_KEYS/, "core fuzzing must exercise printable-ASCII keys");
+  const ffiFuzz = source("fuzz/fuzz_targets/ffi_sequence.rs", findings);
+  requireText(findings, "fuzz/fuzz_targets/ffi_sequence.rs", ffiFuzz, /secure_keypad_session_new_ascii/, "FFI fuzzing must exercise the printable-ASCII constructor");
 
   const auth = source("crates/secure-auth/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
