@@ -3,6 +3,7 @@ use crate::{
         decode_ceremony_record, encode_ceremony_record, validate_backend_ttl, CeremonyKind,
         CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
         CredentialStoreError, WebAuthnStateKey, WebAuthnStateProtector,
+        MAX_PROTECTED_CEREMONY_RECORD_BYTES,
     },
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
     MAX_PENDING_CEREMONIES,
@@ -36,6 +37,15 @@ SELECT CASE
 FROM secure_keypad_webauthn_credentials
 WHERE namespace = $1 AND user_id = $2 AND credential_id = $3
 FOR UPDATE
+";
+const POSTGRES_CEREMONY_CONSUME_SQL: &str = r"
+DELETE FROM secure_keypad_webauthn_ceremonies
+WHERE namespace = $1 AND handle = $2 AND kind = $3 AND expires_at > now()
+RETURNING kind, user_id,
+          CASE
+              WHEN octet_length(state) <= $4 THEN state
+              ELSE NULL::bytea
+          END AS state
 ";
 
 /// SQL schema required by [`PostgresWebAuthnStore`].
@@ -428,12 +438,17 @@ where
         let mut client = self.connection()?;
         let handle_bytes = handle.as_bytes().as_slice();
         let kind_tag = kind_tag(kind);
+        let max_protected_record_bytes = i64::try_from(MAX_PROTECTED_CEREMONY_RECORD_BYTES)
+            .map_err(|_| CeremonyStoreError::InvalidState)?;
         let row = client
             .query_opt(
-                "DELETE FROM secure_keypad_webauthn_ceremonies
-                 WHERE namespace = $1 AND handle = $2 AND kind = $3 AND expires_at > now()
-                 RETURNING kind, user_id, state",
-                &[&self.namespace, &handle_bytes, &kind_tag],
+                POSTGRES_CEREMONY_CONSUME_SQL,
+                &[
+                    &self.namespace,
+                    &handle_bytes,
+                    &kind_tag,
+                    &max_protected_record_bytes,
+                ],
             )
             .map_err(|_| CeremonyStoreError::Unavailable)?;
         let Some(row) = row else {
@@ -441,7 +456,10 @@ where
         };
         let stored_kind: i16 = row.get(0);
         let user_id: Uuid = row.get(1);
-        let protected: Vec<u8> = row.get(2);
+        let protected: Option<Vec<u8>> = row
+            .try_get(2)
+            .map_err(|_| CeremonyStoreError::InvalidState)?;
+        let protected = protected.ok_or(CeremonyStoreError::InvalidState)?;
         if stored_kind != kind_tag {
             return Ok(None);
         }
@@ -669,7 +687,8 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresStorageConfigError>
 #[cfg(test)]
 mod tests {
     use super::{
-        POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL, POSTGRES_SCHEMA_SQL,
+        POSTGRES_CEREMONY_CONSUME_SQL, POSTGRES_CREDENTIAL_LOAD_SQL,
+        POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL, POSTGRES_SCHEMA_SQL,
     };
 
     #[test]
@@ -683,6 +702,13 @@ mod tests {
         assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("FOR UPDATE"));
         assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("octet_length(passkey::text) <= $4"));
         assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("ELSE NULL::jsonb"));
+    }
+
+    #[test]
+    fn ceremony_consume_query_bounds_bytes_before_materialization() {
+        assert!(POSTGRES_CEREMONY_CONSUME_SQL.contains("octet_length(state) <= $4"));
+        assert!(POSTGRES_CEREMONY_CONSUME_SQL.contains("ELSE NULL::bytea"));
+        assert!(POSTGRES_CEREMONY_CONSUME_SQL.contains("expires_at > now()"));
     }
 
     #[test]

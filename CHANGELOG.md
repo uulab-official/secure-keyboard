@@ -47,6 +47,9 @@ exact release-candidate commit by the release evidence manifest.
 - Bounded Redis WebAuthn ceremony, OPAQUE one-time-state, and rate-limit reads
   with atomic pre-`GET` length checks; oversized legacy values are removed
   without entering the decoder or rate-limit counter path.
+- Bounded PostgreSQL WebAuthn ceremony and OPAQUE one-time-state `RETURNING`
+  values with SQL byte sentinels, deleting oversized legacy rows before their
+  encrypted payloads can be materialized by the application.
 
 ### Verification
 

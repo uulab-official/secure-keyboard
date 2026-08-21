@@ -15,6 +15,14 @@ use std::{any::TypeId, fmt, time::Duration};
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
 const MAX_POOL_SIZE: u32 = 256;
+const POSTGRES_ONE_TIME_STATE_CONSUME_SQL: &str = r"
+DELETE FROM secure_keypad_opaque_login_states
+WHERE namespace = $1 AND handle_hash = $2 AND expires_at > now()
+RETURNING CASE
+              WHEN octet_length(state) <= $3 THEN state
+              ELSE NULL::bytea
+          END AS state
+";
 /// SQL schema required by [`PostgresOneTimeLoginStateStore`].
 pub const POSTGRES_ONE_TIME_LOGIN_STATE_SCHEMA_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS secure_keypad_opaque_login_states (
@@ -326,18 +334,19 @@ where
     fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError> {
         let mut client = self.connection()?;
         let handle_hash: [u8; 32] = Sha256::digest(handle.as_bytes()).into();
+        let max_storage_bytes = i64::try_from(MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES)
+            .map_err(|_| StoreError::Unavailable)?;
         let row = client
             .query_opt(
-                "DELETE FROM secure_keypad_opaque_login_states
-                 WHERE namespace = $1 AND handle_hash = $2 AND expires_at > now()
-                 RETURNING state",
-                &[&self.namespace, &&handle_hash[..]],
+                POSTGRES_ONE_TIME_STATE_CONSUME_SQL,
+                &[&self.namespace, &&handle_hash[..], &max_storage_bytes],
             )
             .map_err(|_| StoreError::Unavailable)?;
         let Some(row) = row else {
             return Ok(None);
         };
-        let protected: Vec<u8> = row.get(0);
+        let protected: Option<Vec<u8>> = row.try_get(0).map_err(|_| StoreError::Unavailable)?;
+        let protected = protected.ok_or(StoreError::Unavailable)?;
         let encoded = self.protector.open(protected)?;
         Ok(Some(decode_bound_state(encoded.to_vec())?))
     }
@@ -363,4 +372,16 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresOneTimeStateConfigE
         return Err(PostgresOneTimeStateConfigError::InvalidNamespace);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::POSTGRES_ONE_TIME_STATE_CONSUME_SQL;
+
+    #[test]
+    fn consume_query_bounds_bytes_before_materialization() {
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("octet_length(state) <= $3"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("ELSE NULL::bytea"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("expires_at > now()"));
+    }
 }

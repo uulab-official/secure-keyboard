@@ -72,6 +72,12 @@ uses a single `DELETE ... WHERE namespace = $1 AND handle = $2 AND kind = $3
 AND expires_at > now() RETURNING user_id, state`. Do not replace either
 consume operation with a separate read followed by delete.
 
+The PostgreSQL ceremony `DELETE ... RETURNING` uses a byte-bounded `CASE`
+sentinel before returning the encrypted state. An oversized legacy row is
+deleted atomically and returned as an invalid state, so a missing or failed
+migration cannot turn a ceremony consume into an unbounded application
+allocation.
+
 ## Credential records
 
 `webauthn-rs::Passkey` records contain public credential material and may be

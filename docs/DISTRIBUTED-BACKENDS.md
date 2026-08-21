@@ -45,8 +45,10 @@ from both the state key and pending index without being returned to the client.
 PostgreSQL-style stores should use `DELETE ... WHERE key = $1 AND expires_at >
 now() RETURNING value` inside a single atomic operation. The built-in
 PostgreSQL adapter does this and also uses an advisory lock for insert
-capacity. Both built-in adapters reconstruct `BoundLoginState` with bounded
-identifiers before returning it to `ServerAuthService`.
+capacity; its `RETURNING` expression also applies the encrypted-record byte
+bound before materialization. Both built-in adapters reconstruct
+`BoundLoginState` with bounded identifiers before returning it to
+`ServerAuthService`.
 
 ## Atomic rate limiting
 
