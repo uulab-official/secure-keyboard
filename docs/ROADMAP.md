@@ -137,7 +137,7 @@ Status: passkey-first adapter, reference server, bounded HTTP route, and deploym
 - [x] Expose a custom web keypad fallback only as an explicitly acknowledged lower-assurance mode.
 - [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
 - [x] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
-- [ ] Add CSP, dependency integrity, and supply-chain guidance.
+- [x] Add CSP, dependency integrity, and supply-chain guidance.
 
 Exit criteria: web users get a safe default and understand the difference between native and browser security.
 

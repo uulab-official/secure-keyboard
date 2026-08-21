@@ -13,3 +13,6 @@ consumption. The embedding server must pass the reference route's validated
 TLS/proxy-limit deployment context and still provide durable credential
 storage, account/session binding, CSRF protection, replay-safe distributed
 storage, and its own rate limits.
+
+For CSP, SRI, lockfile, and browser trust-boundary requirements, see
+`docs/WEB-DEPLOYMENT.md`.

@@ -13,6 +13,8 @@ Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks fr
 Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
 Use the [HTTP deployment baseline](docs/HTTP-DEPLOYMENT.md) when embedding the
 server routes behind TLS or a reverse proxy.
+For multi-instance deployments, follow the [distributed backend contract](docs/DISTRIBUTED-BACKENDS.md)
+and the [web deployment baseline](docs/WEB-DEPLOYMENT.md).
 
 ## Current packages
 

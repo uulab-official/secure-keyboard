@@ -155,6 +155,12 @@ export function runSecurityAudit() {
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /X-Forwarded-/, "deployment guide must document forwarded-header trust boundaries");
+  const webDeploymentGuide = source("docs/WEB-DEPLOYMENT.md", findings);
+  requireText(findings, "docs/WEB-DEPLOYMENT.md", webDeploymentGuide, /unsafe-inline/, "web deployment guide must forbid unsafe inline scripts");
+  requireText(findings, "docs/WEB-DEPLOYMENT.md", webDeploymentGuide, /integrity="sha384-/, "web deployment guide must require SRI for unavoidable third-party assets");
+  const distributedGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
+  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
+  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
 
   return findings;
 }
