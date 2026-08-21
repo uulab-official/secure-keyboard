@@ -170,6 +170,14 @@ jobs:
               | xargs -0 sha256sum > secure-keypad-release.sha256
           )
           cat "$RELEASE_DIR/secure-keypad-release.sha256"
+      - name: Emit signed-release evidence
+        run: |
+          node scripts/emit-signed-release-evidence.mjs \
+            "$RELEASE_DIR" \
+            "evidence/signed-release.json" \
+            --bundle secure-keypad-release.tar.gz \
+            --signature secure-keypad-release.sig \
+            --public-key secure-keypad-release.pub.der
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-keypad-release-candidate

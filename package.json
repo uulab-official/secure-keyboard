@@ -18,6 +18,7 @@
     "merge:release-evidence": "node scripts/merge-release-evidence.mjs",
     "test:merge-release-evidence": "node --test scripts/merge-release-evidence.test.mjs",
     "test:sign-release": "node --test scripts/sign-release.test.mjs",
+    "test:emit-signed-release-evidence": "node --test scripts/emit-signed-release-evidence.test.mjs",
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",
     "test:fuzz-corpus": "node --test scripts/fuzz-corpus.test.mjs",
     "test:durable-backends": "bash scripts/run-durable-backend-tests.sh",

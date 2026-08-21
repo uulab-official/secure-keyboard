@@ -226,6 +226,19 @@ node scripts/sign-release.mjs \
   artifacts/secure-keypad-release.pub.der
 ```
 
+After signing, emit the commit-bound `signed-release` gate record from the
+same artifact root. The emitter verifies the Ed25519 signature before writing
+only public metadata and SHA-256 digests:
+
+```sh
+node scripts/emit-signed-release-evidence.mjs \
+  "$RUNNER_TEMP/secure-keypad-release" \
+  "evidence/signed-release.json" \
+  --bundle secure-keypad-release.tar.gz \
+  --signature secure-keypad-release.sig \
+  --public-key secure-keypad-release.pub.der
+```
+
 The checked-in release-candidate workflow runs the bundle job in the
 `secure-keypad-release` GitHub Environment. Repository administrators must
 configure that environment with required reviewers and the signing secret;

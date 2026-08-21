@@ -117,6 +117,7 @@ jobs:
       - run: pnpm test:emit-web-browser-evidence
       - run: pnpm test:merge-release-evidence
       - run: pnpm test:sign-release
+      - run: pnpm test:emit-signed-release-evidence
       - run: pnpm test:device-evidence
       - run: pnpm test:fuzz-corpus
       - run: pnpm test:security-audit

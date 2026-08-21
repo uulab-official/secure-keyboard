@@ -51,6 +51,8 @@ exact release-candidate commit by the release evidence manifest.
 - Independent review findings now require affected scope, reproduction,
   remediation-owner, and retest-evidence fields before a signed report can
   satisfy the release gate.
+- Release candidates now emit a commit-bound `signed-release` evidence record
+  that verifies the detached signature before recording artifact digests.
 - Bounded PostgreSQL credential loads at the configured per-account limit plus
   one row and the credential-record byte limit in SQL before materialization,
   so legacy or invalid excess rows/records cannot turn a credential read into

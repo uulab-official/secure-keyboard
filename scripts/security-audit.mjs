@@ -874,6 +874,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/release-candidate-metadata\.mjs/, "release candidate must embed immutable candidate metadata in the signed bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /release-candidate-metadata\.json/, "release candidate must retain the candidate metadata record");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /services:/, "release candidate must provide isolated durable backend services");
@@ -905,6 +906,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-signed-release-evidence/, "CI must validate signed-release evidence emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-ci-gate-evidence/, "CI must validate CI gate evidence emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-web-browser-evidence/, "CI must validate web browser evidence emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-ci-release-evidence/, "CI must retain an aggregated release evidence artifact");
@@ -1033,6 +1035,10 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /sign\(null, artifact, privateKey\)/, "release signing must create a detached signature over the artifact");
+  const signedReleaseEvidence = source("scripts/emit-signed-release-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /verify\(null, bundle, publicKey, signature\)/, "signed-release evidence must verify the detached signature");
+  requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /bundleSha256|signatureSha256|publicKeySha256/, "signed-release evidence must hash every signed artifact");
+  requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /currentCommit/, "signed-release evidence must bind to the current checkout commit");
 
   return findings;
 }

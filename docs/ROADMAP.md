@@ -198,6 +198,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a checked-in release gate fragment emitter that hashes exact evidence bytes and derives commit/version from the checkout.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
+- [x] Emit a commit-bound `signed-release` evidence record that verifies the detached Ed25519 signature and hashes the bundle, signature, and public key.
 - [x] Inspect release staging before archiving: candidate metadata, SBOM, notices, publishable package contents, crate archives, and private-key exclusion.
 - [x] Restrict release signing workflow dispatch to a verified immutable 40-character commit SHA.
 - [x] Bind release signing to a named protected GitHub Environment; administrator reviewer configuration remains external evidence.
