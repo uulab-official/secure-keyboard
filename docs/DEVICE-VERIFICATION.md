@@ -52,3 +52,26 @@ screenshots containing real or sentinel secrets. A failed, skipped, or
 unavailable physical-device case keeps the device gate open; source inspection
 and host compilation are not substitutes. The independent security reviewer
 must re-run a representative sample and sign the exact evidence bundle.
+
+## Machine-readable evidence record
+
+Each platform/framework run should produce one JSON record containing:
+
+- the exact 40-character commit SHA, framework version, timestamp, and
+  `physicalDevice` flag;
+- device/browser model, OS version/build, and `secureContext: true` for Web;
+- every applicable test case with the exact status `pass`;
+- `sanitizedLogs: true`, a relative `logPath`, and a SHA-256 log digest;
+- at least one relative artifact path with a lowercase SHA-256 digest.
+
+The record validator rejects secret-bearing field names, absolute/parent paths,
+missing test passes, invalid hashes, and WebAuthn records without secure
+context evidence:
+
+```sh
+pnpm test:device-evidence
+node scripts/check-device-evidence.mjs path/to/device-evidence.json
+```
+
+Validation checks the record shape only; it does not replace independent review
+of the attached logs, screenshots, native artifacts, or physical-device run.
