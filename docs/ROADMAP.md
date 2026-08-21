@@ -70,9 +70,11 @@ Exit criteria: Secure Native Mode works without a secret crossing the framework 
 
 ### Phase 4 — React Native adapter
 
-Status: public contract and reference view-manager complete; host-app build and release packaging pending
+Status: publishable contract, native source packaging, and parity gate complete; host-app build and device verification pending
 
 - [x] Provide reference iOS/Android native view-manager registration.
+- [x] Include iOS/Android native source, FFI module map, and fail-closed package build manifests.
+- [x] Require an explicit native submission consumer before reporting framework success.
 - [x] Accept only serializable layout, theme, and policy objects.
 - [ ] Expose controller commands and masked state events.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
@@ -82,12 +84,14 @@ Exit criteria: RN users can customize the entire supported visual contract while
 
 ### Phase 5 — Flutter adapter
 
-Status: public contract and reference PlatformView/FFI complete; host-app build and device verification pending
+Status: publishable contract, native PlatformView package, and parity gate complete; host-app build and device verification pending
 
 - [x] Publish the Flutter-facing layout/theme/policy contract.
 - [x] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
 - [x] Mirror the RN masked-state/result-code contract and add Flutter analyze/test CI gates.
 - [x] Provide reference PlatformView/FFI registration that carries only public configuration and masked/result events.
+- [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
+- [x] Require an explicit native submission consumer before reporting framework success.
 - [ ] Compile the registration in supported host apps and verify device behavior.
 - [ ] Provide examples for numeric PIN, Hangul password, and branded themes.
 
@@ -115,6 +119,7 @@ Status: OPAQUE engine and verified HTTP/JSON route contract complete; deployment
 - [x] Add a bounded one-time reference store with TTL, capacity, and state-size tests.
 - [x] Add transport-neutral registration orchestration that returns protected credential files.
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
+- [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
 - [ ] Add framework-specific HTTP examples with mandatory TLS and reverse-proxy limits.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
@@ -124,13 +129,13 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: passkey-first adapter contract complete; browser/server example and deployment hardening pending
+Status: passkey-first adapter, reference server, and bounded HTTP route contract complete; HTTP deployment hardening pending
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
 - [x] Expose a custom web keypad fallback only as an explicitly acknowledged lower-assurance mode.
 - [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
-- [ ] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
+- [x] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
 - [ ] Add CSP, dependency integrity, and supply-chain guidance.
 
 Exit criteria: web users get a safe default and understand the difference between native and browser security.

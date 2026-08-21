@@ -5,6 +5,13 @@
 /// and authentication handoff; Flutter receives masked state and result codes.
 library secure_keypad_flutter;
 
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
 enum InputPolicy { numeric, hangul }
 
 enum KeyRole { input, backspace, submit, clear, spacer }
@@ -143,6 +150,64 @@ class SecureKeypadConfiguration {
   final MaskedStateCallback? onMaskedStateChanged;
   final ResultCallback? onResult;
 
+  /// Converts public configuration to the native PlatformView creation map.
+  ///
+  /// This map intentionally has no callback, text, password, or secret field.
+  /// The native plugin receives it once when the platform view is created.
+  Map<String, Object?> toPlatformCreationParams() {
+    return <String, Object?>{
+      'layout': <String, Object?>{
+        'schemaVersion': layout.schemaVersion,
+        if (layout.id != null) 'id': layout.id,
+        if (layout.locale != null) 'locale': layout.locale,
+        'direction': layout.direction.name,
+        'rows': layout.rows
+            .map(
+              (row) => row
+                  .map(
+                    (key) => <String, Object?>{
+                      'id': key.id,
+                      if (key.label != null) 'label': key.label,
+                      if (key.icon != null) 'icon': key.icon,
+                      'role': key.role.name,
+                      if (key.accessibilityLabel != null)
+                        'accessibilityLabel': key.accessibilityLabel,
+                      if (key.testId != null) 'testId': key.testId,
+                    },
+                  )
+                  .toList(growable: false),
+            )
+            .toList(growable: false),
+        'slots': <String, Object?>{
+          'header': layout.header,
+          'display': layout.display,
+          'footer': layout.footer,
+          'error': layout.error,
+        },
+      },
+      'theme': <String, Object?>{
+        'schemaVersion': 1,
+        'colors': Map<String, String>.of(theme.colors),
+        'metrics': Map<String, double>.of(theme.metrics),
+        'typography': <String, Object?>{
+          'keyFontSize': theme.keyFontSize,
+          'keyFontWeight': theme.keyFontWeight,
+        },
+        'animation': <String, Object?>{
+          'pressDurationMs': theme.pressDurationMs,
+          'maskRevealDurationMs': theme.maskRevealDurationMs,
+        },
+        'feedback': <String, Object?>{
+          'haptic': theme.haptic.name,
+          'sound': theme.sound.name,
+        },
+      },
+      'inputPolicy': inputPolicy.name,
+      'maxTokens': maxTokens,
+      'timeoutMs': timeoutMs,
+    };
+  }
+
   /// Validates only public configuration. It never includes field values in
   /// error text, which keeps host logs from echoing arbitrary labels.
   List<String> validate() {
@@ -174,6 +239,139 @@ class SecureKeypadConfiguration {
       errors.add('theme.keyFontWeight is invalid');
     }
     return errors;
+  }
+}
+
+/// Flutter PlatformView wrapper for the native-only keypad.
+///
+/// The widget creates a native view with public layout/theme configuration and
+/// listens to a per-view event channel containing masked state and result
+/// codes. It has no Dart-side text buffer or secret callback.
+class SecureKeypad extends StatefulWidget {
+  const SecureKeypad({
+    super.key,
+    required this.configuration,
+    this.viewType = 'secure_keypad/native',
+  });
+
+  final SecureKeypadConfiguration configuration;
+  final String viewType;
+
+  @override
+  State<SecureKeypad> createState() => _SecureKeypadState();
+}
+
+class _SecureKeypadState extends State<SecureKeypad> {
+  StreamSubscription<dynamic>? _eventSubscription;
+  bool _reportedConfigurationError = false;
+
+  @override
+  void didUpdateWidget(covariant SecureKeypad oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.configuration != widget.configuration ||
+        oldWidget.viewType != widget.viewType) {
+      _eventSubscription?.cancel();
+      _eventSubscription = null;
+      _reportedConfigurationError = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final errors = widget.configuration.validate();
+    if (errors.isNotEmpty) {
+      _emitOnce(SecureKeypadResultCode.invalid);
+      return const SizedBox.shrink();
+    }
+
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      _emitOnce(SecureKeypadResultCode.error);
+      return const SizedBox.shrink();
+    }
+
+    final params = widget.configuration.toPlatformCreationParams();
+    final key = ValueKey<String>(
+      '${widget.viewType}:${jsonEncode(params)}',
+    );
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidView(
+        key: key,
+        viewType: widget.viewType,
+        creationParams: params,
+        creationParamsCodec: const StandardMessageCodec(),
+        onPlatformViewCreated: _onPlatformViewCreated,
+      );
+    }
+    return UiKitView(
+      key: key,
+      viewType: widget.viewType,
+      creationParams: params,
+      creationParamsCodec: const StandardMessageCodec(),
+      onPlatformViewCreated: _onPlatformViewCreated,
+    );
+  }
+
+  void _onPlatformViewCreated(int viewId) {
+    _eventSubscription?.cancel();
+    _eventSubscription = EventChannel('secure_keypad/events/$viewId')
+        .receiveBroadcastStream()
+        .listen(_onNativeEvent, onError: (_, __) {
+      _emitResult(SecureKeypadResultCode.error);
+    });
+  }
+
+  void _onNativeEvent(dynamic event) {
+    if (event is! Map<Object?, Object?>) return;
+    final type = event['type'];
+    if (type == 'state') {
+      final length = event['length'];
+      final displayState = event['displayState'];
+      if (length is int && displayState is String) {
+        final state = _displayStateFromName(displayState);
+        if (state != null) {
+          widget.configuration.onMaskedStateChanged?.call(
+            MaskedState(length: length, displayState: state),
+          );
+        }
+      }
+    } else if (type == 'result' && event['code'] is String) {
+      final result = _resultFromName(event['code'] as String);
+      if (result != null) _emitResult(result);
+    }
+  }
+
+  void _emitOnce(SecureKeypadResultCode result) {
+    if (_reportedConfigurationError) return;
+    _reportedConfigurationError = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _emitResult(result);
+    });
+  }
+
+  void _emitResult(SecureKeypadResultCode result) {
+    widget.configuration.onResult?.call(result);
+  }
+
+  DisplayState? _displayStateFromName(String value) {
+    for (final state in DisplayState.values) {
+      if (state.name == value) return state;
+    }
+    return null;
+  }
+
+  SecureKeypadResultCode? _resultFromName(String value) {
+    for (final result in SecureKeypadResultCode.values) {
+      if (result.name == value) return result;
+    }
+    return null;
   }
 }
 

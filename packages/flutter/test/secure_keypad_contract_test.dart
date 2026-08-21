@@ -46,4 +46,23 @@ void main() {
     expect(states.single.length, 2);
     expect(results.single, SecureKeypadResultCode.success);
   });
+
+  test('platform creation params contain only public configuration', () {
+    final configuration = SecureKeypadConfiguration.defaultNumeric();
+
+    final params = configuration.toPlatformCreationParams();
+
+    expect(params.keys, containsAll(<String>[
+      'layout',
+      'theme',
+      'inputPolicy',
+      'maxTokens',
+      'timeoutMs',
+    ]));
+    expect(params.keys, isNot(contains('value')));
+    expect(params.keys, isNot(contains('password')));
+    expect(params.keys, isNot(contains('secret')));
+    expect(params['inputPolicy'], 'numeric');
+    expect((params['layout'] as Map<String, Object?>)['schemaVersion'], 1);
+  });
 }

@@ -36,11 +36,22 @@ export function PinEntry() {
 }
 ```
 
-This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The reference iOS/Android view managers are under `native/ios/react-native` and `native/android/.../reactnative`; add them to the host target and link the matching `secure_ffi` artifact for each ABI. Expo Go and browser runtimes are not supported.
+This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
+
+Build integration is intentionally fail-closed. Before `pod install`, set
+`SECURE_KEYPAD_FFI_LIB` to a matching Rust `secure_ffi` static library (a
+universal/fat artifact or the host's architecture-specific CocoaPods input).
+Before the Android external-native build, set
+`SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
+`<abi>/libsecure_ffi.a` for every ABI shipped by the app. The library must be
+built from the same source revision and release profile as the native view.
 
 The `success` result means that the native keypad created an opaque submission
-and the native bridge accepted ownership. It is not a server authentication
-decision. A production app must consume that handle inside a host-native
-authentication service and report its own server result out-of-band.
+and an installed native submission consumer accepted ownership. Without a
+consumer, the bridge releases the submission and reports `error`. It is not a
+server authentication decision. A production app must install
+`SecureKeypadNativeSubmissionRouter` in native code, call
+`takeOpaqueHandle()` on the submission, and consume the handle inside a
+host-native authentication service; no handle is exposed to JavaScript.
 
 The package is MIT-licensed. See the repository security specification before exposing it to an authentication flow.

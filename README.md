@@ -10,6 +10,7 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
+Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
 
 ## Current packages
 
@@ -17,6 +18,7 @@ Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks fr
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
 - `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; TLS, rate limits, account enrollment, and session issuance remain host-server responsibilities.
+- `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication reference with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, and atomic one-time ceremony state.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 - `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.
@@ -28,18 +30,20 @@ The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 custom renderers. These objects contain labels and key IDs only; they do not
 contain password values.
 
-Native iOS/Android renderer sources now exist under `native/`. The React
-Native package currently ships the public contract and lazy native-component
-resolver; the platform view-manager registration, architecture-specific
-release packaging, Flutter binding, WebAuthn server example, and device-level
-security review remain release gates. Do not treat the current repository
-state as a drop-in production authentication component.
+Native iOS/Android renderer sources exist under `native/` and are mirrored into
+the publishable React Native and Flutter packages with a byte-for-byte parity
+gate. The packages fail closed unless the host supplies matching Rust
+`secure_ffi` artifacts for every shipped ABI. WebAuthn deployment integration,
+host-app compilation, device-level security verification, and independent
+review remain release gates. Do not treat the current repository state as a
+drop-in production authentication component.
 
 ## Development
 
 ```sh
 cargo test --workspace
 pnpm install
+pnpm test:native-parity
 pnpm --dir packages/contracts test
 pnpm --dir packages/react-native test
 pnpm --dir packages/web test

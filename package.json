@@ -1,5 +1,9 @@
 {
   "name": "secure-keypad-workspace",
   "private": true,
-  "packageManager": "pnpm@11.19.0"
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "check:native-parity": "node scripts/check-native-package-parity.mjs",
+    "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs"
+  }
 }

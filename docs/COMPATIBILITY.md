@@ -1,0 +1,29 @@
+# Compatibility and version policy
+
+The SDK has separate UI, native ABI, and authentication protocol versions.
+Consumers must pin all three in a release pipeline; updating a framework
+package must not silently update the authentication suite.
+
+| Surface | Current release contract | Compatibility rule |
+|---|---|---|
+| Rust toolchain | `rust-toolchain.toml` (`1.97.1`) | Build the Rust core/FFI and native host integration from the same commit. The WebAuthn example remains compatible with workspace MSRV `1.85`. |
+| C ABI | `SECURE_KEYPAD_ABI_VERSION = 1` | A native host must link the header and `secure_ffi` library from the same source revision and reject an ABI mismatch before creating a session. |
+| OPAQUE | `opaque-ke = 4.0.1`; suite `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2` | Pin the protocol version, suite, and server key ID. Rotation may allow only the explicitly configured active/previous key window. |
+| WebAuthn example | `webauthn-rs = 0.5.4` | Keep the verifier and its credential serialization format under one lockfile. Replace process-local stores before deployment. |
+| React Native | package `0.1.0`; peer `react-native >=0.76` | Compile the package native sources against the exact host RN/React versions and install a native submission consumer. Expo Go is unsupported. |
+| Flutter | package `0.1.0`; Dart `>=3.4.0 <4.0.0` | Run `flutter analyze`, `flutter test`, and a host app build with the selected stable Flutter/AGP toolchain. |
+| iOS | iOS 15.0 minimum for UIKit configuration APIs | Ship matching device/simulator Rust static libraries and verify background/capture masking on supported OS versions. |
+| Android | API 24 minimum; CMake 3.22.1 contract | Ship `libsecure_ffi.a` for every ABI and verify `android.builtInKotlin`/host Gradle compatibility. |
+
+## Upgrade procedure
+
+1. Review the lockfile and this matrix together; do not update `opaque-ke`,
+   `webauthn-rs`, or the C ABI independently of the release notes.
+2. Run `pnpm test:native-parity` and `pnpm check:native-parity` before building
+   framework packages.
+3. Rebuild `secure_ffi` for every target ABI and verify the host's static
+   library checksum against the release manifest.
+4. Run the full Rust/JS/Flutter gates, then the RN and Flutter host app builds
+   and device matrix.
+5. Have an independent reviewer re-run the MASVS evidence map and sign the
+   exact commit, SBOM, native artifacts, and residual-risk list.

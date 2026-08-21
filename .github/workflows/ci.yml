@@ -18,6 +18,7 @@ jobs:
           components: rustfmt, clippy
       - run: cargo fmt --all -- --check
       - run: cargo test --workspace --all-features
+      - run: cargo test -p secure-webauthn-example
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   contracts:
@@ -33,12 +34,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level high
+      - run: pnpm test:native-parity
+      - run: pnpm check:native-parity
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
       - run: pnpm --dir packages/contracts build
       - run: pnpm --dir packages/react-native typecheck
       - run: pnpm --dir packages/react-native test
       - run: pnpm --dir packages/react-native build
+      - run: pnpm --dir packages/react-native pack --dry-run
       - run: pnpm --dir packages/web typecheck
       - run: pnpm --dir packages/web test
       - run: pnpm --dir packages/web build
@@ -59,6 +63,8 @@ jobs:
       - run: flutter analyze
         working-directory: packages/flutter
       - run: flutter test
+        working-directory: packages/flutter
+      - run: dart pub publish --dry-run
         working-directory: packages/flutter
 
   fuzz:

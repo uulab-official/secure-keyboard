@@ -6,4 +6,9 @@ The browser adapter accepts server-generated WebAuthn options, converts base64ur
 
 WebAuthn must run in a secure context. A custom browser keypad is intentionally not presented as a secure equivalent: page JavaScript can observe browser input and memory. If a product elects to ship that fallback, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)` and display `getWebFallbackNotice()` to the user/operator.
 
-This package is an adapter, not a WebAuthn server. The server must generate challenges, bind them to the relying-party origin and user/session, verify the returned ceremony, enforce replay protection, and apply its own rate limits.
+This package is an adapter, not a WebAuthn server. The Rust reference service
+is in `crates/secure-webauthn-example`; it delegates ceremony verification to
+the pinned `webauthn-rs` engine and adds bounded JSON plus one-time state
+consumption. The embedding server must still provide TLS, durable credential
+storage, account/session binding, CSRF protection, replay-safe distributed
+storage, and its own rate limits.

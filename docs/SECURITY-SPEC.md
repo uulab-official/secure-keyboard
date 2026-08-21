@@ -50,6 +50,11 @@ codes. A submission handle has no byte accessor; native authentication code
 must consume it inside the native boundary. ABI callers own each handle and
 must not use a handle concurrently or after its matching free function.
 
+RN and Flutter bridges require an explicitly installed native submission
+consumer. Without one, submit zeroizes/releases the opaque handle and emits an
+error result; a framework success event means only that native ownership was
+accepted, never that server authentication succeeded.
+
 ## Input policies
 
 Numeric, alphabetic, symbol, and Hangul composition are separate policies. Hangul composition happens in the secure core, not in JavaScript or Dart. The initial core accepts structured jamo key IDs and emits canonical Hangul syllable code points; arbitrary Unicode normalization is not silently enabled. Future Unicode policies must lock the Unicode version and normalization behavior. NFKC must not be enabled implicitly because compatibility normalization can change the user's intended secret.

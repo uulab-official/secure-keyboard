@@ -5,6 +5,7 @@ members = [
     "crates/secure-auth-server",
     "crates/secure-auth-http",
     "crates/secure-ffi",
+    "crates/secure-webauthn-example",
 ]
 resolver = "2"
 

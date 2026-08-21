@@ -112,11 +112,47 @@ cargo build --release -p secure-ffi --target aarch64-linux-android
 
 ## Framework adapters
 
-React Native and Flutter adapters now include reference native registration
-source under `native/ios/{react-native,flutter}` and
-`native/android/.../{reactnative,flutter}`. They may pass layout, theme, locale,
-accessibility, and masked state. They must not pass `SecureKeypadSubmission`
-handles or transport bytes through JavaScript/Dart serialization. Expo Go and
-ordinary Flutter hot-reload runtimes cannot host this security boundary without
-a custom native build. A host app must still compile the reference bridge in
-its own RN/Flutter target and run the device matrix before release.
+React Native and Flutter publishable packages now contain the native
+registration source, JNI adapter, FFI header/module map, and fail-closed build
+manifests. `scripts/check-native-package-parity.mjs` verifies that central
+native sources and package copies are byte-for-byte identical.
+
+Before rendering an authentication keypad, the host-native layer must install
+`SecureKeypadNativeSubmissionRouter` with a consumer. The consumer calls
+`takeOpaqueHandle()` on iOS or `takeNativeHandle()` on Android and passes that
+opaque capability to native OPAQUE/credential code. If no consumer is
+installed, submit is released and the framework receives `error`; a framework
+`success` event therefore means only that native ownership was accepted. The
+handle and the consumer callback never cross JavaScript, Dart, or JSON.
+
+React Native package paths:
+
+- `packages/react-native/ios` contains the UIKit view manager and FFI module.
+- `packages/react-native/android` contains the Kotlin view manager and JNI
+  CMake target.
+- `packages/react-native/SecureKeypadReactNative.podspec` requires
+  `SECURE_KEYPAD_FFI_LIB` to point to the matching Rust static library.
+- Android CMake requires `SECURE_KEYPAD_FFI_LIB_DIR` with one
+  `libsecure_ffi.a` per shipped ABI.
+- The Android module respects the host's `android.builtInKotlin` setting;
+  legacy hosts must expose the Kotlin Gradle plugin, while AGP 9 built-in
+  Kotlin hosts must enable that property.
+
+Flutter package paths:
+
+- `packages/flutter/ios/Classes` contains the PlatformView plugin and FFI
+  module; the podspec uses the same `SECURE_KEYPAD_FFI_LIB` contract.
+- `packages/flutter/android` contains the PlatformView plugin and JNI CMake
+  target with the same ABI directory contract.
+- `SecureKeypad` creates the native PlatformView and forwards only public
+  creation parameters and masked/result events.
+- The Android module respects the host's `android.builtInKotlin` setting;
+  legacy hosts must expose the Kotlin Gradle plugin, while AGP 9 built-in
+  Kotlin hosts must enable that property.
+
+Build the Rust library for every device/simulator ABI in the host release
+pipeline. Never substitute a debug, simulator-only, or architecture-mismatched
+library. Expo Go and ordinary Flutter hot-reload runtimes cannot host this
+security boundary without a custom native build. A host app must still compile
+the package against its chosen RN/Flutter versions and run the device matrix
+before release.

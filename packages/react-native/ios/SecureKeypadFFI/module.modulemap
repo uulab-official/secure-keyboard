@@ -1,0 +1,4 @@
+module SecureKeypadFFI [system] {
+    header "secure_keypad.h"
+    export *
+}
