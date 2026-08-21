@@ -109,8 +109,10 @@ the view repeats the public bounds: 16 rows, 32 keys per row, 512 total keys,
 
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is
-bounded to public configuration fields and its events contain only masked
-length/state or non-secret result codes. `native/android/.../flutter/
+bounded to public configuration fields, runs inside a fail-closed exception
+boundary, and releases the native session before reporting malformed input.
+Its events contain only masked length/state or non-secret result codes.
+`native/android/.../flutter/
 SecureKeypadFlutterPlugin.kt` registers the `secure_keypad/native`
 PlatformView and per-view EventChannel with the same restriction. Add the
 appropriate source set to the host Gradle module and link the matching JNI and

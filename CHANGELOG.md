@@ -11,6 +11,10 @@ exact release-candidate commit by the release evidence manifest.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.
+- Made Android React Native public-map conversion fail closed: malformed or
+  over-budget layout/theme/command maps now release the native session and
+  emit only the public `invalid` result instead of escaping as a bridge
+  exception.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,
   and preserved terminal result events under queue pressure.
 - Capped WebAuthn pending ceremony retention at 15 minutes across all storage

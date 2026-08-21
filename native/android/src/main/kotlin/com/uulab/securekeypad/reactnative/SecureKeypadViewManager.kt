@@ -46,12 +46,12 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     @ReactProp(name = "layout")
     public fun setLayout(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "layout", value?.toPublicMap(LAYOUT_KEYS))
+        setConfigurationValue(view, "layout") { value?.toPublicMap(LAYOUT_KEYS) }
     }
 
     @ReactProp(name = "theme")
     public fun setTheme(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "theme", value?.toPublicMap(THEME_KEYS))
+        setConfigurationValue(view, "theme") { value?.toPublicMap(THEME_KEYS) }
     }
 
     @ReactProp(name = "inputPolicy", defaultString = "numeric")
@@ -90,7 +90,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     @ReactProp(name = "headlessKeyPress")
     public fun setHeadlessKeyPress(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "headlessKeyPress", value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS))
+        setConfigurationValue(view, "headlessKeyPress") { value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS) }
     }
 
     override fun onDropViewInstance(view: SecureKeypadView) {
@@ -105,6 +105,18 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     )
 
     private fun setConfigurationValue(view: SecureKeypadView, key: String, value: Any?) {
+        setConfigurationValue(view, key) { value }
+    }
+
+    private fun setConfigurationValue(view: SecureKeypadView, key: String, valueProvider: () -> Any?) {
+        val value = try {
+            valueProvider()
+        } catch (_: IllegalArgumentException) {
+            pendingConfigurations.remove(view)
+            view.releaseSession()
+            emitResult(view, "invalid")
+            return
+        }
         val configuration = pendingConfigurations.getOrPut(view) { mutableMapOf() }
         configuration[key] = value
         val layout = configuration["layout"] as? Map<*, *>
@@ -122,6 +134,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             }
             parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
         } catch (_: IllegalArgumentException) {
+            pendingConfigurations.remove(view)
             view.releaseSession()
             emitResult(view, "invalid")
         }
