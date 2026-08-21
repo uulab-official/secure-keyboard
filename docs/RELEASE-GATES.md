@@ -144,7 +144,7 @@ library. The
 React Native gate pins RN `0.87.0`, CLI `20.2.0`, Node `22.13.0`, and Java 17;
 the Flutter gates pin Flutter `3.47.0`. These are reproducible host-link
 baselines, not device behavior or accessibility sign-offs. CI emits file-level
-SHA-256 manifests for the iOS XCFramework and Android arm64 FFI host artifacts,
+SHA-256 manifests for the iOS XCFramework and Android native FFI host artifacts,
 dependency metadata, and an SPDX SBOM through
 Syft/Anchore. Before a public release, the artifact must include the exact
 Rust/Node/Flutter/native toolchain versions, the notices in
@@ -154,6 +154,10 @@ The macOS iOS host job also installs and launches both generated host apps in
 an available iOS Simulator and uploads no-input runtime screenshots. This is
 a supplemental launch/packaging signal; it does not close the physical-device
 capture, autofill, accessibility, or opaque-handoff gates.
+The Android host jobs additionally build the arm64 and x86_64 native FFI
+variants, and a separate API 35 x86_64 emulator job installs and launches both
+generated host APKs while retaining no-input screenshots. This is also
+supplemental runtime evidence and does not replace the physical Android matrix.
 
 ## Known release blockers
 

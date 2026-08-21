@@ -314,6 +314,9 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-simulator-runtime/, "CI must retain iOS Simulator runtime smoke evidence");
   requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", source("scripts/ios-simulator-runtime-smoke.sh", findings), /simctl install/, "iOS runtime smoke must install the generated host app through simctl");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-host-runtime-smoke/, "CI must retain Android emulator runtime smoke evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/, "Android emulator runtime smoke must use an immutable action revision");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", source("scripts/android-emulator-runtime-smoke.sh", findings), /adb install/, "Android runtime smoke must install the generated host APK");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /SecureKeypadController\(\)/, "Flutter host smoke app must compile the native controller contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /controller: controller/, "Flutter host smoke app must link the controller to the PlatformView");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cancelRequest=\{0\}/, "React Native host smoke app must compile the native cancel prop");
@@ -329,8 +332,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cd \"\$RUNNER_TEMP\/secure_ffi\.xcframework\"/, "iOS checksum manifests must use artifact-relative paths");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cd \"\$RUNNER_TEMP\/secure-keypad-ffi\"/, "Android checksum manifests must use artifact-relative paths");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-xcframework-and-checksum/, "CI must retain the native artifact checksum manifest");
-  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-arm64-flutter-host-and-checksum/, "CI must retain the Flutter Android FFI checksum manifest");
-  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-arm64-react-native-host-and-checksum/, "CI must retain the React Native Android FFI checksum manifest");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-flutter-host-and-checksum/, "CI must retain the Flutter Android FFI checksum manifest");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-react-native-host-and-checksum/, "CI must retain the React Native Android FFI checksum manifest");
   const reactNativeAndroidBuild = source("packages/react-native/android/build.gradle", findings);
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAndroidBuild, /externalNativeBuild/, "React Native package must retain its native Android build boundary");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
