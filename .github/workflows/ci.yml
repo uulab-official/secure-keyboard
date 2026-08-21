@@ -76,6 +76,8 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm test:native-parity
       - run: pnpm check:native-parity
+      - run: pnpm test:release-version-parity
+      - run: pnpm check:release-version-parity
       - run: pnpm test:security-audit
       - run: pnpm security-audit
       - run: pnpm --dir packages/contracts typecheck

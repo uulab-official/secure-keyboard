@@ -5,6 +5,8 @@
   "scripts": {
     "check:native-parity": "node scripts/check-native-package-parity.mjs",
     "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs",
+    "check:release-version-parity": "node scripts/check-release-version-parity.mjs",
+    "test:release-version-parity": "node --test scripts/check-release-version-parity.test.mjs",
     "security-audit": "node scripts/security-audit.mjs",
     "test:security-audit": "node --test scripts/security-audit.test.mjs"
   }

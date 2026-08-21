@@ -18,6 +18,8 @@ pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
 pnpm check:native-parity
+pnpm test:release-version-parity
+pnpm check:release-version-parity
 pnpm test:security-audit
 pnpm security-audit
 pnpm --dir packages/contracts typecheck
