@@ -1,7 +1,7 @@
 use secure_auth::{
     client_login_finish, client_login_start, client_registration_finish, client_registration_start,
     server_registration_finish, server_registration_start, AuthEnvelope, AuthMessageKind,
-    CredentialFile, ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES,
+    CredentialFile, ServerSetupBytes, CIPHER_SUITE_ID, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES,
 };
 use secure_auth_http::{
     CredentialRepository, HttpAuthRouter, HttpDeploymentContext, HttpRequest, RepositoryError,
@@ -455,6 +455,53 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
         .body
         .windows(b"fixture-only-secret".len())
         .any(|window| window == b"fixture-only-secret"));
+}
+
+#[test]
+fn registration_finish_rejects_invalid_identifier_before_opaque_processing() {
+    let setup = ServerSetupBytes::generate().unwrap();
+    let (state, request) = client_registration_start(PASSWORD).unwrap();
+    let response = server_registration_start(&setup, &request, CREDENTIAL_ID).unwrap();
+    let (upload, _) =
+        client_registration_finish(state, PASSWORD, &response, CLIENT_ID, SERVER_ID).unwrap();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let router = HttpAuthRouter::new(
+        service,
+        FixtureRepository::with(CREDENTIAL_ID, registered_fixture().1),
+    );
+
+    let upload_envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationUpload,
+        CIPHER_SUITE_ID,
+        &upload,
+    )
+    .unwrap();
+    let oversized = "x".repeat(MAX_IDENTIFIER_BYTES + 1);
+    for identifier in ["", oversized.as_str()] {
+        let body = serde_json::to_vec(&RegistrationFinishBody {
+            identifier,
+            envelope: &upload_envelope,
+        })
+        .unwrap();
+        let response = router.handle(
+            HttpRequest {
+                method: "POST",
+                path: "/v1/opaque/registration/finish",
+                content_type: Some("application/json"),
+                csrf_validated: true,
+                body: &body,
+            },
+            HttpDeploymentContext::direct_tls(),
+        );
+
+        assert_eq!(response.status, 400);
+        assert_eq!(response.body, br#"{"error":"invalid_request"}"#);
+    }
 }
 
 #[test]

@@ -274,6 +274,7 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /TrustedProxyTls/, "OPAQUE HTTP routes must define trusted-proxy TLS handling");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /connection_limits_enforced/, "OPAQUE HTTP routes must require connection/read limits");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /RESPONSE_SECURITY_HEADERS/, "OPAQUE HTTP responses must carry cache and MIME security headers");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /fn registration_finish[\s\S]{0,500}valid_identifier\(request\.identifier\.as_bytes\(\)\)/, "OPAQUE registration finish must bound the persistence identifier before protocol processing");
 
   const axum = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /let \(parts, body\) = request\.into_parts\(\);[\s\S]{0,1400}to_bytes\(body, body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");

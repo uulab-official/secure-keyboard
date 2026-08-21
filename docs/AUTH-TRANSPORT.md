@@ -93,6 +93,11 @@ errors, and zeroizing response buffers. Its registration finish body includes
 the public account identifier so the host repository can persist the protected
 credential file; it never returns that file.
 
+Registration finish accepts the public identifier only as a bounded persistence
+key. It rejects an empty or oversized identifier before finishing the OPAQUE
+upload or invoking the credential repository; the identifier is never treated
+as protocol secret material.
+
 The HTTP route contract requires an explicit deployment context proving TLS,
 pre-buffering body limits, and connection/read limits. Use the trusted-proxy
 variant only after the host validates the proxy source and forwarded scheme;

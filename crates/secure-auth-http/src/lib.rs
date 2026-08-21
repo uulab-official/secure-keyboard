@@ -322,6 +322,9 @@ where
             Ok(request) => request,
             Err(response) => return response,
         };
+        if !valid_identifier(request.identifier.as_bytes()) {
+            return error_response(400, PublicAuthCode::InvalidRequest);
+        }
         let credential = match self.service.finish_registration(request.envelope) {
             Ok(credential) => credential,
             Err(error) => return auth_error_response(error),
