@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_WEBAUTHN_BINARY_BYTES,
   WEB_FALLBACK_WARNING_CODE,
   WebAuthnClientError,
   assertWebAuthnMode,
@@ -223,5 +224,35 @@ describe("passkey registration", () => {
     await expect(createPasskey(creationOptions, environment(api))).rejects.toMatchObject({
       code: "invalid-credential",
     });
+  });
+
+  it("bounds browser credential binary data and validates attachment metadata", () => {
+    const oversizedRawId = new Uint8Array(MAX_WEBAUTHN_BINARY_BYTES + 1).buffer;
+    expect(() =>
+      serializeRegistrationCredential({
+        id: "credential-id",
+        rawId: oversizedRawId,
+        type: "public-key",
+        response: {
+          clientDataJSON: new ArrayBuffer(1),
+          attestationObject: new ArrayBuffer(1),
+        },
+        getClientExtensionResults: () => ({}),
+      }),
+    ).toThrow(/too large/);
+
+    expect(() =>
+      serializeRegistrationCredential({
+        id: "credential-id",
+        rawId: new ArrayBuffer(1),
+        type: "public-key",
+        response: {
+          clientDataJSON: new ArrayBuffer(1),
+          attestationObject: new ArrayBuffer(1),
+        },
+        authenticatorAttachment: { unexpected: true } as never,
+        getClientExtensionResults: () => ({}),
+      }),
+    ).toThrow(/attachment/);
   });
 });

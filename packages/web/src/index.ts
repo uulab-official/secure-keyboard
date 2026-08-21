@@ -8,6 +8,7 @@ export const MAX_WEBAUTHN_EXTENSION_DEPTH = 4;
 export const MAX_WEBAUTHN_EXTENSION_NODES = 256;
 export const MAX_WEBAUTHN_EXTENSION_KEYS = 32;
 export const MAX_WEBAUTHN_EXTENSION_STRING_LENGTH = 2048;
+const MAX_WEBAUTHN_CREDENTIAL_ID_LENGTH = 2048;
 
 const BASE64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]*$/;
@@ -358,6 +359,13 @@ function copyRecord(
   return result;
 }
 
+function encodedCredentialBinary(value: unknown, field: string): string {
+  if (!isArrayBuffer(value) || value.byteLength > MAX_WEBAUTHN_BINARY_BYTES) {
+    throw new WebAuthnClientError("invalid-credential", `WebAuthn ${field} is too large or invalid`);
+  }
+  return encodeBase64Url(value);
+}
+
 function toNativeDescriptor(value: unknown, field: string): Record<string, unknown> {
   if (!isRecord(value) || value.type !== "public-key") invalidOptions(`WebAuthn ${field} is invalid`);
   const id = binaryOption(value.id, `${field}.id`);
@@ -476,17 +484,27 @@ function extensionResults(credential: WebAuthnCredential): Record<string, unknow
 
 function baseCredential(credential: WebAuthnCredential): Pick<SerializedRegistrationCredential, "id" | "rawId" | "type" | "authenticatorAttachment" | "clientExtensionResults"> {
   if (
-    typeof credential.id !== "string" || credential.id.length === 0 ||
+    typeof credential.id !== "string" ||
+    credential.id.length === 0 ||
+    credential.id.length > MAX_WEBAUTHN_CREDENTIAL_ID_LENGTH ||
     credential.type !== "public-key" || !isArrayBuffer(credential.rawId)
   ) {
     throw new WebAuthnClientError("invalid-credential", "WebAuthn credential is invalid");
   }
   const result: Pick<SerializedRegistrationCredential, "id" | "rawId" | "type" | "authenticatorAttachment" | "clientExtensionResults"> = {
     id: credential.id,
-    rawId: encodeBase64Url(credential.rawId),
+    rawId: encodedCredentialBinary(credential.rawId, "credential rawId"),
     type: "public-key",
     clientExtensionResults: extensionResults(credential),
   };
+  if (
+    credential.authenticatorAttachment !== undefined &&
+    credential.authenticatorAttachment !== null &&
+    credential.authenticatorAttachment !== "platform" &&
+    credential.authenticatorAttachment !== "cross-platform"
+  ) {
+    throw new WebAuthnClientError("invalid-credential", "WebAuthn authenticator attachment is invalid");
+  }
   return credential.authenticatorAttachment === undefined
     ? result
     : { ...result, authenticatorAttachment: credential.authenticatorAttachment };
@@ -500,12 +518,16 @@ export function serializeRegistrationCredential(credential: WebAuthnCredential):
   }
   const base = baseCredential(credential);
   const serializedResponse: SerializedRegistrationCredential["response"] = {
-    clientDataJSON: encodeBase64Url(response.clientDataJSON),
-    attestationObject: encodeBase64Url(response.attestationObject),
+    clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
+    attestationObject: encodedCredentialBinary(response.attestationObject, "attestationObject"),
   };
   if (typeof response.getTransports === "function") {
     const transports = response.getTransports();
-    if (!Array.isArray(transports) || transports.some((transport) => !["ble", "hybrid", "internal", "nfc", "usb"].includes(transport))) {
+    if (
+      !Array.isArray(transports) ||
+      transports.length > 5 ||
+      transports.some((transport) => !["ble", "hybrid", "internal", "nfc", "usb"].includes(transport))
+    ) {
       throw new WebAuthnClientError("invalid-credential", "WebAuthn registration transports are invalid");
     }
     return { ...base, response: { ...serializedResponse, transports: [...transports] } };
@@ -529,10 +551,10 @@ export function serializeAssertionCredential(credential: WebAuthnCredential): Se
   return {
     ...base,
     response: {
-      clientDataJSON: encodeBase64Url(response.clientDataJSON),
-      authenticatorData: encodeBase64Url(response.authenticatorData),
-      signature: encodeBase64Url(response.signature),
-      userHandle: response.userHandle === null ? null : encodeBase64Url(response.userHandle),
+      clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
+      authenticatorData: encodedCredentialBinary(response.authenticatorData, "authenticatorData"),
+      signature: encodedCredentialBinary(response.signature, "signature"),
+      userHandle: response.userHandle === null ? null : encodedCredentialBinary(response.userHandle, "userHandle"),
     },
   };
 }
