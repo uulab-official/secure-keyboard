@@ -152,6 +152,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
+    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
@@ -388,6 +389,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /sanitizedLogs: true/, "device evidence must require sanitized logs");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /Physical devices are required/, "device verification must require physical-device coverage");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /FLAG_SECURE/, "device verification must cover Android screenshot protection");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /reassert it when focus/, "device verification must cover Android secure-window reassertion");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /VoiceOver and TalkBack/, "device verification must cover accessibility surfaces");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /screenshotsAndBackgroundSnapshots/, "device verification must require screenshot and background-snapshot evidence");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /crashReportReview/, "device verification must require crash-report review evidence");

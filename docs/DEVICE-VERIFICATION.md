@@ -43,8 +43,9 @@ only the opaque submission capability.
    switcher, and return to the app. Verify that iOS remains protected while
    capture is still active after an active/inactive transition, that iOS
    releases the native session on resign-active, and that Android retains
-   `FLAG_SECURE` through framework wrapper contexts while releasing the native
-   session when its window loses focus or becomes invisible.
+   `FLAG_SECURE` through framework wrapper contexts, reassert it when focus
+   returns after host flag changes, while releasing the native session when its
+   window loses focus or becomes invisible.
 3. Attempt autofill and clipboard operations. Verify no editable text control,
    autofill suggestion, clipboard write, or password-manager value is created.
 4. Exercise VoiceOver and TalkBack. Verify that labels expose key semantics and

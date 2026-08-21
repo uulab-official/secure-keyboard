@@ -260,7 +260,11 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
         super.onWindowFocusChanged(hasWindowFocus)
-        if (!hasWindowFocus) zeroizeSessionForLifecycleLoss()
+        if (hasWindowFocus) {
+            requireSecureWindow()
+        } else {
+            zeroizeSessionForLifecycleLoss()
+        }
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {

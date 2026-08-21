@@ -65,6 +65,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Provide native submission-to-OPAQUE handoff without exposing a password or client session key.
 - [x] Add background masking, screenshot/capture handling, and autofill/clipboard restrictions.
 - [x] Zeroize the native session on iOS resign-active and Android window focus/visibility loss.
+- [x] Reassert Android `FLAG_SECURE` on every focus regain after host window-flag changes.
 - [x] Centralize bounded Android/iOS masked-display/accessibility announcements and execute standalone JVM/Swift contract tests.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
