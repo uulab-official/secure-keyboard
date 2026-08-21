@@ -23,6 +23,7 @@ const REVIEW_SCOPE = Object.freeze([
 const REVIEW_DECISIONS = new Set(["approved", "approved-with-residual-risk", "not-approved"]);
 const REVIEW_FINDING_SEVERITIES = new Set(["critical", "high", "medium", "low", "informational"]);
 const REVIEW_FINDING_STATUSES = new Set(["open", "accepted", "remediated"]);
+const REVIEW_REPORT_MAX_BYTES = 1 * 1024 * 1024;
 
 /**
  * Gates that must be independently evidenced before a public release claim.
@@ -513,6 +514,10 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
     const signedArtifactBytes = readFileSync(signedArtifactPath);
     if (signedArtifactBytes.length === 0) {
       add(findings, fieldName, "signed artifact must be non-empty");
+      return;
+    }
+    if (fieldName === "independentReview" && signedArtifactBytes.length > REVIEW_REPORT_MAX_BYTES) {
+      add(findings, "independentReview.report", `must not exceed ${REVIEW_REPORT_MAX_BYTES} bytes`);
       return;
     }
     const valid = verify(null, signedArtifactBytes, publicKey, readFileSync(signaturePath));

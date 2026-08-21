@@ -715,3 +715,23 @@ test("rejects a signed review report without structured scope and release decisi
   assert.ok(findings.some((finding) => finding.includes("independentReview.report.scope")));
   assert.ok(findings.some((finding) => finding.includes("independentReview.report.decision")));
 });
+
+test("rejects an oversized signed review report before parsing it", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-review-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  const report = Buffer.from(JSON.stringify({ padding: "x".repeat(1_048_576) }), "utf8");
+  const reportArtifact = evidence.artifacts.find(({ kind }) => kind === "independent-review-report");
+  writeFileSync(join(root, reportArtifact.path), report);
+  reportArtifact.sha256 = createHash("sha256").update(report).digest("hex");
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.signaturePath), sign(null, report, privateKey));
+  evidence.independentReview.publicKeySha256 = publicKeySha256;
+  evidence.artifacts.find(({ kind }) => kind === "independent-review-public-key").sha256 = publicKeySha256;
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("independentReview.report") && finding.includes("must not exceed")));
+});
