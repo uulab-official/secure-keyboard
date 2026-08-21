@@ -133,6 +133,7 @@ jobs:
           cargo package --locked --workspace --all-features --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
           cp "$RUNNER_TEMP/secure-keypad-cargo-target/package/"*.crate "$RELEASE_DIR/packages/"
           cp Cargo.lock pnpm-lock.yaml LICENSE-MIT "$RELEASE_DIR/source/"
+          cp CHANGELOG.md "$RELEASE_DIR/source/CHANGELOG.md"
           cp "$RELEASE_DIR/secure-keypad.sbom.spdx.json" "$RELEASE_DIR/source/secure-keypad.sbom.spdx.json"
           mkdir -p "$RELEASE_DIR/source/packages"
           cp -R packages/flutter "$RELEASE_DIR/source/packages/flutter"

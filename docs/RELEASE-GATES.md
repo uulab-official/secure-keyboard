@@ -21,7 +21,7 @@ independent-review gates below.
 Before the source tree is archived, the workflow runs
 `node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
 requires the candidate-only metadata, lockfiles, threat-model and deployment
-policy documents, SPDX SBOM, third-party notices, all publishable npm
+policy documents, security changelog, SPDX SBOM, third-party notices, all publishable npm
 tarballs (including their license files), and every workspace crate archive.
 It also rejects malformed archives, symlinks, and private signing material in
 the staging directory. This proves the input to the deterministic archive is
