@@ -87,7 +87,7 @@ function checkSecretKeys(findings, value, field = "manifest") {
  * Validates the shape of a release evidence manifest.
  *
  * This is a schema and policy check. Referenced file digests and the detached
- * signature are verified separately by [`verifyReleaseEvidenceFiles`]. CI
+ * signatures are verified separately by [`verifyReleaseEvidenceFiles`]. CI
  * provenance, trusted-key identity, and reviewer identity remain external
  * release-process responsibilities.
  *
@@ -199,37 +199,57 @@ export function validateReleaseEvidence(evidence, context = {}) {
     "release-bundle",
     "release-public-key",
     "release-signature",
+    "independent-review-report",
+    "independent-review-public-key",
+    "independent-review-signature",
   ]) {
     if (!artifactKinds.has(requiredArtifact)) {
       add(findings, "artifacts", `missing required artifact ${requiredArtifact}`);
     }
   }
 
-  if (!isRecord(evidence.signature)) {
-    add(findings, "signature", "must contain an Ed25519 detached-signature descriptor");
-  } else {
-    if (evidence.signature.algorithm !== "ed25519") {
-      add(findings, "signature.algorithm", "must equal ed25519");
-    }
-    for (const field of ["publicKeyPath", "signedArtifactPath", "signaturePath"]) {
-      checkEvidencePath(findings, `signature.${field}`, evidence.signature[field]);
-    }
-    checkHash(findings, "signature.publicKeySha256", evidence.signature.publicKeySha256);
-    const signedArtifact = artifactsByPath.get(evidence.signature.signedArtifactPath);
-    if (signedArtifact?.kind !== "release-bundle") {
-      add(findings, "signature.signedArtifactPath", "must reference the release-bundle artifact");
-    }
-    const publicKeyArtifact = artifactsByPath.get(evidence.signature.publicKeyPath);
-    if (publicKeyArtifact?.kind !== "release-public-key") {
-      add(findings, "signature.publicKeyPath", "must reference the release-public-key artifact");
-    }
-    const signatureArtifact = artifactsByPath.get(evidence.signature.signaturePath);
-    if (signatureArtifact?.kind !== "release-signature") {
-      add(findings, "signature.signaturePath", "must reference the release-signature artifact");
-    }
-  }
+  validateSignatureDescriptor(findings, "signature", evidence.signature, artifactsByPath, {
+    signedArtifactKind: "release-bundle",
+    publicKeyKind: "release-public-key",
+    signatureKind: "release-signature",
+  });
+  validateSignatureDescriptor(findings, "independentReview", evidence.independentReview, artifactsByPath, {
+    signedArtifactKind: "independent-review-report",
+    publicKeyKind: "independent-review-public-key",
+    signatureKind: "independent-review-signature",
+  });
 
   return findings;
+}
+
+function validateSignatureDescriptor(findings, fieldName, descriptor, artifactsByPath, expectedKinds) {
+  if (!isRecord(descriptor)) {
+    add(findings, fieldName, "must contain an Ed25519 detached-signature descriptor");
+    return;
+  }
+  if (descriptor.algorithm !== "ed25519") {
+    add(findings, `${fieldName}.algorithm`, "must equal ed25519");
+  }
+  for (const field of ["publicKeyPath", "signedArtifactPath", "signaturePath"]) {
+    checkEvidencePath(findings, `${fieldName}.${field}`, descriptor[field]);
+  }
+  checkHash(findings, `${fieldName}.publicKeySha256`, descriptor.publicKeySha256);
+  const signedArtifact = artifactsByPath.get(descriptor.signedArtifactPath);
+  if (signedArtifact?.kind !== expectedKinds.signedArtifactKind) {
+    add(
+      findings,
+      `${fieldName}.signedArtifactPath`,
+      `must reference the ${expectedKinds.signedArtifactKind} artifact`,
+    );
+  }
+  const publicKeyArtifact = artifactsByPath.get(descriptor.publicKeyPath);
+  if (publicKeyArtifact?.kind !== expectedKinds.publicKeyKind) {
+    add(findings, `${fieldName}.publicKeyPath`, `must reference the ${expectedKinds.publicKeyKind} artifact`);
+  }
+  const signatureArtifact = artifactsByPath.get(descriptor.signaturePath);
+  if (signatureArtifact?.kind !== expectedKinds.signatureKind) {
+    add(findings, `${fieldName}.signaturePath`, `must reference the ${expectedKinds.signatureKind} artifact`);
+  }
 }
 
 function containedFilePath(findings, root, field, relativePath) {
@@ -265,17 +285,17 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
   }
 }
 
-function verifyDetachedSignature(findings, evidence, root) {
-  if (!isRecord(evidence?.signature)) return;
-  const descriptor = evidence.signature;
-  const publicKeyPath = containedFilePath(findings, root, "signature.publicKeyPath", descriptor.publicKeyPath);
+function verifyDetachedSignature(findings, evidence, root, fieldName) {
+  if (!isRecord(evidence?.[fieldName])) return;
+  const descriptor = evidence[fieldName];
+  const publicKeyPath = containedFilePath(findings, root, `${fieldName}.publicKeyPath`, descriptor.publicKeyPath);
   const signedArtifactPath = containedFilePath(
     findings,
     root,
-    "signature.signedArtifactPath",
+    `${fieldName}.signedArtifactPath`,
     descriptor.signedArtifactPath,
   );
-  const signaturePath = containedFilePath(findings, root, "signature.signaturePath", descriptor.signaturePath);
+  const signaturePath = containedFilePath(findings, root, `${fieldName}.signaturePath`, descriptor.signaturePath);
   if (!publicKeyPath || !signedArtifactPath || !signaturePath || !SHA256.test(String(descriptor.publicKeySha256))) {
     return;
   }
@@ -283,19 +303,20 @@ function verifyDetachedSignature(findings, evidence, root) {
     const publicKeyBytes = readFileSync(publicKeyPath);
     const publicKeyHash = createHash("sha256").update(publicKeyBytes).digest("hex");
     if (publicKeyHash !== descriptor.publicKeySha256) {
-      add(findings, "signature.publicKeySha256", "does not match the referenced public key");
+      add(findings, `${fieldName}.publicKeySha256`, "does not match the referenced public key");
       return;
     }
     const publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
     const valid = verify(null, readFileSync(signedArtifactPath), publicKey, readFileSync(signaturePath));
-    if (!valid) add(findings, "signature", "detached Ed25519 signature verification failed");
+    if (!valid) add(findings, fieldName, "detached Ed25519 signature verification failed");
   } catch (error) {
-    add(findings, "signature", `detached Ed25519 signature could not be verified: ${error.message}`);
+    add(findings, fieldName, `detached Ed25519 signature could not be verified: ${error.message}`);
   }
 }
 
 /**
- * Recomputes digests for all referenced gate and artifact files.
+ * Recomputes digests for all referenced gate and artifact files and verifies
+ * both the maintainer release signature and the independent-review signature.
  *
  * Call [`validateReleaseEvidence`] first so malformed paths and hashes are
  * reported as schema findings rather than being used for filesystem access.
@@ -317,7 +338,8 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
     if (!isRecord(artifact)) continue;
     verifyFileDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
   }
-  verifyDetachedSignature(findings, evidence, root);
+  verifyDetachedSignature(findings, evidence, root, "signature");
+  verifyDetachedSignature(findings, evidence, root, "independentReview");
   return findings;
 }
 

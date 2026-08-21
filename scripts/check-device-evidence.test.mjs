@@ -34,6 +34,15 @@ test("accepts a complete sanitized native evidence record", () => {
   assert.deepEqual(validateDeviceEvidence(VALID_NATIVE), []);
 });
 
+test("can require a physical device for a native release gate", () => {
+  const simulator = structuredClone(VALID_NATIVE);
+  simulator.physicalDevice = false;
+
+  assert.deepEqual(validateDeviceEvidence(simulator), []);
+  const findings = validateDeviceEvidence(simulator, { requirePhysicalDevice: true });
+  assert.ok(findings.some((finding) => finding.includes("physicalDevice")));
+});
+
 test("rejects missing pass status, secret fields, and unsafe paths", () => {
   const invalid = structuredClone(VALID_NATIVE);
   invalid.testCases.accessibility = "skipped";

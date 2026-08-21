@@ -81,9 +81,10 @@ function validateTests(testCases, required, findings) {
  * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
+ * @param {{requirePhysicalDevice?: boolean}} [options]
  * @returns {string[]}
  */
-export function validateDeviceEvidence(evidence) {
+export function validateDeviceEvidence(evidence, options = {}) {
   const findings = [];
   if (!isRecord(evidence)) return ["root: must be an object"];
   rejectSecretKeys(evidence, "root", findings);
@@ -102,6 +103,13 @@ export function validateDeviceEvidence(evidence) {
     add(findings, "recordedAt", "must be an ISO-8601 timestamp");
   }
   if (typeof evidence.physicalDevice !== "boolean") add(findings, "physicalDevice", "must be boolean");
+  if (
+    options.requirePhysicalDevice === true &&
+    (evidence.platform === "ios" || evidence.platform === "android") &&
+    evidence.physicalDevice !== true
+  ) {
+    add(findings, "physicalDevice", "must be true for the physical-device release gate");
+  }
 
   if (!isRecord(evidence.device)) {
     add(findings, "device", "must be an object");
@@ -202,7 +210,7 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
   return findings;
 }
 
-function checkFile(filePath) {
+function checkFile(filePath, options) {
   let evidence;
   try {
     evidence = JSON.parse(readFileSync(filePath, "utf8"));
@@ -210,17 +218,18 @@ function checkFile(filePath) {
     process.stderr.write(`device evidence could not be read: ${error.message}\n`);
     return 1;
   }
-  const findings = [...validateDeviceEvidence(evidence), ...verifyDeviceEvidenceFiles(evidence, ROOT)];
+  const findings = [...validateDeviceEvidence(evidence, options), ...verifyDeviceEvidenceFiles(evidence, ROOT)];
   for (const finding of findings) process.stderr.write(`device evidence: ${finding}\n`);
   return findings.length === 0 ? 0 : 1;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const filePath = process.argv[2];
+  const requirePhysicalDevice = process.argv.includes("--require-physical");
+  const filePath = process.argv.slice(2).find((argument) => argument !== "--require-physical");
   if (!filePath) {
-    process.stderr.write("usage: node scripts/check-device-evidence.mjs <relative-json-file>\n");
+    process.stderr.write("usage: node scripts/check-device-evidence.mjs [--require-physical] <relative-json-file>\n");
     process.exitCode = 2;
   } else {
-    process.exitCode = checkFile(path.resolve(ROOT, filePath));
+    process.exitCode = checkFile(path.resolve(ROOT, filePath), { requirePhysicalDevice });
   }
 }

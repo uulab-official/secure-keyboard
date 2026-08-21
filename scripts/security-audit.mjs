@@ -315,10 +315,12 @@ export function runSecurityAudit() {
   const releaseGates = source("docs/RELEASE-GATES.md", findings);
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent-review-(?:report|public-key|signature)/, "release gates must bind the reviewer report to a detached signature");
   const thirdPartyNotices = source("docs/THIRD-PARTY-NOTICES.md", findings);
   requireText(findings, "docs/THIRD-PARTY-NOTICES.md", thirdPartyNotices, /playwright.*verification-only/i, "browser verification dependencies must be identified as non-shipped tooling");
   const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /check-device-evidence\.mjs/, "device verification must define machine-readable evidence validation");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /--require-physical/, "device verification must define a physical-device release invocation");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /sanitizedLogs: true/, "device evidence must require sanitized logs");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /Physical devices are required/, "device verification must require physical-device coverage");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /FLAG_SECURE/, "device verification must cover Android screenshot protection");
@@ -327,6 +329,7 @@ export function runSecurityAudit() {
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /verifyDeviceEvidenceFiles/, "device evidence tooling must recompute referenced file digests");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
@@ -360,6 +363,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/sign-release\.mjs/, "release workflow must produce the detached signature through the audited signer");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /playwright install --with-deps chromium firefox webkit/, "release candidate must run the browser adapter smoke matrix");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
@@ -377,6 +381,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-version-parity/, "CI must test public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /check:release-version-parity/, "CI must enforce public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /web-browser-matrix/, "CI must include a real browser adapter smoke matrix");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /playwright install --with-deps/, "CI browser smoke must install its pinned browser runtime explicitly");
@@ -433,9 +438,18 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-security-review/, "release evidence must require an independent security review");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-review-report/, "release evidence must require a hashed independent review report");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independentReview/, "release evidence must verify the independent reviewer attestation descriptor");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
+  const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /independentReview/, "release evidence merging must preserve the independent reviewer attestation");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /realpathSync/, "release evidence merging must contain fragment and output paths");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /verifyReleaseEvidenceFiles/, "release evidence merging must verify referenced files after assembly");
+  requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   const releaseSigner = source("scripts/sign-release.mjs", findings);
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");

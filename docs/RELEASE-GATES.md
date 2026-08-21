@@ -85,6 +85,27 @@ validate its schema and detached signature:
 node scripts/check-release-evidence.mjs path/to/release-evidence.json
 ```
 
+When evidence is produced by separate CI, device, browser, and reviewer runs,
+merge the fragments inside one evidence root before the final validation:
+
+```sh
+pnpm merge:release-evidence \
+  release-evidence \
+  release-evidence.json \
+  source-gates.json \
+  device-ios.json \
+  device-android.json \
+  browser-matrix.json \
+  independent-review.json \
+  signing.json
+node scripts/check-release-evidence.mjs release-evidence/release-evidence.json
+```
+
+The merger requires one exact commit, package version, and toolchain set,
+rejects duplicate gate names, artifact kinds, and referenced paths, refuses
+symlink escapes, and fails if the resulting manifest is incomplete. It never
+turns a skipped or missing fragment into a passing gate.
+
 Create the detached Ed25519 signature and public-key material with a protected
 maintainer key. The private key is read only and is never copied into the
 release bundle or printed:
@@ -100,17 +121,19 @@ node scripts/sign-release.mjs \
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
 notices, a hashed release bundle, DER public key, and `release-signature`
-artifacts, a Linux LeakSanitizer result,
+artifacts, an independent-review report, reviewer DER public key, and
+`independent-review-signature` artifacts, a Linux LeakSanitizer result,
 physical iOS/Android and Web browser matrix results, an independent security
 review, and signed-release evidence.
 The `signature` descriptor must bind the listed release bundle, signature
 artifact, and DER-encoded Ed25519 public key. The command checks shape, paths,
 required statuses, recomputes SHA-256 for every referenced evidence/artifact
 file, rejects duplicate evidence paths, ensures the manifest commit/version
-match the current checkout, and verifies the detached Ed25519 signature. It
-does not establish trust in the maintainer key or verify CI provenance/reviewer
-identity; the trusted public-key fingerprint, CI attestation, and reviewer
-identity must still be verified independently against the exact commit.
+match the current checkout, and verifies both the detached release signature and
+the detached `independentReview` signature over the exact review report. It does
+not establish trust in the maintainer or reviewer key identity or verify CI
+provenance; trusted fingerprints, CI attestation, and reviewer identity must
+still be verified independently against the exact commit.
 
 ## Fuzz gate
 
