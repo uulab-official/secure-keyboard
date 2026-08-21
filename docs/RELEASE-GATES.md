@@ -20,6 +20,7 @@ pnpm test:native-parity
 pnpm check:native-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
+pnpm test:release-evidence
 pnpm test:device-evidence
 pnpm test:security-audit
 pnpm security-audit
@@ -58,6 +59,23 @@ parity gate rejects drift across public Cargo, npm, Flutter, and Podspec
 artifacts. Authentication protocol and C ABI versions remain independent.
 Password migrations must also follow `docs/MIGRATION-FROM-PASSWORD.md` and
 must not introduce a client-side replayable hash.
+
+## Release evidence manifest
+
+Before a public release claim, produce a machine-readable evidence manifest and
+validate its schema:
+
+```sh
+node scripts/check-release-evidence.mjs path/to/release-evidence.json
+```
+
+The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
+hashed evidence for every required gate, native checksums, an SPDX SBOM, license
+notices, a Linux LeakSanitizer result, physical iOS/Android and Web browser
+matrix results, an independent security review, and signed-release evidence.
+The validator checks shape, paths, hashes, and required statuses only; it does
+not verify referenced files, CI provenance, signatures, or reviewer identity.
+Those references must be verified independently against the exact commit.
 
 ## Fuzz gate
 
