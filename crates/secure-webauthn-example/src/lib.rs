@@ -448,6 +448,39 @@ pub const WEBAUTHN_API_PREFIX: &str = "/v1/webauthn";
 /// JSON media type emitted by the `WebAuthn` route contract.
 pub const WEBAUTHN_JSON_CONTENT_TYPE: &str = "application/json; charset=utf-8";
 
+/// A static response header that a framework adapter can copy verbatim.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WebAuthnHttpHeader {
+    /// Lowercase HTTP header name.
+    pub name: &'static str,
+    /// Header value.
+    pub value: &'static str,
+}
+
+/// Security headers attached to every passkey route response.
+pub const WEBAUTHN_RESPONSE_SECURITY_HEADERS: &[WebAuthnHttpHeader] = &[
+    WebAuthnHttpHeader {
+        name: "cache-control",
+        value: "no-store",
+    },
+    WebAuthnHttpHeader {
+        name: "pragma",
+        value: "no-cache",
+    },
+    WebAuthnHttpHeader {
+        name: "x-content-type-options",
+        value: "nosniff",
+    },
+    WebAuthnHttpHeader {
+        name: "referrer-policy",
+        value: "no-referrer",
+    },
+    WebAuthnHttpHeader {
+        name: "content-security-policy",
+        value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    },
+];
+
 /// Transport state established by the embedding HTTP server.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WebAuthnTransportSecurity {
@@ -546,6 +579,8 @@ pub struct WebAuthnHttpResponse {
     pub status: u16,
     /// Always [`WEBAUTHN_JSON_CONTENT_TYPE`].
     pub content_type: &'static str,
+    /// Static cache, MIME, referrer, and CSP headers for the adapter to emit.
+    pub headers: &'static [WebAuthnHttpHeader],
     /// JSON body bytes, cleared when the response is dropped.
     pub body: Vec<u8>,
 }
@@ -730,6 +765,7 @@ where
         Ok(body) => WebAuthnHttpResponse {
             status,
             content_type: WEBAUTHN_JSON_CONTENT_TYPE,
+            headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
             body,
         },
         Err(_) => webauthn_http_error(500, "temporarily_unavailable"),

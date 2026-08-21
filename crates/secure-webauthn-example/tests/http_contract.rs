@@ -45,6 +45,32 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
     );
 }
 
+#[test]
+fn webauthn_responses_are_non_cacheable_and_non_sniffable() {
+    let router = router();
+    let response = router.handle(
+        WebAuthnHttpRequest {
+            method: "GET",
+            path: "/v1/webauthn/authentication/start",
+            content_type: None,
+            principal: None,
+            body: &[],
+        },
+        WebAuthnDeploymentContext::direct_tls(),
+    );
+
+    let header = |name: &str| {
+        response
+            .headers
+            .iter()
+            .find(|header| header.name == name)
+            .map(|header| header.value)
+    };
+    assert_eq!(header("cache-control"), Some("no-store"));
+    assert_eq!(header("x-content-type-options"), Some("nosniff"));
+    assert_eq!(header("referrer-policy"), Some("no-referrer"));
+}
+
 fn router() -> WebAuthnHttpRouter<'static> {
     let service = Box::leak(Box::new(
         secure_webauthn_example::WebAuthnExampleService::new(

@@ -18,6 +18,7 @@ layer adds:
   authentication, with host-session principal binding and generic responses.
 - a mandatory deployment context for TLS, pre-buffering body limits, and
   connection/read limits.
+- static no-store, no-sniff, no-referrer, and API-safe CSP response headers.
 
 `WebAuthnExampleService` is deliberately process-local. It is a reference
 contract, not a drop-in production database. A deployment must replace both

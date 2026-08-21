@@ -31,6 +31,39 @@ pub const AUTHENTICATED_RESPONSE: &[u8] = br#"{"authenticated":true}"#;
 /// persisted by the repository and is never returned to the HTTP caller.
 pub const REGISTRATION_STORED_RESPONSE: &[u8] = br#"{"credentialStored":true}"#;
 
+/// A static response header that a framework adapter can copy verbatim.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HttpHeader {
+    /// Lowercase HTTP header name.
+    pub name: &'static str,
+    /// Header value.
+    pub value: &'static str,
+}
+
+/// Security headers attached to every authentication response.
+pub const RESPONSE_SECURITY_HEADERS: &[HttpHeader] = &[
+    HttpHeader {
+        name: "cache-control",
+        value: "no-store",
+    },
+    HttpHeader {
+        name: "pragma",
+        value: "no-cache",
+    },
+    HttpHeader {
+        name: "x-content-type-options",
+        value: "nosniff",
+    },
+    HttpHeader {
+        name: "referrer-policy",
+        value: "no-referrer",
+    },
+    HttpHeader {
+        name: "content-security-policy",
+        value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    },
+];
+
 const REGISTRATION_START_PATH: &str = "/v1/opaque/registration/start";
 const REGISTRATION_FINISH_PATH: &str = "/v1/opaque/registration/finish";
 const LOGIN_START_PATH: &str = "/v1/opaque/login/start";
@@ -129,6 +162,8 @@ pub struct HttpResponse {
     pub status: u16,
     /// Always [`JSON_CONTENT_TYPE`] for this adapter.
     pub content_type: &'static str,
+    /// Static cache, MIME, referrer, and CSP headers for the adapter to emit.
+    pub headers: &'static [HttpHeader],
     /// JSON body bytes, zeroized on drop.
     pub body: Vec<u8>,
 }
@@ -415,6 +450,7 @@ fn json_response_with_status<T: Serialize>(status: u16, value: T) -> HttpRespons
     HttpResponse {
         status,
         content_type: JSON_CONTENT_TYPE,
+        headers: RESPONSE_SECURITY_HEADERS,
         body,
     }
 }
@@ -423,6 +459,7 @@ fn static_response(status: u16, body: &[u8]) -> HttpResponse {
     HttpResponse {
         status,
         content_type: JSON_CONTENT_TYPE,
+        headers: RESPONSE_SECURITY_HEADERS,
         body: body.to_vec(),
     }
 }

@@ -51,6 +51,38 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
     );
 }
 
+#[test]
+fn auth_responses_are_non_cacheable_and_non_sniffable() {
+    let (setup, credential) = registered_fixture();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let router = HttpAuthRouter::new(service, FixtureRepository::with(CREDENTIAL_ID, credential));
+    let response = router.handle(
+        HttpRequest {
+            method: "GET",
+            path: "/v1/opaque/login/start",
+            content_type: None,
+            body: &[],
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+
+    let header = |name: &str| {
+        response
+            .headers
+            .iter()
+            .find(|header| header.name == name)
+            .map(|header| header.value)
+    };
+    assert_eq!(header("cache-control"), Some("no-store"));
+    assert_eq!(header("x-content-type-options"), Some("nosniff"));
+    assert_eq!(header("referrer-policy"), Some("no-referrer"));
+}
+
 struct FixtureRepository {
     entries: Mutex<HashMap<Vec<u8>, CredentialFile>>,
 }
