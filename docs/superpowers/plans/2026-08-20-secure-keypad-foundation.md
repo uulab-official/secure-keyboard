@@ -1,5 +1,10 @@
 # Secure Keypad Foundation Implementation Plan
 
+> **Status:** Superseded. The foundation and all follow-up platform, server,
+> WebAuthn, and release work are tracked in `docs/ROADMAP.md`; the unchecked
+> execution checkboxes below are the historical plan record, not current
+> production status.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first testable foundation of an open-source cross-platform secure keypad SDK with a strict native security boundary and a versioned, externally customizable UI contract.
