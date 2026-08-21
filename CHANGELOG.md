@@ -69,6 +69,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Verification
 
+- Added a pinned, loopback-only Docker Compose runner for local Redis/PostgreSQL
+  durable interoperability tests; it executes all three ignored suites and
+  cleans up test containers on exit.
 - Release staging now requires this changelog, the pinned lockfiles, SBOM,
   third-party notices, and the complete candidate metadata set.
 - Release evidence CLI verification now resolves gate, artifact, signature, and

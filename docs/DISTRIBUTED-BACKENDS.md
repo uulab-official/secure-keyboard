@@ -8,6 +8,17 @@ still choose the TLS constructor, apply the exported PostgreSQL migration,
 and run the isolated interoperability tests before enabling a load balancer
 or failover.
 
+For a reproducible local run, use the pinned test-only services and runner:
+
+```sh
+pnpm test:durable-backends
+```
+
+This starts `redis:7.2-alpine` and `postgres:16-alpine` on loopback only,
+executes all three ignored interoperability suites, and removes the Compose
+containers on exit. The local plaintext URLs and credentials are test
+infrastructure only; never copy them into a production deployment.
+
 ## One-time OPAQUE ceremony state
 
 Use a versioned, non-user-enumerating key namespace such as:
