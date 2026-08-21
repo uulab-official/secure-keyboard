@@ -34,6 +34,10 @@ impl CredentialRepository for EmptyRepository {
 }
 
 fn app_with_context(context: HttpDeploymentContext) -> axum::Router {
+    app_with_csrf(context, true)
+}
+
+fn app_with_csrf(context: HttpDeploymentContext, csrf_valid: bool) -> axum::Router {
     let service = ServerAuthService::new(
         ServerSetupBytes::generate().unwrap(),
         CIPHER_SUITE_ID,
@@ -43,6 +47,7 @@ fn app_with_context(context: HttpDeploymentContext) -> axum::Router {
     router(
         secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
         context,
+        move |_parts| csrf_valid,
     )
 }
 
@@ -62,6 +67,24 @@ async fn adapter_preserves_generic_route_errors_and_security_headers() {
     assert_eq!(response.status(), 405);
     assert_eq!(response.headers()["cache-control"], "no-store");
     assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
+}
+
+#[tokio::test]
+async fn adapter_rejects_unvalidated_csrf_before_body_processing() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v1/opaque/login/start")
+        .header("content-type", "application/json")
+        .body(Body::from(vec![b'x'; MAX_JSON_BODY_BYTES + 1]))
+        .unwrap();
+    let response = app_with_csrf(HttpDeploymentContext::direct_tls(), false)
+        .oneshot(request)
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 403);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
 }
@@ -145,6 +168,7 @@ async fn webauthn_adapter_requires_host_principal_and_preserves_security_headers
         std::sync::Arc::new(service),
         WebAuthnDeploymentContext::direct_tls(),
         |_request| None,
+        |_parts| true,
     );
     let response = app
         .oneshot(
@@ -182,6 +206,7 @@ async fn webauthn_adapter_passes_host_principal_to_the_framework_neutral_router(
             assert_eq!(parts.uri.path(), "/v1/webauthn/registration/start");
             Some(Uuid::from_u128(1))
         },
+        |_parts| true,
     );
     let response = app
         .oneshot(
@@ -219,6 +244,7 @@ async fn webauthn_adapter_bounds_streaming_body_before_principal_or_json_process
             true,
         ),
         |_parts| panic!("principal resolver must not run for an oversized body"),
+        |_parts| true,
     );
     let response = app
         .oneshot(
@@ -233,4 +259,37 @@ async fn webauthn_adapter_bounds_streaming_body_before_principal_or_json_process
         .unwrap();
 
     assert_eq!(response.status(), 413);
+}
+
+#[cfg(feature = "webauthn")]
+#[tokio::test]
+async fn webauthn_adapter_rejects_unvalidated_csrf_before_principal() {
+    let service = WebAuthnExampleService::new(
+        "localhost",
+        "http://localhost:3000",
+        "Secure Keypad Test",
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let app = secure_auth_axum::webauthn_router(
+        std::sync::Arc::new(service),
+        WebAuthnDeploymentContext::direct_tls(),
+        |_parts| panic!("principal resolver must not run before CSRF validation"),
+        |_parts| false,
+    );
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/webauthn/registration/start")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    br#"{"userName":"alice","displayName":"Alice"}"#.to_vec(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 403);
 }

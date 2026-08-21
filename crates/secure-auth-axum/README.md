@@ -8,6 +8,7 @@ generic over the injected `WebAuthnService<C, S>` storage contracts.
 let app = secure_auth_axum::router(
     secure_auth_http::HttpAuthRouter::new(service, credential_repository),
     secure_auth_http::HttpDeploymentContext::trusted_proxy_tls(),
+    |parts| host_csrf_is_valid(parts),
 );
 ```
 
@@ -20,6 +21,7 @@ let app = secure_auth_axum::webauthn_router(
     std::sync::Arc::new(webauthn_service),
     secure_webauthn_example::WebAuthnDeploymentContext::trusted_proxy_tls(),
     |parts| host_session_principal(parts),
+    |parts| host_csrf_is_valid(parts),
 );
 ```
 
@@ -28,8 +30,10 @@ proxy source and forwarded scheme. The adapter bounds body buffering at 128 KiB
 with Axum's streaming body helper, copies the OPAQUE route's static security
 headers, and never returns framework error details. The WebAuthn adapter uses
 the same bounded body and response-header contract and rejects an unavailable
-deployment context before dispatch. TLS termination, request authentication,
-rate limits, account-enrollment policy, CSRF, session issuance, and
+deployment context before dispatch. Both adapters require a host callback that
+validates CSRF/origin policy from request parts before the body is buffered;
+the callback result is never inferred from JSON. TLS termination, request
+authentication, rate limits, account-enrollment policy, session issuance, and
 durable/distributed stores remain application responsibilities.
 
 The crate is an adapter contract and is not a complete server binary.

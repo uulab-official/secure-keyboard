@@ -30,8 +30,19 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
         method: "POST",
         path: "/v1/opaque/login/start",
         content_type: Some("application/json"),
+        csrf_validated: true,
         body: b"not-json",
     };
+
+    let csrf_rejected = router.handle(
+        HttpRequest {
+            csrf_validated: false,
+            ..request
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+    assert_eq!(csrf_rejected.status, 403);
+    assert_eq!(csrf_rejected.body, br#"{"error":"invalid_request"}"#);
 
     let plaintext = router.handle(
         request,
@@ -66,6 +77,7 @@ fn auth_responses_are_non_cacheable_and_non_sniffable() {
             method: "GET",
             path: "/v1/opaque/login/start",
             content_type: None,
+            csrf_validated: true,
             body: &[],
         },
         HttpDeploymentContext::direct_tls(),
@@ -176,6 +188,7 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
             method: "POST",
             path: "/v1/opaque/login/start",
             content_type: Some("text/plain"),
+            csrf_validated: true,
             body: b"{}",
         },
         HttpDeploymentContext::direct_tls(),
@@ -187,6 +200,7 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
             method: "POST",
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &vec![b'x'; MAX_JSON_BODY_BYTES + 1],
         },
         HttpDeploymentContext::direct_tls(),
@@ -225,6 +239,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             method: "POST",
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -261,6 +276,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             method: "POST",
             path: "/v1/opaque/login/finish",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -273,6 +289,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             method: "POST",
             path: "/v1/opaque/login/finish",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -313,6 +330,7 @@ fn login_start_with_unknown_identifier_keeps_generic_wire_response() {
             method: "POST",
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -355,6 +373,7 @@ fn registration_start_response_is_not_a_credential_file_endpoint() {
             method: "POST",
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json; charset=utf-8"),
+            csrf_validated: true,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -395,6 +414,7 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
             method: "POST",
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &start_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -424,6 +444,7 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
             method: "POST",
             path: "/v1/opaque/registration/finish",
             content_type: Some("application/json"),
+            csrf_validated: true,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),

@@ -57,8 +57,9 @@ for the backend contract.
 The HTTP route contract does not implement a network listener. Every call must
 pass `WebAuthnDeploymentContext::direct_tls()` or
 `WebAuthnDeploymentContext::trusted_proxy_tls()` after the host validates the
-transport and trusted proxy. Production framework integration must additionally
-enforce strict proxy source allowlisting, CSRF/session binding,
+transport and trusted proxy, and every `WebAuthnHttpRequest` must carry a
+host-validated `csrf_validated` result. Production framework integration must
+additionally enforce strict proxy source allowlisting, CSRF/session binding,
 account-enrollment authorization, origin allowlisting, rate limits, durable
 encrypted stores, distributed ceremony replay protection, and session-token
 policy. The service does not issue application sessions.

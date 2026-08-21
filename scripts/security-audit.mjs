@@ -71,11 +71,17 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /impl core::fmt::Debug for AuthEnvelope/, "OPAQUE transport Debug must be manually redacted");
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /field\("payload_len", &self\.payload\.len\(\)\)/, "OPAQUE transport Debug may expose payload length only");
   forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");
+  const httpContract = source("crates/secure-auth-http/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /csrf_validated:\s*bool/, "framework-neutral OPAQUE requests must carry an explicit CSRF verdict");
+  const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
   const webauthnDebug = source("crates/secure-webauthn-example/src/lib.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /impl core::fmt::Debug for CeremonyStart/, "WebAuthn ceremony Debug must be manually redacted");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("handle_len", &self\.handle\.len\(\)\)/, "WebAuthn ceremony Debug may expose handle length only");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("options", &"<redacted>"\)/, "WebAuthn ceremony Debug must redact browser options");
   forbidText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,160}pub struct CeremonyStart/, "WebAuthn ceremony must not derive Debug over its handle or options");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /csrf_validated:\s*bool/, "WebAuthn requests must carry an explicit CSRF verdict");
 
   const nativeManagers = [
     "native/ios/react-native/SecureKeypadViewManager.swift",
@@ -206,7 +212,7 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /RESPONSE_SECURITY_HEADERS/, "OPAQUE HTTP responses must carry cache and MIME security headers");
 
   const axum = source("crates/secure-auth-axum/src/lib.rs", findings);
-  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(request\.into_body\(\), body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /let \(parts, body\) = request\.into_parts\(\);[\s\S]{0,1400}to_bytes\(body, body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /state\.router\.handle\(/, "Axum adapter must delegate to the framework-neutral route contract");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /RESPONSE_SECURITY_HEADERS/, "Axum adapter must preserve static response security headers");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /Fn\(&Parts\) -> Option<Uuid>/, "WebAuthn Axum principal resolver must receive request parts without the body");

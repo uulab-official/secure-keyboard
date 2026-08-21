@@ -8,16 +8,21 @@ not optional. The host must apply these controls before calling a route:
 3. enforce header, request-line, connection, read, and idle time limits;
 4. allowlist the reverse-proxy source and do not trust client-supplied
    `X-Forwarded-*` headers;
-5. bind registration and login routes to the application's authenticated
+5. validate the request's same-origin/CSRF policy from headers, origin, and
+   the host session before buffering or dispatching JSON;
+6. bind registration and login routes to the application's authenticated
    session/account policy;
-6. use a distributed atomic ceremony store and rate limiter when more than one
+7. use a distributed atomic ceremony store and rate limiter when more than one
    application instance can receive a request.
 
 After these checks, pass `HttpDeploymentContext::direct_tls()` or
 `HttpDeploymentContext::trusted_proxy_tls()` to the OPAQUE router. Pass the
 corresponding `WebAuthnDeploymentContext` to the passkey router. The trusted
 proxy variant is an assertion made by the host after validation; it is not a
-header parser or a TLS implementation.
+header parser or a TLS implementation. The framework-neutral request contract
+also requires `csrf_validated: true` only after the host has completed its
+same-origin/CSRF check. The Axum adapter requires a request-parts callback and
+rejects an unvalidated request before body buffering.
 
 ## Reverse-proxy baseline
 

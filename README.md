@@ -24,8 +24,8 @@ Systems migrating from ordinary password endpoints should follow the
 - `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
-- `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
-- `secure-auth-axum`: compile-tested Axum adapter that bounds streaming request bodies and preserves the OPAQUE route's generic errors and security headers; its optional `webauthn` feature adds the passkey route adapter with a body-free host-principal resolver.
+- `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context and an explicit host-validated CSRF result, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
+- `secure-auth-axum`: compile-tested Axum adapter that requires request-parts CSRF validation before buffering, bounds streaming request bodies, and preserves the OPAQUE route's generic errors and security headers; its optional `webauthn` feature adds the passkey route adapter with body-free host-principal and CSRF resolvers.
 - `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication service with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, atomic one-time ceremony state, and injectable credential/ceremony storage contracts.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.

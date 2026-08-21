@@ -124,6 +124,7 @@ fn service_accepts_external_storage_contracts() {
             path: "/v1/webauthn/registration/start",
             content_type: Some("application/json"),
             principal: Some(Uuid::from_u128(1)),
+            csrf_validated: true,
             body: br#"{"userName":"alice","displayName":"Alice"}"#,
         },
         WebAuthnDeploymentContext::direct_tls(),

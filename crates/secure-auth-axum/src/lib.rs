@@ -11,7 +11,7 @@
 use axum::{
     body::{to_bytes, Body},
     extract::State,
-    http::{header, Request, StatusCode},
+    http::{header, request::Parts, Request, StatusCode},
     response::{IntoResponse, Response},
     Router,
 };
@@ -22,9 +22,10 @@ use secure_auth_http::{
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
 
-struct AppState<S, R> {
+struct AppState<S, R, P> {
     router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
+    csrf: Arc<P>,
 }
 
 /// Builds an Axum router that delegates the authentication contract to
@@ -33,44 +34,57 @@ struct AppState<S, R> {
 /// The adapter bounds body buffering with Axum's streaming `to_bytes` limit,
 /// copies the route's static security headers, and exposes no framework error
 /// details. The returned router has no application session or TLS behavior;
-/// those remain host responsibilities.
-pub fn router<S, R>(auth_router: HttpAuthRouter<S, R>, context: HttpDeploymentContext) -> Router
+/// those remain host responsibilities. `csrf` must validate the host's
+/// same-origin/CSRF policy from request parts without reading the body; the
+/// route fails closed before buffering JSON when it returns `false`.
+pub fn router<S, R, P>(
+    auth_router: HttpAuthRouter<S, R>,
+    context: HttpDeploymentContext,
+    csrf: P,
+) -> Router
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
+    P: Fn(&Parts) -> bool + Send + Sync + 'static,
 {
     let state = Arc::new(AppState {
         router: auth_router,
         context,
+        csrf: Arc::new(csrf),
     });
     Router::new()
-        .fallback(handle_request::<S, R>)
+        .fallback(handle_request::<S, R, P>)
         .with_state(state)
 }
 
-async fn handle_request<S, R>(
-    State(state): State<Arc<AppState<S, R>>>,
+async fn handle_request<S, R, P>(
+    State(state): State<Arc<AppState<S, R, P>>>,
     request: Request<Body>,
 ) -> Response
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
+    P: Fn(&Parts) -> bool + Send + Sync + 'static,
 {
     if !state.context.is_ready() {
         return deployment_unavailable_response();
     }
 
     let body_limit = state.context.body_limit_bytes();
-    let method = request.method().as_str().to_owned();
-    let path = request.uri().path().to_owned();
-    let content_type = request
-        .headers()
+    let (parts, body) = request.into_parts();
+    if !(state.csrf)(&parts) {
+        return invalid_request_response(403);
+    }
+    let method = parts.method.as_str().to_owned();
+    let path = parts.uri.path().to_owned();
+    let content_type = parts
+        .headers
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
 
-    if request
-        .headers()
+    if parts
+        .headers
         .get(header::CONTENT_LENGTH)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.parse::<usize>().ok())
@@ -84,7 +98,7 @@ where
         });
     }
 
-    let Ok(body) = to_bytes(request.into_body(), body_limit).await else {
+    let Ok(body) = to_bytes(body, body_limit).await else {
         return response_from(HttpResponse {
             status: 413,
             content_type: JSON_CONTENT_TYPE,
@@ -97,6 +111,7 @@ where
             method: &method,
             path: &path,
             content_type: content_type.as_deref(),
+            csrf_validated: true,
             body: &body,
         },
         state.context,
@@ -159,10 +174,11 @@ mod webauthn_adapter {
     use std::sync::Arc;
     use uuid::Uuid;
 
-    struct AppState<C, S, P> {
+    struct AppState<C, S, P, X> {
         service: Arc<WebAuthnService<C, S>>,
         context: WebAuthnDeploymentContext,
         principal: Arc<P>,
+        csrf: Arc<X>,
     }
 
     /// Builds an Axum router for the framework-neutral `WebAuthn` route
@@ -171,37 +187,43 @@ mod webauthn_adapter {
     /// `principal` must resolve the account from the host's authenticated
     /// session or equivalent server-side context. It receives only HTTP
     /// request parts, never the JSON body, and the adapter never derives a
-    /// principal from request fields. TLS, proxy validation, CSRF, session
-    /// issuance, and durable ceremony/credential stores remain application
-    /// responsibilities.
-    pub fn router<C, S, P>(
+    /// principal from request fields. `csrf` must validate the host's
+    /// same-origin/CSRF policy from request parts without reading the body;
+    /// the route fails closed before buffering JSON when it returns `false`.
+    /// TLS, proxy validation, session issuance, and durable
+    /// ceremony/credential stores remain application responsibilities.
+    pub fn router<C, S, P, X>(
         service: Arc<WebAuthnService<C, S>>,
         context: WebAuthnDeploymentContext,
         principal: P,
+        csrf: X,
     ) -> Router
     where
         C: CredentialStore + Send + Sync + 'static,
         S: CeremonyStateStore + Send + Sync + 'static,
         P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
+        X: Fn(&Parts) -> bool + Send + Sync + 'static,
     {
         let state = Arc::new(AppState {
             service,
             context,
             principal: Arc::new(principal),
+            csrf: Arc::new(csrf),
         });
         Router::new()
-            .fallback(handle_request::<C, S, P>)
+            .fallback(handle_request::<C, S, P, X>)
             .with_state(state)
     }
 
-    async fn handle_request<C, S, P>(
-        State(state): State<Arc<AppState<C, S, P>>>,
+    async fn handle_request<C, S, P, X>(
+        State(state): State<Arc<AppState<C, S, P, X>>>,
         request: Request<Body>,
     ) -> Response
     where
         C: CredentialStore + Send + Sync + 'static,
         S: CeremonyStateStore + Send + Sync + 'static,
         P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
+        X: Fn(&Parts) -> bool + Send + Sync + 'static,
     {
         if !state.context.is_ready() {
             return deployment_unavailable_response();
@@ -209,6 +231,14 @@ mod webauthn_adapter {
 
         let body_limit = state.context.body_limit_bytes();
         let (parts, body) = request.into_parts();
+        if !(state.csrf)(&parts) {
+            return response_from(WebAuthnHttpResponse {
+                status: 403,
+                content_type: WEBAUTHN_JSON_CONTENT_TYPE,
+                headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+                body: br#"{"error":"invalid_request"}"#.to_vec(),
+            });
+        }
         let method = parts.method.as_str().to_owned();
         let path = parts.uri.path().to_owned();
         let content_type = parts
@@ -247,6 +277,7 @@ mod webauthn_adapter {
                 path: &path,
                 content_type: content_type.as_deref(),
                 principal,
+                csrf_validated: true,
                 body: &body,
             },
             state.context,

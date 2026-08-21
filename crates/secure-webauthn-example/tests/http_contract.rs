@@ -16,8 +16,19 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
         path: "/v1/webauthn/registration/start",
         content_type: Some("application/json"),
         principal: Some(Uuid::from_u128(1)),
+        csrf_validated: true,
         body: b"not-json",
     };
+
+    let csrf_rejected = router.handle(
+        WebAuthnHttpRequest {
+            csrf_validated: false,
+            ..request
+        },
+        WebAuthnDeploymentContext::direct_tls(),
+    );
+    assert_eq!(csrf_rejected.status, 403);
+    assert_eq!(csrf_rejected.body, br#"{"error":"invalid_request"}"#);
 
     let plaintext = router.handle(
         request,
@@ -54,6 +65,7 @@ fn webauthn_responses_are_non_cacheable_and_non_sniffable() {
             path: "/v1/webauthn/authentication/start",
             content_type: None,
             principal: None,
+            csrf_validated: true,
             body: &[],
         },
         WebAuthnDeploymentContext::direct_tls(),
@@ -94,6 +106,7 @@ fn registration_start_binds_to_host_principal_and_returns_browser_options() {
             path: "/v1/webauthn/registration/start",
             content_type: Some("application/json"),
             principal: Some(user_id),
+            csrf_validated: true,
             body: br#"{"userName":"alice","displayName":"Alice"}"#,
         },
         WebAuthnDeploymentContext::direct_tls(),
@@ -114,6 +127,7 @@ fn routes_reject_missing_principal_and_oversized_body_without_parsing() {
             path: "/v1/webauthn/registration/start",
             content_type: Some("application/json"),
             principal: None,
+            csrf_validated: true,
             body: br#"{"userName":"alice","displayName":"Alice"}"#,
         },
         WebAuthnDeploymentContext::direct_tls(),
@@ -127,6 +141,7 @@ fn routes_reject_missing_principal_and_oversized_body_without_parsing() {
             path: "/v1/webauthn/registration/start",
             content_type: Some("application/json"),
             principal: Some(Uuid::from_u128(1)),
+            csrf_validated: true,
             body: &vec![b'{'; MAX_CLIENT_RESPONSE_BYTES + 1],
         },
         WebAuthnDeploymentContext::direct_tls(),

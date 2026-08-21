@@ -67,11 +67,13 @@ decoder, `fuzz/core_sequence` exercises the core state machine,
 CI builds all four with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign
 with a 1 GiB libFuzzer RSS guard. The current local verification completed
-100,000 iterations for all three targets: auth-envelope, core-sequence, and
-webauthn-state; the WebAuthn run used `-max_len=131073` to exercise the
-128 KiB rejection boundary. The extended runs retained their corpora under
-`fuzz/corpus/`, produced no crash artifact, and observed peak RSS below
-131 MB on the local arm64 runner. Any new parser or
+100,000 iterations for the original three targets: auth-envelope,
+core-sequence, and webauthn-state; the WebAuthn run used `-max_len=131073` to
+exercise the 128 KiB rejection boundary. Their minimized seed corpora are
+tracked under `fuzz/corpus/`; generated campaign additions are ephemeral and
+must not be treated as release evidence by themselves. Those runs produced no
+crash artifact and observed peak RSS below 131 MB on the local arm64 runner.
+Any new parser or
 native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
@@ -135,8 +137,9 @@ Rust/Node/Flutter/native toolchain versions, the notices in
   submission consumer, and run the device matrix.
 - WebAuthn reference verification service, injectable storage contracts,
   feature-gated Redis/PostgreSQL adapters, bounded framework-neutral HTTP
-  contract, and compile-tested Axum integration are shipped. Host-session/CSRF
-  integration, deployment TLS configuration, and the isolated durable-backend
-  interoperability job remain deployment gates.
+  contract, required host-validated CSRF input, and compile-tested Axum
+  integration are shipped. The deployed host-session/CSRF validator,
+  deployment TLS configuration, and isolated durable-backend interoperability
+  job remain deployment gates.
 - Device accessibility/screenshot/autofill verification and an independent
   security review remain mandatory.

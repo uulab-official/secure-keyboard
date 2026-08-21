@@ -678,6 +678,9 @@ pub struct WebAuthnHttpRequest<'a> {
     pub content_type: Option<&'a str>,
     /// Host-authenticated account principal, if one exists.
     pub principal: Option<Uuid>,
+    /// Whether the embedding server validated its CSRF/origin policy for this
+    /// request. The route never derives this value from the JSON body.
+    pub csrf_validated: bool,
     /// Raw bounded JSON body.
     pub body: &'a [u8],
 }
@@ -756,6 +759,9 @@ where
         }
         if !context.has_valid_limits() {
             return webauthn_http_error(503, "temporarily_unavailable");
+        }
+        if !request.csrf_validated {
+            return webauthn_http_error(403, "invalid_request");
         }
         if request.body.len() > context.upstream_body_limit_bytes {
             return webauthn_http_error(413, "invalid_request");

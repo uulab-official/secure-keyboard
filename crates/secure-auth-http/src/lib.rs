@@ -9,7 +9,8 @@
 //! must provide a [`HttpDeploymentContext`] proving that TLS and upstream
 //! body/connection limits were established; certificate policy, proxy source
 //! allowlisting, and session-token issuance remain responsibilities of the
-//! embedding server.
+//! embedding server. Each request must also carry an explicit host-validated
+//! CSRF result.
 
 use secure_auth::{AuthEnvelope, CredentialFile, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES};
 use secure_auth_server::{
@@ -164,6 +165,9 @@ pub struct HttpRequest<'a> {
     pub path: &'a str,
     /// Request media type from the transport layer.
     pub content_type: Option<&'a str>,
+    /// Whether the embedding server validated its CSRF/origin policy for this
+    /// request. The route never derives this value from the JSON body.
+    pub csrf_validated: bool,
     /// Raw request body. It is bounded before JSON deserialization.
     pub body: &'a [u8],
 }
@@ -272,6 +276,9 @@ where
         }
         if !context.has_valid_limits() {
             return error_response(503, PublicAuthCode::TemporarilyUnavailable);
+        }
+        if !request.csrf_validated {
+            return error_response(403, PublicAuthCode::InvalidRequest);
         }
         if request.body.len() > context.upstream_body_limit_bytes {
             return error_response(413, PublicAuthCode::InvalidRequest);

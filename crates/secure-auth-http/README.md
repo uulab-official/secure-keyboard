@@ -27,6 +27,11 @@ the host validates the proxy source and forwarded scheme; the route never
 trusts `X-Forwarded-Proto` itself. The context also requires a pre-buffering
 body limit no larger than 128 KiB and enforced connection/read limits.
 
+Every `HttpRequest` must set `csrf_validated` only after the host has checked
+its same-origin/CSRF policy from request metadata. The route rejects `false`
+with a generic 403 response before JSON dispatch; it never treats a body field
+as a CSRF token.
+
 The embedding server still owns certificate policy, proxy source allowlisting,
 request authentication, account creation authorization, rate limiting, and
 application session tokens. Registration finish in particular must be

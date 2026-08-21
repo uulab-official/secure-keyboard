@@ -128,6 +128,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, a
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
 - [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
 - [x] Add a mandatory TLS/proxy-limit deployment context and Nginx/Caddy HTTP deployment baseline.
+- [x] Require an explicit host-validated CSRF result before framework-neutral or Axum JSON dispatch.
 - [x] Add a compile-tested Axum adapter after finalizing the host session and storage interfaces.
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
