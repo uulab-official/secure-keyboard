@@ -144,8 +144,9 @@ node scripts/emit-native-device-evidence.mjs \
 
 Repeat with `--platform android` and the Android model/OS build. The emitter
 creates only hashes and public metadata; it never embeds log, screenshot, or
-crash-report bytes in the JSON record. Each referenced evidence file is bounded
-to 32 MiB and must be non-empty before hashing or content scanning.
+crash-report bytes in the JSON record. The standalone record validator bounds
+the top-level JSON record to 1 MiB; each referenced evidence file is bounded to
+32 MiB and must be non-empty before hashing or content scanning.
 
 Use the checked-in disposable sentinel `secure-keypad-test-sentinel-7f2c4e` for
 the device matrix. `check-device-evidence.mjs` recomputes every referenced
