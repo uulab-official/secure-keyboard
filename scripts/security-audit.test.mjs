@@ -22,6 +22,12 @@ test("CI action audit rejects mutable refs and accepts immutable revisions", () 
   );
 });
 
+test("security policy provides a private vulnerability reporting channel", () => {
+  const policy = readFileSync(new URL("../SECURITY.md", import.meta.url), "utf8");
+  assert.match(policy, /github\.com\/uulab-official\/secure-keyboard\/security\/advisories\/new/);
+  assert.match(policy, /Do not open a public issue/);
+});
+
 test("Android secure native view fails closed without a secure Activity window", () => {
   const source = readFileSync(
     new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
