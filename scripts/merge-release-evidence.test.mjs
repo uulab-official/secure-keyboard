@@ -232,9 +232,30 @@ test("CLI assembles and verifies a signed evidence root", () => {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const publicKeyBytes = publicKey.export({ format: "der", type: "spki" });
   const releaseSignature = sign(null, releaseBytes, privateKey);
-  const reviewBytes = Buffer.from("independent review report", "utf8");
   const { privateKey: reviewPrivateKey, publicKey: reviewPublicKey } = generateKeyPairSync("ed25519");
   const reviewPublicKeyBytes = reviewPublicKey.export({ format: "der", type: "spki" });
+  const reviewPublicKeySha256 = createHash("sha256").update(reviewPublicKeyBytes).digest("hex");
+  const reviewBytes = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      reportType: "independent-security-review",
+      reviewedCommit: commit,
+      reviewedPackageVersion: context.packageVersion,
+      reviewerPublicKeySha256: reviewPublicKeySha256,
+      scope: [
+        "native-input-boundary",
+        "opaque-authentication",
+        "http-json-transport",
+        "replay-rate-limit-backends",
+        "framework-adapters",
+        "device-runtime-evidence",
+        "release-process",
+      ],
+      findings: [],
+      decision: "approved",
+    }),
+    "utf8",
+  );
   const reviewSignature = sign(null, reviewBytes, reviewPrivateKey);
   const hash = (value) => createHash("sha256").update(value).digest("hex");
 
