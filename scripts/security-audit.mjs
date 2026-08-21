@@ -264,6 +264,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /toNativeAuthenticatorSelection/, "WebAuthn authenticator selection must be allowlisted before browser handoff");
   requireText(findings, "packages/web/src/index.ts", web, /__proto__|constructor|prototype/, "WebAuthn extension copying must reject prototype-pollution keys");
   requireText(findings, "packages/web/src/index.ts", web, /encodedCredentialBinary/, "WebAuthn browser credential output must be bounded before serialization");
+  requireText(findings, "packages/web/src/index.ts", web, /typeof container\.create === "function"[\s\S]{0,100}typeof container\.get === "function"/, "WebAuthn default environment must verify both browser credential methods");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"ascii"/, "public contracts must enumerate the native printable-ASCII policy");

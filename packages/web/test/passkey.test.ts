@@ -10,6 +10,7 @@ import {
   encodeBase64Url,
   getWebFallbackNotice,
   getPasskey,
+  getDefaultWebAuthnEnvironment,
   serializeRegistrationCredential,
   type WebAuthnCredentialApi,
   type WebAuthnEnvironment,
@@ -66,6 +67,23 @@ describe("WebAuthn support and mode policy", () => {
         environment({ create: async () => null, get: async () => null }, { credentials: undefined }),
       ),
     ).toEqual({ available: false, reason: "credential-api-unavailable" });
+  });
+
+  it("does not advertise the default browser environment when credential methods are missing", () => {
+    const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    try {
+      Object.defineProperty(globalThis, "navigator", {
+        configurable: true,
+        value: { credentials: { create: undefined, get: async () => null } },
+      });
+      expect(getDefaultWebAuthnEnvironment().credentials).toBeUndefined();
+    } finally {
+      if (originalNavigator === undefined) {
+        Reflect.deleteProperty(globalThis, "navigator");
+      } else {
+        Object.defineProperty(globalThis, "navigator", originalNavigator);
+      }
+    }
   });
 
   it("does not silently approve the lower-assurance custom keypad fallback", () => {

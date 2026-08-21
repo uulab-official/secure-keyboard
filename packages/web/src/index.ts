@@ -610,7 +610,10 @@ export function getDefaultWebAuthnEnvironment(): WebAuthnEnvironment {
     };
   };
   const container = browser.navigator?.credentials;
-  const credentials: WebAuthnCredentialApi | undefined = container
+  const credentials: WebAuthnCredentialApi | undefined =
+    container !== undefined &&
+    typeof container.create === "function" &&
+    typeof container.get === "function"
     ? {
         create: async (options) => (await container.create(options)) as WebAuthnCredential | null,
         get: async (options) => (await container.get(options)) as WebAuthnCredential | null,
