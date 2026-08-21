@@ -8,6 +8,11 @@
   credential uniqueness, the per-account limit, and post-authentication
   counter/backup-state updates.
 
+All ceremony stores must reject a zero or over-bound TTL. The reference
+implementation caps pending registration/authentication state at
+`MAX_CEREMONY_TTL` (15 minutes), matching the OPAQUE one-time-state retention
+policy and limiting replay-state exposure and backend occupancy.
+
 `WebAuthnExampleService` uses bounded in-memory implementations only for tests
 and single-process development. A production service must construct
 `WebAuthnService<C, S>::new_with_stores` with protected implementations. The

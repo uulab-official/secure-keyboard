@@ -60,6 +60,8 @@ pub const MAX_CREDENTIAL_RECORD_BYTES: usize = 256 * 1024;
 pub const MAX_PENDING_CEREMONIES: usize = 100_000;
 /// Maximum serialized ceremony state accepted by a backend.
 pub const MAX_CEREMONY_STATE_BYTES: usize = 128 * 1024;
+/// Maximum lifetime of a pending registration or authentication ceremony.
+pub const MAX_CEREMONY_TTL: Duration = Duration::from_secs(15 * 60);
 /// Current server-side serialized ceremony state format version.
 pub const WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1;
 /// Maximum user name or display name accepted by the example boundary.
@@ -484,10 +486,7 @@ fn build_webauthn(
 }
 
 fn validate_ceremony_ttl(ttl: Duration) -> Result<(), WebAuthnExampleError> {
-    if ttl.is_zero() || std::time::Instant::now().checked_add(ttl).is_none() {
-        return Err(WebAuthnExampleError::InvalidConfiguration);
-    }
-    Ok(())
+    storage::validate_ceremony_ttl(ttl).map_err(|_| WebAuthnExampleError::InvalidConfiguration)
 }
 
 fn serialize_state<T: Serialize>(state: &T) -> Result<Zeroizing<Vec<u8>>, WebAuthnExampleError> {
@@ -1033,6 +1032,24 @@ mod tests {
             "http://localhost:3000",
             "Example",
             Duration::MAX,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn ceremony_ttl_is_bounded_for_replay_state_retention() {
+        assert!(WebAuthnExampleService::new(
+            "example.com",
+            "https://login.example.com",
+            "Example",
+            MAX_CEREMONY_TTL,
+        )
+        .is_ok());
+        assert!(WebAuthnExampleService::new(
+            "example.com",
+            "https://login.example.com",
+            "Example",
+            MAX_CEREMONY_TTL + Duration::from_secs(1),
         )
         .is_err());
     }

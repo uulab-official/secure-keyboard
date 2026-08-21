@@ -1,7 +1,7 @@
 use crate::{
     storage::{
-        CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
-        CredentialStoreError,
+        validate_backend_ttl, CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError,
+        CredentialStore, CredentialStoreError,
     },
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
     MAX_PENDING_CEREMONIES,
@@ -310,10 +310,8 @@ where
         if state.len() > MAX_CEREMONY_STATE_BYTES {
             return Err(CeremonyStoreError::StateTooLarge);
         }
-        let ttl_millis = i64::try_from(ttl.as_millis())
-            .ok()
-            .filter(|millis| *millis > 0)
-            .ok_or(CeremonyStoreError::InvalidTtl)?;
+        let ttl_millis = i64::try_from(validate_backend_ttl(ttl)?)
+            .map_err(|_| CeremonyStoreError::InvalidTtl)?;
         let mut client = self.connection()?;
         let mut transaction = client
             .transaction()

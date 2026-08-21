@@ -1,4 +1,6 @@
-use crate::{MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_PENDING_CEREMONIES};
+use crate::{
+    MAX_CEREMONY_STATE_BYTES, MAX_CEREMONY_TTL, MAX_CREDENTIALS_PER_USER, MAX_PENDING_CEREMONIES,
+};
 use rand::{rngs::OsRng, RngCore};
 use secure_auth_server::LoginStateHandle;
 use std::{
@@ -42,13 +44,36 @@ fn ceremony_kind_from_tag(tag: u8) -> Option<CeremonyKind> {
     }
 }
 
+pub(crate) fn validate_ceremony_ttl(ttl: Duration) -> Result<(), CeremonyStoreError> {
+    if ttl.is_zero() || ttl > MAX_CEREMONY_TTL || Instant::now().checked_add(ttl).is_none() {
+        return Err(CeremonyStoreError::InvalidTtl);
+    }
+    Ok(())
+}
+
 #[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) fn validate_backend_ttl(ttl: Duration) -> Result<u64, CeremonyStoreError> {
+    validate_ceremony_ttl(ttl)?;
     let millis = u64::try_from(ttl.as_millis()).map_err(|_| CeremonyStoreError::InvalidTtl)?;
-    if millis == 0 || millis > i64::MAX as u64 {
+    if millis > i64::MAX as u64 {
         return Err(CeremonyStoreError::InvalidTtl);
     }
     Ok(millis)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+    #[test]
+    fn backend_ttl_uses_the_same_replay_retention_bound() {
+        assert_eq!(validate_backend_ttl(Duration::from_secs(1)), Ok(1_000));
+        assert_eq!(
+            validate_backend_ttl(MAX_CEREMONY_TTL + Duration::from_secs(1)),
+            Err(CeremonyStoreError::InvalidTtl)
+        );
+    }
 }
 
 #[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
@@ -101,7 +126,8 @@ pub(crate) fn decode_ceremony_record(encoded: &[u8]) -> Result<CeremonyState, Ce
 pub enum CeremonyStoreError {
     /// The configured capacity is outside the supported bound.
     InvalidCapacity,
-    /// The requested TTL is zero or cannot be represented by the process clock.
+    /// The requested TTL is zero, exceeds the replay-retention bound, or cannot
+    /// be represented by the process clock.
     InvalidTtl,
     /// The backend has reached its configured bounded capacity.
     CapacityReached,
@@ -291,11 +317,9 @@ impl CeremonyStateStore for InMemoryCeremonyStateStore {
         ttl: Duration,
     ) -> Result<LoginStateHandle, CeremonyStoreError> {
         validate_state(state)?;
+        validate_ceremony_ttl(ttl)?;
         let now = Instant::now();
         let expires_at = now.checked_add(ttl).ok_or(CeremonyStoreError::InvalidTtl)?;
-        if ttl.is_zero() {
-            return Err(CeremonyStoreError::InvalidTtl);
-        }
         let mut entries = self
             .entries
             .lock()

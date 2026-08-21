@@ -11,6 +11,8 @@ layer adds:
 - fixed 32-byte lowercase-hex ceremony handles;
 - bounded request bodies before JSON deserialization;
 - atomic one-time consume semantics for registration/authentication state;
+- a 15-minute maximum lifetime for pending ceremony state across all storage
+  backends;
 - generic public errors and unknown-account behavior;
 - credential uniqueness and a bounded per-account credential count;
 - persistence of authenticator counter/backup-state changes.

@@ -562,10 +562,17 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /connection_limits_enforced/, "WebAuthn HTTP routes must require connection/read limits");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_RESPONSE_SECURITY_HEADERS/, "WebAuthn responses must carry cache and MIME security headers");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /new_with_stores/, "WebAuthn service must wire storage contracts into the service boundary");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /MAX_CEREMONY_TTL:\s*Duration\s*=\s*Duration::from_secs\(15 \* 60\)/, "WebAuthn ceremony retention must have a fixed 15-minute maximum");
   const webauthnStorage = source("crates/secure-webauthn-example/src/storage.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub trait CeremonyStateStore/, "WebAuthn service must expose an injectable ceremony state backend contract");
   requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub trait CredentialStore/, "WebAuthn service must expose an injectable credential backend contract");
   requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /atomically delete and return|atomically consume/, "WebAuthn ceremony backend must document atomic consume semantics");
+  requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub\(crate\) fn validate_ceremony_ttl[\s\S]{0,240}ttl > MAX_CEREMONY_TTL/, "WebAuthn ceremony stores must enforce the replay-retention maximum");
+  requireText(findings, "crates/secure-webauthn-example/src/storage.rs", webauthnStorage, /pub\(crate\) fn validate_backend_ttl[\s\S]{0,180}validate_ceremony_ttl\(ttl\)/, "database TTL adapters must share the WebAuthn ceremony retention validator");
+  const webauthnRedis = source("crates/secure-webauthn-example/src/storage_redis.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /validate_backend_ttl\(ttl\)/, "Redis WebAuthn storage must validate ceremony TTLs before persistence");
+  const webauthnPostgres = source("crates/secure-webauthn-example/src/storage_postgres.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /validate_backend_ttl\(ttl\)/, "PostgreSQL WebAuthn storage must validate ceremony TTLs before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1/, "WebAuthn ceremony state format must be version-pinned");
   const webauthnManifest = source("crates/secure-webauthn-example/Cargo.toml", findings);
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /danger-allow-state-serialisation/, "WebAuthn state serialization must be an explicit pinned server dependency feature");

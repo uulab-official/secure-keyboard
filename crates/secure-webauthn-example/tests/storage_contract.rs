@@ -3,7 +3,7 @@ use secure_webauthn_example::{
     CeremonyKind, CeremonyStateStore, CredentialStore, CredentialStoreError,
     InMemoryCeremonyStateStore, InMemoryCredentialStore, WebAuthnDeploymentContext,
     WebAuthnExampleError, WebAuthnHttpRequest, WebAuthnHttpRouter, WebAuthnService,
-    MAX_CEREMONY_STATE_BYTES,
+    MAX_CEREMONY_STATE_BYTES, MAX_CEREMONY_TTL,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -58,6 +58,15 @@ fn in_memory_ceremony_store_rejects_unsafe_bounds() {
             Uuid::from_u128(1),
             b"state",
             Duration::ZERO,
+        ),
+        Err(secure_webauthn_example::CeremonyStoreError::InvalidTtl)
+    ));
+    assert!(matches!(
+        store.insert(
+            CeremonyKind::Registration,
+            Uuid::from_u128(1),
+            b"state",
+            MAX_CEREMONY_TTL + Duration::from_secs(1),
         ),
         Err(secure_webauthn_example::CeremonyStoreError::InvalidTtl)
     ));
