@@ -1147,6 +1147,7 @@ dependencies = [
 name = "secure-webauthn-example"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "openssl",
  "rand 0.8.7",
  "secure-auth-server",
