@@ -125,6 +125,23 @@ verification recomputes its digest and checks that embedded commit, status, and
 secret-field policy, so a current manifest cannot be assembled from an older
 or secret-bearing gate record.
 
+Use the checked-in emitter after the gate command has completed successfully;
+it reads the current immutable checkout SHA and Contracts package version, then
+hashes the exact evidence bytes without accepting a caller-supplied commit:
+
+```sh
+node scripts/emit-release-gate-evidence.mjs \
+  "$RUNNER_TEMP/release-evidence" \
+  "fragments/rust-workspace.json" \
+  rust-workspace \
+  "evidence/rust-workspace.json" \
+  --toolchain rust=1.97.1
+```
+
+Repeat it for each gate and merge the resulting fragments. The emitter does not
+claim that a command ran; the gate job remains responsible for producing and
+reviewing the sanitized JSON record before invoking it.
+
 Create the detached Ed25519 signature and public-key material with a protected
 maintainer key. The private key is read only and is never copied into the
 release bundle or printed:

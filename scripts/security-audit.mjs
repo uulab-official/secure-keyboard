@@ -493,6 +493,13 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /realpathSync/, "release evidence merging must contain fragment and output paths");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /verifyReleaseEvidenceFiles/, "release evidence merging must verify referenced files after assembly");
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
+  requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
+  const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /status --porcelain/, "release evidence emitter must require a clean checkout");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentPackageVersion/, "release evidence emitter must derive the package version from the checkout");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /createHash\("sha256"\)/, "release evidence emitter must hash exact evidence bytes");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /secret-bearing evidence fields/, "release evidence emitter must reject secret-bearing evidence fields");
   const releaseSigner = source("scripts/sign-release.mjs", findings);
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");

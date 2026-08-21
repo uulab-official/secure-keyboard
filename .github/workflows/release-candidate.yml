@@ -60,6 +60,7 @@ jobs:
           pnpm test:release-version-parity
           pnpm check:release-version-parity
           pnpm test:release-evidence
+          pnpm test:emit-release-gate-evidence
           pnpm test:merge-release-evidence
           pnpm test:sign-release
           pnpm test:device-evidence
