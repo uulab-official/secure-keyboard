@@ -1,6 +1,10 @@
 export const CONTRACT_VERSION = 1 as const;
 /** Maximum masked length that any framework adapter may render or forward. */
 export const MAX_RENDERED_LENGTH = 4_096 as const;
+/** Maximum UTF-8 byte length of one public key label. */
+export const MAX_KEY_LABEL_BYTES = 16 as const;
+/** Maximum UTF-8 byte length of one public accessibility label. */
+export const MAX_ACCESSIBILITY_LABEL_BYTES = 80 as const;
 
 export const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 export const LOCALE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
@@ -235,6 +239,15 @@ function isBoundedInteger(value: unknown, minimum: number, maximum: number): val
   return Number.isInteger(value) && isBoundedNumber(value, minimum, maximum);
 }
 
+function utf8ByteLength(value: string): number {
+  let length = 0;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) as number;
+    length += codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+  }
+  return length;
+}
+
 function validateKey(value: unknown, errors: string[], path: string): value is KeySpec {
   if (!isRecord(value)) {
     errors.push(`${path} must be an object`);
@@ -246,7 +259,10 @@ function validateKey(value: unknown, errors: string[], path: string): value is K
   if (typeof value.id !== "string" || !KEY_ID_PATTERN.test(value.id)) {
     errors.push(`${path}.id is invalid`);
   }
-  if (value.label !== undefined && (typeof value.label !== "string" || value.label.length > 16)) {
+  if (
+    value.label !== undefined &&
+    (typeof value.label !== "string" || utf8ByteLength(value.label) > MAX_KEY_LABEL_BYTES)
+  ) {
     errors.push(`${path}.label is invalid`);
   }
   if (value.icon !== undefined && (typeof value.icon !== "string" || !KEY_ID_PATTERN.test(value.icon))) {
@@ -257,7 +273,8 @@ function validateKey(value: unknown, errors: string[], path: string): value is K
   }
   if (
     value.accessibilityLabel !== undefined &&
-    (typeof value.accessibilityLabel !== "string" || value.accessibilityLabel.length > 80)
+    (typeof value.accessibilityLabel !== "string" ||
+      utf8ByteLength(value.accessibilityLabel) > MAX_ACCESSIBILITY_LABEL_BYTES)
   ) {
     errors.push(`${path}.accessibilityLabel is invalid`);
   }

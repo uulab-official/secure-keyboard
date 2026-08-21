@@ -63,6 +63,27 @@ void main() {
     ]));
   });
 
+  test('configuration bounds public labels by UTF-8 bytes', () {
+    final configuration = SecureKeypadConfiguration(
+      layout: KeypadLayout(
+        schemaVersion: 1,
+        rows: <List<KeySpec>>[
+          <KeySpec>[
+            const KeySpec(
+              id: 'korean',
+              label: '가가가가가가',
+              accessibilityLabel: '가가가가가가',
+              role: KeyRole.input,
+            ),
+          ],
+        ],
+      ),
+      theme: SecureKeypadTheme.defaultTheme(),
+    );
+
+    expect(configuration.validate(), contains('layout.rows[0][0].label is invalid'));
+  });
+
   test('callbacks expose masked state and result codes only', () {
     final states = <MaskedState>[];
     final results = <SecureKeypadResultCode>[];

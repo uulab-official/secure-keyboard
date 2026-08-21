@@ -51,7 +51,9 @@ test("native views enforce bounded public layout and theme configuration", () =>
     assert.match(source, /layout\.rows\.size\s+in\s+1\.\.MAX_LAYOUT_ROWS/);
     assert.match(source, /row\.size\s+in\s+1\.\.MAX_LAYOUT_KEYS_PER_ROW/);
     assert.match(source, /totalKeys\s*<=\s*MAX_LAYOUT_KEYS/);
-    assert.match(source, /key\.accessibilityLabel\.length\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/);
+    assert.match(source, /MAX_KEY_LABEL_BYTES\s*=\s*16/);
+    assert.match(source, /key\.label\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*MAX_KEY_LABEL_BYTES/);
+    assert.match(source, /key\.accessibilityLabel\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/);
     assert.match(source, /validateTheme\(theme\)/);
     assert.match(source, /theme\.keyHeightPx\s+in\s+32\.\.160/);
     assert.match(source, /theme\.keyFontSizePx\.isFinite\(\).*theme\.keyFontSizePx\s+in\s+10f\.\.72f/);
@@ -67,9 +69,40 @@ test("native views enforce bounded public layout and theme configuration", () =>
     assert.match(source, /1\.\.\.16\)\.contains\(layout\.rows\.count\)/);
     assert.match(source, /1\.\.\.32\)\.contains\(row\.count\)/);
     assert.match(source, /totalKeys\s*<=\s*512/);
+    assert.match(source, /key\.label\.utf8\.count\s*<=\s*16/);
     assert.match(source, /key\.accessibilityLabel\.utf8\.count\s+<=\s+80/);
     assert.match(source, /try validate\(theme: theme\)/);
     assert.match(source, /theme\.keyHeight\s+>=\s+32/);
     assert.match(source, /theme\.keyFontSize\.isFinite/);
   }
+});
+
+test("all public adapters apply the same UTF-8 byte bounds to labels", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /toByteArray\(Charsets\.UTF_8\)\.size/);
+  }
+
+  const flutterSource = readFileSync(
+    new URL("../packages/flutter/lib/secure_keypad.dart", import.meta.url),
+    "utf8",
+  );
+  assert.match(flutterSource, /utf8\.encode\(key\.label!\)\.length/);
+  assert.match(flutterSource, /utf8\.encode\(key\.accessibilityLabel!\)\.length/);
+
+  const contractsSource = readFileSync(
+    new URL("../packages/contracts/src/index.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(contractsSource, /MAX_KEY_LABEL_BYTES\s*=\s*16/);
+  assert.match(contractsSource, /MAX_ACCESSIBILITY_LABEL_BYTES\s*=\s*80/);
+  assert.match(contractsSource, /function utf8ByteLength/);
 });

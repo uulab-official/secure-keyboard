@@ -43,10 +43,20 @@
       "required": ["id", "role"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
-        "label": { "type": "string", "maxLength": 16 },
+        "label": {
+          "type": "string",
+          "maxLength": 16,
+          "description": "Public label; native adapters additionally enforce a maximum of 16 UTF-8 bytes.",
+          "x-maxUtf8Bytes": 16
+        },
         "icon": { "$ref": "#/$defs/identifier" },
         "role": { "enum": ["input", "backspace", "submit", "clear", "cancel", "spacer"] },
-        "accessibilityLabel": { "type": "string", "maxLength": 80 },
+        "accessibilityLabel": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Public accessibility label; native adapters additionally enforce a maximum of 80 UTF-8 bytes.",
+          "x-maxUtf8Bytes": 80
+        },
         "testId": { "$ref": "#/$defs/identifier" }
       }
     }

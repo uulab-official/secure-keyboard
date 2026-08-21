@@ -118,9 +118,9 @@ internal object SecureKeypadBridgeConfigParser {
                     else -> invalid()
                 }
                 val label = (key["label"] as? String) ?: (key["icon"] as? String) ?: id
-                require(label.length <= 16)
+                require(label.toByteArray(Charsets.UTF_8).size <= 16)
                 val accessibilityLabel = (key["accessibilityLabel"] as? String) ?: label
-                require(accessibilityLabel.length <= 80)
+                require(accessibilityLabel.toByteArray(Charsets.UTF_8).size <= 80)
                 SecureKeySpec(id, label, role, accessibilityLabel)
             }
         }

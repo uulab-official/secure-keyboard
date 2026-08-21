@@ -32,6 +32,10 @@ enum SecureKeypadResultCode { success, cancelled, invalid, locked, error }
 
 /// Maximum masked length accepted at the Flutter/native event boundary.
 const int secureKeypadMaxRenderedLength = 4096;
+/// Maximum UTF-8 byte length of one public key label.
+const int secureKeypadMaxKeyLabelBytes = 16;
+/// Maximum UTF-8 byte length of one public accessibility label.
+const int secureKeypadMaxAccessibilityLabelBytes = 80;
 
 bool isSecureKeypadRenderedLengthValid(int length) =>
     length >= 0 && length <= secureKeypadMaxRenderedLength;
@@ -349,9 +353,12 @@ class SecureKeypadConfiguration {
         final path = 'layout.rows[$rowIndex][$keyIndex]';
         if (!_keyIdPattern.hasMatch(key.id)) errors.add('$path.id is invalid');
         if (!keyIds.add(key.id)) errors.add('$path.id is duplicated');
-        if (key.label != null && key.label!.length > 16) errors.add('$path.label is invalid');
+        if (key.label != null && utf8.encode(key.label!).length > secureKeypadMaxKeyLabelBytes) {
+          errors.add('$path.label is invalid');
+        }
         if (key.icon != null && !_keyIdPattern.hasMatch(key.icon!)) errors.add('$path.icon is invalid');
-        if (key.accessibilityLabel != null && key.accessibilityLabel!.length > 80) {
+        if (key.accessibilityLabel != null &&
+            utf8.encode(key.accessibilityLabel!).length > secureKeypadMaxAccessibilityLabelBytes) {
           errors.add('$path.accessibilityLabel is invalid');
         }
         if (key.testId != null && !_keyIdPattern.hasMatch(key.testId!)) errors.add('$path.testId is invalid');

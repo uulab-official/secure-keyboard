@@ -261,11 +261,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /MAX_LAYOUT_ROWS\s*=\s*16/, "Android native layout must bound row count");
     requireText(findings, file, contents, /MAX_LAYOUT_KEYS_PER_ROW\s*=\s*32/, "Android native layout must bound keys per row");
     requireText(findings, file, contents, /MAX_LAYOUT_KEYS\s*=\s*512/, "Android native layout must bound aggregate key count");
+    requireText(findings, file, contents, /MAX_KEY_LABEL_BYTES\s*=\s*16/, "Android native layout must bound key labels");
     requireText(findings, file, contents, /MAX_ACCESSIBILITY_LABEL_LENGTH\s*=\s*80/, "Android native layout must bound accessibility labels");
     requireText(findings, file, contents, /layout\.rows\.size\s+in\s+1\.\.MAX_LAYOUT_ROWS/, "Android native layout must reject oversized row lists");
     requireText(findings, file, contents, /row\.size\s+in\s+1\.\.MAX_LAYOUT_KEYS_PER_ROW/, "Android native layout must reject oversized rows");
     requireText(findings, file, contents, /totalKeys\s*<=\s*MAX_LAYOUT_KEYS/, "Android native layout must reject oversized aggregate layouts");
-    requireText(findings, file, contents, /key\.accessibilityLabel\.length\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/, "Android native layout must bound accessibility text");
+    requireText(findings, file, contents, /key\.label\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*MAX_KEY_LABEL_BYTES/, "Android native layout must bound key label bytes");
+    requireText(findings, file, contents, /key\.accessibilityLabel\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/, "Android native layout must bound accessibility bytes");
     requireText(findings, file, contents, /validateTheme\(theme\)/, "Android native renderer must validate public theme values");
     requireText(findings, file, contents, /theme\.keyHeightPx\s+in\s+32\.\.160/, "Android native theme must bound key height");
     requireText(findings, file, contents, /theme\.keyRadiusPx\.isFinite\(\)/, "Android native theme must reject non-finite radius values");
@@ -305,6 +307,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /1\.\.\.16\)\.contains\(layout\.rows\.count\)/, "iOS native layout must bound row count");
     requireText(findings, file, contents, /1\.\.\.32\)\.contains\(row\.count\)/, "iOS native layout must bound keys per row");
     requireText(findings, file, contents, /totalKeys\s*<=\s*512/, "iOS native layout must bound aggregate key count");
+    requireText(findings, file, contents, /key\.label\.utf8\.count\s*<=\s*16/, "iOS native layout must bound key label bytes");
     requireText(findings, file, contents, /key\.accessibilityLabel\.utf8\.count\s*<=\s*80/, "iOS native layout must bound accessibility labels");
     requireText(findings, file, contents, /try validate\(theme: theme\)/, "iOS native renderer must validate public theme values");
     requireText(findings, file, contents, /theme\.keyHeight\.isFinite/, "iOS native theme must reject non-finite key heights");
@@ -325,6 +328,24 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
+  }
+  for (const file of [
+    "native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/react-native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /label\.utf8\.count\s*<=\s*16/, "iOS bridge configuration must bound key label bytes");
+    requireText(findings, file, contents, /accessibilityLabel\.utf8\.count\s*<=\s*80/, "iOS bridge configuration must bound accessibility label bytes");
+  }
+  for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /label\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*16/, "Android bridge configuration must bound key label bytes");
+    requireText(findings, file, contents, /accessibilityLabel\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*80/, "Android bridge configuration must bound accessibility label bytes");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
@@ -434,6 +455,9 @@ export function runSecurityAudit() {
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /is duplicated/, "public layout contract must reject duplicate key IDs before native serialization");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /MAX_RENDERED_LENGTH/, "public contracts must bound masked state metadata");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /MAX_KEY_LABEL_BYTES\s*=\s*16/, "public contracts must bound key labels by UTF-8 bytes");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /MAX_ACCESSIBILITY_LABEL_BYTES\s*=\s*80/, "public contracts must bound accessibility labels by UTF-8 bytes");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /function utf8ByteLength/, "public contracts must use an environment-independent UTF-8 byte counter");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /validateMaskedState/, "public contracts must validate masked state metadata");
   const layoutSchema = source("schema/layout.schema.json", findings);
   requireText(findings, "schema/layout.schema.json", layoutSchema, /"role"\s*:\s*\{\s*"enum"\s*:\s*\[[^\]]*"cancel"/, "JSON layout schema must expose the explicit cancel role");
@@ -645,6 +669,8 @@ export function runSecurityAudit() {
   const securitySpec = source("docs/SECURITY-SPEC.md", findings);
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /Native renderers must revalidate all public layout and theme data/, "security specification must require native configuration revalidation");
+  requireText(findings, "schema/layout.schema.json", layoutSchema, /"x-maxUtf8Bytes"\s*:\s*16/, "layout schema must declare the UTF-8 key-label byte bound");
+  requireText(findings, "schema/layout.schema.json", layoutSchema, /"x-maxUtf8Bytes"\s*:\s*80/, "layout schema must declare the UTF-8 accessibility-label byte bound");
   const authTransportGuide = source("docs/AUTH-TRANSPORT.md", findings);
   requireText(findings, "docs/AUTH-TRANSPORT.md", authTransportGuide, /reject[\s\S]{0,24}empty or oversized input[\s\S]{0,24}before copying/, "auth transport documentation must describe pre-allocation bounds");
   const platformPolicy = source("docs/PLATFORM-SECURITY-POLICY.md", findings);

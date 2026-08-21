@@ -20,9 +20,10 @@ The independent `pnpm security-audit` gate also compares the C header macro,
 Rust implementation constant, and every shipped iOS/Android host expectation;
 a native ABI version bump is therefore rejected until all framework mirrors are
 updated together. Native views independently repeat the public layout bounds
-and reject non-finite or out-of-range theme dimensions before allocating UI or
-creating a session, so direct native consumers cannot bypass the configuration
-contract by skipping a framework adapter.
+and reject public labels over 16 UTF-8 bytes, accessibility labels over 80
+UTF-8 bytes, or non-finite/out-of-range theme dimensions before allocating UI
+or creating a session, so direct native consumers cannot bypass the
+configuration contract by skipping a framework adapter.
 
 The React Native `cancelRequest` prop is a non-negative safe integer command
 token; its first value establishes a baseline and each subsequent value

@@ -15,7 +15,7 @@ active so pending input is zeroized rather than resumed after backgrounding.
 The submission callback is native-only. Before creating a session it
 revalidates the public configuration even when called without a framework
 adapter: layouts are limited to 16 rows, 32 keys per row, 512 total keys, and
-80-byte accessibility labels; theme dimensions and font size must be finite
+16-byte key labels and 80-byte accessibility labels; theme dimensions and font size must be finite
 and within the same bounds as the versioned public contract.
 
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
@@ -102,7 +102,7 @@ The JNI adapter in
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
 excluded, and no `EditText` is created. Before allocating native rows/buttons,
 the view repeats the public bounds: 16 rows, 32 keys per row, 512 total keys,
-80-character accessibility labels, and finite and bounded theme dimensions.
+16-byte key labels, 80-byte accessibility labels, and finite and bounded theme dimensions.
 
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is

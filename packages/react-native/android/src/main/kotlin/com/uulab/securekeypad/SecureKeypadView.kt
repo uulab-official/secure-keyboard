@@ -58,6 +58,7 @@ private enum class SecureKeypadInputPolicy {
 private const val MAX_LAYOUT_ROWS = 16
 private const val MAX_LAYOUT_KEYS_PER_ROW = 32
 private const val MAX_LAYOUT_KEYS = 512
+private const val MAX_KEY_LABEL_BYTES = 16
 private const val MAX_ACCESSIBILITY_LABEL_LENGTH = 80
 
 /** Resolves an Activity through framework ContextWrappers without assuming a host type. */
@@ -431,8 +432,8 @@ public open class SecureKeypadView @JvmOverloads constructor(
             row.forEach { key ->
                 require(key.id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) { "invalid public key ID" }
                 require(ids.add(key.id)) { "duplicate public key ID" }
-                require(key.label.length <= 16) { "key label is too long" }
-                require(key.accessibilityLabel.length <= MAX_ACCESSIBILITY_LABEL_LENGTH) {
+                require(key.label.toByteArray(Charsets.UTF_8).size <= MAX_KEY_LABEL_BYTES) { "key label is too long" }
+                require(key.accessibilityLabel.toByteArray(Charsets.UTF_8).size <= MAX_ACCESSIBILITY_LABEL_LENGTH) {
                     "accessibility label is too long"
                 }
             }

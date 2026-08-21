@@ -37,6 +37,27 @@ describe("public customization contract", () => {
     expect(validateTheme({ ...exampleTheme, metrics: { ...exampleTheme.metrics, keyHeight: 1000 } }).valid).toBe(false);
   });
 
+  it("bounds public labels by UTF-8 bytes across native renderers", () => {
+    expect(
+      validateLayout({
+        ...exampleLayout,
+        rows: [[{ id: "korean", label: "가가가가가가", role: "input" }]],
+      }).valid,
+    ).toBe(false);
+    expect(
+      validateLayout({
+        ...exampleLayout,
+        rows: [[{ id: "accented", label: "éééééééé", role: "input" }]],
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateLayout({
+        ...exampleLayout,
+        rows: [[{ id: "accessible", accessibilityLabel: "가".repeat(27), role: "input" }]],
+      }).valid,
+    ).toBe(false);
+  });
+
   it("rejects duplicate key IDs across layout rows", () => {
     expect(
       validateLayout({
