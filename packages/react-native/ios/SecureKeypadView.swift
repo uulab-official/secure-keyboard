@@ -270,9 +270,7 @@ public class SecureKeypadView: UIView {
             throw SecureKeypadViewError.abiMismatch
         }
 
-        if let session {
-            secure_keypad_session_free(session)
-        }
+        releaseSession()
         var newSession: OpaquePointer?
         let status: UInt32
         switch policy {

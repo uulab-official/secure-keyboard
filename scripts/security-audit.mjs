@@ -381,6 +381,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
+    requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,400}releaseSession\(\)/, "iOS native reconfiguration must clear the old session through its nil-setting release path");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
@@ -449,6 +450,8 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /nativeAbiVersion/, "Android JNI must expose the linked FFI ABI version before session creation");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "Android JNI ABI query must call the native FFI implementation");
+    requireText(findings, file, contents, /SECURE_KEYPAD_MAX_KEY_ID_BYTES 64/, "Android JNI must bound public key-ID arrays before obtaining a JVM byte-array pointer");
+    requireText(findings, file, contents, /length <= 0 \|\| \(size_t\)length > SECURE_KEYPAD_MAX_KEY_ID_BYTES/, "Android JNI must reject invalid or oversized public key-ID arrays before copying");
     requireText(findings, file, contents, /INT64_MIN/, "Android JNI refresh must return a distinct failure sentinel instead of empty state");
     forbidText(findings, file, contents, /if \(error != SECURE_KEYPAD_OK\) return 0;/, "Android JNI must not collapse refresh failure into the valid empty-state value");
   }

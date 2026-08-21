@@ -4,6 +4,8 @@
 
 #include "secure_keypad.h"
 
+#define SECURE_KEYPAD_MAX_KEY_ID_BYTES 64
+
 static secure_keypad_session_t *session_from_handle(jlong handle) {
     return (secure_keypad_session_t *)(uintptr_t)handle;
 }
@@ -67,6 +69,9 @@ Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionPressKey(
     (void)object;
     if (key_id == NULL) return SECURE_KEYPAD_INVALID_ARGUMENT;
     jsize length = (*env)->GetArrayLength(env, key_id);
+    if (length <= 0 || (size_t)length > SECURE_KEYPAD_MAX_KEY_ID_BYTES) {
+        return SECURE_KEYPAD_INVALID_ARGUMENT;
+    }
     jbyte *bytes = (*env)->GetByteArrayElements(env, key_id, NULL);
     if (bytes == NULL) return SECURE_KEYPAD_INVALID_ARGUMENT;
     secure_keypad_error_t error = secure_keypad_session_press_key(

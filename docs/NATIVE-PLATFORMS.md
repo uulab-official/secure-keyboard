@@ -116,7 +116,8 @@ The packed JNI masked-state return reserves `Long.MIN_VALUE` for a native
 refresh failure; Android decodes that sentinel before interpreting the valid
 empty state, so an FFI error cannot silently become a normal empty display.
 Releasing a session clears the retained masked presentation text as well as the
-Rust-owned input buffer.
+Rust-owned input buffer. JNI also rejects public key-ID arrays over 64 bytes
+before obtaining their JVM backing pointer, matching the Rust FFI bound.
 
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is
