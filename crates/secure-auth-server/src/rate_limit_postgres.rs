@@ -2,7 +2,7 @@ use crate::{
     RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
     MAX_DISTRIBUTED_RATE_LIMIT_WINDOW, MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,
 };
-use postgres::{tls::MakeTlsConnect, Config, Socket};
+use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{postgres::NoTls, PostgresConnectionManager};
 use sha2::{Digest, Sha256};
@@ -36,6 +36,8 @@ pub enum PostgresRateLimitConfigError {
     InvalidCapacity,
     /// The fixed-window duration cannot be represented by `PostgreSQL`.
     InvalidPolicy,
+    /// The production configuration does not require `PostgreSQL` TLS.
+    InsecureConfig,
     /// The connection pool could not be constructed.
     PoolBuild,
 }
@@ -47,6 +49,7 @@ impl fmt::Display for PostgresRateLimitConfigError {
             Self::InvalidPoolSize => "invalid PostgreSQL rate-limit pool size",
             Self::InvalidCapacity => "invalid PostgreSQL rate-limit capacity",
             Self::InvalidPolicy => "invalid PostgreSQL rate-limit policy",
+            Self::InsecureConfig => "PostgreSQL rate-limit config must require TLS",
             Self::PoolBuild => "PostgreSQL rate-limit pool construction failed",
         })
     }
@@ -99,6 +102,21 @@ where
         max_keys: usize,
         policy: RateLimitPolicy,
     ) -> Result<Self, PostgresRateLimitConfigError> {
+        Self::build(config, tls, namespace, pool_size, max_keys, policy, true)
+    }
+
+    fn build(
+        config: Config,
+        tls: T,
+        namespace: &str,
+        pool_size: u32,
+        max_keys: usize,
+        policy: RateLimitPolicy,
+        require_tls: bool,
+    ) -> Result<Self, PostgresRateLimitConfigError> {
+        if require_tls && config.get_ssl_mode() != SslMode::Require {
+            return Err(PostgresRateLimitConfigError::InsecureConfig);
+        }
         validate_namespace(namespace)?;
         validate_pool_size(pool_size)?;
         if max_keys == 0 || max_keys > MAX_IN_MEMORY_RATE_KEYS {
@@ -141,7 +159,7 @@ impl PostgresRateLimiter<NoTls> {
         max_keys: usize,
         policy: RateLimitPolicy,
     ) -> Result<Self, PostgresRateLimitConfigError> {
-        Self::from_config(config, NoTls, namespace, pool_size, max_keys, policy)
+        Self::build(config, NoTls, namespace, pool_size, max_keys, policy, false)
     }
 }
 

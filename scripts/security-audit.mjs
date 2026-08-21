@@ -269,6 +269,10 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /POSTGRES_RATE_LIMIT_SCHEMA_SQL/, "PostgreSQL rate limiting must ship an explicit migration");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /pg_advisory_xact_lock/, "PostgreSQL rate limiting must serialize capacity/check updates");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /MakeTlsConnect/, "PostgreSQL rate limiting must accept an explicit TLS connector");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /SslMode::Require/, "PostgreSQL rate limiting must reject configurations that can downgrade TLS");
+  const postgresStorage = source("crates/secure-webauthn-example/src/storage_postgres.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /MakeTlsConnect/, "PostgreSQL WebAuthn storage must accept an explicit TLS connector");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /SslMode::Require/, "PostgreSQL WebAuthn storage must reject configurations that can downgrade TLS");
   const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");

@@ -53,7 +53,8 @@ The reference crate includes feature-gated implementations:
   expired rows before counting, and updates/inserts the hashed key in the same
   transaction. Its migration is exported as
   `POSTGRES_RATE_LIMIT_SCHEMA_SQL`, and production uses an explicit TLS
-  connector.
+  connector with `sslmode=require`; weaker PostgreSQL modes are rejected before
+  pool construction.
 
 Both adapters are blocking. Async hosts must run them on a blocking worker and
 must configure separate namespaces for account, source IP, and deployment

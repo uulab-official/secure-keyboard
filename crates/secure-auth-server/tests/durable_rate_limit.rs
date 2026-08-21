@@ -58,6 +58,26 @@ fn postgres_configuration_is_bounded() {
     ));
 }
 
+#[cfg(feature = "postgres-backend")]
+#[test]
+fn postgres_production_configuration_requires_tls() {
+    let policy = RateLimitPolicy::new(2, std::time::Duration::from_secs(10)).unwrap();
+    let config = "host=127.0.0.1 user=postgres"
+        .parse()
+        .expect("valid postgres config");
+    assert!(matches!(
+        secure_auth_server::PostgresRateLimiter::from_config(
+            config,
+            postgres::NoTls,
+            "test",
+            4,
+            4,
+            policy,
+        ),
+        Err(PostgresRateLimitConfigError::InsecureConfig)
+    ));
+}
+
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]

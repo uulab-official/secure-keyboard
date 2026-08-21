@@ -6,7 +6,7 @@ use crate::{
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
     MAX_PENDING_CEREMONIES,
 };
-use postgres::{tls::MakeTlsConnect, Config, Socket};
+use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{postgres::NoTls, PostgresConnectionManager};
 use secure_auth_server::LoginStateHandle;
@@ -59,6 +59,8 @@ pub enum PostgresStorageConfigError {
     InvalidPoolSize,
     /// The connection pool could not be constructed.
     PoolBuild,
+    /// The production configuration does not require `PostgreSQL` TLS.
+    InsecureConfig,
 }
 
 impl fmt::Display for PostgresStorageConfigError {
@@ -67,6 +69,7 @@ impl fmt::Display for PostgresStorageConfigError {
             Self::InvalidNamespace => "invalid postgres storage namespace",
             Self::InvalidPoolSize => "invalid postgres connection pool size",
             Self::PoolBuild => "postgres connection pool construction failed",
+            Self::InsecureConfig => "postgres config must require TLS",
         })
     }
 }
@@ -112,6 +115,19 @@ where
         namespace: &str,
         pool_size: u32,
     ) -> Result<Self, PostgresStorageConfigError> {
+        Self::build(config, tls, namespace, pool_size, true)
+    }
+
+    fn build(
+        config: Config,
+        tls: T,
+        namespace: &str,
+        pool_size: u32,
+        require_tls: bool,
+    ) -> Result<Self, PostgresStorageConfigError> {
+        if require_tls && config.get_ssl_mode() != SslMode::Require {
+            return Err(PostgresStorageConfigError::InsecureConfig);
+        }
         validate_namespace(namespace)?;
         if pool_size == 0 || pool_size > 256 {
             return Err(PostgresStorageConfigError::InvalidPoolSize);
@@ -157,7 +173,7 @@ impl PostgresWebAuthnStore<NoTls> {
         namespace: &str,
         pool_size: u32,
     ) -> Result<Self, PostgresStorageConfigError> {
-        Self::from_config(config, NoTls, namespace, pool_size)
+        Self::build(config, NoTls, namespace, pool_size, false)
     }
 }
 
