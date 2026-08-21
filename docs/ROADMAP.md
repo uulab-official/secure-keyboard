@@ -178,8 +178,10 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a reproducible CI 1,000,000-iteration campaign with a bounded libFuzzer RSS guard.
 - [x] Add a machine-readable release evidence manifest contract for sanitizer, durable-backend, device, independent-review, and signed-release gates.
 - [x] Add conflict-checked release evidence fragment merging before final manifest validation.
+- [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
+- [x] Restrict release signing workflow dispatch to a verified immutable 40-character commit SHA.
 - [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.
