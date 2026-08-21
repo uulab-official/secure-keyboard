@@ -159,6 +159,7 @@ Exit criteria: web users get a safe default and understand the difference betwee
 Status: release-gate automation in progress; independent/device review pending
 
 - [x] Create an OWASP MASVS/MASTG evidence map; independent assessor sign-off remains pending.
+- [x] Define v1 TLS/pinning ownership and compromised-runtime residual-risk policy without unsupported SDK claims.
 - [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
 - [x] Add bounded auth-decoder and native/core state-machine fuzz targets with retained corpora.
 - [x] Add a native C ABI sequence fuzz target covering opaque handle ownership and cancellation.
