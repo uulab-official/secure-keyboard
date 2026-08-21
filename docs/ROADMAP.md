@@ -122,6 +122,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, and deployment baselin
 - [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
 - [x] Add a mandatory TLS/proxy-limit deployment context and Nginx/Caddy HTTP deployment baseline.
 - [x] Add a compile-tested Axum adapter after finalizing the host session and storage interfaces.
+- [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
@@ -131,7 +132,7 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: passkey-first adapter, reference server, bounded HTTP route, and deployment baseline complete; CSP/supply-chain and durable store hardening pending
+Status: passkey-first adapter, reference server, bounded HTTP route, compile-tested Axum integration, and deployment baseline complete; CSP/supply-chain and durable store hardening pending
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.

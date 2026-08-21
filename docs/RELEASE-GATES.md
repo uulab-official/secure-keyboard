@@ -10,7 +10,7 @@ test suite alone is not a production claim.
 cargo fmt --all -- --check
 cargo test --workspace --all-features
 cargo test -p secure-webauthn-example
-cargo test -p secure-auth-axum
+cargo test -p secure-auth-axum --all-features
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 pnpm install --frozen-lockfile
 pnpm audit --audit-level high
@@ -39,9 +39,9 @@ host bundler vulnerability.
 
 For crates.io publication, publish the Rust dependency chain in order after
 the exact commit is tagged: `secure-core`, `secure-auth`,
-`secure-auth-server`, `secure-auth-http`, then `secure-auth-axum`. A local
-workspace path dependency is not evidence that an individual crate can be
-published before its registry dependency exists.
+`secure-auth-server`, `secure-auth-http`, `secure-webauthn-example`, then
+`secure-auth-axum`. A local workspace path dependency is not evidence that an
+individual crate can be published before its registry dependency exists.
 
 The compatibility matrix in `docs/COMPATIBILITY.md` is part of the release
 input. A release must publish the exact commit, lockfiles, toolchain versions,
@@ -76,9 +76,9 @@ Rust/Node/Flutter/native toolchain versions, the notices in
   source is included in both publishable packages and checked for parity, but
   each host application must compile it against its chosen RN/Flutter versions,
   install a native submission consumer, and run the device matrix.
-- WebAuthn reference verification service and bounded framework-neutral HTTP
-  contract are shipped, but framework-specific HTTP integration, durable
-  credential storage, and distributed ceremony-state tests remain deployment
-  gates.
+- WebAuthn reference verification service, bounded framework-neutral HTTP
+  contract, and compile-tested Axum integration are shipped, but durable
+  credential storage, host-session/CSRF integration, and distributed
+  ceremony-state tests remain deployment gates.
 - Device accessibility/screenshot/autofill verification and an independent
   security review remain mandatory.

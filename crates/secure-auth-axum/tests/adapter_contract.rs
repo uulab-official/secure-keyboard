@@ -9,6 +9,11 @@ use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthService};
 use std::time::Duration;
 use tower::ServiceExt;
 
+#[cfg(feature = "webauthn")]
+use secure_webauthn_example::{WebAuthnDeploymentContext, WebAuthnExampleService};
+#[cfg(feature = "webauthn")]
+use uuid::Uuid;
+
 struct EmptyRepository;
 
 impl CredentialRepository for EmptyRepository {
@@ -124,4 +129,108 @@ fn response_shell_can_transfer_body_without_retaining_a_copy() {
     };
     let (_, _, _, body) = response.into_parts();
     assert_eq!(&body[..], b"fixture");
+}
+
+#[cfg(feature = "webauthn")]
+#[tokio::test]
+async fn webauthn_adapter_requires_host_principal_and_preserves_security_headers() {
+    let service = WebAuthnExampleService::new(
+        "localhost",
+        "http://localhost:3000",
+        "Secure Keypad Test",
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let app = secure_auth_axum::webauthn_router(
+        std::sync::Arc::new(service),
+        WebAuthnDeploymentContext::direct_tls(),
+        |_request| None,
+    );
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/webauthn/registration/start")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    br#"{"userName":"alice","displayName":"Alice"}"#.to_vec(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 401);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+}
+
+#[cfg(feature = "webauthn")]
+#[tokio::test]
+async fn webauthn_adapter_passes_host_principal_to_the_framework_neutral_router() {
+    let service = WebAuthnExampleService::new(
+        "localhost",
+        "http://localhost:3000",
+        "Secure Keypad Test",
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let app = secure_auth_axum::webauthn_router(
+        std::sync::Arc::new(service),
+        WebAuthnDeploymentContext::direct_tls(),
+        |parts| {
+            assert_eq!(parts.uri.path(), "/v1/webauthn/registration/start");
+            Some(Uuid::from_u128(1))
+        },
+    );
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/webauthn/registration/start")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    br#"{"userName":"alice","displayName":"Alice"}"#.to_vec(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+}
+
+#[cfg(feature = "webauthn")]
+#[tokio::test]
+async fn webauthn_adapter_bounds_streaming_body_before_principal_or_json_processing() {
+    let service = WebAuthnExampleService::new(
+        "localhost",
+        "http://localhost:3000",
+        "Secure Keypad Test",
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let app = secure_auth_axum::webauthn_router(
+        std::sync::Arc::new(service),
+        WebAuthnDeploymentContext::new(
+            secure_webauthn_example::WebAuthnTransportSecurity::DirectTls,
+            4,
+            true,
+        ),
+        |_parts| panic!("principal resolver must not run for an oversized body"),
+    );
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/webauthn/authentication/start")
+                .header("content-type", "application/json")
+                .body(Body::from("{}{}x"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 413);
 }

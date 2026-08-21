@@ -125,6 +125,9 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(request\.into_body\(\), body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /state\.router\.handle\(/, "Axum adapter must delegate to the framework-neutral route contract");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /RESPONSE_SECURITY_HEADERS/, "Axum adapter must preserve static response security headers");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /Fn\(&Parts\) -> Option<Uuid>/, "WebAuthn Axum principal resolver must receive request parts without the body");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(body, body_limit\)/, "WebAuthn Axum adapter must bound streaming request bodies before principal resolution");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /WebAuthnHttpRouter::new/, "WebAuthn Axum adapter must delegate to the framework-neutral route contract");
   forbidText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /X-Forwarded-Proto|x-forwarded-proto/i, "Axum adapter must not parse forwarded transport headers");
 
   const webauthnHttp = source("crates/secure-webauthn-example/src/lib.rs", findings);

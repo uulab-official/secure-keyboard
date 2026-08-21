@@ -604,6 +604,24 @@ impl Drop for WebAuthnHttpResponse {
     }
 }
 
+impl WebAuthnHttpResponse {
+    /// Transfers the response body to a framework response writer.
+    ///
+    /// The returned body is now owned by the framework and the dropped
+    /// response shell retains no duplicate bytes.
+    #[must_use]
+    pub fn into_parts(self) -> (u16, &'static str, &'static [WebAuthnHttpHeader], Vec<u8>) {
+        let mut response = self;
+        let body = core::mem::take(&mut response.body);
+        (
+            response.status,
+            response.content_type,
+            response.headers,
+            body,
+        )
+    }
+}
+
 /// Framework-neutral bounded `WebAuthn` route handler.
 pub struct WebAuthnHttpRouter<'a> {
     service: &'a WebAuthnExampleService,

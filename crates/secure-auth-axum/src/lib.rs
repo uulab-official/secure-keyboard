@@ -145,3 +145,139 @@ fn static_error_response(status: u16, body: &[u8]) -> Response {
         body: body.to_vec(),
     })
 }
+
+#[cfg(feature = "webauthn")]
+mod webauthn_adapter {
+    use super::{header, to_bytes, Body, Request, Response, Router, State, StatusCode};
+    use axum::http::request::Parts;
+    use axum::response::IntoResponse;
+    use secure_webauthn_example::{
+        WebAuthnDeploymentContext, WebAuthnExampleService, WebAuthnHttpRequest,
+        WebAuthnHttpResponse, WEBAUTHN_JSON_CONTENT_TYPE, WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+    };
+    use std::sync::Arc;
+    use uuid::Uuid;
+
+    struct AppState<P> {
+        service: Arc<WebAuthnExampleService>,
+        context: WebAuthnDeploymentContext,
+        principal: Arc<P>,
+    }
+
+    /// Builds an Axum router for the framework-neutral `WebAuthn` route
+    /// contract.
+    ///
+    /// `principal` must resolve the account from the host's authenticated
+    /// session or equivalent server-side context. It receives only HTTP
+    /// request parts, never the JSON body, and the adapter never derives a
+    /// principal from request fields. TLS, proxy validation, CSRF, session
+    /// issuance, and durable ceremony/credential stores remain application
+    /// responsibilities.
+    pub fn router<P>(
+        service: Arc<WebAuthnExampleService>,
+        context: WebAuthnDeploymentContext,
+        principal: P,
+    ) -> Router
+    where
+        P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
+    {
+        let state = Arc::new(AppState {
+            service,
+            context,
+            principal: Arc::new(principal),
+        });
+        Router::new()
+            .fallback(handle_request::<P>)
+            .with_state(state)
+    }
+
+    async fn handle_request<P>(
+        State(state): State<Arc<AppState<P>>>,
+        request: Request<Body>,
+    ) -> Response
+    where
+        P: Fn(&Parts) -> Option<Uuid> + Send + Sync + 'static,
+    {
+        if !state.context.is_ready() {
+            return deployment_unavailable_response();
+        }
+
+        let body_limit = state.context.body_limit_bytes();
+        let (parts, body) = request.into_parts();
+        let method = parts.method.as_str().to_owned();
+        let path = parts.uri.path().to_owned();
+        let content_type = parts
+            .headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+
+        if parts
+            .headers
+            .get(header::CONTENT_LENGTH)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<usize>().ok())
+            .is_some_and(|length| length > body_limit)
+        {
+            return response_from(WebAuthnHttpResponse {
+                status: 413,
+                content_type: WEBAUTHN_JSON_CONTENT_TYPE,
+                headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+                body: br#"{"error":"invalid_request"}"#.to_vec(),
+            });
+        }
+
+        let Ok(body) = to_bytes(body, body_limit).await else {
+            return response_from(WebAuthnHttpResponse {
+                status: 413,
+                content_type: WEBAUTHN_JSON_CONTENT_TYPE,
+                headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+                body: br#"{"error":"invalid_request"}"#.to_vec(),
+            });
+        };
+        let principal = (state.principal)(&parts);
+        let response = secure_webauthn_example::WebAuthnHttpRouter::new(state.service.as_ref())
+            .handle(
+                WebAuthnHttpRequest {
+                    method: &method,
+                    path: &path,
+                    content_type: content_type.as_deref(),
+                    principal,
+                    body: &body,
+                },
+                state.context,
+            );
+        response_from(response)
+    }
+
+    fn response_from(response: WebAuthnHttpResponse) -> Response {
+        let (status, content_type, response_headers, body) = response.into_parts();
+        let status = StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let mut output = (status, Body::from(body)).into_response();
+        *output.status_mut() = status;
+        let headers = output.headers_mut();
+        headers.insert(
+            header::CONTENT_TYPE,
+            content_type.parse().expect("static content type"),
+        );
+        for item in response_headers {
+            let name =
+                header::HeaderName::from_bytes(item.name.as_bytes()).expect("static header name");
+            let value = header::HeaderValue::from_static(item.value);
+            headers.insert(name, value);
+        }
+        output
+    }
+
+    fn deployment_unavailable_response() -> Response {
+        response_from(WebAuthnHttpResponse {
+            status: 503,
+            content_type: WEBAUTHN_JSON_CONTENT_TYPE,
+            headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
+            body: br#"{"error":"temporarily_unavailable"}"#.to_vec(),
+        })
+    }
+}
+
+#[cfg(feature = "webauthn")]
+pub use webauthn_adapter::router as webauthn_router;
