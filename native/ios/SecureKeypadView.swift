@@ -185,6 +185,9 @@ public class SecureKeypadView: UIView {
 
     public override func didMoveToWindow() {
         super.didMoveToWindow()
+        if window == nil {
+            releaseSession()
+        }
         refreshProtectionState()
     }
 

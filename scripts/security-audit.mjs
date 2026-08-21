@@ -165,6 +165,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
     requireText(findings, file, contents, /refreshProtectionState\(\)/, "iOS native keypad must recompute protection across lifecycle transitions");
     requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
+    requireText(findings, file, contents, /if window == nil \{\s*releaseSession\(\)\s*\}/, "iOS native keypad must release pending input when detached from a window");
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
