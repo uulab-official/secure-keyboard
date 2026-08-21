@@ -78,6 +78,9 @@ exact release-candidate commit by the release evidence manifest.
 - Hardened the Android JNI masked-state bridge so native refresh failures use a
   reserved sentinel instead of the valid empty-state value; Android and iOS
   native release paths now also clear retained masked presentation state.
+- Migrated the Flutter Android plugin to Flutter's built-in Kotlin compiler
+  contract, pinned its minimum Flutter/Dart versions, and verified both
+  legacy-disabled and enabled built-in-Kotlin host builds.
 - Fixed iOS reconfiguration cleanup so a failed native session constructor
   cannot leave a freed session pointer available for a later double free.
 - Added a pre-copy 64-byte bound for Android JNI public key-ID arrays to avoid

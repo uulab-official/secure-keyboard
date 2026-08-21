@@ -1,12 +1,5 @@
 apply plugin: 'com.android.library'
 
-// AGP 9 hosts may use built-in Kotlin. Older hosts must expose the Kotlin
-// Gradle plugin in their plugin management block before consuming this module.
-def builtInKotlinEnabled = (project.findProperty('android.builtInKotlin') ?: 'false').toString().toBoolean()
-if (!builtInKotlinEnabled) {
-    apply plugin: 'org.jetbrains.kotlin.android'
-}
-
 group = 'com.uulab.securekeypad'
 version = '0.1.0'
 
@@ -23,10 +16,6 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -48,6 +37,12 @@ android {
             path file('CMakeLists.txt')
             version '3.22.1'
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

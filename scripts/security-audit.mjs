@@ -247,6 +247,10 @@ export function runSecurityAudit() {
   const flutterAbiBuild = source("packages/flutter/android/build.gradle", findings);
   requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /secureKeypadAbiFilters/, "Flutter Android native build must restrict compilation to supplied FFI architectures");
   requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "Flutter Android native build must pass only available ABI filters to CMake");
+  requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /kotlin\s*\{[\s\S]*compilerOptions\s*\{[\s\S]*JvmTarget\.JVM_17/, "Flutter Android plugin must use the built-in Kotlin compiler contract");
+  forbidText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /org\.jetbrains\.kotlin\.android|kotlinOptions\s*\{/, "Flutter Android plugin must not apply the legacy Kotlin Gradle plugin contract");
+  const flutterPubspec = source("packages/flutter/pubspec.yaml", findings);
+  requireText(findings, "packages/flutter/pubspec.yaml", flutterPubspec, /flutter:\s*['"]>=3\.44\.0['"]/, "Flutter plugin must pin the minimum SDK required by built-in Kotlin support");
   const androidRuntimeHierarchySmoke = source("scripts/android-emulator-runtime-smoke.sh", findings);
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /FLAG_SECURE/, "Android runtime evidence must acknowledge capture blocking by FLAG_SECURE");
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /uiautomator dump/, "Android runtime evidence must verify the rendered native hierarchy");

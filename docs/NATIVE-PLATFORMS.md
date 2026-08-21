@@ -217,9 +217,10 @@ Flutter package paths:
   target with the same ABI directory contract.
 - `SecureKeypad` creates the native PlatformView and forwards only public
   creation parameters and masked/result events.
-- The Android module respects the host's `android.builtInKotlin` setting;
-  legacy hosts must expose the Kotlin Gradle plugin, while AGP 9 built-in
-  Kotlin hosts must enable that property.
+- The Android module uses Flutter's built-in Kotlin compiler contract
+  (`kotlin.compilerOptions` with JVM 17) and requires Flutter 3.44/Dart 3.12
+  or newer; AGP 9 hosts can enable `android.builtInKotlin` without a plugin-
+  supplied Kotlin Gradle Plugin.
 
 Build the Rust library for every device/simulator ABI in the host release
 pipeline. Never substitute a debug, simulator-only, or architecture-mismatched

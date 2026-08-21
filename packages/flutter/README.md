@@ -2,6 +2,10 @@
 
 Flutter-facing Secure Native contract for the Secure Keypad SDK.
 
+Compatibility: Flutter `>=3.44.0`, Dart `>=3.12.0 <4.0.0`. The Android plugin
+uses Flutter's built-in Kotlin compiler contract and JVM 17; it does not apply
+the legacy Kotlin Gradle Plugin itself.
+
 The package exposes versioned layout/theme/policy configuration and masked
 state/result callbacks for numeric, printable-ASCII, and Hangul native policies. It intentionally has no password value, secret getter,
 `TextEditingController`, or raw submit callback. A platform implementation

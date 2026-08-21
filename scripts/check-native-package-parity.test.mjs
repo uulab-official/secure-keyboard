@@ -47,12 +47,19 @@ test("framework manifests publish native source and fail-closed build inputs", (
     "packages/flutter/android/build.gradle",
   ]) {
     const contents = readFileSync(path.join(root, buildFile), "utf8");
-    assert.match(contents, /android\.builtInKotlin/);
+    if (buildFile.includes("react-native")) {
+      assert.match(contents, /android\.builtInKotlin/);
+    }
     const cmakeFile = buildFile.replace(/build\.gradle$/, "CMakeLists.txt");
     const cmake = readFileSync(path.join(root, cmakeFile), "utf8");
     assert.match(cmake, /SECURE_KEYPAD_FFI_LIB_DIR/);
     assert.match(cmake, /EXISTS\s+"\$\{SECURE_KEYPAD_FFI_LIB_DIR\}\/\$\{ANDROID_ABI\}\/libsecure_ffi\.a"/);
   }
+
+  const flutterBuild = readFileSync(path.join(root, "packages/flutter/android/build.gradle"), "utf8");
+  assert.doesNotMatch(flutterBuild, /org\.jetbrains\.kotlin\.android/);
+  assert.doesNotMatch(flutterBuild, /kotlinOptions\s*\{/);
+  assert.match(flutterBuild, /kotlin\s*\{[\s\S]*compilerOptions\s*\{/);
 });
 
 test("iOS podspecs consume only staged relative FFI artifacts", () => {
