@@ -331,7 +331,7 @@ jobs:
           path: ${{ runner.temp }}/secure-keypad-ffi
 
   fuzz:
-    name: Fuzz bounded auth decoder
+    name: Fuzz parser, core, and native boundaries
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -348,6 +348,10 @@ jobs:
         run: cargo +nightly-2026-08-19 fuzz check core_sequence
       - name: Run bounded native/core fuzz smoke test
         run: cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=2000
+      - name: Build native FFI boundary fuzz target
+        run: cargo +nightly-2026-08-19 fuzz check ffi_sequence
+      - name: Run bounded native FFI boundary fuzz smoke test
+        run: cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=2000 -max_len=4096
       - name: Build WebAuthn state fuzz target
         run: cargo +nightly-2026-08-19 fuzz check webauthn_state
       - name: Run bounded WebAuthn state fuzz smoke test
@@ -356,11 +360,13 @@ jobs:
         run: |
           cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
           cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
           cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=1000000 -max_len=131073 -rss_limit_mb=1024
       - name: Run Linux leak-sanitizer fuzz smoke campaigns
         run: |
           cargo +nightly-2026-08-19 fuzz run auth_envelope --sanitizer=leak -- -runs=10000
           cargo +nightly-2026-08-19 fuzz run core_sequence --sanitizer=leak -- -runs=10000
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence --sanitizer=leak -- -runs=10000 -max_len=4096
           cargo +nightly-2026-08-19 fuzz run webauthn_state --sanitizer=leak -- -runs=10000 -max_len=131073
 
   sbom:

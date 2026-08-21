@@ -1028,6 +1028,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "secure-ffi"
+version = "0.1.0"
+dependencies = [
+ "secure-auth",
+ "secure-core",
+]
+
+[[package]]
 name = "secure-keypad-fuzz"
 version = "0.1.0"
 dependencies = [
@@ -1035,6 +1043,7 @@ dependencies = [
  "secure-auth",
  "secure-auth-server",
  "secure-core",
+ "secure-ffi",
  "secure-webauthn-example",
  "uuid",
  "webauthn-rs",

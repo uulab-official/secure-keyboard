@@ -61,9 +61,10 @@ must not introduce a client-side replayable hash.
 ## Fuzz gate
 
 The `fuzz/auth_envelope` target exercises the raw-body and bounded-payload
-decoder, `fuzz/core_sequence` exercises the native/core state machine, and
+decoder, `fuzz/core_sequence` exercises the core state machine,
+`fuzz/ffi_sequence` exercises the exported native C ABI, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
-CI builds all three with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
+CI builds all four with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign
 with a 1 GiB libFuzzer RSS guard. The current local verification completed
 100,000 iterations for all three targets: auth-envelope, core-sequence, and
@@ -78,8 +79,10 @@ campaign and memory/leak testing listed in the roadmap.
 On 2026-08-21, a local arm64 run using the exact CI-pinned
 `nightly-2026-08-19` toolchain and the same 1,000,000-iteration arguments
 completed without a crash artifact: auth-envelope reached `cov 1130` with
-469 MB final RSS, core-sequence reached `cov 96` with 476 MB, and
-WebAuthn-state reached `cov 1269` with 498 MB using `-max_len=131073`.
+469 MB final RSS, core-sequence reached `cov 96` with 476 MB, native FFI
+sequence reached `cov 279` with 564 MB, and WebAuthn-state reached `cov 1269`
+with 498 MB using `-max_len=131073`. The FFI boundary campaign is also
+covered by the same CI stability and Linux leak-sanitizer commands.
 Those RSS values are libFuzzer process measurements that include its evolving
 corpus and coverage tables; they are not an SDK memory ceiling or a leak
 result. The Linux leak-sanitizer job remains mandatory.

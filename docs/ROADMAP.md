@@ -158,6 +158,7 @@ Status: release-gate automation in progress; independent/device review pending
 - [x] Create an OWASP MASVS/MASTG evidence map; independent assessor sign-off remains pending.
 - [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
 - [x] Add bounded auth-decoder and native/core state-machine fuzz targets with retained corpora.
+- [x] Add a native C ABI sequence fuzz target covering opaque handle ownership and cancellation.
 - [x] Add a bounded WebAuthn versioned-ceremony-state fuzz target and CI smoke gate.
 - [x] Add feature-gated Redis/PostgreSQL storage adapters with bounded pools, atomic consume, credential uniqueness, and post-authentication CAS updates.
 - [x] Bound durable credential record bytes and per-namespace pending ceremonies; clean expired durable ceremony rows/index entries during atomic writes/consumes.
@@ -165,9 +166,9 @@ Status: release-gate automation in progress; independent/device review pending
 - [x] Complete local 10,000-iteration smoke campaigns for the auth-envelope and core-sequence targets; keep CI at a bounded 2,000-iteration smoke gate.
 - [x] Complete the local 10,000-iteration smoke campaign for the WebAuthn state target and retain its minimized corpus.
 - [x] Complete local 100,000-iteration extended campaigns for all three fuzz targets and retain the resulting corpora.
-- [x] Complete a local 1,000,000-iteration stability campaign for all three fuzz targets; keep the Linux leak-sanitizer gate separate.
+- [x] Complete a local 1,000,000-iteration stability campaign for all four fuzz targets; keep the Linux leak-sanitizer gate separate.
 - [x] Add a reproducible CI 1,000,000-iteration campaign with a bounded libFuzzer RSS guard.
-- [ ] Run the full fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
+- [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.
 - [ ] Obtain an independent security review before claiming production readiness.
