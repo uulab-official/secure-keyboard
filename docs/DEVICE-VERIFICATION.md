@@ -36,9 +36,9 @@ log, clipboard, accessibility value, screenshot, crash report, analytics
 event, or framework callback. The native authentication consumer must receive
 only the opaque submission capability.
 
-1. Enter, backspace, clear, timeout, cancel, and submit through numeric and
-   Hangul layouts. Verify that RN/JS and Flutter/Dart observe only masked
-   length/state and generic result codes.
+1. Enter, backspace, clear, timeout, cancel, and submit through numeric,
+   printable-ASCII, and Hangul layouts. Verify that RN/JS and Flutter/Dart
+   observe only masked length/state and generic result codes.
 2. Capture the screen, start recording, background the app, open the task
    switcher, and return to the app. Verify that iOS remains protected while
    capture is still active after an active/inactive transition, and that

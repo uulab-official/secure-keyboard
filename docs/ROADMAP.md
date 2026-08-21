@@ -170,7 +170,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add isolated Redis/PostgreSQL service interoperability tests to CI.
 - [x] Complete local 10,000-iteration smoke campaigns for the auth-envelope and core-sequence targets; keep CI at a bounded 2,000-iteration smoke gate.
 - [x] Complete the local 10,000-iteration smoke campaign for the WebAuthn state target and retain its minimized corpus.
-- [x] Complete local 100,000-iteration extended campaigns for all three fuzz targets and retain the resulting corpora.
+- [x] Complete local 100,000-iteration extended campaigns for the auth-envelope, core-sequence, and WebAuthn-state targets and retain the resulting corpora.
 - [x] Complete a local 1,000,000-iteration stability campaign for all four fuzz targets; keep the Linux leak-sanitizer gate separate.
 - [x] Add a reproducible CI 1,000,000-iteration campaign with a bounded libFuzzer RSS guard.
 - [x] Add a machine-readable release evidence manifest contract for sanitizer, durable-backend, device, independent-review, and signed-release gates.
