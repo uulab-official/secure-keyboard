@@ -642,6 +642,10 @@ jobs:
           path: |
             ${{ runner.temp }}/secure_ffi.xcframework
             ${{ runner.temp }}/secure_ffi.xcframework.sha256
+      - name: Stage XCFramework for package Podspec validation
+        run: |
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" packages/react-native/secure_ffi.xcframework
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" packages/flutter/ios/secure_ffi.xcframework
       - name: Parse package Podspecs against the release XCFramework
         run: |
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \

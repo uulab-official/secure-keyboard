@@ -847,6 +847,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the React Native Podspec");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/flutter\/ios\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the Flutter Podspec");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@stable/, "CI must not float on the stable Rust channel");
   for (const line of findMutableCiActionLines(ciWorkflow)) {
     findings.push({
