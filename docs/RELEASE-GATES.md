@@ -18,6 +18,16 @@ valid Ed25519 signature. It uploads a candidate artifact only; it does not
 publish a GitHub release or bypass the external device, backend, and
 independent-review gates below.
 
+Before the source tree is archived, the workflow runs
+`node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
+requires the candidate-only metadata, lockfiles, threat-model and deployment
+policy documents, SPDX SBOM, third-party notices, all publishable npm
+tarballs (including their license files), and every workspace crate archive.
+It also rejects malformed archives, symlinks, and private signing material in
+the staging directory. This proves the input to the deterministic archive is
+complete; it does not replace the protected signing step or external release
+evidence.
+
 The same immutable candidate job starts isolated Redis 7.2 and PostgreSQL 16
 services and runs both durable `--ignored` interoperability suites before
 building the bundle. Those services are test infrastructure only; production
@@ -42,6 +52,7 @@ pnpm check:native-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence
+pnpm test:release-bundle
 pnpm test:release-candidate-metadata
 pnpm test:expo-development-build
 pnpm test:sign-release

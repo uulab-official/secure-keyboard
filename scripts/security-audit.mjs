@@ -673,6 +673,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
+  requireText(findings, "package.json", rootPackage, /"test:release-bundle"/, "the workspace must expose the release staging inspector test");
   for (const file of ["packages/contracts/package.json", "packages/web/package.json"]) {
     const packageManifest = source(file, findings);
     requireText(findings, file, packageManifest, /"files"\s*:\s*\[[^\]]*"LICENSE"/, "publishable npm packages must include their license file");
@@ -722,6 +723,13 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /currentCommit/, "candidate metadata must bind to the checked-out commit");
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /validateReleaseCandidateCheckoutStatus/, "candidate metadata must reject a dirty checkout");
   requireText(findings, "package.json", rootPackage, /"test:release-candidate-metadata"/, "the workspace must expose the release candidate metadata test");
+  const releaseBundleCheck = source("scripts/check-release-bundle.mjs", findings);
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checkReleaseStaging/, "release tooling must inspect the exact staging input before archiving");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad\.sbom\.spdx\.json/, "release staging must require the SPDX SBOM");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-bundle\.mjs\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-bundle/, "CI must execute the release staging inspector contract test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
