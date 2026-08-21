@@ -92,7 +92,7 @@ function validateTests(testCases, required, findings) {
  * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
- * @param {{requirePhysicalDevice?: boolean}} [options]
+ * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string}} [options]
  * @returns {string[]}
  */
 export function validateDeviceEvidence(evidence, options = {}) {
@@ -103,6 +103,11 @@ export function validateDeviceEvidence(evidence, options = {}) {
   if (evidence.schemaVersion !== 1) add(findings, "schemaVersion", "must be 1");
   if (typeof evidence.commit !== "string" || !COMMIT.test(evidence.commit)) {
     add(findings, "commit", "must be a 40-character lowercase commit SHA");
+  } else if (options.expectedCommit !== undefined && evidence.commit !== options.expectedCommit) {
+    add(findings, "commit", "must match the expected checkout commit");
+  }
+  if (options.expectedCommit !== undefined && !COMMIT.test(String(options.expectedCommit))) {
+    add(findings, "expectedCommit", "must be a 40-character lowercase commit SHA");
   }
   if (!Object.hasOwn(ALLOWED_FRAMEWORKS, evidence.platform)) {
     add(findings, "platform", "must be ios, android, or web");
@@ -253,12 +258,28 @@ function checkFile(filePath, options) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const requirePhysicalDevice = process.argv.includes("--require-physical");
-  const filePath = process.argv.slice(2).find((argument) => argument !== "--require-physical");
-  if (!filePath) {
-    process.stderr.write("usage: node scripts/check-device-evidence.mjs [--require-physical] <relative-json-file>\n");
+  const positional = [];
+  let requirePhysicalDevice = false;
+  let expectedCommit;
+  const argumentsList = process.argv.slice(2);
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index];
+    if (argument === "--require-physical") {
+      requirePhysicalDevice = true;
+    } else if (argument === "--expected-commit") {
+      expectedCommit = argumentsList[index + 1];
+      index += 1;
+    } else {
+      positional.push(argument);
+    }
+  }
+  const filePath = positional[0];
+  if (!filePath || positional.length !== 1 || expectedCommit === undefined && argumentsList.includes("--expected-commit")) {
+    process.stderr.write(
+      "usage: node scripts/check-device-evidence.mjs [--require-physical] [--expected-commit <sha>] <relative-json-file>\n",
+    );
     process.exitCode = 2;
   } else {
-    process.exitCode = checkFile(path.resolve(ROOT, filePath), { requirePhysicalDevice });
+    process.exitCode = checkFile(path.resolve(ROOT, filePath), { requirePhysicalDevice, expectedCommit });
   }
 }

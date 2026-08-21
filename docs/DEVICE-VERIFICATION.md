@@ -91,7 +91,8 @@ context evidence:
 pnpm test:device-evidence
 node scripts/check-device-evidence.mjs path/to/device-evidence.json
 # Use this form for the required iOS/Android physical-device release gate:
-node scripts/check-device-evidence.mjs --require-physical path/to/device-evidence.json
+node scripts/check-device-evidence.mjs --require-physical \
+  --expected-commit "$(git rev-parse HEAD)" path/to/device-evidence.json
 ```
 
 The validator also recomputes the log and artifact digests inside the evidence

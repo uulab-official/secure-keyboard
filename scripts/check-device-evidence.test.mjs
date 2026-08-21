@@ -46,6 +46,12 @@ test("can require a physical device for a native release gate", () => {
   assert.ok(findings.some((finding) => finding.includes("physicalDevice")));
 });
 
+test("can bind a device record to an expected checkout commit", () => {
+  const findings = validateDeviceEvidence(VALID_NATIVE, { expectedCommit: "f".repeat(40) });
+
+  assert.ok(findings.some((finding) => finding.includes("commit") && finding.includes("expected")));
+});
+
 test("rejects missing pass status, secret fields, and unsafe paths", () => {
   const invalid = structuredClone(VALID_NATIVE);
   invalid.testCases.accessibility = "skipped";
