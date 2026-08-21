@@ -4,6 +4,10 @@ The repository is a production candidate only when every applicable gate is
 green and the platform/security review items are signed off. A passing unit
 test suite alone is not a production claim.
 
+Every GitHub Action in the release workflow is pinned to a 40-character commit
+SHA. The adjacent version comment is informational only; changing an action
+requires an explicit revision update and a passing security audit.
+
 ## Reproducible local gates
 
 ```sh

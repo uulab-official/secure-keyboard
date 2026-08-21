@@ -300,8 +300,18 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
-  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@1\.97\.1/, "CI Rust jobs must use the repository-pinned toolchain");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@stable/, "CI must not float on the stable Rust channel");
+  const ciActionLines = ciWorkflow.split("\n").filter((line) => /\buses:\s*/.test(line));
+  for (const line of ciActionLines) {
+    if (!/^\s*(?:-\s+)?uses:\s*[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?\s*$/.test(line)) {
+      findings.push({
+        rule: "ci-action-immutability",
+        file: ".github/workflows/ci.yml",
+        detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
+      });
+    }
+  }
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /27\.1\.12297006/, "Android host builds must use the repository-pinned NDK");
