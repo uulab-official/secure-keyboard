@@ -6,6 +6,11 @@ or keypad secret as an API value. The custom browser keypad is an explicitly
 acknowledged lower-assurance fallback because page JavaScript can observe page
 input and memory.
 
+Server-supplied WebAuthn extension objects and browser extension results are
+defensively copied with bounded depth, node count, key count, and string size.
+The adapter rejects malformed or oversized extension JSON before handing it to
+the browser or serializing it back to the server.
+
 ## Browser policy
 
 - Serve the app and WebAuthn endpoints over HTTPS with a valid origin and an

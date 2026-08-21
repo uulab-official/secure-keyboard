@@ -44,6 +44,7 @@ describe("base64url boundary", () => {
   it("rejects malformed or oversized binary input", () => {
     expect(() => decodeBase64Url("not base64")).toThrow(WebAuthnClientError);
     expect(() => decodeBase64Url("A")).toThrow(WebAuthnClientError);
+    expect(() => decodeBase64Url("AB")).toThrow(WebAuthnClientError);
     expect(() => decodeBase64Url("AAAA", 2)).toThrow(WebAuthnClientError);
   });
 });
@@ -182,5 +183,34 @@ describe("passkey registration", () => {
         getClientExtensionResults: () => ({}),
       }),
     ).toThrow(/registration response is invalid/);
+  });
+
+  it("bounds server extension JSON before handing it to the browser", async () => {
+    await expect(
+      createPasskey(
+        { ...creationOptions, extensions: { oversized: "x".repeat(2049) } },
+        environment({ create: async () => null, get: async () => null }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+  });
+
+  it("bounds browser extension results before serializing them", async () => {
+    const api: WebAuthnCredentialApi = {
+      create: async () => ({
+        id: "credential-id",
+        rawId: new Uint8Array([1]).buffer,
+        type: "public-key",
+        response: {
+          clientDataJSON: new Uint8Array([1]).buffer,
+          attestationObject: new Uint8Array([2]).buffer,
+        },
+        getClientExtensionResults: () => ({ oversized: "x".repeat(2049) }),
+      }),
+      get: async () => null,
+    };
+
+    await expect(createPasskey(creationOptions, environment(api))).rejects.toMatchObject({
+      code: "invalid-credential",
+    });
   });
 });

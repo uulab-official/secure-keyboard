@@ -4,6 +4,10 @@ export const WEB_CONTRACT_VERSION = 1 as const;
 export const WEB_FALLBACK_WARNING_CODE = "WEB_CUSTOM_KEYPAD_LOWER_ASSURANCE" as const;
 export const MAX_WEBAUTHN_BINARY_BYTES = 8 * 1024;
 export const MAX_WEBAUTHN_CREDENTIALS = 64;
+export const MAX_WEBAUTHN_EXTENSION_DEPTH = 4;
+export const MAX_WEBAUTHN_EXTENSION_NODES = 256;
+export const MAX_WEBAUTHN_EXTENSION_KEYS = 32;
+export const MAX_WEBAUTHN_EXTENSION_STRING_LENGTH = 2048;
 
 const BASE64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]*$/;
@@ -237,10 +241,12 @@ export function decodeBase64Url(value: string, maxBytes = MAX_WEBAUTHN_BINARY_BY
   let accumulator = 0;
   let bits = 0;
   let outputIndex = 0;
+  let lastDigit = 0;
 
   for (const character of value) {
     const digit = BASE64URL_ALPHABET.indexOf(character);
     if (digit < 0) throw new WebAuthnClientError("invalid-options", "Base64url WebAuthn data is invalid");
+    lastDigit = digit;
     accumulator = (accumulator << 6) | digit;
     bits += 6;
     if (bits >= 8) {
@@ -254,6 +260,9 @@ export function decodeBase64Url(value: string, maxBytes = MAX_WEBAUTHN_BINARY_BY
     }
   }
 
+  if (bits > 0 && (lastDigit & ((1 << bits) - 1)) !== 0) {
+    throw new WebAuthnClientError("invalid-options", "Base64url WebAuthn data is not canonical");
+  }
   if (output.length > maxBytes) {
     throw new WebAuthnClientError("invalid-options", "WebAuthn binary data is too large");
   }
@@ -289,10 +298,57 @@ function boundedTimeout(value: unknown): number | undefined {
   return value;
 }
 
-function copyRecord(value: unknown, field: string): Record<string, unknown> | undefined {
+function copyBoundedExtensionValue(
+  value: unknown,
+  field: string,
+  errorCode: Extract<WebAuthnClientErrorCode, "invalid-options" | "invalid-credential">,
+  depth: number,
+  budget: { nodes: number },
+): unknown {
+  budget.nodes += 1;
+  if (budget.nodes > MAX_WEBAUTHN_EXTENSION_NODES || depth > MAX_WEBAUTHN_EXTENSION_DEPTH) {
+    throw new WebAuthnClientError(errorCode, `${field} is too complex`);
+  }
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.length > MAX_WEBAUTHN_EXTENSION_STRING_LENGTH) {
+      throw new WebAuthnClientError(errorCode, `${field} is too large`);
+    }
+    return value;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new WebAuthnClientError(errorCode, `${field} is invalid`);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_WEBAUTHN_EXTENSION_KEYS) {
+      throw new WebAuthnClientError(errorCode, `${field} is too large`);
+    }
+    return value.map((entry) => copyBoundedExtensionValue(entry, field, errorCode, depth + 1, budget));
+  }
+  if (!isRecord(value)) throw new WebAuthnClientError(errorCode, `${field} is invalid`);
+  const keys = Object.keys(value);
+  if (keys.length > MAX_WEBAUTHN_EXTENSION_KEYS) {
+    throw new WebAuthnClientError(errorCode, `${field} has too many keys`);
+  }
+  const result: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (key.length > 128) throw new WebAuthnClientError(errorCode, `${field} has an invalid key`);
+    result[key] = copyBoundedExtensionValue(value[key], field, errorCode, depth + 1, budget);
+  }
+  return result;
+}
+
+function copyRecord(
+  value: unknown,
+  field: string,
+  errorCode: Extract<WebAuthnClientErrorCode, "invalid-options" | "invalid-credential">,
+): Record<string, unknown> | undefined {
   if (value === undefined) return undefined;
-  if (!isRecord(value)) invalidOptions(`WebAuthn ${field} is invalid`);
-  return { ...value };
+  if (!isRecord(value)) throw new WebAuthnClientError(errorCode, `WebAuthn ${field} is invalid`);
+  const result = copyBoundedExtensionValue(value, field, errorCode, 0, { nodes: 0 });
+  if (!isRecord(result)) throw new WebAuthnClientError(errorCode, `WebAuthn ${field} is invalid`);
+  return result;
 }
 
 function toNativeDescriptor(value: unknown, field: string): Record<string, unknown> {
@@ -369,7 +425,7 @@ function toNativeCreationOptions(options: WebAuthnCreationOptionsJson): Record<s
     }
     publicKey.hints = [...options.hints];
   }
-  const extensions = copyRecord(options.extensions, "extensions");
+  const extensions = copyRecord(options.extensions, "extensions", "invalid-options");
   if (extensions !== undefined) publicKey.extensions = extensions;
   return publicKey;
 }
@@ -395,7 +451,7 @@ function toNativeRequestOptions(options: WebAuthnRequestOptionsJson): Record<str
     }
     publicKey.hints = [...options.hints];
   }
-  const extensions = copyRecord(options.extensions, "extensions");
+  const extensions = copyRecord(options.extensions, "extensions", "invalid-options");
   if (extensions !== undefined) publicKey.extensions = extensions;
   return publicKey;
 }
@@ -408,7 +464,7 @@ function extensionResults(credential: WebAuthnCredential): Record<string, unknow
     throw new WebAuthnClientError("invalid-credential", "WebAuthn extension results are invalid");
   }
   if (!isRecord(value)) throw new WebAuthnClientError("invalid-credential", "WebAuthn extension results are invalid");
-  return { ...value };
+  return copyRecord(value, "WebAuthn extension results", "invalid-credential")!;
 }
 
 function baseCredential(credential: WebAuthnCredential): Pick<SerializedRegistrationCredential, "id" | "rawId" | "type" | "authenticatorAttachment" | "clientExtensionResults"> {
