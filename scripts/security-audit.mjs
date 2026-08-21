@@ -68,6 +68,11 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /impl core::fmt::Debug for AuthEnvelope/, "OPAQUE transport Debug must be manually redacted");
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /field\("payload_len", &self\.payload\.len\(\)\)/, "OPAQUE transport Debug may expose payload length only");
   forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");
+  const webauthnDebug = source("crates/secure-webauthn-example/src/lib.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /impl core::fmt::Debug for CeremonyStart/, "WebAuthn ceremony Debug must be manually redacted");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("handle_len", &self\.handle\.len\(\)\)/, "WebAuthn ceremony Debug may expose handle length only");
+  requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("options", &"<redacted>"\)/, "WebAuthn ceremony Debug must redact browser options");
+  forbidText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,160}pub struct CeremonyStart/, "WebAuthn ceremony must not derive Debug over its handle or options");
 
   const nativeManagers = [
     "native/ios/react-native/SecureKeypadViewManager.swift",

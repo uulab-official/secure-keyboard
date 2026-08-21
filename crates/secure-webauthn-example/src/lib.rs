@@ -95,12 +95,23 @@ impl std::error::Error for WebAuthnExampleError {}
 
 /// A public ceremony response. The handle must be kept confidential by the
 /// embedding server and sent back only to the same authenticated browser flow.
-#[derive(Debug, Serialize)]
+/// Its [`core::fmt::Debug`] output redacts both the handle and browser options.
+#[derive(Serialize)]
 pub struct CeremonyStart {
     /// Fixed-size lowercase hexadecimal one-time handle.
     pub handle: String,
     /// Server-generated `WebAuthn` options for the browser adapter.
     pub options: Value,
+}
+
+impl core::fmt::Debug for CeremonyStart {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("CeremonyStart")
+            .field("handle_len", &self.handle.len())
+            .field("options", &"<redacted>")
+            .finish()
+    }
 }
 
 /// Result of a successful passkey registration.
@@ -1037,6 +1048,19 @@ mod tests {
             service.finish_registration(&start.handle, b"{}"),
             Err(WebAuthnExampleError::Replay)
         );
+    }
+
+    #[test]
+    fn ceremony_debug_redacts_handle_and_browser_options() {
+        let service = service();
+        let start = service
+            .start_registration(Uuid::new_v4(), "alice", "Alice")
+            .expect("start");
+        let debug = format!("{start:?}");
+
+        assert!(debug.contains("handle_len"));
+        assert!(!debug.contains(&start.handle));
+        assert!(!debug.contains("challenge"));
     }
 
     #[test]
