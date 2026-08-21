@@ -18,6 +18,11 @@ Physical devices are required for screen recording, task-switcher snapshots,
 autofill services, and VoiceOver/TalkBack behavior. Simulators/emulators may
 supplement the matrix but cannot replace those checks.
 
+The iOS CI host job additionally installs and launches the generated React
+Native and Flutter hosts in an available Simulator and uploads no-input
+screenshots. This catches packaging and launch regressions only; it is not
+physical-device evidence and does not replace the matrix above.
+
 ## Test cases
 
 Use a disposable test account and a sentinel input that must never appear in a

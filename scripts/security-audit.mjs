@@ -309,6 +309,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-simulator-runtime/, "CI must retain iOS Simulator runtime smoke evidence");
+  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", source("scripts/ios-simulator-runtime-smoke.sh", findings), /simctl install/, "iOS runtime smoke must install the generated host app through simctl");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /SecureKeypadController\(\)/, "Flutter host smoke app must compile the native controller contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /controller: controller/, "Flutter host smoke app must link the controller to the PlatformView");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cancelRequest=\{0\}/, "React Native host smoke app must compile the native cancel prop");

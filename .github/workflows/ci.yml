@@ -613,7 +613,17 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/secure-keypad-rn-ios-derived" \
             CODE_SIGNING_ALLOWED=NO build
+      - name: Launch the React Native host in an iOS Simulator
+        env:
+          APP_PATH: ${{ runner.temp }}/secure-keypad-rn-ios-derived/Build/Products/Debug-iphonesimulator/SecureKeypadHost.app
+          SCREENSHOT_PATH: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime/react-native.png
+        run: |
+          test -d "$APP_PATH"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          bash "$GITHUB_WORKSPACE/scripts/ios-simulator-runtime-smoke.sh" \
+            "$APP_PATH" "$BUNDLE_ID" "$SCREENSHOT_PATH"
       - name: Create and compile the Flutter iOS host
         env:
           HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host
@@ -641,4 +651,21 @@ jobs:
           cd "$HOST_DIR"
           flutter pub get
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
-            flutter build ios --simulator --no-codesign
+            flutter build ios --simulator --no-codesign \
+            --build-dir "$RUNNER_TEMP/secure-keypad-flutter-ios-build"
+      - name: Launch the Flutter host in an iOS Simulator
+        env:
+          APP_PATH: ${{ runner.temp }}/secure-keypad-flutter-ios-build/ios/iphonesimulator/Runner.app
+          SCREENSHOT_PATH: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime/flutter.png
+        run: |
+          test -d "$APP_PATH"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          bash "$GITHUB_WORKSPACE/scripts/ios-simulator-runtime-smoke.sh" \
+            "$APP_PATH" "$BUNDLE_ID" "$SCREENSHOT_PATH"
+      - name: Upload iOS Simulator runtime smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure-keypad-ios-simulator-runtime
+          path: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime
+          if-no-files-found: warn

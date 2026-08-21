@@ -131,6 +131,11 @@ Syft/Anchore. Before a public release, the artifact must include the exact
 Rust/Node/Flutter/native toolchain versions, the notices in
 `docs/THIRD-PARTY-NOTICES.md`, threat model, and signed checksums.
 
+The macOS iOS host job also installs and launches both generated host apps in
+an available iOS Simulator and uploads no-input runtime screenshots. This is
+a supplemental launch/packaging signal; it does not close the physical-device
+capture, autofill, accessibility, or opaque-handoff gates.
+
 ## Known release blockers
 
 - Native RN view-manager and Flutter PlatformView/FFI registration reference
