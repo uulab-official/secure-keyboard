@@ -76,6 +76,12 @@ describe("WebAuthn support and mode policy", () => {
       severity: "warning",
     });
   });
+
+  it("rejects an unknown mode at the runtime boundary", () => {
+    expect(() => assertWebAuthnMode("unexpected-mode" as never)).toThrow(
+      expect.objectContaining({ code: "invalid-mode" }),
+    );
+  });
 });
 
 describe("passkey registration", () => {

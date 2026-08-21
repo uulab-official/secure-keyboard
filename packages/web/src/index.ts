@@ -23,6 +23,7 @@ export type WebAuthnClientErrorCode =
   | "insecure-context"
   | "unsupported"
   | "invalid-options"
+  | "invalid-mode"
   | "no-credential"
   | "invalid-credential"
   | "fallback-not-acknowledged";
@@ -642,6 +643,9 @@ export function assertWebAuthnMode(
   environment = getDefaultWebAuthnEnvironment(),
   lowerAssuranceFallbackAcknowledged = false,
 ): void {
+  if (mode !== "passkey" && mode !== "custom-keypad-fallback") {
+    throw new WebAuthnClientError("invalid-mode", "WebAuthn mode is invalid");
+  }
   if (mode === "custom-keypad-fallback") {
     if (!lowerAssuranceFallbackAcknowledged) {
       throw new WebAuthnClientError(
