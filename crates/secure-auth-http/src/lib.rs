@@ -134,6 +134,19 @@ impl HttpDeploymentContext {
         )
     }
 
+    /// Returns the maximum body size the embedding adapter must apply before
+    /// buffering the request.
+    #[must_use]
+    pub const fn body_limit_bytes(self) -> usize {
+        self.upstream_body_limit_bytes
+    }
+
+    /// Returns whether this context is safe for route dispatch.
+    #[must_use]
+    pub const fn is_ready(self) -> bool {
+        self.transport.is_encrypted() && self.has_valid_limits()
+    }
+
     const fn has_valid_limits(self) -> bool {
         self.upstream_body_limit_bytes > 0
             && self.upstream_body_limit_bytes <= MAX_HTTP_BODY_BYTES
@@ -171,6 +184,25 @@ pub struct HttpResponse {
 impl Drop for HttpResponse {
     fn drop(&mut self) {
         self.body.zeroize();
+    }
+}
+
+impl HttpResponse {
+    /// Transfers the response body to a framework response writer.
+    ///
+    /// The returned body is now owned by the framework and must be written
+    /// promptly. The response shell is dropped with an empty body so it does
+    /// not duplicate or retain the transferred bytes.
+    #[must_use]
+    pub fn into_parts(self) -> (u16, &'static str, &'static [HttpHeader], Vec<u8>) {
+        let mut response = self;
+        let body = core::mem::take(&mut response.body);
+        (
+            response.status,
+            response.content_type,
+            response.headers,
+            body,
+        )
     }
 }
 

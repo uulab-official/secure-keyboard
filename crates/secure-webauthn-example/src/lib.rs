@@ -549,6 +549,19 @@ impl WebAuthnDeploymentContext {
         )
     }
 
+    /// Returns the maximum body size the embedding adapter must apply before
+    /// buffering the request.
+    #[must_use]
+    pub const fn body_limit_bytes(self) -> usize {
+        self.upstream_body_limit_bytes
+    }
+
+    /// Returns whether this context is safe for route dispatch.
+    #[must_use]
+    pub const fn is_ready(self) -> bool {
+        self.transport.is_encrypted() && self.has_valid_limits()
+    }
+
     const fn has_valid_limits(self) -> bool {
         self.upstream_body_limit_bytes > 0
             && self.upstream_body_limit_bytes <= MAX_CLIENT_RESPONSE_BYTES

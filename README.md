@@ -22,6 +22,7 @@ and the [web deployment baseline](docs/WEB-DEPLOYMENT.md).
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
 - `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
+- `secure-auth-axum`: compile-tested Axum adapter that bounds streaming request bodies and preserves the OPAQUE route's generic errors and security headers.
 - `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication reference with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, and atomic one-time ceremony state.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
@@ -41,6 +42,8 @@ gate. The packages fail closed unless the host supplies matching Rust
 host-app compilation, device-level security verification, and independent
 review remain release gates. Do not treat the current repository state as a
 drop-in production authentication component.
+See [customization examples](docs/CUSTOMIZATION-EXAMPLES.md) for numeric,
+Hangul, and branded native layouts.
 
 ## Development
 

@@ -9,6 +9,7 @@ package must not silently update the authentication suite.
 | Rust toolchain | `rust-toolchain.toml` (`1.97.1`) | Build the Rust core/FFI and native host integration from the same commit. The WebAuthn example remains compatible with workspace MSRV `1.85`. |
 | C ABI | `SECURE_KEYPAD_ABI_VERSION = 1` | A native host must link the header and `secure_ffi` library from the same source revision and reject an ABI mismatch before creating a session. |
 | OPAQUE | `opaque-ke = 4.0.1`; suite `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2` | Pin the protocol version, suite, and server key ID. Rotation may allow only the explicitly configured active/previous key window. |
+| Axum server adapter | package `0.1.0`; `axum = 0.8.9` | Use the workspace lockfile, pass a validated `HttpDeploymentContext`, and keep TLS/proxy, rate-limit, session, and durable-store policy in the host application. |
 | WebAuthn example | `webauthn-rs = 0.5.4` | Keep the verifier and its credential serialization format under one lockfile. Replace process-local stores before deployment. |
 | React Native | package `0.1.0`; peer `react-native >=0.76` | Compile the package native sources against the exact host RN/React versions and install a native submission consumer. Expo Go is unsupported. |
 | Flutter | package `0.1.0`; Dart `>=3.4.0 <4.0.0` | Run `flutter analyze`, `flutter test`, and a host app build with the selected stable Flutter/AGP toolchain. |

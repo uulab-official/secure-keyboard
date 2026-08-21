@@ -19,6 +19,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --workspace --all-features
       - run: cargo test -p secure-webauthn-example
+      - run: cargo test -p secure-auth-axum
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   contracts:

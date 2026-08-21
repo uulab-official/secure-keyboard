@@ -93,7 +93,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
 - [x] Require an explicit native submission consumer before reporting framework success.
 - [ ] Compile the registration in supported host apps and verify device behavior.
-- [ ] Provide examples for numeric PIN, Hangul password, and branded themes.
+- [x] Provide examples for numeric PIN, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
@@ -121,7 +121,8 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, and deployment baselin
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
 - [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
 - [x] Add a mandatory TLS/proxy-limit deployment context and Nginx/Caddy HTTP deployment baseline.
-- [ ] Add compile-tested Axum/Actix adapter examples after the host session and storage interfaces are finalized.
+- [x] Add a compile-tested Axum adapter after finalizing the host session and storage interfaces.
+- [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.

@@ -121,6 +121,12 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /connection_limits_enforced/, "OPAQUE HTTP routes must require connection/read limits");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /RESPONSE_SECURITY_HEADERS/, "OPAQUE HTTP responses must carry cache and MIME security headers");
 
+  const axum = source("crates/secure-auth-axum/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(request\.into_body\(\), body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /state\.router\.handle\(/, "Axum adapter must delegate to the framework-neutral route contract");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /RESPONSE_SECURITY_HEADERS/, "Axum adapter must preserve static response security headers");
+  forbidText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /X-Forwarded-Proto|x-forwarded-proto/i, "Axum adapter must not parse forwarded transport headers");
+
   const webauthnHttp = source("crates/secure-webauthn-example/src/lib.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /pub struct WebAuthnDeploymentContext/, "WebAuthn HTTP routes must require an explicit deployment context");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WebAuthnTransportSecurity::TrustedProxyTls/, "WebAuthn HTTP routes must define trusted-proxy TLS handling");
@@ -163,6 +169,10 @@ export function runSecurityAudit() {
   const distributedGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
+  const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
+  requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
+  requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
+  forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
 
   return findings;
 }

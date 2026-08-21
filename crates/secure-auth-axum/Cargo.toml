@@ -1,0 +1,23 @@
+[package]
+name = "secure-auth-axum"
+version = "0.1.0"
+description = "Compile-tested Axum adapter for Secure Keypad OPAQUE authentication"
+repository = "https://github.com/uulab/secure-keyboard"
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum = "=0.8.9"
+secure-auth-http = { path = "../secure-auth-http", version = "0.1.0" }
+secure-auth-server = { path = "../secure-auth-server", version = "0.1.0" }
+
+[dev-dependencies]
+http-body-util = "=0.1.3"
+secure-auth = { path = "../secure-auth", version = "0.1.0" }
+tokio = { version = "=1.47.1", features = ["macros", "rt-multi-thread"] }
+tower = { version = "=0.5.2", features = ["util"] }
+
+[lints]
+workspace = true
