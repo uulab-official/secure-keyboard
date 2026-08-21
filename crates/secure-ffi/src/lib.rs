@@ -11,7 +11,9 @@ use core::time::Duration;
 use std::{panic::catch_unwind, panic::AssertUnwindSafe, ptr, slice, str};
 
 use secure_auth::{
-    client_login_finish_from_native_state, client_login_start_from_submission, AuthError, Message,
+    client_login_finish_from_native_state, client_login_start_from_submission,
+    client_registration_finish_from_native_state, client_registration_start_from_submission,
+    AuthError, Message,
 };
 use secure_core::{DisplayState, InputPolicy, MaskedState, SecureSession, SessionError};
 
@@ -99,6 +101,12 @@ pub struct SecureKeypadAuthMessage {
 #[repr(C)]
 pub struct SecureKeypadClientLogin {
     core: secure_auth::NativeClientLoginState,
+}
+
+/// Opaque native-only OPAQUE client registration state.
+#[repr(C)]
+pub struct SecureKeypadClientRegistration {
+    core: secure_auth::NativeClientRegistrationState,
 }
 
 fn contain_panic(operation: impl FnOnce() -> SecureKeypadError) -> SecureKeypadError {
@@ -651,6 +659,59 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
     })
 }
 
+/// Starts native OPAQUE registration by consuming a sealed keypad submission.
+///
+/// The caller receives only the first OPAQUE transport message and an opaque
+/// native registration handle. The password never crosses this ABI.
+///
+/// # Safety
+///
+/// `submission` must point to a live submission pointer and `output_registration`
+/// and `output_request` must be valid writable pointers. On success the
+/// submission pointer is set to null and ownership is consumed. All handles are
+/// single-owner and must not be used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_registration_start(
+    submission: *mut *mut SecureKeypadSubmission,
+    output_registration: *mut *mut SecureKeypadClientRegistration,
+    output_request: *mut *mut SecureKeypadAuthMessage,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if submission.is_null() || output_registration.is_null() || output_request.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: All output pointers are checked for null and must be writable.
+        unsafe {
+            *output_registration = ptr::null_mut();
+            *output_request = ptr::null_mut();
+        }
+        // SAFETY: `submission` is checked and must point to a live submission
+        // handle owned by the caller.
+        let submission_pointer = unsafe { *submission };
+        if submission_pointer.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // Mark the caller's handle consumed before any protocol operation.
+        unsafe {
+            *submission = ptr::null_mut();
+        }
+        // SAFETY: Ownership was validated and transferred above.
+        let submission = unsafe { *Box::from_raw(submission_pointer) }.core;
+        let (state, request) = match client_registration_start_from_submission(submission) {
+            Ok(result) => result,
+            Err(error) => return map_auth_error(error),
+        };
+        let registration_handle = Box::new(SecureKeypadClientRegistration { core: state });
+        let request_handle = Box::new(SecureKeypadAuthMessage { core: request });
+        // SAFETY: Ownership transfers through the output slots.
+        unsafe {
+            *output_registration = Box::into_raw(registration_handle);
+            *output_request = Box::into_raw(request_handle);
+        }
+        SecureKeypadError::Ok
+    })
+}
+
 /// Aborts and frees a native OPAQUE login handle.
 ///
 /// # Safety
@@ -664,6 +725,26 @@ pub unsafe extern "C" fn secure_keypad_client_login_free(login: *mut SecureKeypa
         if !login.is_null() {
             // SAFETY: The caller contract requires ownership of a live handle.
             unsafe { drop(Box::from_raw(login)) };
+        }
+        SecureKeypadError::Ok
+    });
+}
+
+/// Aborts and frees a native OPAQUE registration handle.
+///
+/// # Safety
+///
+/// `registration` must be null or a live handle returned by
+/// [`secure_keypad_client_registration_start`] that has not already been
+/// consumed or freed. After this call the handle is invalid.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_registration_free(
+    registration: *mut SecureKeypadClientRegistration,
+) {
+    let _ = contain_panic(|| {
+        if !registration.is_null() {
+            // SAFETY: The caller contract requires ownership of a live handle.
+            unsafe { drop(Box::from_raw(registration)) };
         }
         SecureKeypadError::Ok
     });
@@ -739,6 +820,79 @@ pub unsafe extern "C" fn secure_keypad_client_login_finish(
         unsafe {
             *output_finalization =
                 Box::into_raw(Box::new(SecureKeypadAuthMessage { core: finalization }));
+        }
+        SecureKeypadError::Ok
+    })
+}
+
+/// Finishes native OPAQUE registration and returns only the upload message.
+///
+/// The derived client export key is immediately dropped and zeroized inside
+/// Rust. The application must send the upload through the native protected
+/// transport and must not expose it through a framework bridge.
+///
+/// # Safety
+///
+/// `registration` must point to a live registration pointer and is consumed on
+/// entry; `response` must be a live message handle; identifier buffers must be
+/// readable for their declared lengths; and `output_upload` must be a valid
+/// writable pointer. All pointers must remain valid for this call and must not
+/// be used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_client_registration_finish(
+    registration: *mut *mut SecureKeypadClientRegistration,
+    response: *const SecureKeypadAuthMessage,
+    client_identifier: *const u8,
+    client_identifier_len: usize,
+    server_identifier: *const u8,
+    server_identifier_len: usize,
+    output_upload: *mut *mut SecureKeypadAuthMessage,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if registration.is_null() || response.is_null() || output_upload.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The output pointer is checked for null and must be writable.
+        unsafe {
+            *output_upload = ptr::null_mut();
+        }
+        // SAFETY: `registration` is checked and must point to a live owned handle.
+        let registration_pointer = unsafe { *registration };
+        if registration_pointer.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        unsafe {
+            *registration = ptr::null_mut();
+        }
+        // SAFETY: Ownership was validated and transferred above.
+        let registration = unsafe { *Box::from_raw(registration_pointer) }.core;
+        // SAFETY: The caller contract guarantees a live response handle.
+        let response = unsafe { &(*response).core };
+        // SAFETY: Identifier buffers are validated by the helper and remain
+        // readable for the duration of this call.
+        let client_identifier =
+            match unsafe { parse_public_id(client_identifier, client_identifier_len) } {
+                Ok(identifier) => identifier,
+                Err(error) => return error,
+            };
+        let server_identifier =
+            match unsafe { parse_public_id(server_identifier, server_identifier_len) } {
+                Ok(identifier) => identifier,
+                Err(error) => return error,
+            };
+        let (upload, export_key) = match client_registration_finish_from_native_state(
+            registration,
+            response,
+            &client_identifier,
+            &server_identifier,
+        ) {
+            Ok(result) => result,
+            Err(error) => return map_auth_error(error),
+        };
+        drop(export_key);
+        // SAFETY: Ownership transfers through the output slot.
+        unsafe {
+            *output_upload = Box::into_raw(Box::new(SecureKeypadAuthMessage { core: upload }));
         }
         SecureKeypadError::Ok
     })

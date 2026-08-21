@@ -10,6 +10,7 @@ Android, React Native, and Flutter adapters.
 - masked length and display state;
 - stable error codes;
 - opaque session and submission ownership handles.
+- opaque native OPAQUE registration and login state handles.
 
 ## Forbidden across the boundary
 
@@ -20,9 +21,14 @@ Android, React Native, and Flutter adapters.
 
 The submission handle is intentionally not serializable. Native authentication
 code consumes it inside the native/Rust boundary or releases it. The native
-OPAQUE functions can turn that submission into request/finalization message
-handles for a native HTTP client; they never expose a password or derived
-client session key. The C ABI does not itself perform HTTP.
+OPAQUE functions can turn that submission into registration/login request and
+upload/finalization message handles for a native HTTP client; they never expose
+a password, export key, or derived client session key. Registration and login
+both stay inside the native boundary. The C ABI does not itself perform HTTP.
+
+`SECURE_KEYPAD_ABI_VERSION = 2` is required for the registration functions.
+Hosts must reject an ABI mismatch before creating a session or accepting a
+submission.
 
 The ABI catches Rust panics and converts them to `SECURE_KEYPAD_PANIC`, but it
 cannot make an invalid C pointer safe. Callers must satisfy the documented

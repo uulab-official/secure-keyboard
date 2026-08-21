@@ -126,6 +126,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, i
 - [x] Add end-to-end HTTP OPAQUE registration/login/replay tests without returning credential files or session keys.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.
+- [x] Bind a sealed keypad submission directly to native OPAQUE registration state and expose it through ABI v2 without a password getter.
 - [x] Add zeroizing server-login-state serialization and bounded public identifiers.
 - [x] Add a bounded one-time reference store with TTL, capacity, and state-size tests.
 - [x] Add transport-neutral registration orchestration that returns protected credential files.

@@ -8,12 +8,13 @@
 extern "C" {
 #endif
 
-#define SECURE_KEYPAD_ABI_VERSION UINT32_C(1)
+#define SECURE_KEYPAD_ABI_VERSION UINT32_C(2)
 
 typedef struct secure_keypad_session secure_keypad_session_t;
 typedef struct secure_keypad_submission secure_keypad_submission_t;
 typedef struct secure_keypad_auth_message secure_keypad_auth_message_t;
 typedef struct secure_keypad_client_login secure_keypad_client_login_t;
+typedef struct secure_keypad_client_registration secure_keypad_client_registration_t;
 
 typedef uint32_t secure_keypad_error_t;
 #define SECURE_KEYPAD_OK UINT32_C(0)
@@ -67,6 +68,7 @@ void secure_keypad_session_free(secure_keypad_session_t *session);
 void secure_keypad_submission_free(secure_keypad_submission_t *submission);
 void secure_keypad_auth_message_free(secure_keypad_auth_message_t *message);
 void secure_keypad_client_login_free(secure_keypad_client_login_t *login);
+void secure_keypad_client_registration_free(secure_keypad_client_registration_t *registration);
 
 secure_keypad_error_t secure_keypad_session_press_key(
     secure_keypad_session_t *session,
@@ -112,6 +114,11 @@ secure_keypad_error_t secure_keypad_client_login_start(
     secure_keypad_client_login_t **output_login,
     secure_keypad_auth_message_t **output_request);
 
+secure_keypad_error_t secure_keypad_client_registration_start(
+    secure_keypad_submission_t **submission,
+    secure_keypad_client_registration_t **output_registration,
+    secure_keypad_auth_message_t **output_request);
+
 secure_keypad_error_t secure_keypad_client_login_finish(
     secure_keypad_client_login_t **login,
     const secure_keypad_auth_message_t *response,
@@ -120,6 +127,15 @@ secure_keypad_error_t secure_keypad_client_login_finish(
     const uint8_t *server_identifier,
     size_t server_identifier_len,
     secure_keypad_auth_message_t **output_finalization);
+
+secure_keypad_error_t secure_keypad_client_registration_finish(
+    secure_keypad_client_registration_t **registration,
+    const secure_keypad_auth_message_t *response,
+    const uint8_t *client_identifier,
+    size_t client_identifier_len,
+    const uint8_t *server_identifier,
+    size_t server_identifier_len,
+    secure_keypad_auth_message_t **output_upload);
 
 #ifdef __cplusplus
 }

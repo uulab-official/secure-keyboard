@@ -8,13 +8,15 @@ use secure_ffi::{
     secure_keypad_auth_message_copy, secure_keypad_auth_message_free,
     secure_keypad_auth_message_new, secure_keypad_auth_message_size,
     secure_keypad_client_login_finish, secure_keypad_client_login_free,
-    secure_keypad_client_login_start, secure_keypad_session_backspace,
-    secure_keypad_session_cancel, secure_keypad_session_clear, secure_keypad_session_free,
-    secure_keypad_session_new_ascii, secure_keypad_session_new_hangul,
+    secure_keypad_client_login_start, secure_keypad_client_registration_finish,
+    secure_keypad_client_registration_free, secure_keypad_client_registration_start,
+    secure_keypad_session_backspace, secure_keypad_session_cancel, secure_keypad_session_clear,
+    secure_keypad_session_free, secure_keypad_session_new_ascii, secure_keypad_session_new_hangul,
     secure_keypad_session_new_numeric, secure_keypad_session_press_key,
     secure_keypad_session_refresh, secure_keypad_session_submit, secure_keypad_submission_free,
-    SecureKeypadAuthMessage, SecureKeypadClientLogin, SecureKeypadDisplayState, SecureKeypadError,
-    SecureKeypadMaskedState, SecureKeypadSession, SecureKeypadSubmission,
+    SecureKeypadAuthMessage, SecureKeypadClientLogin, SecureKeypadClientRegistration,
+    SecureKeypadDisplayState, SecureKeypadError, SecureKeypadMaskedState, SecureKeypadSession,
+    SecureKeypadSubmission,
 };
 
 #[test]
@@ -289,6 +291,91 @@ fn native_auth_ffi_consumes_submission_without_returning_a_session_key() {
         secure_keypad_auth_message_free(request);
         secure_keypad_auth_message_free(response_handle);
         secure_keypad_auth_message_free(finalization);
+    }
+}
+
+#[test]
+fn native_registration_ffi_consumes_submission_without_returning_password_bytes() {
+    const CLIENT_ID: &[u8] = b"fixture-user";
+    const SERVER_ID: &[u8] = b"fixture-server";
+
+    let setup = ServerSetupBytes::generate().unwrap();
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(2, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    for key in [b"digit-1".as_slice(), b"digit-2".as_slice()] {
+        assert_eq!(
+            unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+            SecureKeypadError::Ok
+        );
+    }
+    let mut submission: *mut SecureKeypadSubmission = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, &mut submission) },
+        SecureKeypadError::Ok
+    );
+    unsafe { secure_keypad_session_free(session) };
+
+    let mut client_registration: *mut SecureKeypadClientRegistration = ptr::null_mut();
+    let mut request: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_registration_start(
+                &mut submission,
+                &mut client_registration,
+                &mut request,
+            )
+        },
+        SecureKeypadError::Ok
+    );
+    assert!(submission.is_null());
+
+    let request_bytes = copy_auth_message(request);
+    let registration_response = server_registration_start(
+        &setup,
+        &Message::from_bytes(&request_bytes).unwrap(),
+        CLIENT_ID,
+    )
+    .unwrap();
+    let mut response_handle: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            secure_keypad_auth_message_new(
+                registration_response.as_bytes().as_ptr(),
+                registration_response.as_bytes().len(),
+                &mut response_handle,
+            )
+        },
+        SecureKeypadError::Ok
+    );
+
+    let mut upload: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_registration_finish(
+                &mut client_registration,
+                response_handle,
+                CLIENT_ID.as_ptr(),
+                CLIENT_ID.len(),
+                SERVER_ID.as_ptr(),
+                SERVER_ID.len(),
+                &mut upload,
+            )
+        },
+        SecureKeypadError::Ok
+    );
+    assert!(client_registration.is_null());
+    let upload_bytes = copy_auth_message(upload);
+    let credential_file = server_registration_finish(&Message::from_bytes(&upload_bytes).unwrap());
+    assert!(credential_file.is_ok());
+
+    unsafe {
+        secure_keypad_auth_message_free(request);
+        secure_keypad_auth_message_free(response_handle);
+        secure_keypad_auth_message_free(upload);
+        secure_keypad_client_registration_free(ptr::null_mut());
     }
 }
 

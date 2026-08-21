@@ -46,9 +46,11 @@ The public controller is limited to operations such as `beginSession`, `pressKey
 
 The native C ABI is an opaque-handle boundary. It accepts public key IDs as
 bounded pointer/length inputs and returns only masked state or stable error
-codes. A submission handle has no byte accessor; native authentication code
-must consume it inside the native boundary. ABI callers own each handle and
-must not use a handle concurrently or after its matching free function.
+codes. A submission handle has no byte accessor; native OPAQUE registration and
+login code must consume it inside the native boundary. ABI callers own each
+handle and must not use a handle concurrently or after its matching free
+function. ABI version 2 is required for the registration handoff; version 1
+does not provide a production-safe native registration path.
 
 RN and Flutter bridges require an explicitly installed native submission
 consumer. Without one, submit zeroizes/releases the opaque handle and emits an

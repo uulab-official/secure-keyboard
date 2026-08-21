@@ -133,7 +133,9 @@ native sources and package copies are byte-for-byte identical.
 Before rendering an authentication keypad, the host-native layer must install
 `SecureKeypadNativeSubmissionRouter` with a consumer. The consumer calls
 `takeOpaqueHandle()` on iOS or `takeNativeHandle()` on Android and passes that
-opaque capability to native OPAQUE/credential code. If no consumer is
+opaque capability to the ABI v2 native OPAQUE registration or login handoff
+(`secure_keypad_client_registration_start` or
+`secure_keypad_client_login_start`). If no consumer is
 installed, submit is released and the framework receives `error`; a framework
 `success` event therefore means only that native ownership was accepted. The
 handle and the consumer callback never cross JavaScript, Dart, or JSON.

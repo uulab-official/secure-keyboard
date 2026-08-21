@@ -633,6 +633,14 @@ pub struct NativeClientLoginState {
     submission: Option<secure_core::Submission>,
 }
 
+/// Native-only client registration state that retains the sealed keypad
+/// submission until the second OPAQUE message. Never expose this type through a
+/// framework bridge.
+pub struct NativeClientRegistrationState {
+    state: Option<ClientRegistration<SecureSuite>>,
+    submission: Option<secure_core::Submission>,
+}
+
 /// Errors that never include password or secret bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuthError {
@@ -768,6 +776,76 @@ pub fn client_registration_finish(
                 None,
             ),
         )
+        .map_err(|_| AuthError::Protocol)?;
+    Ok((
+        message_from_serialized(result.message.serialize().to_vec())?,
+        SecretOutput(result.export_key.to_vec()),
+    ))
+}
+
+/// Starts client registration directly from a secure keypad submission.
+///
+/// The password never crosses this API as a framework-owned byte or string.
+/// The returned state retains the native submission until registration finish.
+///
+/// # Errors
+///
+/// Returns [`AuthError::Protocol`] when the pinned OPAQUE implementation cannot
+/// create a registration request.
+pub fn client_registration_start_from_submission(
+    submission: secure_core::Submission,
+) -> Result<(NativeClientRegistrationState, Message), AuthError> {
+    let mut rng = OsRng;
+    let result = submission
+        .with_native_bytes(|password| ClientRegistration::<SecureSuite>::start(&mut rng, password))
+        .map_err(|_| AuthError::Protocol)?;
+    Ok((
+        NativeClientRegistrationState {
+            state: Some(result.state),
+            submission: Some(submission),
+        },
+        message_from_serialized(result.message.serialize().to_vec())?,
+    ))
+}
+
+/// Finishes native-only client registration without returning the password to
+/// the caller.
+///
+/// The returned export key is immediately owned by Rust and must not be exposed
+/// through a framework bridge. The upload is an opaque transport message and
+/// must use the native protected transport path.
+///
+/// # Errors
+///
+/// Returns [`AuthError::Protocol`] when the response, state, or identifiers are
+/// invalid.
+pub fn client_registration_finish_from_native_state(
+    mut state: NativeClientRegistrationState,
+    response: &Message,
+    client_identifier: &[u8],
+    server_identifier: &[u8],
+) -> Result<(Message, SecretOutput), AuthError> {
+    validate_identifiers(&[client_identifier, server_identifier])?;
+    let response = RegistrationResponse::<SecureSuite>::deserialize(response.as_bytes())
+        .map_err(|_| AuthError::Protocol)?;
+    let mut rng = OsRng;
+    let registration_state = state.state.take().ok_or(AuthError::Protocol)?;
+    let submission = state.submission.take().ok_or(AuthError::Protocol)?;
+    let result = submission
+        .with_native_bytes(|password| {
+            registration_state.finish(
+                &mut rng,
+                password,
+                response,
+                ClientRegistrationFinishParameters::new(
+                    Identifiers {
+                        client: Some(client_identifier),
+                        server: Some(server_identifier),
+                    },
+                    None,
+                ),
+            )
+        })
         .map_err(|_| AuthError::Protocol)?;
     Ok((
         message_from_serialized(result.message.serialize().to_vec())?,
