@@ -58,10 +58,11 @@ fn redis_state_is_consumed_atomically_once() {
     use std::thread;
 
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").unwrap();
+    let namespace = format!("opaque-test-{}", std::process::id());
     let store = Arc::new(
         RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
             &url,
-            &format!("opaque-test-{}", std::process::id()),
+            &namespace,
             4,
             8,
             Duration::from_secs(30),
@@ -70,6 +71,27 @@ fn redis_state_is_consumed_atomically_once() {
         .unwrap(),
     );
     let handle = store.insert_bound(fixture_state()).unwrap();
+    let handle_hash = {
+        use sha2::{Digest, Sha256};
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let digest = Sha256::digest(handle.as_bytes());
+        let mut encoded = String::with_capacity(64);
+        for byte in digest {
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+        encoded
+    };
+    let key = format!("{namespace}:opaque:v1:login:{handle_hash}");
+    let mut raw_connection = redis::Client::open(url.as_str())
+        .unwrap()
+        .get_connection()
+        .unwrap();
+    let raw_value: Vec<u8> = redis::cmd("GET")
+        .arg(key)
+        .query(&mut raw_connection)
+        .unwrap();
+    assert_eq!(raw_value.get(..4), Some(b"SKPE".as_slice()));
     thread::scope(|scope| {
         let attempts = (0..8)
             .map(|_| {
@@ -117,6 +139,23 @@ fn postgres_state_is_consumed_atomically_once() {
         .unwrap(),
     );
     let handle = store.insert_bound(fixture_state()).unwrap();
+    let handle_hash: [u8; 32] = {
+        use sha2::{Digest, Sha256};
+        Sha256::digest(handle.as_bytes()).into()
+    };
+    let mut raw_client = postgres::Client::connect(&url, postgres::NoTls).unwrap();
+    let raw_value: Vec<u8> = raw_client
+        .query_one(
+            "SELECT state FROM secure_keypad_opaque_login_states
+             WHERE namespace = $1 AND handle_hash = $2",
+            &[
+                &format!("opaque_test_{}", std::process::id()),
+                &&handle_hash[..],
+            ],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(raw_value.get(..4), Some(b"SKPE".as_slice()));
     thread::scope(|scope| {
         let attempts = (0..8)
             .map(|_| {
