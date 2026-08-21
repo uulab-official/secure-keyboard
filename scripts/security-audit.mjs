@@ -591,6 +591,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /validate_backend_ttl\(ttl\)/, "PostgreSQL WebAuthn storage must validate ceremony TTLs before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /protector\.seal\(encoded\.as_slice\(\)\)/, "PostgreSQL WebAuthn storage must encrypt ceremony records before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /protector\.open\(protected\)/, "PostgreSQL WebAuthn storage must authenticate ceremony records after retrieval");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_LOAD_SQL[\s\S]{0,400}LIMIT \$3/, "PostgreSQL credential loads must bound database rows before materialization");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_LOAD_SQL[\s\S]{0,400}octet_length\(passkey::text\) <= \$4/, "PostgreSQL credential loads must bound JSONB bytes before materialization");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1/, "WebAuthn ceremony state format must be version-pinned");
   const webauthnManifest = source("crates/secure-webauthn-example/Cargo.toml", findings);
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /aes-gcm = "=0\.10\.3"/, "WebAuthn durable ceremony protection must pin AES-GCM");

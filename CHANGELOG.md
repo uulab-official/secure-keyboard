@@ -37,6 +37,10 @@ exact release-candidate commit by the release evidence manifest.
   durable protection format to v2; legacy unbound v1 records are rejected.
 - Made the PostgreSQL ciphertext-size schema upgrade atomic and fail closed on
   malformed or tampered ceremony records.
+- Bounded PostgreSQL credential loads at the configured per-account limit plus
+  one row and the credential-record byte limit in SQL before materialization,
+  so legacy or invalid excess rows/records cannot turn a credential read into
+  an unbounded memory operation.
 
 ### Verification
 

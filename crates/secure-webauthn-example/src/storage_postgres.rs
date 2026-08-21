@@ -17,6 +17,18 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey};
 
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
+const MAX_CREDENTIAL_ROWS: i64 = (MAX_CREDENTIALS_PER_USER + 1) as i64;
+const MAX_CREDENTIAL_RECORD_BYTES_I64: i64 = MAX_CREDENTIAL_RECORD_BYTES as i64;
+const POSTGRES_CREDENTIAL_LOAD_SQL: &str = r"
+SELECT CASE
+           WHEN octet_length(passkey::text) <= $4 THEN passkey
+           ELSE NULL::jsonb
+       END AS passkey
+FROM secure_keypad_webauthn_credentials
+WHERE namespace = $1 AND user_id = $2
+ORDER BY credential_id
+LIMIT $3
+";
 
 /// SQL schema required by [`PostgresWebAuthnStore`].
 ///
@@ -445,16 +457,21 @@ where
         let mut client = self.credential_connection()?;
         let rows = client
             .query(
-                "SELECT passkey FROM secure_keypad_webauthn_credentials
-                 WHERE namespace = $1 AND user_id = $2 ORDER BY credential_id",
-                &[&self.namespace, &user_id],
+                POSTGRES_CREDENTIAL_LOAD_SQL,
+                &[
+                    &self.namespace,
+                    &user_id,
+                    &MAX_CREDENTIAL_ROWS,
+                    &MAX_CREDENTIAL_RECORD_BYTES_I64,
+                ],
             )
             .map_err(|_| CredentialStoreError::Unavailable)?;
         let mut credentials = Vec::with_capacity(rows.len());
         for row in rows {
-            let encoded: serde_json::Value = row
+            let encoded: Option<serde_json::Value> = row
                 .try_get(0)
                 .map_err(|_| CredentialStoreError::InvalidRecord)?;
+            let encoded = encoded.ok_or(CredentialStoreError::InvalidRecord)?;
             if serde_json::to_vec(&encoded)
                 .map_err(|_| CredentialStoreError::InvalidRecord)?
                 .len()
@@ -632,7 +649,14 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresStorageConfigError>
 
 #[cfg(test)]
 mod tests {
-    use super::POSTGRES_SCHEMA_SQL;
+    use super::{MAX_CREDENTIAL_ROWS, POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_SCHEMA_SQL};
+
+    #[test]
+    fn credential_load_query_bounds_rows_and_bytes_before_materialization() {
+        assert_eq!(MAX_CREDENTIAL_ROWS, 65);
+        assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("LIMIT $3"));
+        assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("octet_length(passkey::text) <= $4"));
+    }
 
     #[test]
     fn schema_enforces_the_application_namespace_contract() {

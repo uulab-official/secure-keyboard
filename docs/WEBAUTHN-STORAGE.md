@@ -83,6 +83,12 @@ counter and backup-state changes with an optimistic version/CAS or equivalent
 transaction. A stale update must fail closed; last-writer-wins persistence can
 weaken cloned-authenticator detection.
 
+The PostgreSQL adapter bounds credential reads with `MAX_CREDENTIALS_PER_USER +
+1` and `MAX_CREDENTIAL_RECORD_BYTES` at the SQL query before rows/JSONB values
+are materialized. The extra row lets the adapter distinguish a valid limit from
+an already-over-limit account without loading an unbounded legacy or corrupted
+record set; an over-size value is returned as a sentinel and rejected.
+
 The `danger-allow-state-serialisation` feature is enabled only because the
 server-side ceremony contract needs it. It must never be used to serialize
 state into a cookie, local storage, URL, analytics event, or client request.
