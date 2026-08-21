@@ -134,7 +134,7 @@ public enum SecureKeypadViewError: Error {
 
 /// Secure Native iOS keypad.
 ///
-/// The view never creates a UITextField. Key IDs are sent to the Rust C ABI,
+/// The view never creates an editable text control. Key IDs are sent to the Rust C ABI,
 /// and only masked length/state are rendered. The submission callback remains
 /// native-only and must not be bridged to JavaScript or Dart.
 public class SecureKeypadView: UIView {

@@ -98,6 +98,21 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /takeNativeHandle\(\)/, "Android native submission must have an opaque transfer API");
     requireText(findings, file, contents, /object SecureKeypadNativeSubmissionRouter/, "Android native handoff must be explicitly routed");
+    requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
+    requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
+    requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
+    forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
+  }
+  for (const file of [
+    "native/ios/SecureKeypadView.swift",
+    "packages/react-native/ios/SecureKeypadView.swift",
+    "packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
+    requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
+    requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
+    forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);

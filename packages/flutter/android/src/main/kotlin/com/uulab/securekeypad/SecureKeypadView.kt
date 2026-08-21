@@ -2,6 +2,7 @@ package com.uulab.securekeypad
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
@@ -47,6 +48,18 @@ public data class SecureKeypadTheme(
     val contentPaddingPx: Int = 16,
 )
 
+/** Resolves an Activity through framework ContextWrappers without assuming a host type. */
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (true) {
+        if (current is Activity) return current
+        val wrapper = current as? ContextWrapper ?: return null
+        val base = wrapper.baseContext
+        if (base === current) return null
+        current = base
+    }
+}
+
 /** Native-owned opaque submission. It cannot be serialized to JavaScript. */
 public class SecureKeypadSubmission internal constructor(internal var handle: Long) : AutoCloseable {
     override fun close() {
@@ -88,7 +101,7 @@ public object SecureKeypadNativeSubmissionRouter {
 /**
  * Secure Native Android keypad.
  *
- * This view does not create an EditText, does not keep a password string, and
+ * This view does not create an editable text control, does not keep a password string, and
  * exposes only masked state and an opaque native submission callback.
  */
 public open class SecureKeypadView @JvmOverloads constructor(
@@ -113,7 +126,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     init {
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         isSaveEnabled = false
-        (context as? Activity)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        context.findActivity()?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         setBackgroundColor(currentTheme.backgroundColor)
         rootContainer = LinearLayout(context).apply {

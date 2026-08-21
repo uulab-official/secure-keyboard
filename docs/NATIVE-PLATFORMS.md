@@ -66,7 +66,10 @@ this assembly and parses both package Podspecs against the result.
 ## Android
 
 `native/android/src/main/kotlin/.../SecureKeypadView.kt` is a custom
-`FrameLayout` with public key/layout/theme models. The JNI adapter in
+`FrameLayout` with public key/layout/theme models. It resolves the host
+`Activity` through framework `ContextWrapper` chains before applying
+`FLAG_SECURE`, so React Native and Flutter wrapper contexts do not silently
+lose screenshot protection. The JNI adapter in
 `native/android/src/main/cpp/secure_keypad_jni.c` owns only pointer handles and
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
 excluded, and no `EditText` is created.
