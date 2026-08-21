@@ -51,3 +51,5 @@ exact release-candidate commit by the release evidence manifest.
   documented fragment-merge workflow.
 - Secure-core now explicitly zeroizes the intermediate rendered Hangul
   code-point buffer after encoding it into the native secret buffer.
+- Secure-auth now zeroizes OPAQUE serialization buffers, including GenericArray
+  sources and rejected oversized message/setup/credential copies.

@@ -84,14 +84,29 @@ impl Message {
     }
 }
 
-fn message_from_serialized(bytes: Vec<u8>) -> Result<Message, AuthError> {
+fn message_from_serialized<T>(mut serialized: T) -> Result<Message, AuthError>
+where
+    T: AsRef<[u8]> + Zeroize,
+{
+    let mut bytes = copy_and_zeroize_serialized(&mut serialized);
     if bytes.is_empty() {
+        bytes.zeroize();
         return Err(AuthError::EmptyMessage);
     }
     if bytes.len() > MAX_MESSAGE_BYTES {
+        bytes.zeroize();
         return Err(AuthError::MessageTooLarge);
     }
     Ok(Message(bytes))
+}
+
+fn copy_and_zeroize_serialized<T>(serialized: &mut T) -> Vec<u8>
+where
+    T: AsRef<[u8]> + Zeroize,
+{
+    let bytes = serialized.as_ref().to_vec();
+    serialized.zeroize();
+    bytes
 }
 
 impl Drop for Message {
@@ -184,11 +199,12 @@ impl<'de> Deserialize<'de> for BoundedPayload {
                 Ok(BoundedPayload(bytes.to_vec()))
             }
 
-            fn visit_byte_buf<E>(self, bytes: Vec<u8>) -> Result<Self::Value, E>
+            fn visit_byte_buf<E>(self, mut bytes: Vec<u8>) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
                 if bytes.len() > MAX_MESSAGE_BYTES {
+                    bytes.zeroize();
                     return Err(E::custom("auth message too large"));
                 }
                 Ok(BoundedPayload(bytes))
@@ -416,8 +432,10 @@ impl ServerSetupBytes {
     pub fn generate() -> Result<Self, AuthError> {
         let mut rng = OsRng;
         let setup = ServerSetup::<SecureSuite>::new(&mut rng);
-        let bytes = setup.serialize().to_vec();
+        let mut serialized = setup.serialize();
+        let mut bytes = copy_and_zeroize_serialized(&mut serialized);
         if bytes.is_empty() || bytes.len() > MAX_SERVER_SETUP_BYTES {
+            bytes.zeroize();
             return Err(AuthError::InvalidSetup);
         }
         Ok(Self(bytes))
@@ -543,7 +561,8 @@ impl ServerLoginState {
     /// short-lived storage.
     #[must_use]
     pub fn into_bytes(self) -> ServerLoginStateBytes {
-        let serialized = self.0.serialize();
+        let mut serialized = self.0.serialize();
+        let serialized = copy_and_zeroize_serialized(&mut serialized);
         let suite_id = CIPHER_SUITE_ID.as_bytes();
         let mut bytes = Vec::with_capacity(6 + suite_id.len() + serialized.len());
         bytes.extend_from_slice(SERVER_LOGIN_STATE_MAGIC);
@@ -725,7 +744,7 @@ pub fn client_registration_start(
         .map_err(|_| AuthError::Protocol)?;
     Ok((
         ClientRegistrationState(result.state),
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
     ))
 }
 
@@ -746,7 +765,7 @@ pub fn server_registration_start(
         .map_err(|_| AuthError::Protocol)?;
     let result = ServerRegistration::<SecureSuite>::start(&setup, request, credential_identifier)
         .map_err(|_| AuthError::Protocol)?;
-    message_from_serialized(result.message.serialize().to_vec())
+    message_from_serialized(result.message.serialize())
 }
 
 /// Finishes client registration and returns the upload and client export key.
@@ -782,7 +801,7 @@ pub fn client_registration_finish(
         )
         .map_err(|_| AuthError::Protocol)?;
     Ok((
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
         SecretOutput(result.export_key.to_vec()),
     ))
 }
@@ -813,7 +832,7 @@ pub fn client_registration_start_from_submission(
             state: Some(result.state),
             submission: Some(submission),
         },
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
     ))
 }
 
@@ -860,7 +879,7 @@ pub fn client_registration_finish_from_native_state(
     }
     .map_err(|_| AuthError::Protocol)?;
     Ok((
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
         SecretOutput(result.export_key.to_vec()),
     ))
 }
@@ -874,8 +893,10 @@ pub fn server_registration_finish(upload: &Message) -> Result<CredentialFile, Au
     let upload = RegistrationUpload::<SecureSuite>::deserialize(upload.as_bytes())
         .map_err(|_| AuthError::Protocol)?;
     let file = ServerRegistration::<SecureSuite>::finish(upload);
-    let bytes = file.serialize().to_vec();
+    let mut serialized = file.serialize();
+    let mut bytes = copy_and_zeroize_serialized(&mut serialized);
     if bytes.is_empty() || bytes.len() > MAX_CREDENTIAL_FILE_BYTES {
+        bytes.zeroize();
         return Err(AuthError::InvalidCredentialFile);
     }
     Ok(CredentialFile(bytes))
@@ -893,7 +914,7 @@ pub fn client_login_start(password: &[u8]) -> Result<(ClientLoginState, Message)
         ClientLogin::<SecureSuite>::start(&mut rng, password).map_err(|_| AuthError::Protocol)?;
     Ok((
         ClientLoginState(result.state),
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
     ))
 }
 
@@ -920,7 +941,7 @@ pub fn client_login_start_from_submission(
             state: Some(result.state),
             submission: Some(submission),
         },
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
     ))
 }
 
@@ -961,7 +982,7 @@ pub fn server_login_start(
     )
     .map_err(|_| AuthError::Protocol)?;
     Ok((
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
         ServerLoginState(result.state),
     ))
 }
@@ -1000,7 +1021,7 @@ pub fn client_login_finish(
         )
         .map_err(|_| AuthError::InvalidLogin)?;
     Ok((
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
         SecretOutput(result.session_key.to_vec()),
     ))
 }
@@ -1044,7 +1065,7 @@ pub fn client_login_finish_from_native_state(
     }
     .map_err(|_| AuthError::InvalidLogin)?;
     Ok((
-        message_from_serialized(result.message.serialize().to_vec())?,
+        message_from_serialized(result.message.serialize())?,
         SecretOutput(result.session_key.to_vec()),
     ))
 }
@@ -1078,4 +1099,33 @@ pub fn server_login_finish(
         )
         .map_err(|_| AuthError::InvalidLogin)?;
     Ok(SecretOutput(result.session_key.to_vec()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::copy_and_zeroize_serialized;
+    use zeroize::Zeroize;
+
+    struct SensitiveSerialized(Vec<u8>);
+
+    impl AsRef<[u8]> for SensitiveSerialized {
+        fn as_ref(&self) -> &[u8] {
+            &self.0
+        }
+    }
+
+    impl Zeroize for SensitiveSerialized {
+        fn zeroize(&mut self) {
+            self.0.zeroize();
+        }
+    }
+
+    #[test]
+    fn serialized_message_source_is_zeroized_after_copying() {
+        let mut serialized = SensitiveSerialized(vec![1, 2, 3, 4]);
+        let bytes = copy_and_zeroize_serialized(&mut serialized);
+
+        assert_eq!(bytes, &[1, 2, 3, 4]);
+        assert!(serialized.0.iter().all(|byte| *byte == 0));
+    }
 }
