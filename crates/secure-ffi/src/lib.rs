@@ -17,7 +17,7 @@ use secure_core::{DisplayState, InputPolicy, MaskedState, SecureSession, Session
 
 const MAX_KEY_ID_BYTES: usize = 64;
 const MAX_PUBLIC_ID_BYTES: usize = 256;
-const MAX_TOKENS: u32 = 4_096;
+const MAX_TOKENS: u32 = secure_core::MAX_INPUT_TOKENS as u32;
 const MAX_TIMEOUT_MS: u64 = 86_400_000;
 
 /// Stable result codes returned by the C ABI.

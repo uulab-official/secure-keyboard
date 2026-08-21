@@ -61,6 +61,12 @@ Numeric, alphabetic, symbol, and Hangul composition are separate policies. Hangu
 
 ## Memory and leakage rules
 
+The Rust core bounds each session to `MAX_INPUT_TOKENS`, uses fixed-capacity
+token storage, zeroizes popped/cleared/dropped tokens, and provisions the
+rendered UTF-8 buffer before copying secret bytes. These are implementation
+controls that reduce residual-memory exposure; they do not make the absolute
+memory-erasure claim that a hostile or compromised runtime would require.
+
 - Never use a normal host-language string as the secret buffer.
 - Prefer a native/Rust byte buffer with explicit clearing after cancel, submit, timeout, and error.
 - Do not write the secret to persistent storage, clipboard, accessibility values, notifications, logs, analytics, crash breadcrumbs, or debug output.

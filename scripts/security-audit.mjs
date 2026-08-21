@@ -123,6 +123,14 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_login_start/, "C ABI must expose native-only auth handoff");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
+  const coreBuffer = source("crates/secure-core/src/secret_buffer.rs", findings);
+  requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /SecretTokenBuffer/, "core must keep secret token storage behind a dedicated buffer type");
+  requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /tokens\[self\.len\]\.zeroize\(\)/, "core must zeroize tokens removed by backspace");
+  requireText(findings, "crates/secure-core/src/secret_buffer.rs", coreBuffer, /Box<\[u32\]>/, "core token storage must avoid secret-bearing Vec reallocation");
+  const coreInput = source("crates/secure-core/src/input.rs", findings);
+  requireText(findings, "crates/secure-core/src/input.rs", coreInput, /MAX_INPUT_TOKENS/, "core input policy must retain a bounded token limit");
+  requireText(findings, "crates/secure-core/src/input.rs", coreInput, /SecretBuffer::with_capacity/, "core rendered secret output must be preallocated");
+
   const auth = source("crates/secure-auth/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_JSON_BODY_BYTES: usize = 128 \* 1024/, "auth JSON body must be bounded");

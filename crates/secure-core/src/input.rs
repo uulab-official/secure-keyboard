@@ -59,19 +59,21 @@ pub enum InputPolicy {
 }
 
 impl InputPolicy {
-    /// Creates a numeric policy. Zero is clamped to one to keep sessions usable.
+    /// Creates a numeric policy. The token count is clamped to the supported
+    /// `1..=MAX_INPUT_TOKENS` range to keep secret storage bounded.
     #[must_use]
     pub fn numeric(max_tokens: usize) -> Self {
         Self::Numeric {
-            max_tokens: max_tokens.max(1),
+            max_tokens: max_tokens.clamp(1, crate::MAX_INPUT_TOKENS),
         }
     }
 
-    /// Creates a Hangul policy. Zero is clamped to one to keep sessions usable.
+    /// Creates a Hangul policy. The token count is clamped to the supported
+    /// `1..=MAX_INPUT_TOKENS` range to keep secret storage bounded.
     #[must_use]
     pub fn hangul(max_tokens: usize) -> Self {
         Self::Hangul {
-            max_tokens: max_tokens.max(1),
+            max_tokens: max_tokens.clamp(1, crate::MAX_INPUT_TOKENS),
             normalization: NormalizationPolicy::Nfc,
         }
     }
@@ -134,9 +136,10 @@ pub(crate) struct SecretInput {
 
 impl SecretInput {
     pub(crate) fn new(policy: InputPolicy) -> Self {
+        let max_tokens = policy.max_tokens();
         Self {
             policy,
-            tokens: SecretTokenBuffer::new(),
+            tokens: SecretTokenBuffer::with_capacity(max_tokens),
         }
     }
 
@@ -170,8 +173,21 @@ impl SecretInput {
 
     pub(crate) fn into_secret_buffer(self) -> SecretBuffer {
         let mut rendered = hangul::render(self.tokens.as_slice());
-        let mut buffer = SecretBuffer::new();
+        let mut buffer = SecretBuffer::with_capacity(rendered.len().saturating_mul(4));
         hangul::encode_utf8(&mut rendered, &mut buffer);
         buffer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InputPolicy, SecretInput};
+    use crate::MAX_INPUT_TOKENS;
+
+    #[test]
+    fn policy_storage_is_bounded_to_the_native_contract_limit() {
+        let input = SecretInput::new(InputPolicy::numeric(usize::MAX));
+
+        assert_eq!(input.tokens.storage_for_test().len(), MAX_INPUT_TOKENS);
     }
 }
