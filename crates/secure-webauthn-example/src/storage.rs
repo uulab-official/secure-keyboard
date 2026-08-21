@@ -20,9 +20,12 @@ pub enum CeremonyKind {
     Authentication,
 }
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) const CEREMONY_RECORD_VERSION: u8 = 1;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 const CEREMONY_RECORD_HEADER_BYTES: usize = 1 + 1 + 16 + 4;
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) const fn ceremony_kind_tag(kind: CeremonyKind) -> u8 {
     match kind {
         CeremonyKind::Registration => 1,
@@ -30,6 +33,7 @@ pub(crate) const fn ceremony_kind_tag(kind: CeremonyKind) -> u8 {
     }
 }
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 fn ceremony_kind_from_tag(tag: u8) -> Option<CeremonyKind> {
     match tag {
         1 => Some(CeremonyKind::Registration),
@@ -38,6 +42,7 @@ fn ceremony_kind_from_tag(tag: u8) -> Option<CeremonyKind> {
     }
 }
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) fn validate_backend_ttl(ttl: Duration) -> Result<u64, CeremonyStoreError> {
     let millis = u64::try_from(ttl.as_millis()).map_err(|_| CeremonyStoreError::InvalidTtl)?;
     if millis == 0 || millis > i64::MAX as u64 {
@@ -46,6 +51,7 @@ pub(crate) fn validate_backend_ttl(ttl: Duration) -> Result<u64, CeremonyStoreEr
     Ok(millis)
 }
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) fn encode_ceremony_record(
     kind: CeremonyKind,
     user_id: Uuid,
@@ -62,6 +68,7 @@ pub(crate) fn encode_ceremony_record(
     Ok(zeroize::Zeroizing::new(record))
 }
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 pub(crate) fn decode_ceremony_record(encoded: &[u8]) -> Result<CeremonyState, CeremonyStoreError> {
     if encoded.len() < CEREMONY_RECORD_HEADER_BYTES
         || encoded.len() > CEREMONY_RECORD_HEADER_BYTES + MAX_CEREMONY_STATE_BYTES
