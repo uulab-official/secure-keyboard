@@ -10,7 +10,7 @@ use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{postgres::NoTls, PostgresConnectionManager};
 use sha2::{Digest, Sha256};
-use std::{fmt, time::Duration};
+use std::{any::TypeId, fmt, time::Duration};
 
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
@@ -189,7 +189,10 @@ where
             encryption_key,
             require_tls,
         } = options;
-        if require_tls && config.get_ssl_mode() != SslMode::Require {
+        if require_tls
+            && (config.get_ssl_mode() != SslMode::Require
+                || TypeId::of::<T>() == TypeId::of::<NoTls>())
+        {
             return Err(PostgresOneTimeStateConfigError::InsecureConfig);
         }
         validate_namespace(namespace)?;

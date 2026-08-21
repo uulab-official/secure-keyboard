@@ -10,7 +10,7 @@ use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{postgres::NoTls, PostgresConnectionManager};
 use secure_auth_server::LoginStateHandle;
-use std::{fmt, time::Duration};
+use std::{any::TypeId, fmt, time::Duration};
 use uuid::Uuid;
 use webauthn_rs::prelude::{AuthenticationResult, Passkey};
 
@@ -235,7 +235,10 @@ where
         pool_size: u32,
         require_tls: bool,
     ) -> Result<Self, PostgresStorageConfigError> {
-        if require_tls && config.get_ssl_mode() != SslMode::Require {
+        if require_tls
+            && (config.get_ssl_mode() != SslMode::Require
+                || TypeId::of::<T>() == TypeId::of::<NoTls>())
+        {
             return Err(PostgresStorageConfigError::InsecureConfig);
         }
         validate_namespace(namespace)?;

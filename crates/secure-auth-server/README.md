@@ -42,8 +42,9 @@ stable for the maximum configured TTL. Handles are SHA-256 hashed before
 persistence. Redis uses one `SET NX PX`/capacity Lua script and one atomic
 consume script. PostgreSQL uses a namespace advisory transaction lock for
 capacity and one `DELETE ... RETURNING` consume operation. Production
-constructors require TLS; plaintext connection constructors are explicitly
-named for isolated local tests. Both adapters are blocking and must run on a
+constructors require TLS and reject the built-in `NoTls` connector; plaintext
+connection constructors are explicitly named for isolated local tests. Both
+adapters are blocking and must run on a
 blocking worker in an async host.
 
 The `BoundOneTimeLoginStateStore` trait remains the interoperability contract

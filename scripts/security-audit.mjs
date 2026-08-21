@@ -383,6 +383,7 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /DELETE FROM secure_keypad_opaque_login_states[\s\S]{0,240}RETURNING state/, "PostgreSQL OPAQUE state consumption must be atomic");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /MakeTlsConnect/, "PostgreSQL OPAQUE state must accept an explicit TLS connector");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /SslMode::Require/, "PostgreSQL OPAQUE state must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /TypeId::of::<T>\(\) == TypeId::of::<NoTls>\(\)/, "PostgreSQL OPAQUE state must reject the NoTls connector even when sslmode requires TLS");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /CHECK \(octet_length\(state\) BETWEEN 1 AND 32802\)/, "PostgreSQL OPAQUE state schema must enforce bounded encrypted records");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /protector\.seal/, "PostgreSQL OPAQUE state must encrypt before storage");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /protector\.open/, "PostgreSQL OPAQUE state must authenticate before decoding");
@@ -400,11 +401,13 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /secure_keypad_rate_limit_key_hash_length/, "PostgreSQL rate limiting must persist the key-hash bound during upgrades");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /secure_keypad_rate_limit_attempts_range/, "PostgreSQL rate limiting must persist the attempt-count bound during upgrades");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /SslMode::Require/, "PostgreSQL rate limiting must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /TypeId::of::<T>\(\) == TypeId::of::<NoTls>\(\)/, "PostgreSQL rate limiting must reject the NoTls connector even when sslmode requires TLS");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL rate-limit schema must enforce bounded namespaces");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL rate-limit schema must enforce safe namespaces");
   const postgresStorage = source("crates/secure-webauthn-example/src/storage_postgres.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /MakeTlsConnect/, "PostgreSQL WebAuthn storage must accept an explicit TLS connector");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /SslMode::Require/, "PostgreSQL WebAuthn storage must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /TypeId::of::<T>\(\) == TypeId::of::<NoTls>\(\)/, "PostgreSQL WebAuthn storage must reject the NoTls connector even when sslmode requires TLS");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL WebAuthn schema must enforce bounded namespaces");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL WebAuthn schema must enforce safe namespaces");
   for (const constraint of [

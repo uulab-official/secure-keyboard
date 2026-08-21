@@ -63,7 +63,9 @@ The reference crate includes feature-gated implementations:
   transaction. Its migration is exported as
   `POSTGRES_RATE_LIMIT_SCHEMA_SQL`, and production uses an explicit TLS
   connector with `sslmode=require`; weaker PostgreSQL modes are rejected before
-  pool construction. The migration enforces the bounded safe namespace,
+  pool construction, and the production constructor also rejects the built-in
+  `NoTls` connector even if `sslmode=require` is present. The migration enforces
+  the bounded safe namespace,
   32-byte key hash, and attempt-count range at the database layer and
   idempotently adds all three groups of constraints to an existing table; a
   deployment must treat a constraint-validation failure as a failed migration

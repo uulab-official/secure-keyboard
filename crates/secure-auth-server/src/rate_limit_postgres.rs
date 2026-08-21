@@ -6,7 +6,7 @@ use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::{postgres::NoTls, PostgresConnectionManager};
 use sha2::{Digest, Sha256};
-use std::{fmt, time::Duration};
+use std::{any::TypeId, fmt, time::Duration};
 
 const MAX_NAMESPACE_BYTES: usize = 64;
 
@@ -161,7 +161,10 @@ where
         policy: RateLimitPolicy,
         require_tls: bool,
     ) -> Result<Self, PostgresRateLimitConfigError> {
-        if require_tls && config.get_ssl_mode() != SslMode::Require {
+        if require_tls
+            && (config.get_ssl_mode() != SslMode::Require
+                || TypeId::of::<T>() == TypeId::of::<NoTls>())
+        {
             return Err(PostgresRateLimitConfigError::InsecureConfig);
         }
         validate_namespace(namespace)?;

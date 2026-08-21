@@ -56,6 +56,26 @@ fn postgres_configuration_rejects_non_tls_production_config() {
     ));
 }
 
+#[cfg(feature = "postgres-backend")]
+#[test]
+fn postgres_production_configuration_rejects_no_tls_with_required_sslmode() {
+    let config: postgres::Config = "host=127.0.0.1 port=5432 user=postgres sslmode=require"
+        .parse()
+        .unwrap();
+    assert!(matches!(
+        secure_auth_server::PostgresOneTimeLoginStateStore::from_config(
+            config,
+            r2d2_postgres::postgres::NoTls,
+            "fixture-opaque",
+            1,
+            8,
+            Duration::from_secs(30),
+            fixture_key(),
+        ),
+        Err(secure_auth_server::PostgresOneTimeStateConfigError::InsecureConfig)
+    ));
+}
+
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires an isolated Redis service"]

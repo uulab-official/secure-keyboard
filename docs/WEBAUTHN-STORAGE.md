@@ -19,8 +19,8 @@ implementations. They use bounded `r2d2` pools with a five-second acquisition
 timeout, bounded per-namespace pending ceremonies, bounded credential records,
 require TLS-first constructors, and keep plaintext/`NoTls` constructors
 explicitly named for local testing. PostgreSQL production configuration also
-requires `sslmode=require` and the adapter rejects weaker modes before pool
-construction. They are blocking adapters; async hosts must invoke them on a
+requires `sslmode=require`; the adapter rejects weaker modes and the built-in
+`NoTls` connector before pool construction. They are blocking adapters; async hosts must invoke them on a
 blocking worker. The
 PostgreSQL migration is exported as `POSTGRES_SCHEMA_SQL` and must be applied
 by the deployment migration system. It enforces bounded safe namespaces,

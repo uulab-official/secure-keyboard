@@ -54,6 +54,23 @@ fn postgres_production_configuration_requires_tls() {
     ));
 }
 
+#[cfg(feature = "postgres-backend")]
+#[test]
+fn postgres_production_configuration_rejects_no_tls_with_required_sslmode() {
+    let config = "host=127.0.0.1 user=postgres sslmode=require"
+        .parse()
+        .expect("valid config");
+    assert!(matches!(
+        secure_webauthn_example::PostgresWebAuthnStore::from_config(
+            config,
+            postgres::NoTls,
+            "test",
+            4,
+        ),
+        Err(PostgresStorageConfigError::InsecureConfig)
+    ));
+}
+
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]

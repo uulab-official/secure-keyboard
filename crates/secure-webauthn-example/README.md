@@ -41,9 +41,10 @@ secure-webauthn-example = { version = "0.1.0", features = ["redis-backend", "pos
 ```
 
 `RedisWebAuthnStore::from_url` requires `rediss://`; PostgreSQL production
-configuration requires `sslmode=require` plus an explicit TLS connector. The
-explicit `from_insecure_url_for_local_testing` and PostgreSQL `NoTls`
-constructors are for isolated development only. Apply `POSTGRES_SCHEMA_SQL`
+configuration requires `sslmode=require` plus an explicit TLS connector, and
+rejects the built-in `NoTls` connector even when that mode is set. The explicit
+`from_insecure_url_for_local_testing` and PostgreSQL `NoTls` constructors are
+for isolated development only. Apply `POSTGRES_SCHEMA_SQL`
 through the host's migration system before constructing a PostgreSQL store.
 These adapters expose
 blocking operations and must run on a blocking worker when called from an
