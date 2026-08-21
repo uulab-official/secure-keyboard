@@ -214,7 +214,7 @@ where
             namespace: namespace.to_owned(),
             ttl_millis,
             max_entries,
-            protector: StateProtector::new(encryption_key),
+            protector: StateProtector::new(encryption_key, namespace),
         })
     }
 

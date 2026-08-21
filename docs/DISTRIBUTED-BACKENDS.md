@@ -18,12 +18,16 @@ skp:opaque:v1:login:{lowercase-hex-32-byte-handle}
 
 The built-in adapters use a host-supplied `OpaqueStateKey` and AES-256-GCM to
 encrypt and authenticate a versioned record containing the serialized
-server-login state and bound client/server identifiers before persistence. Keep
-the key in a secret manager or KMS-backed configuration, use the same key on
-every instance that can consume a pending state, and retain it for at least the
+server-login state and bound client/server identifiers before persistence. The
+current durable record format is v2: the validated storage namespace is bound
+into AES-GCM associated data, so a ciphertext copied between tenants cannot be
+opened even when they share a key. v1 records are intentionally rejected and
+must be allowed to expire before a v2 rollout is considered complete. Keep the
+key in a secret manager or KMS-backed configuration, use the same key on every
+instance that can consume a pending state, and retain it for at least the
 maximum state TTL. A custom backend must provide equivalent authenticated
-encryption and an explicit key-rotation overlap policy. The backend operation
-must:
+encryption and an explicit format/key-rotation overlap policy. The backend
+operation must:
 
 1. validate the fixed 32-byte handle and bounded record size before writing;
 2. insert with `NX` semantics and a short TTL;

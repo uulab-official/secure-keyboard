@@ -12,10 +12,12 @@ const RECORD_MAGIC: &[u8; 4] = b"SKBS";
 const RECORD_VERSION: u16 = 1;
 const RECORD_HEADER_BYTES: usize = 4 + 2 + 4 + 2 + 2;
 const PROTECTED_MAGIC: &[u8; 4] = b"SKPE";
-const PROTECTED_VERSION: u16 = 1;
+// v2 binds the ciphertext to the validated storage namespace through AAD.
+// v1 records were never namespace-bound and are intentionally not opened.
+const PROTECTED_VERSION: u16 = 2;
 const PROTECTED_HEADER_BYTES: usize = 4 + 2 + 12;
 const PROTECTED_TAG_BYTES: usize = 16;
-const PROTECTED_AAD: &[u8] = b"secure-keypad:opaque-login-state:v1";
+const PROTECTED_AAD: &[u8] = b"secure-keypad:opaque-login-state:v2";
 
 /// Maximum encoded durable record accepted by distributed one-time stores.
 pub const MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES: usize = 32 * 1024;
@@ -49,13 +51,23 @@ impl OpaqueStateKey {
 #[derive(Clone)]
 pub(crate) struct StateProtector {
     key: Arc<Zeroizing<[u8; 32]>>,
+    namespace: String,
 }
 
 impl StateProtector {
-    pub(crate) fn new(key: OpaqueStateKey) -> Self {
+    pub(crate) fn new(key: OpaqueStateKey, namespace: &str) -> Self {
         Self {
             key: Arc::new(key.0),
+            namespace: namespace.to_owned(),
         }
+    }
+
+    fn associated_data(&self) -> Vec<u8> {
+        let mut aad = Vec::with_capacity(PROTECTED_AAD.len() + 1 + self.namespace.len());
+        aad.extend_from_slice(PROTECTED_AAD);
+        aad.push(b':');
+        aad.extend_from_slice(self.namespace.as_bytes());
+        aad
     }
 
     fn cipher(&self) -> Aes256Gcm {
@@ -72,8 +84,9 @@ impl StateProtector {
         let mut nonce = [0u8; 12];
         OsRng.fill_bytes(&mut nonce);
         let mut ciphertext = Zeroizing::new(plaintext.to_vec());
+        let aad = self.associated_data();
         self.cipher()
-            .encrypt_in_place(Nonce::from_slice(&nonce), PROTECTED_AAD, &mut *ciphertext)
+            .encrypt_in_place(Nonce::from_slice(&nonce), &aad, &mut *ciphertext)
             .map_err(|_| StoreError::Unavailable)?;
         let total = PROTECTED_HEADER_BYTES
             .checked_add(ciphertext.len())
@@ -104,8 +117,9 @@ impl StateProtector {
         }
         let nonce = Nonce::from_slice(&protected[6..PROTECTED_HEADER_BYTES]);
         let mut ciphertext = Zeroizing::new(protected[PROTECTED_HEADER_BYTES..].to_vec());
+        let aad = self.associated_data();
         self.cipher()
-            .decrypt_in_place(nonce, PROTECTED_AAD, &mut *ciphertext)
+            .decrypt_in_place(nonce, &aad, &mut *ciphertext)
             .map_err(|_| StoreError::Unavailable)?;
         Ok(Zeroizing::new(core::mem::take(&mut *ciphertext)))
     }
@@ -246,7 +260,7 @@ mod tests {
         .unwrap();
         let encoded = encode_bound_state(state).unwrap();
         let key = OpaqueStateKey::from_bytes(&[7u8; 32]).unwrap();
-        let protector = StateProtector::new(key);
+        let protector = StateProtector::new(key, "tenant-a");
         let protected = protector.seal(encoded.as_slice()).unwrap();
 
         assert_ne!(protected.as_slice(), encoded.as_slice());
@@ -265,7 +279,7 @@ mod tests {
         .unwrap();
         let encoded = encode_bound_state(state).unwrap();
         let key = OpaqueStateKey::from_bytes(&[9u8; 32]).unwrap();
-        let protector = StateProtector::new(key);
+        let protector = StateProtector::new(key, "tenant-a");
         let mut protected = protector.seal(encoded.as_slice()).unwrap().to_vec();
         let last = protected.last_mut().unwrap();
         *last ^= 0x01;
@@ -291,10 +305,51 @@ mod tests {
             .unwrap(),
         )
         .unwrap();
-        let protector = StateProtector::new(OpaqueStateKey::from_bytes(&[1u8; 32]).unwrap());
-        let wrong_protector = StateProtector::new(OpaqueStateKey::from_bytes(&[2u8; 32]).unwrap());
+        let protector =
+            StateProtector::new(OpaqueStateKey::from_bytes(&[1u8; 32]).unwrap(), "tenant-a");
+        let wrong_protector =
+            StateProtector::new(OpaqueStateKey::from_bytes(&[2u8; 32]).unwrap(), "tenant-a");
         let protected = protector.seal(encoded.as_slice()).unwrap();
 
         assert!(wrong_protector.open(protected.to_vec()).is_err());
+    }
+
+    #[test]
+    fn durable_record_is_bound_to_the_storage_namespace() {
+        let encoded = encode_bound_state(
+            BoundLoginState::new(
+                ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
+                b"fixture-client",
+                b"fixture-server",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let key = OpaqueStateKey::from_bytes(&[3u8; 32]).unwrap();
+        let protector = StateProtector::new(key, "tenant-a");
+        let wrong_namespace =
+            StateProtector::new(OpaqueStateKey::from_bytes(&[3u8; 32]).unwrap(), "tenant-b");
+        let protected = protector.seal(encoded.as_slice()).unwrap();
+
+        assert!(wrong_namespace.open(protected.to_vec()).is_err());
+    }
+
+    #[test]
+    fn durable_record_rejects_the_legacy_unbound_format_version() {
+        let encoded = encode_bound_state(
+            BoundLoginState::new(
+                ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
+                b"fixture-client",
+                b"fixture-server",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let protector =
+            StateProtector::new(OpaqueStateKey::from_bytes(&[4u8; 32]).unwrap(), "tenant-a");
+        let mut protected = protector.seal(encoded.as_slice()).unwrap().to_vec();
+        protected[4..6].copy_from_slice(&1u16.to_le_bytes());
+
+        assert!(protector.open(protected).is_err());
     }
 }
