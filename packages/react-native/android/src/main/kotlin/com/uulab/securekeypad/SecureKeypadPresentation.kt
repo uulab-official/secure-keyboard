@@ -3,6 +3,7 @@ package com.uulab.securekeypad
 internal const val SECURE_KEYPAD_MAX_RENDERED_LENGTH = 4_096
 internal const val SECURE_KEYPAD_ERROR_INTERNAL = 7
 internal const val SECURE_KEYPAD_ERROR_INVALID = 1
+internal const val SECURE_KEYPAD_NATIVE_REFRESH_ERROR = Long.MIN_VALUE
 
 internal enum class SecureKeypadCommandDecision {
     ACCEPT,
@@ -22,6 +23,12 @@ internal fun secureKeypadMonotonicCommandDecision(previous: Long?, requestId: Lo
 
 /** Returns whether a native display-state code is part of the public contract. */
 internal fun secureKeypadIsValidDisplayState(value: Int): Boolean = value in 0..3
+
+/** Decodes the packed JNI state while keeping native failure distinct from empty state. */
+internal fun secureKeypadDecodeMaskedState(packed: Long): Pair<Int, Int>? {
+    if (packed == SECURE_KEYPAD_NATIVE_REFRESH_ERROR) return null
+    return (packed ushr 32).toInt() to packed.toInt()
+}
 
 /** Converts a native display-state code without normalizing invalid values. */
 internal fun secureKeypadDisplayStateName(value: Int): String = when (value) {

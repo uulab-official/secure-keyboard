@@ -283,6 +283,8 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeypadNative.sessionFree(sessionHandle)
             sessionHandle = 0L
         }
+        display.text = ""
+        display.contentDescription = "No input"
         lastHeadlessKeyPress = null
     }
 
@@ -405,8 +407,11 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     private fun refreshMaskedState() {
         val packed = SecureKeypadNative.sessionRefresh(sessionHandle)
-        val length = (packed ushr 32).toInt()
-        val displayState = packed.toInt()
+        val (length, displayState) = secureKeypadDecodeMaskedState(packed) ?: run {
+            releaseSession()
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+            return
+        }
         if (length !in 0..SECURE_KEYPAD_MAX_RENDERED_LENGTH) {
             releaseSession()
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)

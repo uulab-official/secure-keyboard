@@ -335,6 +335,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
+    requireText(findings, file, contents, /secureKeypadDecodeMaskedState/, "Android native keypad must fail closed when JNI masked-state refresh fails");
+    requireText(findings, file, contents, /display\.text\s*=\s*\"\"/, "Android native keypad must clear the visible masked display when releasing a session");
     forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
   }
   for (const file of [
@@ -347,6 +349,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "Android presentation must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "Android accessibility must expose only masked state and length");
     requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "Android presentation must validate native display-state codes");
+    requireText(findings, file, contents, /secureKeypadDecodeMaskedState/, "Android presentation must distinguish native refresh failure from empty state");
+    requireText(findings, file, contents, /Long\.MIN_VALUE/, "Android presentation must reserve a non-empty JNI failure sentinel");
     forbidText(findings, file, contents, /password|secret|plaintext|inputValue|inputText/i, "Android presentation contract must not mention secret-bearing fields");
   }
   for (const file of [
@@ -376,6 +380,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "iOS native keypad must reject invalid display-state codes");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
+    requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
@@ -444,6 +449,8 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /nativeAbiVersion/, "Android JNI must expose the linked FFI ABI version before session creation");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "Android JNI ABI query must call the native FFI implementation");
+    requireText(findings, file, contents, /INT64_MIN/, "Android JNI refresh must return a distinct failure sentinel instead of empty state");
+    forbidText(findings, file, contents, /if \(error != SECURE_KEYPAD_OK\) return 0;/, "Android JNI must not collapse refresh failure into the valid empty-state value");
   }
 
   for (const file of [

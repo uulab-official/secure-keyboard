@@ -50,6 +50,9 @@ exact release-candidate commit by the release evidence manifest.
 - Bounded PostgreSQL WebAuthn ceremony and OPAQUE one-time-state `RETURNING`
   values with SQL byte sentinels, deleting oversized legacy rows before their
   encrypted payloads can be materialized by the application.
+- Hardened the Android JNI masked-state bridge so native refresh failures use a
+  reserved sentinel instead of the valid empty-state value; Android and iOS
+  native release paths now also clear retained masked presentation state.
 
 ### Verification
 

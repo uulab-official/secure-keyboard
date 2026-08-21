@@ -107,7 +107,7 @@ Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionRefresh(
     secure_keypad_masked_state_t state = {0, SECURE_KEYPAD_DISPLAY_EMPTY};
     secure_keypad_error_t error = secure_keypad_session_refresh(
         session_from_handle(handle), &state);
-    if (error != SECURE_KEYPAD_OK) return 0;
+    if (error != SECURE_KEYPAD_OK) return (jlong)INT64_MIN;
     return ((jlong)state.length << 32) | (jlong)state.display_state;
 }
 

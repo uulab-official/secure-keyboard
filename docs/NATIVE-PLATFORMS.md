@@ -112,6 +112,12 @@ the view repeats the public bounds: 16 rows, 32 keys per row, 512 total keys,
 Required theme color and metric maps use exact key sets and validate every
 color value before native UI allocation.
 
+The packed JNI masked-state return reserves `Long.MIN_VALUE` for a native
+refresh failure; Android decodes that sentinel before interpreting the valid
+empty state, so an FFI error cannot silently become a normal empty display.
+Releasing a session clears the retained masked presentation text as well as the
+Rust-owned input buffer.
+
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is
 bounded to public configuration fields, runs inside a fail-closed exception

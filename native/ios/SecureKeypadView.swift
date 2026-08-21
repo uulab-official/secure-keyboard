@@ -308,6 +308,8 @@ public class SecureKeypadView: UIView {
             secure_keypad_session_free(session)
             self.session = nil
         }
+        displayLabel.text = protectedPresentation ? "Protected" : ""
+        displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: 0, protected: protectedPresentation)
         lastHeadlessKeyPress = nil
     }
 
