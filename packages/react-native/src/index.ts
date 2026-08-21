@@ -1,6 +1,9 @@
 import type { HostComponent } from "react-native";
 import {
+  MAX_RENDERED_LENGTH,
   validateLayout,
+  validateMaskedState,
+  validateResultEvent as validateContractResultEvent,
   validateTheme,
   type KeypadLayout,
   type InputPolicy as ContractInputPolicy,
@@ -38,11 +41,49 @@ export interface MaskedStateEvent {
   readonly nativeEvent: MaskedState;
 }
 
+/** Validates the native event payload before an application invokes its callback. */
+export function validateMaskedStateEvent(value: unknown): ValidationResult {
+  if (!isRecord(value)) return { valid: false, errors: ["masked state event must be an object"] };
+  return validateMaskedState(value.nativeEvent);
+}
+
+/** Validates the native result event before an application invokes its callback. */
+export function validateResultEvent(value: unknown): ValidationResult {
+  if (!isRecord(value)) return { valid: false, errors: ["result event must be an object"] };
+  return validateContractResultEvent(value.nativeEvent);
+}
+
 export interface ResultEvent {
   readonly nativeEvent: Extract<SecureKeypadEvent, { readonly type: "result" }>;
 }
 
 export type SecureKeypadNativeComponent = HostComponent<SecureKeypadProps>;
+
+/** Creates fail-closed callbacks for native bridge events. */
+export function createSecureKeypadEventHandlers(
+  onMaskedStateChange: SecureKeypadProps["onMaskedStateChange"],
+  onResult: SecureKeypadProps["onResult"],
+): Pick<SecureKeypadProps, "onMaskedStateChange" | "onResult"> {
+  const emitGenericError = () => {
+    onResult?.({ nativeEvent: { type: "result", code: "error" } });
+  };
+  return {
+    onMaskedStateChange: (event: MaskedStateEvent) => {
+      if (!validateMaskedStateEvent(event).valid) {
+        emitGenericError();
+        return;
+      }
+      onMaskedStateChange?.(event);
+    },
+    onResult: (event: ResultEvent) => {
+      if (!validateResultEvent(event).valid) {
+        emitGenericError();
+        return;
+      }
+      onResult?.(event);
+    },
+  };
+}
 
 const ALLOWED_PROP_NAMES = [
   "layout",
@@ -98,7 +139,7 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
   ) {
     errors.push("props.inputPolicy is invalid");
   }
-  if (value.maxTokens !== undefined && !isBoundedInteger(value.maxTokens, 1, 4096)) {
+  if (value.maxTokens !== undefined && !isBoundedInteger(value.maxTokens, 1, MAX_RENDERED_LENGTH)) {
     errors.push("props.maxTokens is invalid");
   }
   if (value.timeoutMs !== undefined && !isBoundedInteger(value.timeoutMs, 1, 86_400_000)) {
@@ -128,12 +169,34 @@ export function assertSecureKeypadProps(value: unknown): asserts value is Secure
   if (!result.valid) throw new TypeError(result.errors.join("; "));
 }
 
-/**
- * Lazily resolves the native component so importing this package remains safe in
- * Node-based tooling and web bundles. The native view must be registered by the
- * iOS/Android adapter; Expo Go and a browser are not supported runtimes.
- */
-export function getSecureKeypadView(): SecureKeypadNativeComponent {
+/** Lazily resolves the unwrapped native component for low-level host integration. */
+export function getSecureKeypadNativeView(): SecureKeypadNativeComponent {
   const reactNative = require("react-native") as typeof import("react-native");
   return reactNative.requireNativeComponent<SecureKeypadProps>(SECURE_KEYPAD_NATIVE_VIEW_NAME);
+}
+
+let secureKeypadComponent: SecureKeypadNativeComponent | undefined;
+
+/**
+ * Lazily resolves the native component behind a fail-closed event boundary.
+ * Malformed masked state or result payloads never reach the application callback;
+ * they produce only a canonical `error` result.
+ */
+export function getSecureKeypadView(): SecureKeypadNativeComponent {
+  if (secureKeypadComponent !== undefined) return secureKeypadComponent;
+  const NativeView = getSecureKeypadNativeView();
+  const react = require("react") as {
+    createElement: (type: SecureKeypadNativeComponent, props: Record<string, unknown>) => unknown;
+    forwardRef: (render: (props: SecureKeypadProps, ref: unknown) => unknown) => SecureKeypadNativeComponent;
+  };
+  secureKeypadComponent = react.forwardRef((props, ref) => {
+    const { onMaskedStateChange, onResult, ...nativeProps } = props;
+    const eventHandlers = createSecureKeypadEventHandlers(onMaskedStateChange, onResult);
+    return react.createElement(NativeView, {
+      ...nativeProps,
+      ref,
+      ...eventHandlers,
+    });
+  });
+  return secureKeypadComponent;
 }

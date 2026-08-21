@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateLayout, validateTheme } from "../src/index.js";
+import { validateLayout, validateMaskedState, validateResultEvent, validateTheme } from "../src/index.js";
 
 const exampleLayout = {
   schemaVersion: 1,
@@ -49,5 +49,22 @@ describe("public customization contract", () => {
   it("does not echo supplied field values in validation errors", () => {
     const result = validateLayout({ ...exampleLayout, password: "fixture-only-secret" });
     expect(result.errors.join(" ")).not.toContain("fixture-only-secret");
+  });
+
+  it("bounds masked state metadata before it reaches a host callback", () => {
+    expect(validateMaskedState({ length: 0, displayState: "empty" })).toEqual({ valid: true, errors: [] });
+    expect(validateMaskedState({ length: 4096, displayState: "masked" })).toEqual({ valid: true, errors: [] });
+    expect(validateMaskedState({ length: -1, displayState: "masked" }).valid).toBe(false);
+    expect(validateMaskedState({ length: 4097, displayState: "masked" }).valid).toBe(false);
+    expect(validateMaskedState({ length: 1.5, displayState: "masked" }).valid).toBe(false);
+    expect(validateMaskedState({ length: 1, displayState: "masked", value: "fixture-only-secret" }).errors.join(" "))
+      .not.toContain("fixture-only-secret");
+  });
+
+  it("bounds result events to stable non-secret codes", () => {
+    expect(validateResultEvent({ type: "result", code: "success" })).toEqual({ valid: true, errors: [] });
+    expect(validateResultEvent({ type: "result", code: "unknown" }).valid).toBe(false);
+    expect(validateResultEvent({ type: "result", code: "error", password: "fixture-only-secret" }).errors.join(" "))
+      .not.toContain("fixture-only-secret");
   });
 });

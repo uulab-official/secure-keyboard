@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_NUMERIC_LAYOUT, DEFAULT_THEME } from "@secure-keypad/contracts";
-import { assertSecureKeypadProps, validateSecureKeypadProps } from "../src/index.js";
+import {
+  assertSecureKeypadProps,
+  createSecureKeypadEventHandlers,
+  validateMaskedStateEvent,
+  validateResultEvent,
+  validateSecureKeypadProps,
+} from "../src/index.js";
+
 
 describe("React Native public prop boundary", () => {
   it("accepts only serializable layout/theme/policy props", () => {
@@ -91,5 +98,46 @@ describe("React Native public prop boundary", () => {
         secret: "fixture-only-secret",
       }),
     ).toThrowError(/^(?!.*fixture-only-secret)/);
+  });
+
+  it("rejects malformed native masked-state events before host callbacks", () => {
+    expect(validateMaskedStateEvent({ nativeEvent: { length: 0, displayState: "empty" } })).toMatchObject({ valid: true });
+    expect(validateMaskedStateEvent({ nativeEvent: { length: 4_096, displayState: "masked" } })).toMatchObject({ valid: true });
+    expect(validateMaskedStateEvent({ nativeEvent: { length: 4_097, displayState: "masked" } })).toMatchObject({ valid: false });
+    expect(validateMaskedStateEvent({ nativeEvent: { length: -1, displayState: "masked" } })).toMatchObject({ valid: false });
+    expect(validateMaskedStateEvent({ nativeEvent: { length: 1, displayState: "masked", secret: "fixture-only-secret" } }).errors.join(" "))
+      .not.toContain("fixture-only-secret");
+  });
+
+  it("accepts only the bounded result event shape", () => {
+    expect(validateResultEvent({ nativeEvent: { type: "result", code: "success" } })).toMatchObject({ valid: true });
+    expect(validateResultEvent({ nativeEvent: { type: "result", code: "error", secret: "fixture-only-secret" } }).valid)
+      .toBe(false);
+    expect(validateResultEvent({ nativeEvent: { type: "result", code: "fixture-only-secret" } }).errors.join(" "))
+      .not.toContain("fixture-only-secret");
+  });
+
+  it("uses fail-closed handlers for native bridge events", () => {
+    const maskedStates: unknown[] = [];
+    const results: unknown[] = [];
+    const handlers = createSecureKeypadEventHandlers(
+      (event) => maskedStates.push(event),
+      (event) => results.push(event),
+    );
+    handlers.onMaskedStateChange?.({
+      nativeEvent: { length: 4_097, displayState: "masked" },
+    });
+    handlers.onMaskedStateChange?.({
+      nativeEvent: { length: 2, displayState: "masked" },
+    });
+    handlers.onResult?.({
+      nativeEvent: { type: "result", code: "success", secret: "fixture-only-secret" },
+    } as never);
+
+    expect(maskedStates).toHaveLength(1);
+    expect(results).toEqual([
+      { nativeEvent: { type: "result", code: "error" } },
+      { nativeEvent: { type: "result", code: "error" } },
+    ]);
   });
 });

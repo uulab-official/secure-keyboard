@@ -23,6 +23,12 @@ enum DisplayState { empty, masked, submitted, cancelled }
 
 enum SecureKeypadResultCode { success, cancelled, invalid, locked, error }
 
+/// Maximum masked length accepted at the Flutter/native event boundary.
+const int secureKeypadMaxRenderedLength = 4096;
+
+bool isSecureKeypadRenderedLengthValid(int length) =>
+    length >= 0 && length <= secureKeypadMaxRenderedLength;
+
 typedef MaskedStateCallback = void Function(MaskedState state);
 typedef ResultCallback = void Function(SecureKeypadResultCode result);
 
@@ -382,22 +388,37 @@ class _SecureKeypadState extends State<SecureKeypad> {
   }
 
   void _onNativeEvent(dynamic event) {
-    if (event is! Map<Object?, Object?>) return;
+    if (event is! Map<Object?, Object?>) {
+      _emitResult(SecureKeypadResultCode.error);
+      return;
+    }
     final type = event['type'];
     if (type == 'state') {
       final length = event['length'];
       final displayState = event['displayState'];
-      if (length is int && displayState is String) {
-        final state = _displayStateFromName(displayState);
-        if (state != null) {
-          widget.configuration.onMaskedStateChanged?.call(
-            MaskedState(length: length, displayState: state),
-          );
-        }
+      if (length is! int ||
+          !isSecureKeypadRenderedLengthValid(length) ||
+          displayState is! String) {
+        _emitResult(SecureKeypadResultCode.error);
+        return;
       }
+      final state = _displayStateFromName(displayState);
+      if (state == null) {
+        _emitResult(SecureKeypadResultCode.error);
+        return;
+      }
+      widget.configuration.onMaskedStateChanged?.call(
+        MaskedState(length: length, displayState: state),
+      );
     } else if (type == 'result' && event['code'] is String) {
       final result = _resultFromName(event['code'] as String);
-      if (result != null) _emitResult(result);
+      if (result == null) {
+        _emitResult(SecureKeypadResultCode.error);
+        return;
+      }
+      _emitResult(result);
+    } else {
+      _emitResult(SecureKeypadResultCode.error);
     }
   }
 

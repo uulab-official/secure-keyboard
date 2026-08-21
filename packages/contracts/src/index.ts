@@ -1,4 +1,6 @@
 export const CONTRACT_VERSION = 1 as const;
+/** Maximum masked length that any framework adapter may render or forward. */
+export const MAX_RENDERED_LENGTH = 4_096 as const;
 
 export const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 export const LOCALE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
@@ -64,14 +66,56 @@ export interface ThemeTokens {
 
 export type DisplayState = "empty" | "masked" | "submitted" | "cancelled";
 
+const DISPLAY_STATES: readonly DisplayState[] = ["empty", "masked", "submitted", "cancelled"];
+
 export interface MaskedState {
   readonly length: number;
   readonly displayState: DisplayState;
 }
 
+/** Validates native masked metadata without echoing untrusted event values. */
+export function validateMaskedState(value: unknown): ValidationResult {
+  const errors: string[] = [];
+  if (!isRecord(value)) {
+    return { valid: false, errors: ["masked state must be an object"] };
+  }
+  if (!hasOnlyKeys(value, ["length", "displayState"])) {
+    errors.push("masked state contains an unsupported field");
+  }
+  if (!isBoundedInteger(value.length, 0, MAX_RENDERED_LENGTH)) {
+    errors.push("masked state.length is invalid");
+  }
+  if (typeof value.displayState !== "string" || !DISPLAY_STATES.includes(value.displayState as DisplayState)) {
+    errors.push("masked state.displayState is invalid");
+  }
+  return { valid: errors.length === 0, errors };
+}
+
 export type SecureKeypadEvent =
   | { readonly type: "state"; readonly state: MaskedState }
   | { readonly type: "result"; readonly code: "success" | "cancelled" | "invalid" | "locked" | "error" };
+
+/** Validates a framework result event without accepting arbitrary payload fields. */
+export function validateResultEvent(value: unknown): ValidationResult {
+  const errors: string[] = [];
+  if (!isRecord(value)) {
+    return { valid: false, errors: ["result event must be an object"] };
+  }
+  if (!hasOnlyKeys(value, ["type", "code"])) {
+    errors.push("result event contains an unsupported field");
+  }
+  if (value.type !== "result") errors.push("result event.type is invalid");
+  if (
+    value.code !== "success" &&
+    value.code !== "cancelled" &&
+    value.code !== "invalid" &&
+    value.code !== "locked" &&
+    value.code !== "error"
+  ) {
+    errors.push("result event.code is invalid");
+  }
+  return { valid: errors.length === 0, errors };
+}
 
 /** Safe starting layout for a numeric PIN keypad. */
 export const DEFAULT_NUMERIC_LAYOUT = {

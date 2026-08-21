@@ -86,4 +86,11 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test('masked state length is bounded at the framework event boundary', () {
+    expect(isSecureKeypadRenderedLengthValid(0), isTrue);
+    expect(isSecureKeypadRenderedLengthValid(4096), isTrue);
+    expect(isSecureKeypadRenderedLengthValid(-1), isFalse);
+    expect(isSecureKeypadRenderedLengthValid(4097), isFalse);
+  });
 }

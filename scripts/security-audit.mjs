@@ -247,8 +247,16 @@ export function runSecurityAudit() {
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"ascii"/, "public contracts must enumerate the native printable-ASCII policy");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /MAX_RENDERED_LENGTH/, "public contracts must bound masked state metadata");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /validateMaskedState/, "public contracts must validate masked state metadata");
+  const reactNativeContract = source("packages/react-native/src/index.ts", findings);
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /validateMaskedStateEvent/, "React Native must expose masked event validation at the bridge boundary");
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /createSecureKeypadEventHandlers/, "React Native must install fail-closed event handlers");
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeView/, "React Native low-level native view access must be explicitly named");
   const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_onNativeEvent\([\s\S]{0,500}isSecureKeypadRenderedLengthValid/, "Flutter must validate masked event length before invoking callbacks");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
