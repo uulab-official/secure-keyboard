@@ -52,6 +52,9 @@ input. A release must publish the exact commit, lockfiles, toolchain versions,
 native static-library checksums, SBOM, and framework package manifests as one
 set. HTTP deployments must also be reviewed against
 `docs/HTTP-DEPLOYMENT.md`.
+The Contracts package is the canonical UI/SDK release version; the version
+parity gate rejects drift across public Cargo, npm, Flutter, and Podspec
+artifacts. Authentication protocol and C ABI versions remain independent.
 
 ## Fuzz gate
 

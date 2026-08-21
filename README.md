@@ -53,6 +53,7 @@ Hangul, and branded native layouts.
 cargo test --workspace
 pnpm install
 pnpm test:native-parity
+pnpm test:release-version-parity
 pnpm --dir packages/contracts test
 pnpm --dir packages/react-native test
 pnpm --dir packages/web test
