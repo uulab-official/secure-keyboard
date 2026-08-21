@@ -412,11 +412,13 @@ public class SecureKeypadView: UIView {
             return
         }
         let count = Int(state.length)
-        displayLabel.text = protectedPresentation ? "Protected" : String(repeating: "•", count: count)
-        displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(
-            length: count,
-            protected: protectedPresentation
-        )
+        guard secureKeypadIsValidRenderedLength(count) else {
+            releaseSession()
+            onError?(secureKeypadInternalError)
+            return
+        }
+        displayLabel.text = secureKeypadMaskedDisplayText(length: count, protected: protectedPresentation)
+        displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: count, protected: protectedPresentation)
         onMaskedStateChanged?(state.length, state.display_state)
     }
 

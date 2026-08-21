@@ -106,7 +106,9 @@ accessibility announcements. It accepts only the native masked length and a
 protected-state flag; it cannot format or retain an input value. The standalone
 `native/android/SecureKeypadPresentationContractTest.kt` checks empty/masked/
 protected announcements and rejects lengths outside the native 4,096-token
-display bound without requiring an Android runtime.
+display bound without requiring an Android runtime. The equivalent iOS helper
+and `SecureKeypadPresentationContractTest.swift` apply the same bound before
+allocating masked text.
 
 The ownership contract is also executable without Android:
 

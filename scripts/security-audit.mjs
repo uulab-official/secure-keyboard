@@ -183,6 +183,9 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /if window == nil \{\s*releaseSession\(\)\s*\}/, "iOS native keypad must release pending input when detached from a window");
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
+    requireText(findings, file, contents, /secureKeypadIsValidRenderedLength/, "iOS native keypad must bound masked rendering before allocation");
+    requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
+    requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
   }
