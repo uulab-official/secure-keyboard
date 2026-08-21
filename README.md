@@ -16,6 +16,8 @@ server routes behind TLS or a reverse proxy.
 For multi-instance deployments, follow the [distributed backend contract](docs/DISTRIBUTED-BACKENDS.md)
 and the [web deployment baseline](docs/WEB-DEPLOYMENT.md). WebAuthn server
 implementations must also follow the [WebAuthn storage contract](docs/WEBAUTHN-STORAGE.md).
+Systems migrating from ordinary password endpoints should follow the
+[password migration guide](docs/MIGRATION-FROM-PASSWORD.md).
 
 ## Current packages
 

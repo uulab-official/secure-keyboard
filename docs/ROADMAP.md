@@ -132,7 +132,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, a
 - [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
 - [ ] Add distributed replay-store, downgrade, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
-- [ ] Provide migration guidance for systems that currently receive ordinary passwords.
+- [x] Provide migration guidance for systems that currently receive ordinary passwords.
 
 Exit criteria: the server never needs a plaintext password or replayable client-side hash.
 

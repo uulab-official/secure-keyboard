@@ -274,6 +274,10 @@ export function runSecurityAudit() {
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
   forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
+  const migrationGuide = source("docs/MIGRATION-FROM-PASSWORD.md", findings);
+  requireText(findings, "docs/MIGRATION-FROM-PASSWORD.md", migrationGuide, /does not turn an existing\s+password hash into an OPAQUE credential file/i, "migration guidance must reject password-hash-to-OPAQUE conversion claims");
+  requireText(findings, "docs/MIGRATION-FROM-PASSWORD.md", migrationGuide, /fresh OPAQUE registration or passkey ceremony/i, "migration guidance must require a fresh protected ceremony");
+  requireText(findings, "docs/MIGRATION-FROM-PASSWORD.md", migrationGuide, /client-side hash/i, "migration guidance must prohibit replayable client-side hashes");
   const releaseVersionCheck = source("scripts/check-release-version-parity.mjs", findings);
   requireText(findings, "scripts/check-release-version-parity.mjs", releaseVersionCheck, /RELEASE_ARTIFACTS/, "release tooling must enumerate public artifacts for version parity");
   requireText(findings, "scripts/check-release-version-parity.mjs", releaseVersionCheck, /findReleaseVersionMismatches/, "release tooling must compare artifact versions");

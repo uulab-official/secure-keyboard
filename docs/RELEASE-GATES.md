@@ -55,6 +55,8 @@ set. HTTP deployments must also be reviewed against
 The Contracts package is the canonical UI/SDK release version; the version
 parity gate rejects drift across public Cargo, npm, Flutter, and Podspec
 artifacts. Authentication protocol and C ABI versions remain independent.
+Password migrations must also follow `docs/MIGRATION-FROM-PASSWORD.md` and
+must not introduce a client-side replayable hash.
 
 ## Fuzz gate
 
