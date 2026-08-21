@@ -74,8 +74,14 @@ Each platform/framework run should produce one JSON record containing:
   `physicalDevice` flag;
 - device/browser model, OS version/build, and `secureContext: true` for Web;
 - every applicable test case with the exact status `pass`;
+- for native records, explicit `screenshotsAndBackgroundSnapshots`,
+  `crashReportReview`, and `protocolDowngrade` pass results in addition to the
+  input, accessibility, lifecycle, and replay/rate-limit cases;
 - `sanitizedLogs: true`, a relative `logPath`, and a SHA-256 log digest;
-- at least one relative artifact path with a lowercase SHA-256 digest.
+- at least one relative artifact path with a lowercase SHA-256 digest. A
+  physical native release record must additionally classify unique artifacts as
+  `screen-capture`, `background-snapshot`, `accessibility-report`,
+  `autofill-clipboard-report`, `crash-report-review`, and `native-checksum`.
 
 The record validator rejects secret-bearing field names, absolute/parent paths,
 missing test passes, invalid hashes, and WebAuthn records without secure

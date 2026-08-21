@@ -19,15 +19,18 @@ const VALID_NATIVE = {
   testCases: {
     maskedStateOnly: "pass",
     captureAndBackground: "pass",
+    screenshotsAndBackgroundSnapshots: "pass",
     autofillAndClipboard: "pass",
     accessibility: "pass",
+    crashReportReview: "pass",
     lifecycleAndZeroization: "pass",
     serverReplayRateLimit: "pass",
+    protocolDowngrade: "pass",
   },
   sanitizedLogs: true,
   logPath: "logs/ios-rn.txt",
   logSha256: "a".repeat(64),
-  artifacts: [{ path: "native/secure-ffi.sha256", sha256: "b".repeat(64) }],
+  artifacts: [{ kind: "native-checksum", path: "native/secure-ffi.sha256", sha256: "b".repeat(64) }],
 };
 
 test("accepts a complete sanitized native evidence record", () => {
@@ -101,4 +104,44 @@ test("rejects duplicate evidence paths before file verification", () => {
   const findings = validateDeviceEvidence(evidence);
 
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].path") && finding.includes("unique")));
+});
+
+test("requires explicit screenshot, crash-review, and protocol-downgrade checks", () => {
+  const incomplete = structuredClone(VALID_NATIVE);
+  delete incomplete.testCases.screenshotsAndBackgroundSnapshots;
+  delete incomplete.testCases.crashReportReview;
+  delete incomplete.testCases.protocolDowngrade;
+
+  const findings = validateDeviceEvidence(incomplete);
+
+  assert.ok(findings.some((finding) => finding.includes("testCases.screenshotsAndBackgroundSnapshots")));
+  assert.ok(findings.some((finding) => finding.includes("testCases.crashReportReview")));
+  assert.ok(findings.some((finding) => finding.includes("testCases.protocolDowngrade")));
+});
+
+test("requires categorized artifacts for a physical native release gate", () => {
+  const incomplete = structuredClone(VALID_NATIVE);
+
+  const findings = validateDeviceEvidence(incomplete, { requirePhysicalDevice: true });
+
+  assert.ok(findings.some((finding) => finding.includes("screen-capture")));
+  assert.ok(findings.some((finding) => finding.includes("background-snapshot")));
+  assert.ok(findings.some((finding) => finding.includes("accessibility-report")));
+  assert.ok(findings.some((finding) => finding.includes("autofill-clipboard-report")));
+  assert.ok(findings.some((finding) => finding.includes("crash-report-review")));
+
+  const complete = structuredClone(VALID_NATIVE);
+  complete.artifacts = [
+    "screen-capture",
+    "background-snapshot",
+    "accessibility-report",
+    "autofill-clipboard-report",
+    "crash-report-review",
+    "native-checksum",
+  ].map((kind, index) => ({
+    kind,
+    path: `native/artifact-${index}.bin`,
+    sha256: "b".repeat(64),
+  }));
+  assert.deepEqual(validateDeviceEvidence(complete, { requirePhysicalDevice: true }), []);
 });

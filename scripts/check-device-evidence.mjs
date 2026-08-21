@@ -9,16 +9,27 @@ const COMMIT = /^[a-f0-9]{40}$/;
 const NATIVE_TESTS = Object.freeze([
   "maskedStateOnly",
   "captureAndBackground",
+  "screenshotsAndBackgroundSnapshots",
   "autofillAndClipboard",
   "accessibility",
+  "crashReportReview",
   "lifecycleAndZeroization",
   "serverReplayRateLimit",
+  "protocolDowngrade",
 ]);
 const WEB_TESTS = Object.freeze([
   "passkeySecureContext",
   "originAndRpId",
   "boundedOptions",
   "fallbackWarning",
+]);
+const REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS = Object.freeze([
+  "screen-capture",
+  "background-snapshot",
+  "accessibility-report",
+  "autofill-clipboard-report",
+  "crash-report-review",
+  "native-checksum",
 ]);
 const ALLOWED_FRAMEWORKS = Object.freeze({
   ios: new Set(["native", "react-native", "flutter"]),
@@ -138,6 +149,7 @@ export function validateDeviceEvidence(evidence, options = {}) {
   if (!Array.isArray(evidence.artifacts) || evidence.artifacts.length === 0) {
     add(findings, "artifacts", "must contain at least one hashed artifact");
   } else {
+    const artifactKinds = new Set();
     evidence.artifacts.forEach((artifact, index) => {
       const artifactPath = `artifacts[${index}]`;
       if (!isRecord(artifact)) {
@@ -154,7 +166,24 @@ export function validateDeviceEvidence(evidence, options = {}) {
       if (typeof artifact.sha256 !== "string" || !SHA256.test(artifact.sha256)) {
         add(findings, `${artifactPath}.sha256`, "must be a lowercase SHA-256 digest");
       }
+      if (options.requirePhysicalDevice === true && (evidence.platform === "ios" || evidence.platform === "android")) {
+        if (!nonEmptyString(artifact.kind)) {
+          add(findings, `${artifactPath}.kind`, "must be a non-empty artifact kind for a physical-device gate");
+        } else if (artifactKinds.has(artifact.kind)) {
+          add(findings, `${artifactPath}.kind`, "must be unique for a physical-device gate");
+        } else {
+          artifactKinds.add(artifact.kind);
+        }
+      }
     });
+    if (
+      options.requirePhysicalDevice === true &&
+      (evidence.platform === "ios" || evidence.platform === "android")
+    ) {
+      for (const kind of REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS) {
+        if (!artifactKinds.has(kind)) add(findings, "artifacts", `must contain physical-device artifact kind ${kind}`);
+      }
+    }
   }
   return findings;
 }
