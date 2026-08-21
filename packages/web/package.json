@@ -5,7 +5,7 @@
   "description": "Passkey-first WebAuthn adapter with an explicit lower-assurance web fallback contract",
   "license": "MIT",
   "publishConfig": { "access": "public" },
-  "files": ["dist"],
+  "files": ["dist", "LICENSE"],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

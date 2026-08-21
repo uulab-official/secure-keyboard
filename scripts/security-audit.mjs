@@ -671,6 +671,14 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
+  for (const file of ["packages/contracts/package.json", "packages/web/package.json"]) {
+    const packageManifest = source(file, findings);
+    requireText(findings, file, packageManifest, /"files"\s*:\s*\[[^\]]*"LICENSE"/, "publishable npm packages must include their license file");
+  }
+  for (const file of ["packages/contracts/LICENSE", "packages/web/LICENSE"]) {
+    const license = source(file, findings);
+    requireText(findings, file, license, /^MIT License\s/m, "publishable npm packages must ship the MIT license text");
+  }
   const browserSmoke = source("scripts/web-browser-smoke.mjs", findings);
   requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /chromium, firefox, webkit/, "browser smoke must enumerate Chromium, Firefox, and WebKit");
   requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /secureContext/, "browser smoke must verify secure-context behavior");
