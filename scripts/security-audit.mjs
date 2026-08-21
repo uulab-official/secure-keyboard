@@ -276,6 +276,10 @@ export function runSecurityAudit() {
 
   const securitySpec = source("docs/SECURITY-SPEC.md", findings);
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
+  const platformPolicy = source("docs/PLATFORM-SECURITY-POLICY.md", findings);
+  requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to provide certificate[\s\S]{0,40}public-key pinning/, "platform policy must assign pinning ownership without an unsupported SDK claim");
+  requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to detect or defeat rooted\/jailbroken devices/, "platform policy must document compromised-runtime limitations");
+  requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /fail closed on a pin[\s\S]{0,20}mismatch/, "platform policy must require fail-closed host pinning when selected");
   const releaseGates = source("docs/RELEASE-GATES.md", findings);
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
   const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);

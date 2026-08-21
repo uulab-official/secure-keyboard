@@ -86,6 +86,11 @@ session/origin policy. Axum adapters require a request-parts CSRF callback and
 reject a failed result before buffering JSON; no adapter may infer CSRF state
 from a request body.
 
+TLS/pinning ownership and compromised-runtime limits are defined in
+`docs/PLATFORM-SECURITY-POLICY.md`; the SDK does not claim to implement
+certificate pinning, root/jailbreak detection, or tamper resistance across
+arbitrary host transports and operating systems.
+
 Minimum protocol metadata:
 
 ```json
