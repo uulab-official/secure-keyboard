@@ -17,8 +17,9 @@ revalidates the public configuration even when called without a framework
 adapter: layouts are limited to 16 rows, 32 keys per row, 512 total keys, and
 16-byte key labels and 80-byte accessibility labels; theme dimensions and font size must be finite
 and within the same bounds as the versioned public contract. Required theme
-color and metric maps use exact key sets, so missing fields fail closed instead
-of receiving platform-specific defaults.
+color and metric maps use exact key sets and validate every color value, so
+missing or malformed fields fail closed instead of receiving platform-specific
+defaults.
 
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
@@ -108,8 +109,8 @@ calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
 excluded, and no `EditText` is created. Before allocating native rows/buttons,
 the view repeats the public bounds: 16 rows, 32 keys per row, 512 total keys,
 16-byte key labels, 80-byte accessibility labels, and finite and bounded theme dimensions.
-Required theme color and metric maps use exact key sets before native UI
-allocation.
+Required theme color and metric maps use exact key sets and validate every
+color value before native UI allocation.
 
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is

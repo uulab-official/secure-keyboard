@@ -139,6 +139,7 @@ internal object SecureKeypadBridgeConfigParser {
         val keyGap = metric(metrics, "keyGap", 0f, 48f)
         val keyRadius = metric(metrics, "keyRadius", 0f, 80f)
         val contentPadding = metric(metrics, "contentPadding", 0f, 80f)
+        color(colors, "keyDisabledBackground")
         color(colors, "error")
         val keyFontSize = number(typography["keyFontSize"] ?: invalid(), 10f, 72f)
         validateFontWeight(typography["keyFontWeight"] ?: invalid())

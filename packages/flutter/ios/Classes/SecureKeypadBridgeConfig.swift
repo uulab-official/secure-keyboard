@@ -173,6 +173,7 @@ public struct SecureKeypadBridgeConfiguration {
               let keyColor = color(colors["keyBackground"]),
               let keyPressedColor = color(colors["keyPressedBackground"]),
               let keyTextColor = color(colors["keyForeground"]),
+              color(colors["keyDisabledBackground"]) != nil,
               color(colors["error"]) != nil else {
             throw SecureKeypadBridgeConfigError.invalid
         }

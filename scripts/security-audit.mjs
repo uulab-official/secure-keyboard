@@ -362,6 +362,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /exactKeys\(colors, \[\"background\", \"keyBackground\", \"keyForeground\", \"keyPressedBackground\", \"keyDisabledBackground\", \"error\"\]\)/, "iOS bridge configuration must require every theme color key");
     requireText(findings, file, contents, /exactKeys\(metrics, \[\"keyHeight\", \"keyGap\", \"keyRadius\", \"contentPadding\"\]\)/, "iOS bridge configuration must require every theme metric key");
     requireText(findings, file, contents, /private static func exactKeys/, "iOS bridge configuration must distinguish exact required maps from optional maps");
+    requireText(findings, file, contents, /color\(colors\[\"keyDisabledBackground\"\]\) != nil/, "iOS bridge configuration must validate every theme color value");
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
@@ -374,6 +375,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /requireExactKeys\(colors, \"background\", \"keyBackground\", \"keyForeground\", \"keyPressedBackground\", \"keyDisabledBackground\", \"error\"\)/, "Android bridge configuration must require every theme color key");
     requireText(findings, file, contents, /requireExactKeys\(metrics, \"keyHeight\", \"keyGap\", \"keyRadius\", \"contentPadding\"\)/, "Android bridge configuration must require every theme metric key");
     requireText(findings, file, contents, /private fun requireExactKeys/, "Android bridge configuration must distinguish exact required maps from optional maps");
+    requireText(findings, file, contents, /color\(colors, \"keyDisabledBackground\"\)/, "Android bridge configuration must validate every theme color value");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);

@@ -21,6 +21,8 @@ exact release-candidate commit by the release evidence manifest.
 - Made native iOS/Android bridge parsers require the complete versioned theme
   color and metric maps; missing public fields now fail closed consistently with
   the RN, Flutter, and shared contract validators.
+- Native bridge parsers now validate every required theme color value,
+  including disabled-state colors, before configuration reaches UI allocation.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,
   and preserved terminal result events under queue pressure.
 - Capped WebAuthn pending ceremony retention at 15 minutes across all storage
