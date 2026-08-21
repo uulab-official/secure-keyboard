@@ -12,6 +12,13 @@ void main() {
     expect(configuration.onResult, isNull);
   });
 
+  test('default theme supplies the bounded typography required by native rendering', () {
+    final theme = SecureKeypadTheme.defaultTheme();
+
+    expect(theme.keyFontSize, 24);
+    expect(SecureKeypadConfiguration.defaultNumeric().validate(), isEmpty);
+  });
+
   test('ASCII policy remains a native-only policy', () {
     final configuration = SecureKeypadConfiguration(
       layout: SecureKeypadConfiguration.defaultNumeric().layout,

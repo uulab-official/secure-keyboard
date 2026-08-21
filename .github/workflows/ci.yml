@@ -282,8 +282,7 @@ jobs:
         working-directory: ${{ runner.temp }}/secure-keypad-flutter-host
         run: |
           flutter pub get
-          flutter build apk --debug --target-platform android-arm64
-          flutter build apk --debug --target-platform android-x64
+          flutter build apk --debug --target-platform android-arm64,android-x64
       - name: Emit Flutter Android FFI checksum manifest
         run: |
           (

@@ -51,3 +51,12 @@ test("Android runtime smoke executes the RN release artifact", () => {
   assert.match(runtimeSection, /react-native\/app-release\.apk/);
   assert.doesNotMatch(runtimeSection, /react-native\/app-debug\.apk/);
 });
+
+test("Flutter host artifact contains every supported Android target platform", () => {
+  const flutterBuildSection = WORKFLOW.match(
+    /Build the Flutter host APK with the native FFI boundary[\s\S]*?Emit Flutter Android FFI checksum manifest/,
+  )?.[0];
+  assert.ok(flutterBuildSection, "Flutter Android build section must exist");
+  assert.match(flutterBuildSection, /flutter build apk --debug --target-platform android-arm64,android-x64/);
+  assert.doesNotMatch(flutterBuildSection, /target-platform android-arm64\s*\n\s*flutter build apk --debug --target-platform android-x64/);
+});

@@ -141,6 +141,7 @@ class SecureKeypadTheme {
           'keyRadius': 12,
           'contentPadding': 16,
         },
+        keyFontSize: 24,
       );
 }
 

@@ -244,6 +244,9 @@ export function runSecurityAudit() {
   const reactNativeAbiBuild = source("packages/react-native/android/build.gradle", findings);
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /secureKeypadAbiFilters/, "React Native Android native build must derive ABI filters from the host architecture contract");
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "React Native Android native build must pass only selected ABI filters to CMake");
+  const flutterAbiBuild = source("packages/flutter/android/build.gradle", findings);
+  requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /secureKeypadAbiFilters/, "Flutter Android native build must restrict compilation to supplied FFI architectures");
+  requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "Flutter Android native build must pass only available ABI filters to CMake");
   const androidRuntimeHierarchySmoke = source("scripts/android-emulator-runtime-smoke.sh", findings);
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /FLAG_SECURE/, "Android runtime evidence must acknowledge capture blocking by FLAG_SECURE");
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /uiautomator dump/, "Android runtime evidence must verify the rendered native hierarchy");
@@ -959,6 +962,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /controller: controller/, "Flutter host smoke app must link the controller to the PlatformView");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cancelRequest=\{0\}/, "React Native host smoke app must compile the native cancel prop");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-version:\s*['"]3\.47\.0['"]/, "CI must pin the Flutter host-build toolchain");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter build apk --debug --target-platform android-arm64,android-x64/, "Flutter host artifact must bundle every supported Android target platform");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /--version 0\.87\.0/, "CI must pin the React Native host-build version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo build --locked --release -p secure-ffi/, "native host gates must use the locked Rust dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-runs=1000000/, "CI must retain the extended fuzz stability campaign");
