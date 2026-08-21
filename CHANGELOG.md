@@ -23,6 +23,8 @@ exact release-candidate commit by the release evidence manifest.
   the RN, Flutter, and shared contract validators.
 - Native bridge parsers now validate every required theme color value,
   including disabled-state colors, before configuration reaches UI allocation.
+- Android color parsing now rejects signed and non-hex text so native validation
+  matches the shared RN/Flutter color contract exactly.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,
   and preserved terminal result events under queue pressure.
 - Capped WebAuthn pending ceremony retention at 15 minutes across all storage

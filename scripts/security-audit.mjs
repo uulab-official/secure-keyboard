@@ -376,6 +376,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /requireExactKeys\(metrics, \"keyHeight\", \"keyGap\", \"keyRadius\", \"contentPadding\"\)/, "Android bridge configuration must require every theme metric key");
     requireText(findings, file, contents, /private fun requireExactKeys/, "Android bridge configuration must distinguish exact required maps from optional maps");
     requireText(findings, file, contents, /color\(colors, \"keyDisabledBackground\"\)/, "Android bridge configuration must validate every theme color value");
+    requireText(findings, file, contents, /hex\.all\s*\{\s*it in '0'\.\.'9'\s*\|\|\s*it in 'a'\.\.'f'\s*\|\|\s*it in 'A'\.\.'F'/, "Android bridge configuration must reject signed or non-hex color text");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);

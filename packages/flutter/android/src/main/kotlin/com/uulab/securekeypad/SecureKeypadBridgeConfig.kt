@@ -177,6 +177,7 @@ internal object SecureKeypadBridgeConfigParser {
         require(text.startsWith("#"))
         val hex = text.removePrefix("#")
         require(hex.length == 6 || hex.length == 8)
+        require(hex.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' })
         val raw = hex.toLongOrNull(16) ?: invalid()
         return if (hex.length == 6) {
             (raw or 0xff00_0000L).toInt()

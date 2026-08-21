@@ -133,4 +133,15 @@ fun main() {
         it["theme"] = theme
     }
     check(runCatching { SecureKeypadBridgeConfigParser.parse(invalidDisabledColor) }.isFailure)
+
+    val signedColor = validConfiguration().also {
+        @Suppress("UNCHECKED_CAST")
+        val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+        @Suppress("UNCHECKED_CAST")
+        val colors = (theme.getValue("colors") as Map<String, Any?>).toMutableMap()
+        colors["background"] = "#+12345"
+        theme["colors"] = colors
+        it["theme"] = theme
+    }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(signedColor) }.isFailure)
 }
