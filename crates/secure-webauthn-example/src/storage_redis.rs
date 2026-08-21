@@ -5,7 +5,7 @@ use crate::{
         CredentialStoreError, WebAuthnStateKey, WebAuthnStateProtector,
     },
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
-    MAX_PENDING_CEREMONIES,
+    MAX_PENDING_CEREMONIES, MAX_PROTECTED_CEREMONY_RECORD_BYTES,
 };
 use r2d2::{Pool, PooledConnection};
 use redis::Script;
@@ -40,12 +40,21 @@ const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local length = redis.call('STRLEN', KEYS[1])
+if length > tonumber(ARGV[2]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], KEYS[1])
+  return {-2, false}
+end
 local value = redis.call('GET', KEYS[1])
 if value then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], KEYS[1])
 end
-return value
+if not value then
+  return {0, false}
+end
+return {1, value}
 ";
 const BOUNDED_CREDENTIAL_GET_SCRIPT: &str = r"
 local length = redis.call('STRLEN', KEYS[1])
@@ -251,13 +260,16 @@ impl CeremonyStateStore for RedisWebAuthnStore {
     ) -> Result<Option<CeremonyState>, CeremonyStoreError> {
         let key = self.ceremony_key(kind, handle);
         let mut connection = self.connection()?;
-        let encoded: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
+        let (status, encoded): (i64, Option<Vec<u8>>) = Script::new(CONSUME_SCRIPT)
             .key(key)
             .key(self.pending_index_key())
+            .arg(MAX_PROTECTED_CEREMONY_RECORD_BYTES)
             .invoke(&mut *connection)
             .map_err(|_| CeremonyStoreError::Unavailable)?;
-        let Some(encoded) = encoded else {
-            return Ok(None);
+        let encoded = match status {
+            0 => return Ok(None),
+            1 => encoded.ok_or(CeremonyStoreError::Unavailable)?,
+            _ => return Err(CeremonyStoreError::Unavailable),
         };
         let encoded = self.protector.open(encoded)?;
         let state = decode_ceremony_record(encoded.as_slice())?;
@@ -462,7 +474,7 @@ fn redis_error(kind: redis::ErrorKind, message: &'static str) -> redis::RedisErr
 
 #[cfg(test)]
 mod tests {
-    use super::BOUNDED_CREDENTIAL_GET_SCRIPT;
+    use super::{BOUNDED_CREDENTIAL_GET_SCRIPT, CONSUME_SCRIPT};
 
     #[test]
     fn bounded_credential_get_checks_length_before_get() {
@@ -475,5 +487,18 @@ mod tests {
         assert!(length_check < get);
         assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("tonumber(ARGV[1])"));
         assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("return {0, false}"));
+    }
+
+    #[test]
+    fn ceremony_consume_checks_length_before_get() {
+        let length_check = CONSUME_SCRIPT
+            .find("STRLEN")
+            .expect("ceremony consume must check length");
+        let get = CONSUME_SCRIPT
+            .find("'GET'")
+            .expect("ceremony consume must retrieve an accepted value");
+        assert!(length_check < get);
+        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
+        assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
     }
 }

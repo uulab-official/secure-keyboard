@@ -44,6 +44,9 @@ exact release-candidate commit by the release evidence manifest.
 - Bounded PostgreSQL credential post-authentication updates and Redis credential
   reads before materialization; oversized legacy records now fail closed before
   JSON decoding, and accepted Redis buffers are zeroized on drop.
+- Bounded Redis WebAuthn ceremony, OPAQUE one-time-state, and rate-limit reads
+  with atomic pre-`GET` length checks; oversized legacy values are removed
+  without entering the decoder or rate-limit counter path.
 
 ### Verification
 

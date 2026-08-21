@@ -8,10 +8,17 @@ use sha2::{Digest, Sha256};
 use std::{fmt, time::Duration};
 
 const MAX_NAMESPACE_BYTES: usize = 64;
+const MAX_RATE_COUNTER_BYTES: usize = 32;
 const RATE_LIMIT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local current_length = redis.call('STRLEN', KEYS[1])
+if current_length > tonumber(ARGV[5]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[4])
+  return {-2, 0, 0}
+end
 local current = redis.call('GET', KEYS[1])
 if current then
   local attempts = tonumber(current)
@@ -195,6 +202,7 @@ impl RateLimiter for RedisRateLimiter {
             .arg(self.max_keys)
             .arg(self.window_millis)
             .arg(&key_hash)
+            .arg(MAX_RATE_COUNTER_BYTES)
             .invoke(&mut *connection)
             .map_err(|_| RateLimitError::Unavailable)?;
         if response.len() != 3 {
@@ -255,4 +263,22 @@ fn validate_namespace(namespace: &str) -> Result<(), RedisRateLimitConfigError> 
         return Err(RedisRateLimitConfigError::InvalidNamespace);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RATE_LIMIT_SCRIPT;
+
+    #[test]
+    fn rate_limit_script_checks_counter_length_before_get() {
+        let length_check = RATE_LIMIT_SCRIPT
+            .find("STRLEN")
+            .expect("rate-limit script must check counter length");
+        let get = RATE_LIMIT_SCRIPT
+            .find("'GET'")
+            .expect("rate-limit script must retrieve an accepted counter");
+        assert!(length_check < get);
+        assert!(RATE_LIMIT_SCRIPT.contains("tonumber(ARGV[5])"));
+        assert!(RATE_LIMIT_SCRIPT.contains("return {-2, 0, 0}"));
+    }
 }

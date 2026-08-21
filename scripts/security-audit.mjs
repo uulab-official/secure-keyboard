@@ -615,6 +615,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /validate_backend_ttl\(ttl\)/, "Redis WebAuthn storage must validate ceremony TTLs before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.seal\(encoded\.as_slice\(\)\)/, "Redis WebAuthn storage must encrypt ceremony records before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.open\(encoded\)/, "Redis WebAuthn storage must authenticate ceremony records after retrieval");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /CONSUME_SCRIPT[\s\S]{0,700}STRLEN[\s\S]{0,260}'GET'/, "Redis WebAuthn ceremony consumption must bound record bytes before GET");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /MAX_PROTECTED_CEREMONY_RECORD_BYTES/, "Redis WebAuthn ceremony consumption must use the encrypted-record bound");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /const BOUNDED_CREDENTIAL_GET_SCRIPT: &str/, "Redis credential reads must use a dedicated bounded retrieval script");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /BOUNDED_CREDENTIAL_GET_SCRIPT[\s\S]{0,240}STRLEN[\s\S]{0,240}'GET'/, "Redis credential reads must check STRLEN before GET");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /fn get_bounded_credentials[\s\S]{0,600}MAX_CREDENTIAL_RECORD_BYTES/, "Redis credential reads must enforce the application byte bound before decoding");
@@ -652,6 +654,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /Sha256/, "Redis OPAQUE state handles must be hashed before storage");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /protector\.seal/, "Redis OPAQUE state must encrypt before storage");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /protector\.open/, "Redis OPAQUE state must authenticate before decoding");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /CONSUME_SCRIPT[\s\S]{0,700}STRLEN[\s\S]{0,260}'GET'/, "Redis OPAQUE state consumption must bound record bytes before GET");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /CONSUME_SCRIPT[\s\S]{0,700}tonumber\(ARGV\[2\]\)/, "Redis OPAQUE state consumption must use the encrypted-record bound");
   requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /rediss:\/\//, "Redis OPAQUE state must require TLS by default");
   const opaqueStatePostgres = source("crates/secure-auth-server/src/opaque_state_postgres.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /POSTGRES_ONE_TIME_LOGIN_STATE_SCHEMA_SQL/, "PostgreSQL OPAQUE state must ship an explicit migration");
@@ -668,6 +672,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /second_store|cross_instance_handle/, "durable OPAQUE service tests must verify same-key cross-instance consumption");
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT[\s\S]{0,500}STRLEN[\s\S]{0,260}'GET'/, "Redis rate limiting must bound counter bytes before GET");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /MAX_RATE_COUNTER_BYTES/, "Redis rate limiting must define a bounded counter representation");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /Sha256/, "Redis rate-limit keys must be hashed before storage");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /rediss:\/\//, "Redis rate limiting must require TLS by default");
   const postgresRateLimit = source("crates/secure-auth-server/src/rate_limit_postgres.rs", findings);

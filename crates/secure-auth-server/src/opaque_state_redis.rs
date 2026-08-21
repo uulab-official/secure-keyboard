@@ -1,6 +1,6 @@
 use crate::opaque_state_codec::{
     decode_bound_state, encode_bound_state, StateProtector,
-    MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES,
+    MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES, MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES,
 };
 use crate::{
     BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, OpaqueStateKey, StoreError,
@@ -37,12 +37,21 @@ const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local length = redis.call('STRLEN', KEYS[1])
+if length > tonumber(ARGV[2]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[1])
+  return {-2, false}
+end
 local value = redis.call('GET', KEYS[1])
 if value then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], ARGV[1])
 end
-return value
+if not value then
+  return {0, false}
+end
+return {1, value}
 ";
 
 /// Configuration errors returned while constructing a Redis one-time store.
@@ -232,14 +241,17 @@ impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
     fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError> {
         let handle_hash = hash_handle(handle);
         let mut connection = self.connection()?;
-        let protected: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
+        let (status, protected): (i64, Option<Vec<u8>>) = Script::new(CONSUME_SCRIPT)
             .key(self.state_key(&handle_hash))
             .key(self.pending_index_key())
             .arg(&handle_hash)
+            .arg(MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES)
             .invoke(&mut *connection)
             .map_err(|_| StoreError::Unavailable)?;
-        let Some(protected) = protected else {
-            return Ok(None);
+        let protected = match status {
+            0 => return Ok(None),
+            1 => protected.ok_or(StoreError::Unavailable)?,
+            _ => return Err(StoreError::Unavailable),
         };
         let encoded = self.protector.open(protected)?;
         Ok(Some(decode_bound_state(encoded.to_vec())?))
@@ -278,4 +290,22 @@ fn validate_namespace(namespace: &str) -> Result<(), RedisOneTimeStateConfigErro
         return Err(RedisOneTimeStateConfigError::InvalidNamespace);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CONSUME_SCRIPT;
+
+    #[test]
+    fn consume_checks_length_before_get() {
+        let length_check = CONSUME_SCRIPT
+            .find("STRLEN")
+            .expect("opaque consume must check length");
+        let get = CONSUME_SCRIPT
+            .find("'GET'")
+            .expect("opaque consume must retrieve an accepted value");
+        assert!(length_check < get);
+        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
+        assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
+    }
 }
