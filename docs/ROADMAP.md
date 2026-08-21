@@ -191,6 +191,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
 - [x] Restrict release signing workflow dispatch to a verified immutable 40-character commit SHA.
+- [x] Bind release signing to a named protected GitHub Environment; administrator reviewer configuration remains external evidence.
 - [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.
