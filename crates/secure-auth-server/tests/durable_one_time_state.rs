@@ -1,7 +1,13 @@
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 use secure_auth::ServerLoginStateBytes;
-use secure_auth_server::{BoundLoginState, OpaqueStateKey};
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
+use secure_auth_server::BoundLoginState;
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
+use secure_auth_server::OpaqueStateKey;
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 use std::time::Duration;
 
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 fn fixture_state() -> BoundLoginState {
     BoundLoginState::new(
         ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
@@ -11,6 +17,7 @@ fn fixture_state() -> BoundLoginState {
     .unwrap()
 }
 
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 fn fixture_key() -> OpaqueStateKey {
     OpaqueStateKey::from_bytes(&[0x42u8; 32]).unwrap()
 }

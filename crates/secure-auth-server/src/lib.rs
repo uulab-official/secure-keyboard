@@ -8,6 +8,7 @@
 //! instances must implement the same one-use `take` semantics with an atomic
 //! Redis, database, or equivalent store.
 
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 mod opaque_state_codec;
 mod rate_limit;
 mod service;
@@ -24,6 +25,7 @@ mod opaque_state_redis;
 #[cfg(feature = "postgres-backend")]
 mod opaque_state_postgres;
 
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
 pub use opaque_state_codec::OpaqueStateKey;
 pub use rate_limit::{
     InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
