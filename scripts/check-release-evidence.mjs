@@ -598,7 +598,7 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
         return;
       }
       for (const key of Object.keys(finding)) {
-        if (!["id", "severity", "status", "summary"].includes(key)) {
+        if (!["id", "severity", "status", "summary", "affectedScope", "reproduction", "remediationOwner", "retestEvidence"].includes(key)) {
           add(findings, `${findingField}.${key}`, "unsupported finding field");
         }
       }
@@ -625,6 +625,33 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
         /[\r\n]/.test(finding.summary)
       ) {
         add(findings, `${findingField}.summary`, "must be a bounded single-line summary");
+      }
+      if (
+        !Array.isArray(finding.affectedScope) ||
+        finding.affectedScope.length === 0 ||
+        finding.affectedScope.length > REVIEW_SCOPE.length
+      ) {
+        add(findings, `${findingField}.affectedScope`, "must contain one or more supported review scopes");
+      } else {
+        const affectedScope = new Set(finding.affectedScope);
+        if (affectedScope.size !== finding.affectedScope.length) {
+          add(findings, `${findingField}.affectedScope`, "must not contain duplicate review scopes");
+        }
+        for (const scope of finding.affectedScope) {
+          if (!REVIEW_SCOPE.includes(scope)) {
+            add(findings, `${findingField}.affectedScope`, "must contain supported review scopes only");
+          }
+        }
+      }
+      for (const [key, maximum] of [
+        ["reproduction", 4_096],
+        ["remediationOwner", 256],
+        ["retestEvidence", 4_096],
+      ]) {
+        const value = finding[key];
+        if (typeof value !== "string" || value.length === 0 || value.length > maximum || /[\r\n]/.test(value)) {
+          add(findings, `${findingField}.${key}`, "must be bounded, non-empty, and single-line");
+        }
       }
     });
   }

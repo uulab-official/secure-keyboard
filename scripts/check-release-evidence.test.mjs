@@ -741,7 +741,16 @@ test("rejects an approving review report with an open critical finding", () => {
   const evidence = writeCompleteEvidenceFixture(root);
   const reportArtifact = evidence.artifacts.find(({ kind }) => kind === "independent-review-report");
   const report = JSON.parse(readFileSync(join(root, reportArtifact.path), "utf8"));
-  report.findings = [{ id: "CRITICAL-1", severity: "critical", status: "open", summary: "Unresolved critical issue" }];
+  report.findings = [{
+    id: "CRITICAL-1",
+    severity: "critical",
+    status: "open",
+    summary: "Unresolved critical issue",
+    affectedScope: ["native-input-boundary"],
+    reproduction: "Review the native submission handoff under the stated device conditions",
+    remediationOwner: "security-team",
+    retestEvidence: "Pending remediation and independent retest",
+  }];
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
   const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
@@ -758,4 +767,36 @@ test("rejects an approving review report with an open critical finding", () => {
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   assert.ok(findings.some((finding) => finding.includes("CRITICAL-1") && finding.includes("accepted or remediated")));
+});
+
+test("rejects a review finding without scope, reproduction, ownership, and retest evidence", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-incomplete-review-finding-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const reportArtifact = evidence.artifacts.find(({ kind }) => kind === "independent-review-report");
+  const report = JSON.parse(readFileSync(join(root, reportArtifact.path), "utf8"));
+  report.findings = [{
+    id: "MEDIUM-1",
+    severity: "medium",
+    status: "accepted",
+    summary: "Residual risk requires explicit reviewer accountability",
+  }];
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  report.reviewerPublicKeySha256 = publicKeySha256;
+  const signedReportBytes = Buffer.from(JSON.stringify(report), "utf8");
+
+  writeFileSync(join(root, reportArtifact.path), signedReportBytes);
+  reportArtifact.sha256 = createHash("sha256").update(signedReportBytes).digest("hex");
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.signaturePath), sign(null, signedReportBytes, privateKey));
+  evidence.independentReview.publicKeySha256 = publicKeySha256;
+  evidence.artifacts.find(({ kind }) => kind === "independent-review-public-key").sha256 = publicKeySha256;
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("findings[0].affectedScope")));
+  assert.ok(findings.some((finding) => finding.includes("findings[0].reproduction")));
+  assert.ok(findings.some((finding) => finding.includes("findings[0].remediationOwner")));
+  assert.ok(findings.some((finding) => finding.includes("findings[0].retestEvidence")));
 });

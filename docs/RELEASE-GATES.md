@@ -237,8 +237,11 @@ an arbitrary signed note. Its `schemaVersion` is `1`, `reportType` is
 package version, and reviewer public-key SHA-256. Its scope must cover
 `native-input-boundary`, `opaque-authentication`, `http-json-transport`,
 `replay-rate-limit-backends`, `framework-adapters`, `device-runtime-evidence`,
-and `release-process`; it must include bounded finding records and an explicit
-`approved` or `approved-with-residual-risk` decision. `not-approved`, malformed,
+and `release-process`; it must include bounded finding records. Every finding
+must also declare `affectedScope`, `reproduction`, `remediationOwner`, and
+`retestEvidence`, so an accepted residual risk cannot be recorded without an
+accountable review trail. The report must end with an explicit `approved` or
+`approved-with-residual-risk` decision. `not-approved`, malformed,
 secret-bearing, scope-incomplete, or over-1 MiB reports fail closed before
 release verification; critical/high findings must be `accepted` or
 `remediated`, never `open`.
