@@ -488,7 +488,12 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
       return;
     }
     const publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
-    const valid = verify(null, readFileSync(signedArtifactPath), publicKey, readFileSync(signaturePath));
+    const signedArtifactBytes = readFileSync(signedArtifactPath);
+    if (signedArtifactBytes.length === 0) {
+      add(findings, fieldName, "signed artifact must be non-empty");
+      return;
+    }
+    const valid = verify(null, signedArtifactBytes, publicKey, readFileSync(signaturePath));
     if (!valid) add(findings, fieldName, "detached Ed25519 signature verification failed");
   } catch (error) {
     add(findings, fieldName, `detached Ed25519 signature could not be verified: ${error.message}`);

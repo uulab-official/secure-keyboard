@@ -987,6 +987,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release evidence must support a protected reviewer-key fingerprint");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed artifact must be non-empty/, "release tooling must reject empty signed release artifacts");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence must reject sentinel and raw-input field names");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyGateEvidenceRecord/, "release tooling must bind embedded gate evidence records");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /DEVICE_RELEASE_GATE_POLICIES/, "release tooling must map device gates to their expected platforms");

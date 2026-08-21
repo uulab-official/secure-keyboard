@@ -604,3 +604,30 @@ test("rejects a tampered independent-review attestation", () => {
 
   assert.ok(findings.some((finding) => finding.includes("independentReview")));
 });
+
+test("rejects an empty independently signed review report", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-empty-review-"));
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const emptyReport = Buffer.alloc(0);
+  const signature = sign(null, emptyReport, privateKey);
+  const evidence = {
+    gates: [],
+    artifacts: [],
+    independentReview: {
+      algorithm: "ed25519",
+      publicKeyPath: "review/reviewer.pub.der",
+      signedArtifactPath: "review/report.bin",
+      signaturePath: "review/report.sig",
+      publicKeySha256: createHash("sha256").update(publicKeyDer).digest("hex"),
+    },
+  };
+  mkdirSync(join(root, "review"), { recursive: true });
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.signedArtifactPath), emptyReport);
+  writeFileSync(join(root, evidence.independentReview.signaturePath), signature);
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("independentReview") && finding.includes("non-empty")));
+});

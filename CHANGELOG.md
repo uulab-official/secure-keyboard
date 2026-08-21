@@ -93,3 +93,5 @@ exact release-candidate commit by the release evidence manifest.
   scanning to keep release verification fail-closed under oversized artifacts.
 - Device evidence validation now requires canonical millisecond UTC timestamps
   and bounds device/browser metadata labels before accepting a record.
+- Release evidence now rejects empty signed artifacts, including an empty
+  independently signed security-review report.
