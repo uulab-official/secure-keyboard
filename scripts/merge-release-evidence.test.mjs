@@ -7,7 +7,11 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { REQUIRED_RELEASE_GATES, validateReleaseEvidence } from "./check-release-evidence.mjs";
+import {
+  CI_RELEASE_GATE_CHECKS,
+  REQUIRED_RELEASE_GATES,
+  validateReleaseEvidence,
+} from "./check-release-evidence.mjs";
 import { mergeReleaseEvidence, writeMergedEvidence } from "./merge-release-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
@@ -138,6 +142,24 @@ function completeFragments() {
   ];
 }
 
+function gateEvidence(gateName, commit) {
+  const checks = CI_RELEASE_GATE_CHECKS[gateName];
+  return {
+    schemaVersion: 1,
+    commit,
+    gate: gateName,
+    status: "pass",
+    ...(checks === undefined
+      ? {}
+      : {
+          evidenceKind: "ci-command",
+          runner: "ci-aggregate",
+          recordedAt: "2026-08-21T00:00:00.000Z",
+          checks,
+        }),
+  };
+}
+
 test("merges split gates, artifacts, and signature into a complete manifest", () => {
   const merged = mergeReleaseEvidence(completeFragments(), { createdAt: "2026-08-21T00:00:00.000Z" });
 
@@ -233,7 +255,7 @@ test("CLI assembles and verifies a signed evidence root", () => {
       writeDeviceGateEvidence(root, gate, platformByGate[gate]);
     } else {
       const gateEvidenceBytes = Buffer.from(
-        JSON.stringify({ schemaVersion: 1, commit, gate: gate.name, status: "pass" }),
+        JSON.stringify(gateEvidence(gate.name, commit)),
         "utf8",
       );
       writeFileSync(join(root, gate.evidencePath), gateEvidenceBytes);

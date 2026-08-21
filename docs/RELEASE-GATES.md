@@ -142,7 +142,11 @@ symlink escapes, and fails if the resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
 Every `gate.evidencePath` must point to a JSON object with
-`{schemaVersion: 1, gate: <same gate name>, commit: <same gate SHA>, status: "pass"}`. The final file
+`{schemaVersion: 1, gate: <same gate name>, commit: <same gate SHA>, status: "pass"}`. CI-owned gates additionally
+require `evidenceKind: "ci-command"`, a sanitized `runner`, an ISO-8601
+`recordedAt`, and the owning job check labels: `job-rust`, `job-contracts`,
+the four framework host jobs, `job-fuzz`, or `job-durable-backends` as defined
+by the gate. The final file
 verification recomputes its digest and checks that embedded commit, status, and
 gate binding and secret-field policy, so a current manifest cannot be assembled
 from an older, cross-gate, or secret-bearing gate record. The `ios-device-matrix` and

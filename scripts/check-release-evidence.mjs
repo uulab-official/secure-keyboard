@@ -39,6 +39,29 @@ export const DEVICE_RELEASE_GATE_POLICIES = Object.freeze({
   "web-browser-matrix": Object.freeze({ platform: "web", requirePhysicalDevice: false }),
 });
 
+/**
+ * CI-only release gates must carry the checks emitted by their owning job.
+ * This prevents a structurally valid but under-specified `pass` record from
+ * satisfying a release gate without naming the required command group.
+ */
+export const CI_RELEASE_GATE_CHECKS = Object.freeze({
+  "rust-workspace": Object.freeze(["job-rust"]),
+  "javascript-contracts": Object.freeze(["job-contracts"]),
+  "native-parity": Object.freeze(["job-contracts"]),
+  "release-version-parity": Object.freeze(["job-contracts"]),
+  "framework-host-builds": Object.freeze([
+    "job-flutter-host-build",
+    "job-react-native-host-build",
+    "job-ios-host-builds",
+    "job-android-host-runtime-smoke",
+  ]),
+  "fuzz-stability": Object.freeze(["job-fuzz"]),
+  "linux-leak-sanitizer": Object.freeze(["job-fuzz"]),
+  "durable-backends": Object.freeze(["job-durable-backends"]),
+});
+
+const CI_CHECK_LABEL = /^[a-z0-9][a-z0-9._-]{0,80}$/;
+
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -375,6 +398,38 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
   }
   if (record.gate !== gate.name) {
     add(findings, `${field}.evidence.gate`, "gate evidence gate must match the release gate");
+  }
+
+  const requiredCiChecks = CI_RELEASE_GATE_CHECKS[gate.name];
+  if (requiredCiChecks !== undefined) {
+    if (record.evidenceKind !== "ci-command") {
+      add(findings, `${field}.evidence.evidenceKind`, "CI gate evidenceKind must equal ci-command");
+    }
+    if (typeof record.runner !== "string" || !CI_CHECK_LABEL.test(record.runner)) {
+      add(findings, `${field}.evidence.runner`, "CI gate runner must be a sanitized label");
+    }
+    if (
+      typeof record.recordedAt !== "string" ||
+      Number.isNaN(Date.parse(record.recordedAt)) ||
+      new Date(record.recordedAt).toISOString() !== record.recordedAt
+    ) {
+      add(findings, `${field}.evidence.recordedAt`, "CI gate recordedAt must be an ISO-8601 UTC timestamp");
+    }
+    if (!Array.isArray(record.checks) || record.checks.length === 0) {
+      add(findings, `${field}.evidence.checks`, "CI gate checks must contain the owning job checks");
+    } else {
+      for (const check of record.checks) {
+        if (typeof check !== "string" || !CI_CHECK_LABEL.test(check)) {
+          add(findings, `${field}.evidence.checks`, "CI gate checks must contain sanitized labels only");
+          break;
+        }
+      }
+      for (const requiredCheck of requiredCiChecks) {
+        if (!record.checks.includes(requiredCheck)) {
+          add(findings, `${field}.evidence.checks`, `CI gate checks must include ${requiredCheck}`);
+        }
+      }
+    }
   }
 
   const devicePolicy = DEVICE_RELEASE_GATE_POLICIES[gate.name];

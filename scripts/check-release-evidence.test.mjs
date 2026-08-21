@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
+  CI_RELEASE_GATE_CHECKS,
   REQUIRED_RELEASE_GATES,
   verifyReleaseEvidenceFiles,
   validateReleaseEvidence,
@@ -169,8 +170,22 @@ function writeCompleteEvidenceFixture(root) {
     if (platform) {
       writeDeviceGateEvidence(root, gate, platform);
     } else {
+      const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(
-        JSON.stringify({ schemaVersion: 1, commit, gate: gate.name, status: "pass" }),
+        JSON.stringify({
+          schemaVersion: 1,
+          commit,
+          gate: gate.name,
+          status: "pass",
+          ...(ciChecks === undefined
+            ? {}
+            : {
+                evidenceKind: "ci-command",
+                runner: "ci-aggregate",
+                recordedAt: "2026-08-21T00:00:00.000Z",
+                checks: ciChecks,
+              }),
+        }),
         "utf8",
       );
       writeFileSync(join(root, gate.evidencePath), gatePayload);
@@ -391,8 +406,22 @@ test("verifies every referenced release evidence and artifact digest", () => {
     if (platformByGate[gate.name]) {
       writeDeviceGateEvidence(root, gate, platformByGate[gate.name]);
     } else {
+      const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(
-        JSON.stringify({ schemaVersion: 1, commit: evidence.commit, gate: gate.name, status: "pass" }),
+        JSON.stringify({
+          schemaVersion: 1,
+          commit: evidence.commit,
+          gate: gate.name,
+          status: "pass",
+          ...(ciChecks === undefined
+            ? {}
+            : {
+                evidenceKind: "ci-command",
+                runner: "ci-aggregate",
+                recordedAt: "2026-08-21T00:00:00.000Z",
+                checks: ciChecks,
+              }),
+        }),
         "utf8",
       );
       writeFileSync(join(root, gate.evidencePath), gatePayload);
@@ -464,6 +493,32 @@ test("rejects a gate evidence record reused for a different release gate", () =>
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   assert.ok(findings.some((finding) => finding.includes("gate evidence gate")));
+});
+
+test("rejects an under-specified CI gate evidence record", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-ci-gate-"));
+  const evidence = completeEvidence();
+  const gate = evidence.gates.find((candidate) => candidate.name === "fuzz-stability");
+  const payload = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      status: "pass",
+      commit: gate.commit,
+      gate: gate.name,
+      evidenceKind: "ci-command",
+      runner: "ubuntu-24.04",
+      recordedAt: "2026-08-22T00:00:00.000Z",
+      checks: ["unrelated-check"],
+    }),
+    "utf8",
+  );
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("gates[5].evidence.checks")));
 });
 
 test("does not allow a minimal JSON object to satisfy a physical device gate", () => {

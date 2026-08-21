@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { CI_RELEASE_GATE_CHECKS } from "./check-release-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -14,7 +15,22 @@ const EMIT_SCRIPT = fileURLToPath(new URL("./emit-release-gate-evidence.mjs", im
 const COMMIT = "a".repeat(40);
 
 function evidenceRecord(commit = COMMIT, gate = "rust-workspace") {
-  return { schemaVersion: 1, commit, gate, status: "pass", result: "sanitized" };
+  const checks = CI_RELEASE_GATE_CHECKS[gate];
+  return {
+    schemaVersion: 1,
+    commit,
+    gate,
+    status: "pass",
+    result: "sanitized",
+    ...(checks === undefined
+      ? {}
+      : {
+          evidenceKind: "ci-command",
+          runner: "ci-aggregate",
+          recordedAt: "2026-08-22T00:00:00.000Z",
+          checks,
+        }),
+  };
 }
 
 test("builds a commit-bound gate fragment with the exact evidence digest", () => {
@@ -115,6 +131,25 @@ test("rejects unsupported gates, stale records, unsafe paths, and secret fields"
         evidenceBytes: Buffer.from(JSON.stringify(evidenceRecord(COMMIT, "javascript-contracts")), "utf8"),
       }),
     /must match the fragment gate/,
+  );
+  assert.throws(
+    () =>
+      buildReleaseGateFragment({
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        gateName: "fuzz-stability",
+        evidencePath: "evidence/gate.json",
+        evidenceBytes: Buffer.from(
+          JSON.stringify({
+            schemaVersion: 1,
+            commit: COMMIT,
+            gate: "fuzz-stability",
+            status: "pass",
+          }),
+          "utf8",
+        ),
+      }),
+    /CI gate evidenceKind must equal ci-command/,
   );
 });
 

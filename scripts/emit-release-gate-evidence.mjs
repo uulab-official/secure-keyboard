@@ -4,7 +4,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
+import { CI_RELEASE_GATE_CHECKS, REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -12,6 +12,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)/i;
 const TOOLCHAIN_NAMES = new Set(["rust", "node", "flutter", "reactNative", "ndk"]);
+const CI_CHECK_LABEL = /^[a-z0-9][a-z0-9._-]{0,80}$/;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -53,6 +54,32 @@ function validateEvidenceRecord(record, commit, gateName) {
     findings.push("gate evidence commit must match the gate commit");
   }
   if (record.gate !== gateName) findings.push("gate evidence gate must match the fragment gate");
+  const requiredCiChecks = CI_RELEASE_GATE_CHECKS[gateName];
+  if (requiredCiChecks !== undefined) {
+    if (record.evidenceKind !== "ci-command") findings.push("CI gate evidenceKind must equal ci-command");
+    if (typeof record.runner !== "string" || !CI_CHECK_LABEL.test(record.runner)) {
+      findings.push("CI gate runner must be a sanitized label");
+    }
+    if (
+      typeof record.recordedAt !== "string" ||
+      Number.isNaN(Date.parse(record.recordedAt)) ||
+      new Date(record.recordedAt).toISOString() !== record.recordedAt
+    ) {
+      findings.push("CI gate recordedAt must be an ISO-8601 UTC timestamp");
+    }
+    if (!Array.isArray(record.checks) || record.checks.length === 0) {
+      findings.push("CI gate checks must contain the owning job checks");
+    } else {
+      if (record.checks.some((check) => typeof check !== "string" || !CI_CHECK_LABEL.test(check))) {
+        findings.push("CI gate checks must contain sanitized labels only");
+      }
+      for (const requiredCheck of requiredCiChecks) {
+        if (!record.checks.includes(requiredCheck)) {
+          findings.push(`CI gate checks must include ${requiredCheck}`);
+        }
+      }
+    }
+  }
   return findings;
 }
 

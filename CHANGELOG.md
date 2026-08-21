@@ -57,6 +57,9 @@ exact release-candidate commit by the release evidence manifest.
   cannot leave a freed session pointer available for a later double free.
 - Added a pre-copy 64-byte bound for Android JNI public key-ID arrays to avoid
   obtaining oversized JVM buffers before the Rust ABI can reject them.
+- Bound release evidence CI records to their owning job check groups, sanitized
+  runner labels, and commit-bound timestamps so an under-specified `pass`
+  record cannot satisfy a CI release gate.
 
 ### Verification
 
@@ -78,3 +81,5 @@ exact release-candidate commit by the release evidence manifest.
 - Durable Redis service gates now inject oversized legacy ceremony, OPAQUE
   state, credential, and rate-limit values and verify pre-materialization
   fail-closed cleanup against the live backend.
+- Release evidence tests now cover rejection of under-specified CI gate
+  records before digest and signature verification is treated as sufficient.
