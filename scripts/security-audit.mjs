@@ -125,6 +125,28 @@ export function findMutableCiActionLines(ciWorkflow) {
 }
 
 /**
+ * Checks that OPAQUE export/session keys are copied through the zeroizing
+ * helper instead of relying on a temporary GenericArray drop.
+ *
+ * @param {string} contents secure-auth source text
+ * @returns {Array<{detail: string}>}
+ */
+export function findOpaqueSecretOutputMismatches(contents) {
+  const findings = [];
+  if (
+    !/fn secret_output_from_zeroizing<T[\s\S]*?T:\s*AsRef<\[u8\]>\s*\+\s*Zeroize[\s\S]*?SecretOutput\(copy_and_zeroize_serialized\(&mut serialized\)\)/.test(
+      contents,
+    )
+  ) {
+    findings.push({ detail: "OPAQUE secret outputs must use the zeroizing helper" });
+  }
+  if (/\b(?:export_key|session_key)\.to_vec\(\)/.test(contents)) {
+    findings.push({ detail: "OPAQUE secret outputs must not use a direct GenericArray copy" });
+  }
+  return findings;
+}
+
+/**
  * Runs a dependency-free, read-only release audit independent from framework
  * runtimes. It checks source-level invariants that unit tests cannot prove
  * when a package manifest or bridge copy is changed.
@@ -170,6 +192,13 @@ export function runSecurityAudit() {
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter.match(/toPlatformCreationParams\(\)[\s\S]*?\n  \}/)?.[0] ?? "", /onResult|onMaskedStateChanged/, "Flutter native creation params must not serialize callbacks");
 
   const authDebug = source("crates/secure-auth/src/lib.rs", findings);
+  for (const mismatch of findOpaqueSecretOutputMismatches(authDebug)) {
+    findings.push({
+      rule: "secret-output-zeroization",
+      file: "crates/secure-auth/src/lib.rs",
+      detail: mismatch.detail,
+    });
+  }
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /impl core::fmt::Debug for AuthEnvelope/, "OPAQUE transport Debug must be manually redacted");
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /field\("payload_len", &self\.payload\.len\(\)\)/, "OPAQUE transport Debug may expose payload length only");
   forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");

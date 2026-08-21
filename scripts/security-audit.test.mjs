@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  findOpaqueSecretOutputMismatches,
   findMutableCiActionLines,
   findNativeAbiVersionMismatches,
   runSecurityAudit,
@@ -10,6 +11,18 @@ import {
 
 test("independent static security audit has no findings", () => {
   assert.deepEqual(runSecurityAudit(), []);
+});
+
+test("OPAQUE secret outputs require a zeroizing source copy", () => {
+  const source = readFileSync(new URL("../crates/secure-auth/src/lib.rs", import.meta.url), "utf8");
+  assert.deepEqual(findOpaqueSecretOutputMismatches(source), []);
+
+  const findings = findOpaqueSecretOutputMismatches(
+    "let session_key = result.session_key.to_vec();",
+  );
+  assert.equal(findings.length, 2);
+  assert.match(findings[0].detail, /zeroizing helper/);
+  assert.match(findings[1].detail, /direct GenericArray copy/);
 });
 
 test("CI action audit rejects mutable refs and accepts immutable revisions", () => {

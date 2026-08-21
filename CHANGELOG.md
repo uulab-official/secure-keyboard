@@ -55,3 +55,5 @@ exact release-candidate commit by the release evidence manifest.
   sources and rejected oversized message/setup/credential copies.
 - Secure-auth now zeroizes GenericArray export/session-key sources before
   transferring them into the native-only `SecretOutput` container.
+- Static security audit now rejects direct OPAQUE export/session-key
+  `GenericArray` copies that bypass the zeroizing helper.
