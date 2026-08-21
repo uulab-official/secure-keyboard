@@ -11,11 +11,25 @@
 mod rate_limit;
 mod service;
 
+#[cfg(feature = "postgres-backend")]
+mod rate_limit_postgres;
+
+#[cfg(feature = "redis-backend")]
+mod rate_limit_redis;
+
 pub use rate_limit::{
     InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
-    MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,
+    MAX_DISTRIBUTED_RATE_LIMIT_WINDOW, MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,
 };
 pub use service::{PublicAuthCode, ServerAuthError, ServerAuthService, MAX_SERVER_KEY_IDS};
+
+#[cfg(feature = "postgres-backend")]
+pub use rate_limit_postgres::{
+    PostgresRateLimitConfigError, PostgresRateLimiter, POSTGRES_RATE_LIMIT_SCHEMA_SQL,
+};
+
+#[cfg(feature = "redis-backend")]
+pub use rate_limit_redis::{RedisRateLimitConfigError, RedisRateLimiter};
 
 use rand::{rngs::OsRng, RngCore};
 use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_MESSAGE_BYTES};

@@ -43,6 +43,24 @@ would otherwise expose them operationally. Preserve the reference semantics:
 `Limited { retry_after }`. Backend errors must fail closed for authentication
 attempts and must not reveal whether an account exists.
 
+The reference crate includes feature-gated implementations:
+
+- `RedisRateLimiter` uses a single Lua script, a server-side fixed-window TTL,
+  a bounded active-key sorted set, and SHA-256 key hashing. The production
+  constructor requires `rediss://`; plaintext is available only through the
+  explicitly named local-test constructor.
+- `PostgresRateLimiter` uses a namespace advisory transaction lock, deletes
+  expired rows before counting, and updates/inserts the hashed key in the same
+  transaction. Its migration is exported as
+  `POSTGRES_RATE_LIMIT_SCHEMA_SQL`, and production uses an explicit TLS
+  connector.
+
+Both adapters are blocking. Async hosts must run them on a blocking worker and
+must configure separate namespaces for account, source IP, and deployment
+limits. Distributed adapters reject windows longer than seven days so Redis
+millisecond scores remain bounded and accidental long-lived key retention is
+not silently accepted.
+
 ## Rotation and rollout
 
 Store the active server-key ID and the explicitly allowed previous-key window

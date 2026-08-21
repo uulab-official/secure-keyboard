@@ -145,6 +145,17 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /danger-allow-state-serialisation/, "WebAuthn state serialization must be an explicit pinned server dependency feature");
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /redis-backend/, "Redis storage must be explicitly feature-gated");
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /postgres-backend/, "PostgreSQL storage must be explicitly feature-gated");
+  const authServerManifest = source("crates/secure-auth-server/Cargo.toml", findings);
+  requireText(findings, "crates/secure-auth-server/Cargo.toml", authServerManifest, /redis-backend/, "Redis rate limiting must be explicitly feature-gated");
+  requireText(findings, "crates/secure-auth-server/Cargo.toml", authServerManifest, /postgres-backend/, "PostgreSQL rate limiting must be explicitly feature-gated");
+  const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /Sha256/, "Redis rate-limit keys must be hashed before storage");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /rediss:\/\//, "Redis rate limiting must require TLS by default");
+  const postgresRateLimit = source("crates/secure-auth-server/src/rate_limit_postgres.rs", findings);
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /POSTGRES_RATE_LIMIT_SCHEMA_SQL/, "PostgreSQL rate limiting must ship an explicit migration");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /pg_advisory_xact_lock/, "PostgreSQL rate limiting must serialize capacity/check updates");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /MakeTlsConnect/, "PostgreSQL rate limiting must accept an explicit TLS connector");
   const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");
@@ -185,6 +196,7 @@ export function runSecurityAudit() {
   const distributedGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
+  requireText(findings, ".github/workflows/ci.yml", source(".github/workflows/ci.yml", findings), /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");

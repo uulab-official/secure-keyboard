@@ -119,6 +119,7 @@ where
         let manager = PostgresConnectionManager::new(config, tls);
         let pool = Pool::builder()
             .max_size(pool_size)
+            .connection_timeout(Duration::from_secs(5))
             .build(manager)
             .map_err(|_| PostgresStorageConfigError::PoolBuild)?;
         Ok(Self {

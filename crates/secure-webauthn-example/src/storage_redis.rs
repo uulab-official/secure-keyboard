@@ -141,6 +141,7 @@ impl RedisWebAuthnStore {
         let client = redis::Client::open(url).map_err(|_| RedisStorageConfigError::InvalidUrl)?;
         let pool = Pool::builder()
             .max_size(pool_size)
+            .connection_timeout(Duration::from_secs(5))
             .build(client)
             .map_err(|_| RedisStorageConfigError::PoolBuild)?;
         Ok(Self {

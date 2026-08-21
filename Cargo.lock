@@ -1832,9 +1832,15 @@ dependencies = [
 name = "secure-auth-server"
 version = "0.1.0"
 dependencies = [
+ "postgres",
+ "r2d2",
+ "r2d2_postgres",
  "rand 0.8.7",
+ "redis",
  "secure-auth",
  "secure-core",
+ "sha2 0.10.9",
+ "uuid",
 ]
 
 [[package]]

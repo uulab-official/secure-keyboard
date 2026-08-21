@@ -107,6 +107,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, a
 - [x] Apply envelope bounds to both constructor and Serde deserialization paths.
 - [x] Add a bounded JSON decoder and generic external authentication error codes.
 - [x] Add a bounded fixed-window rate limiter and shared backend contract.
+- [x] Add feature-gated Redis/PostgreSQL rate-limit adapters with hashed keys, bounded active-key capacity, and atomic fixed-window checks.
 - [x] Add a missing-account OPAQUE dummy-path response-shape regression test.
 - [x] Add explicit active/previous key rotation and finalization downgrade tests.
 - [x] Add public opaque-handle generation and an executable atomic backend contract test.
@@ -125,7 +126,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, a
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
 - [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
-- [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
+- [ ] Add distributed replay-store, downgrade, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.
 

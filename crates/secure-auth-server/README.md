@@ -17,6 +17,13 @@ separate namespaces or instances for account, IP, and deployment-wide limits.
 It is atomic only within one process; a multi-instance deployment must
 implement the `RateLimiter` trait with an atomic shared backend.
 
+The opt-in `redis-backend` and `postgres-backend` features provide concrete
+bounded adapters. Redis uses one Lua check-and-count script with a hashed key,
+TTL, and an active-key index; PostgreSQL uses a namespace advisory transaction
+lock and a bounded expiry-indexed table. Both have TLS-first constructors and
+explicit plaintext local-test constructors. The adapters are blocking and
+must run on a blocking worker when used from an async server.
+
 For key rotation, use `ServerAuthService::new_with_key_rotation`. It accepts
 active and explicitly configured previous IDs for start messages, emits only
 the active ID, and requires the active ID for login finalization.
@@ -35,3 +42,7 @@ It is not a distributed store. A production deployment behind a load balancer
 must implement the `BoundOneTimeLoginStateStore` trait with Redis, a database,
 or an equivalent backend. Its `take_bound` operation must be atomic, with a
 short TTL and no logging of handles or state bytes.
+
+The concrete rate-limit adapters do not replace account, IP, deployment, or
+CSRF policy. Configure separate bounded namespaces and fail closed on backend
+unavailability; never use a rate-limit decision as proof of account existence.

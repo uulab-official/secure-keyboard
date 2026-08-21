@@ -8,6 +8,11 @@ use std::{
 pub const MAX_IN_MEMORY_RATE_KEYS: usize = 100_000;
 /// Maximum size of a single account, IP, or deployment rate-limit key.
 pub const MAX_RATE_LIMIT_KEY_BYTES: usize = 256;
+/// Maximum fixed-window duration accepted by distributed adapters.
+///
+/// Keeping the window bounded preserves millisecond precision in Redis Lua
+/// scores and prevents an accidental multi-year key retention policy.
+pub const MAX_DISTRIBUTED_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 
 /// Fixed-window rate-limit configuration.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
