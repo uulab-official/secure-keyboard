@@ -28,6 +28,95 @@ function forbidText(findings, relativePath, contents, pattern, detail) {
   }
 }
 
+const NATIVE_ABI_HOST_FILES = Object.freeze([
+  [
+    "native/ios/SecureKeypadView.swift",
+    /secure_keypad_abi_version\(\)\s*==\s*(\d+)/,
+    "iOS host ABI expectation",
+  ],
+  [
+    "packages/react-native/ios/SecureKeypadView.swift",
+    /secure_keypad_abi_version\(\)\s*==\s*(\d+)/,
+    "React Native iOS host ABI expectation",
+  ],
+  [
+    "packages/flutter/ios/Classes/SecureKeypadView.swift",
+    /secure_keypad_abi_version\(\)\s*==\s*(\d+)/,
+    "Flutter iOS host ABI expectation",
+  ],
+  [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    /EXPECTED_ABI_VERSION\s*=\s*(\d+)/,
+    "Android host ABI expectation",
+  ],
+  [
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    /EXPECTED_ABI_VERSION\s*=\s*(\d+)/,
+    "React Native Android host ABI expectation",
+  ],
+  [
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    /EXPECTED_ABI_VERSION\s*=\s*(\d+)/,
+    "Flutter Android host ABI expectation",
+  ],
+]);
+
+/**
+ * Compares every native host's fail-closed ABI expectation with the central C
+ * header and Rust implementation. This is deliberately independent of native
+ * framework runtimes so a version bump cannot leave one package stale.
+ *
+ * @param {string} root repository root used by tests and release tooling
+ * @returns {Array<{file: string, detail: string}>}
+ */
+export function findNativeAbiVersionMismatches(root = ROOT) {
+  const headerFile = "crates/secure-ffi/include/secure_keypad.h";
+  const implementationFile = "crates/secure-ffi/src/lib.rs";
+  const header = existsSync(path.join(root, headerFile))
+    ? readFileSync(path.join(root, headerFile), "utf8")
+    : "";
+  const implementation = existsSync(path.join(root, implementationFile))
+    ? readFileSync(path.join(root, implementationFile), "utf8")
+    : "";
+  const headerVersion = header.match(/#define\s+SECURE_KEYPAD_ABI_VERSION\s+UINT32_C\((\d+)\)/)?.[1];
+  const implementationVersion = implementation.match(
+    /SECURE_KEYPAD_ABI_VERSION:\s*u32\s*=\s*(\d+)/,
+  )?.[1];
+  const mismatches = [];
+
+  if (headerVersion === undefined) {
+    mismatches.push({ file: headerFile, detail: "ABI version macro is missing" });
+  }
+  if (implementationVersion === undefined) {
+    mismatches.push({ file: implementationFile, detail: "ABI version constant is missing" });
+  }
+  if (headerVersion !== undefined && implementationVersion !== undefined && headerVersion !== implementationVersion) {
+    mismatches.push({
+      file: implementationFile,
+      detail: `ABI version ${implementationVersion} differs from header ${headerVersion}`,
+    });
+  }
+  if (headerVersion === undefined) return mismatches;
+
+  for (const [relativePath, pattern, label] of NATIVE_ABI_HOST_FILES) {
+    const absolutePath = path.join(root, relativePath);
+    if (!existsSync(absolutePath)) {
+      mismatches.push({ file: relativePath, detail: `${label} file is missing` });
+      continue;
+    }
+    const actualVersion = readFileSync(absolutePath, "utf8").match(pattern)?.[1];
+    if (actualVersion === undefined) {
+      mismatches.push({ file: relativePath, detail: `${label} is missing` });
+    } else if (actualVersion !== headerVersion) {
+      mismatches.push({
+        file: relativePath,
+        detail: `${label} ${actualVersion} differs from header ${headerVersion}`,
+      });
+    }
+  }
+  return mismatches;
+}
+
 export function findMutableCiActionLines(ciWorkflow) {
   return ciWorkflow
     .split("\n")
@@ -221,6 +310,13 @@ export function runSecurityAudit() {
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
   const ffiImplementation = source("crates/secure-ffi/src/lib.rs", findings);
+  for (const mismatch of findNativeAbiVersionMismatches()) {
+    findings.push({
+      rule: "native-abi-version-parity",
+      file: mismatch.file,
+      detail: mismatch.detail,
+    });
+  }
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /secure_keypad_abi_version/, "FFI must report the linked library ABI version");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_abi_version/, "C ABI header must expose the linked library ABI query");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_new_ascii/, "C ABI must expose the bounded printable-ASCII policy");

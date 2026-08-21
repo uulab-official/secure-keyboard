@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { findMutableCiActionLines, runSecurityAudit } from "./security-audit.mjs";
+import {
+  findMutableCiActionLines,
+  findNativeAbiVersionMismatches,
+  runSecurityAudit,
+} from "./security-audit.mjs";
 
 test("independent static security audit has no findings", () => {
   assert.deepEqual(runSecurityAudit(), []);
@@ -26,4 +30,8 @@ test("Android secure native view fails closed without a secure Activity window",
 
   assert.match(source, /findActivity\(\)\s*\?:\s*error/);
   assert.match(source, /onAttachedToWindow\(\)[\s\S]*addFlags\(WindowManager\.LayoutParams\.FLAG_SECURE\)/);
+});
+
+test("native host ABI expectations stay synchronized with the FFI header", () => {
+  assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });

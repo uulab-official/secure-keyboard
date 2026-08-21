@@ -16,6 +16,11 @@ package must not silently update the authentication suite.
 | iOS | iOS 15.1 minimum for the current React Native 0.87 host integration and UIKit configuration APIs | Ship matching device/simulator Rust static libraries and verify background/capture masking on supported OS versions. |
 | Android | API 24 minimum; CMake 3.22.1 contract | Ship `libsecure_ffi.a` for every ABI and verify `android.builtInKotlin`/host Gradle compatibility. |
 
+The independent `pnpm security-audit` gate also compares the C header macro,
+Rust implementation constant, and every shipped iOS/Android host expectation;
+a native ABI version bump is therefore rejected until all framework mirrors are
+updated together.
+
 The React Native `cancelRequest` prop is a non-negative safe integer command
 token; its first value establishes a baseline and each subsequent value
 cancels the native session. Neither framework controller path transports a
