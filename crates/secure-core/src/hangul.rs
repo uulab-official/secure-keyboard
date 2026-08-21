@@ -154,7 +154,9 @@ pub(crate) fn encode_utf8(codepoints: &mut Vec<u32>, output: &mut crate::SecretB
     for codepoint in codepoints.iter().copied() {
         if let Some(character) = char::from_u32(codepoint) {
             let mut bytes = [0_u8; 4];
-            output.extend_from_slice(character.encode_utf8(&mut bytes).as_bytes());
+            let encoded = character.encode_utf8(&mut bytes);
+            output.extend_from_slice(encoded.as_bytes());
+            bytes.zeroize();
         }
     }
     codepoints.zeroize();

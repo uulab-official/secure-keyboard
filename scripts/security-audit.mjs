@@ -130,6 +130,8 @@ export function runSecurityAudit() {
   const coreInput = source("crates/secure-core/src/input.rs", findings);
   requireText(findings, "crates/secure-core/src/input.rs", coreInput, /MAX_INPUT_TOKENS/, "core input policy must retain a bounded token limit");
   requireText(findings, "crates/secure-core/src/input.rs", coreInput, /SecretBuffer::with_capacity/, "core rendered secret output must be preallocated");
+  const coreHangul = source("crates/secure-core/src/hangul.rs", findings);
+  requireText(findings, "crates/secure-core/src/hangul.rs", coreHangul, /bytes\.zeroize\(\)/, "core UTF-8 conversion must clear its temporary secret bytes");
 
   const auth = source("crates/secure-auth/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
