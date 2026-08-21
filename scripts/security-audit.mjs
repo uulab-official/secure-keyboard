@@ -510,8 +510,12 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyGateEvidenceRecord/, "release tooling must bind embedded gate evidence records");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /DEVICE_RELEASE_GATE_POLICIES/, "release tooling must map device gates to their expected platforms");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /validateDeviceEvidence/, "release tooling must revalidate embedded device evidence records");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyDeviceEvidenceFiles/, "release tooling must verify nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence commit/, "release tooling must reject stale embedded gate evidence commits");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /Every `gate\.evidencePath` must point to a JSON object/, "release gates must require machine-readable commit-bound gate records");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /nested log and artifact digests/, "release gates must revalidate nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);

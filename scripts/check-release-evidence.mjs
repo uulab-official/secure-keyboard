@@ -4,6 +4,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
+
 const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -30,6 +32,12 @@ export const REQUIRED_RELEASE_GATES = Object.freeze([
   "independent-security-review",
   "signed-release",
 ]);
+
+export const DEVICE_RELEASE_GATE_POLICIES = Object.freeze({
+  "ios-device-matrix": Object.freeze({ platform: "ios", requirePhysicalDevice: true }),
+  "android-device-matrix": Object.freeze({ platform: "android", requirePhysicalDevice: true }),
+  "web-browser-matrix": Object.freeze({ platform: "web", requirePhysicalDevice: false }),
+});
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -364,6 +372,25 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
     add(findings, `${field}.evidence.commit`, "gate evidence commit must be a 40-character lowercase commit SHA");
   } else if (record.commit !== gate.commit) {
     add(findings, `${field}.evidence.commit`, "gate evidence commit must match the gate commit");
+  }
+
+  const devicePolicy = DEVICE_RELEASE_GATE_POLICIES[gate.name];
+  if (devicePolicy === undefined) return;
+  if (record.platform !== devicePolicy.platform) {
+    add(
+      findings,
+      `${field}.device.platform`,
+      `must equal ${devicePolicy.platform} for the ${gate.name} gate`,
+    );
+  }
+  for (const finding of validateDeviceEvidence(record, {
+    expectedCommit: gate.commit,
+    requirePhysicalDevice: devicePolicy.requirePhysicalDevice,
+  })) {
+    add(findings, `${field}.device`, finding);
+  }
+  for (const finding of verifyDeviceEvidenceFiles(record, root)) {
+    add(findings, `${field}.device.files`, finding);
   }
 }
 

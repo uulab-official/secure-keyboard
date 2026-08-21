@@ -12,6 +12,26 @@ import { mergeReleaseEvidence, writeMergedEvidence } from "./merge-release-evide
 
 const SHA256 = "a".repeat(64);
 const MERGE_SCRIPT = fileURLToPath(new URL("./merge-release-evidence.mjs", import.meta.url));
+const NATIVE_TEST_CASES = [
+  "maskedStateOnly",
+  "captureAndBackground",
+  "screenshotsAndBackgroundSnapshots",
+  "autofillAndClipboard",
+  "accessibility",
+  "crashReportReview",
+  "lifecycleAndZeroization",
+  "serverReplayRateLimit",
+  "protocolDowngrade",
+];
+const WEB_TEST_CASES = ["passkeySecureContext", "originAndRpId", "boundedOptions", "fallbackWarning"];
+const PHYSICAL_ARTIFACT_KINDS = [
+  "screen-capture",
+  "background-snapshot",
+  "accessibility-report",
+  "autofill-clipboard-report",
+  "crash-report-review",
+  "native-checksum",
+];
 
 function baseContext() {
   return {
@@ -26,6 +46,49 @@ function baseContext() {
       ndk: "27.1.12297006",
     },
   };
+}
+
+function writeDeviceGateEvidence(
+  root,
+  gate,
+  platform = { "ios-device-matrix": "ios", "android-device-matrix": "android", "web-browser-matrix": "web" }[
+    gate.name
+  ],
+) {
+  const isWeb = platform === "web";
+  mkdirSync(join(root, "device"), { recursive: true });
+  const logPath = `device/${gate.name}.log`;
+  const logBytes = Buffer.from(`${gate.name} sanitized log\n`, "utf8");
+  writeFileSync(join(root, logPath), logBytes);
+  const artifacts = (isWeb ? [{ kind: "browser-report" }] : PHYSICAL_ARTIFACT_KINDS.map((kind) => ({ kind }))).map(
+    ({ kind }, index) => {
+      const artifactPath = `device/${gate.name}-${index}.bin`;
+      const bytes = Buffer.from(`${gate.name}:${kind}\n`, "utf8");
+      writeFileSync(join(root, artifactPath), bytes);
+      return { kind, path: artifactPath, sha256: createHash("sha256").update(bytes).digest("hex") };
+    },
+  );
+  const record = {
+    schemaVersion: 1,
+    commit: gate.commit,
+    status: "pass",
+    platform,
+    framework: isWeb ? "web" : "native",
+    frameworkVersion: isWeb ? "chromium-140.0.0" : "1.0.0",
+    recordedAt: "2026-08-21T00:00:00.000Z",
+    physicalDevice: !isWeb,
+    device: isWeb
+      ? { browser: "Chromium", browserVersion: "140.0.0", osVersion: "macOS 15", secureContext: true }
+      : { model: platform === "ios" ? "iPhone 16" : "Pixel 9", osVersion: "15", osBuild: "release" },
+    testCases: Object.fromEntries((isWeb ? WEB_TEST_CASES : NATIVE_TEST_CASES).map((name) => [name, "pass"])),
+    sanitizedLogs: true,
+    logPath,
+    logSha256: createHash("sha256").update(logBytes).digest("hex"),
+    artifacts,
+  };
+  const payload = Buffer.from(JSON.stringify(record), "utf8");
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
 }
 
 function completeFragments() {
@@ -160,7 +223,15 @@ test("CLI assembles and verifies a signed evidence root", () => {
     evidencePath: `evidence/${name}.json`,
     sha256: evidenceHash,
   }));
-  for (const gate of gates) writeFileSync(join(root, gate.evidencePath), evidenceBytes);
+  const platformByGate = {
+    "ios-device-matrix": "ios",
+    "android-device-matrix": "android",
+    "web-browser-matrix": "web",
+  };
+  for (const gate of gates) {
+    if (platformByGate[gate.name]) writeDeviceGateEvidence(root, gate, platformByGate[gate]);
+    else writeFileSync(join(root, gate.evidencePath), evidenceBytes);
+  }
 
   const artifacts = [
     { kind: "native-checksum", path: "artifacts/native.sha256", bytes: Buffer.from("native") },

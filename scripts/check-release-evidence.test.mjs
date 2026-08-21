@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,27 @@ import {
 
 const SHA256 = "a".repeat(64);
 const CHECK_SCRIPT = fileURLToPath(new URL("./check-release-evidence.mjs", import.meta.url));
+
+const NATIVE_TEST_CASES = [
+  "maskedStateOnly",
+  "captureAndBackground",
+  "screenshotsAndBackgroundSnapshots",
+  "autofillAndClipboard",
+  "accessibility",
+  "crashReportReview",
+  "lifecycleAndZeroization",
+  "serverReplayRateLimit",
+  "protocolDowngrade",
+];
+const WEB_TEST_CASES = ["passkeySecureContext", "originAndRpId", "boundedOptions", "fallbackWarning"];
+const PHYSICAL_ARTIFACT_KINDS = [
+  "screen-capture",
+  "background-snapshot",
+  "accessibility-report",
+  "autofill-clipboard-report",
+  "crash-report-review",
+  "native-checksum",
+];
 
 function completeEvidence() {
   return {
@@ -64,6 +85,50 @@ function completeEvidence() {
       reviewedPackageVersion: "0.1.0",
     },
   };
+}
+
+function writeDeviceGateEvidence(root, gate, platform) {
+  const isWeb = platform === "web";
+  const directory = join(root, "device");
+  mkdirSync(directory, { recursive: true });
+  const logPath = `device/${gate.name}.log`;
+  const logBytes = Buffer.from(`${gate.name} sanitized log\n`, "utf8");
+  writeFileSync(join(root, logPath), logBytes);
+  const artifacts = (isWeb ? [{ kind: "browser-report" }] : PHYSICAL_ARTIFACT_KINDS.map((kind) => ({ kind }))).map(
+    ({ kind }, index) => {
+      const artifactPath = `device/${gate.name}-${index}.bin`;
+      const bytes = Buffer.from(`${gate.name}:${kind}\n`, "utf8");
+      writeFileSync(join(root, artifactPath), bytes);
+      return {
+        kind,
+        path: artifactPath,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      };
+    },
+  );
+  const record = {
+    schemaVersion: 1,
+    commit: gate.commit,
+    status: "pass",
+    platform,
+    framework: isWeb ? "web" : "native",
+    frameworkVersion: isWeb ? "chromium-140.0.0" : "1.0.0",
+    recordedAt: "2026-08-21T00:00:00.000Z",
+    physicalDevice: !isWeb,
+    device: isWeb
+      ? { browser: "Chromium", browserVersion: "140.0.0", osVersion: "macOS 15", secureContext: true }
+      : { model: platform === "ios" ? "iPhone 16" : "Pixel 9", osVersion: "15", osBuild: "release" },
+    testCases: Object.fromEntries((isWeb ? WEB_TEST_CASES : NATIVE_TEST_CASES).map((name) => [name, "pass"])),
+    sanitizedLogs: true,
+    logPath,
+    logSha256: createHash("sha256").update(logBytes).digest("hex"),
+    artifacts,
+  };
+  const payload = Buffer.from(JSON.stringify(record), "utf8");
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
+  return record;
 }
 
 test("accepts a complete release evidence manifest", () => {
@@ -219,8 +284,17 @@ test("verifies every referenced release evidence and artifact digest", () => {
 
   for (const gate of evidence.gates) {
     mkdirSync(join(root, "evidence"), { recursive: true });
-    writeFileSync(join(root, gate.evidencePath), payload);
-    gate.sha256 = sha256;
+    const platformByGate = {
+      "ios-device-matrix": "ios",
+      "android-device-matrix": "android",
+      "web-browser-matrix": "web",
+    };
+    if (platformByGate[gate.name]) {
+      writeDeviceGateEvidence(root, gate, platformByGate[gate.name]);
+    } else {
+      writeFileSync(join(root, gate.evidencePath), payload);
+      gate.sha256 = sha256;
+    }
   }
   for (const artifact of evidence.artifacts) {
     mkdirSync(join(root, "artifacts"), { recursive: true });
@@ -270,6 +344,40 @@ test("rejects a gate evidence record bound to a different commit", () => {
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   assert.ok(findings.some((finding) => finding.includes("gate evidence commit")));
+});
+
+test("does not allow a minimal JSON object to satisfy a physical device gate", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-device-gate-"));
+  const evidence = completeEvidence();
+  const gate = evidence.gates.find((candidate) => candidate.name === "ios-device-matrix");
+  const payload = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit: gate.commit, status: "pass" }),
+    "utf8",
+  );
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("gates[8].device")));
+});
+
+test("binds each device gate to its platform and nested evidence files", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-device-binding-"));
+  const evidence = completeEvidence();
+  const iosGate = evidence.gates.find((candidate) => candidate.name === "ios-device-matrix");
+  writeDeviceGateEvidence(root, iosGate, "ios");
+  const recordPath = join(root, "evidence", "ios-device-matrix.json");
+  const record = JSON.parse(readFileSync(recordPath, "utf8"));
+  record.platform = "android";
+  writeFileSync(recordPath, JSON.stringify(record));
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+  assert.ok(findings.some((finding) => finding.includes("must equal ios")));
+
+  writeFileSync(join(root, record.logPath), Buffer.from("tampered\n", "utf8"));
+  const tamperedFindings = verifyReleaseEvidenceFiles(evidence, root);
+  assert.ok(tamperedFindings.some((finding) => finding.includes("device.files") && finding.includes("logSha256")));
 });
 
 test("rejects a tampered detached release signature", () => {

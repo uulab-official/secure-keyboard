@@ -129,7 +129,12 @@ Every `gate.evidencePath` must point to a JSON object with
 `{schemaVersion: 1, commit: <same gate SHA>, status: "pass"}`. The final file
 verification recomputes its digest and checks that embedded commit, status, and
 secret-field policy, so a current manifest cannot be assembled from an older
-or secret-bearing gate record.
+or secret-bearing gate record. The `ios-device-matrix` and
+`android-device-matrix` records are then revalidated as physical native records
+with all required test cases and categorized artifacts; `web-browser-matrix` is
+revalidated as a Web record. The verifier also revalidates nested log and artifact digests
+inside those device records, so changing a screenshot, report,
+or sanitized log invalidates the release gate.
 
 Use the checked-in emitter after the gate command has completed successfully;
 it reads the current immutable checkout SHA and Contracts package version, then
