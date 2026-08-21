@@ -1,0 +1,59 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const WORKFLOW = readFileSync(`${ROOT}/.github/workflows/ci.yml`, "utf8");
+const FLUTTER_PLUGIN = readFileSync(
+  `${ROOT}/packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift`,
+  "utf8",
+);
+const IOS_BRIDGE_CONFIG = readFileSync(
+  `${ROOT}/packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift`,
+  "utf8",
+);
+const HOST_BUILD_START = WORKFLOW.indexOf("Create and compile the Flutter iOS host");
+const HOST_BUILD_END = WORKFLOW.indexOf("Launch the Flutter host in an iOS Simulator", HOST_BUILD_START);
+const FLUTTER_IOS_HOST = WORKFLOW.slice(HOST_BUILD_START, HOST_BUILD_END);
+
+test("Flutter iOS CI materializes CocoaPods before editing the generated host", () => {
+  const pubGetIndex = FLUTTER_IOS_HOST.indexOf("flutter pub get");
+  const podfileIndex = FLUTTER_IOS_HOST.indexOf('podfile = host / "ios/Podfile"');
+
+  assert.notEqual(pubGetIndex, -1);
+  assert.notEqual(podfileIndex, -1);
+  assert.ok(pubGetIndex < podfileIndex, "flutter pub get must precede Podfile edits");
+});
+
+test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
+  assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter create/);
+  assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter pub get/);
+  assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios/);
+  assert.match(FLUTTER_IOS_HOST, /SECURE_KEYPAD_FFI_XCFRAMEWORK=.*pod install/);
+  assert.match(FLUTTER_IOS_HOST, /xcodebuild -project Pods\/Pods\.xcodeproj -scheme secure_keypad_flutter/);
+  assert.match(FLUTTER_IOS_HOST, /SecureKeypadHostSmoke/);
+  assert.match(FLUTTER_IOS_HOST, /SecureKeypadConfiguration\.defaultNumeric/);
+  assert.doesNotMatch(FLUTTER_IOS_HOST, /Flutter Demo Home Page/);
+  assert.match(FLUTTER_IOS_HOST, /flutter build ios --simulator --no-codesign/);
+  assert.doesNotMatch(FLUTTER_IOS_HOST, /--build-dir/);
+  assert.match(FLUTTER_IOS_HOST, /config\.build_settings\['ARCHS'\]\s*=\s*'arm64'/);
+  assert.match(FLUTTER_IOS_HOST, /config\.build_settings\['ONLY_ACTIVE_ARCH'\]\s*=\s*'YES'/);
+  assert.match(FLUTTER_IOS_HOST, /ARCHS = arm64;/);
+  assert.match(FLUTTER_IOS_HOST, /ONLY_ACTIVE_ARCH = YES;/);
+  assert.match(
+    WORKFLOW,
+    /APP_PATH: \$\{\{ runner\.temp \}\}\/secure-keypad-flutter-ios-host\/build\/ios\/iphonesimulator\/Runner\.app/,
+  );
+});
+
+test("Flutter iOS PlatformView preserves standard creation arguments", () => {
+  assert.match(FLUTTER_PLUGIN, /func createArgsCodec\(\) -> FlutterMessageCodec & NSObjectProtocol/);
+  assert.match(FLUTTER_PLUGIN, /FlutterStandardMessageCodec\.sharedInstance\(\)/);
+  assert.match(FLUTTER_PLUGIN, /guard let dictionary = Self\.dictionary\(arguments\)/);
+});
+
+test("iOS bridge numeric parsing keeps integer zero distinct from Boolean", () => {
+  assert.match(IOS_BRIDGE_CONFIG, /CFGetTypeID\(value\) == CFBooleanGetTypeID\(\)/);
+  assert.doesNotMatch(IOS_BRIDGE_CONFIG, /guard !\(value is Bool\)/);
+});

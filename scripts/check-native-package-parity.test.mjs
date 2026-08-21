@@ -77,7 +77,7 @@ test("iOS podspecs consume only staged relative FFI artifacts", () => {
 
   const workflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
   assert.equal((workflow.match(/platform :ios, '15\.1'/g) ?? []).length, 2);
-  assert.equal((workflow.match(/IPHONEOS_DEPLOYMENT_TARGET = 15\.1;/g) ?? []).length, 2);
+  assert.equal((workflow.match(/IPHONEOS_DEPLOYMENT_TARGET = 15\.1;/g) ?? []).length, 3);
   assert.match(
     workflow,
     /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/,

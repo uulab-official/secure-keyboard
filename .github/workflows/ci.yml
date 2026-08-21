@@ -106,6 +106,7 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm test:native-parity
       - run: pnpm check:native-parity
+      - run: pnpm test:ios-host-build-contract
       - run: pnpm test:release-version-parity
       - run: pnpm check:release-version-parity
       - run: pnpm test:release-evidence
@@ -831,7 +832,7 @@ jobs:
           HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host
           FLUTTER_PACKAGE_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-package
         run: |
-          flutter create --platforms=ios --org dev.uulab --project-name secure_keypad_host "$HOST_DIR"
+          FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter create --platforms=ios --org dev.uulab --project-name secure_keypad_host "$HOST_DIR"
           mkdir -p "$FLUTTER_PACKAGE_DIR"
           cp -R "$GITHUB_WORKSPACE/packages/flutter/." "$FLUTTER_PACKAGE_DIR/"
           cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$FLUTTER_PACKAGE_DIR/ios/secure_ffi.xcframework"
@@ -849,19 +850,88 @@ jobs:
               f"    path: {Path(os.environ['FLUTTER_PACKAGE_DIR'])}\n"
           )
           pubspec.write_text(contents.replace("dependencies:\n", dependency, 1))
-          podfile = host / "ios/Podfile"
-          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.1'", podfile.read_text(), flags=re.MULTILINE))
-          project = host / "ios/Runner.xcodeproj/project.pbxproj"
-          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.1;", project.read_text()))
           PY
           cd "$HOST_DIR"
-          flutter pub get
+          FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter pub get
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          host = Path(os.environ["HOST_DIR"])
+          podfile = host / "ios/Podfile"
+          podfile_contents = re.sub(r"^platform :ios,.*$", "platform :ios, '15.1'", podfile.read_text(), flags=re.MULTILINE)
+          podfile_contents = podfile_contents.replace(
+              "    flutter_additional_ios_build_settings(target)\n",
+              "    flutter_additional_ios_build_settings(target)\n"
+              "    target.build_configurations.each do |config|\n"
+              "      config.build_settings['ARCHS'] = 'arm64'\n"
+              "      config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'\n"
+              "    end\n",
+          )
+          podfile.write_text(podfile_contents)
+          project = host / "ios/Runner.xcodeproj/project.pbxproj"
+          project_contents = re.sub(
+              r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;",
+              "IPHONEOS_DEPLOYMENT_TARGET = 15.1;",
+              project.read_text(),
+          )
+          project_contents = re.sub(
+              r"(?m)^(\s*)IPHONEOS_DEPLOYMENT_TARGET = 15\.1;",
+              r"\1IPHONEOS_DEPLOYMENT_TARGET = 15.1;\n\1ARCHS = arm64;\n\1ONLY_ACTIVE_ARCH = YES;",
+              project_contents,
+          )
+          project.write_text(project_contents)
+          (host / "lib/main.dart").write_text('''
+          import 'package:flutter/material.dart';
+          import 'package:secure_keypad_flutter/secure_keypad.dart';
+
+          void main() => runApp(const SecureKeypadHostSmoke());
+
+          class SecureKeypadHostSmoke extends StatefulWidget {
+            const SecureKeypadHostSmoke({super.key});
+
+            @override
+            State<SecureKeypadHostSmoke> createState() => _SecureKeypadHostSmokeState();
+          }
+
+          class _SecureKeypadHostSmokeState extends State<SecureKeypadHostSmoke> {
+            final controller = SecureKeypadController();
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                home: Scaffold(
+                  body: SafeArea(
+                    child: SecureKeypad(
+                      configuration: SecureKeypadConfiguration.defaultNumeric(),
+                      controller: controller,
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          ''')
+          PY
+          cd ios
+          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" pod install
+          xcodebuild -project Pods/Pods.xcodeproj -scheme secure_keypad_flutter \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            BUILD_DIR="$HOST_DIR/build/ios" \
+            OBJROOT="$HOST_DIR/build/ios" \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            build
+          cd "$HOST_DIR"
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
-            flutter build ios --simulator --no-codesign \
-            --build-dir "$RUNNER_TEMP/secure-keypad-flutter-ios-build"
+            FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --simulator --no-codesign
       - name: Launch the Flutter host in an iOS Simulator
         env:
-          APP_PATH: ${{ runner.temp }}/secure-keypad-flutter-ios-build/ios/iphonesimulator/Runner.app
+          APP_PATH: ${{ runner.temp }}/secure-keypad-flutter-ios-host/build/ios/iphonesimulator/Runner.app
           SCREENSHOT_PATH: ${{ runner.temp }}/secure-keypad-ios-simulator-runtime/flutter.png
         run: |
           test -d "$APP_PATH"

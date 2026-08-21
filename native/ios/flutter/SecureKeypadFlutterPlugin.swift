@@ -21,6 +21,10 @@ private final class SecureKeypadFlutterPlatformViewFactory: NSObject, FlutterPla
         self.messenger = messenger
     }
 
+    func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+        FlutterStandardMessageCodec.sharedInstance()
+    }
+
     func create(
         withFrame frame: CGRect,
         viewIdentifier viewId: Int64,
@@ -88,12 +92,18 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             }
         }
 
-        guard let dictionary = arguments as? NSDictionary else {
+        guard let dictionary = Self.dictionary(arguments) else {
+            emit(["type": "result", "code": "invalid"])
+            return
+        }
+        let config: SecureKeypadBridgeConfiguration
+        do {
+            config = try SecureKeypadBridgeConfiguration(dictionary: dictionary)
+        } catch {
             emit(["type": "result", "code": "invalid"])
             return
         }
         do {
-            let config = try SecureKeypadBridgeConfiguration(dictionary: dictionary)
             keypad.setRendererMode(
                 mode: config.mode,
                 acknowledgeLowerAssurance: config.acknowledgeLowerAssurance
@@ -124,7 +134,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
                 keypad.requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
             }
         } catch {
-            emit(["type": "result", "code": "invalid"])
+            emit(["type": "result", "code": "error"])
         }
     }
 
@@ -191,6 +201,26 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         eventChannel.setStreamHandler(nil)
         controlChannel.setMethodCallHandler(nil)
         keypad.releaseSession()
+    }
+
+    private static func dictionary(_ value: Any?) -> NSDictionary? {
+        guard let value else { return nil }
+        if let dictionary = value as? NSDictionary {
+            return dictionary
+        }
+        if let dictionary = value as? [String: Any] {
+            return dictionary as NSDictionary
+        }
+        if let dictionary = value as? [String: AnyObject] {
+            return dictionary as NSDictionary
+        }
+        if let dictionary = value as? [AnyHashable: Any] {
+            return dictionary as NSDictionary
+        }
+        if let dictionary = value as? [AnyHashable: AnyObject] {
+            return dictionary as NSDictionary
+        }
+        return nil
     }
 
     private static let maxPendingEvents = 32

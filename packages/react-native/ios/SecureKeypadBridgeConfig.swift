@@ -45,7 +45,7 @@ public struct SecureKeypadBridgeConfiguration {
         guard parsedMode == "secure-native" || parsedMode == "headless-host" else {
             throw SecureKeypadBridgeConfigError.invalid
         }
-        let parsedAcknowledgement = (dictionary["acknowledgeLowerAssurance"] as? Bool) ?? false
+        let parsedAcknowledgement = Self.boolean(dictionary["acknowledgeLowerAssurance"]) ?? false
         guard (parsedMode == "secure-native" && !parsedAcknowledgement) ||
                 (parsedMode == "headless-host" && parsedAcknowledgement) else {
             throw SecureKeypadBridgeConfigError.invalid
@@ -93,7 +93,7 @@ public struct SecureKeypadBridgeConfiguration {
             }
         }
         if let slots = try Self.optionalMap(value["slots"], allowed: ["header", "display", "footer", "error"]) {
-            guard slots.allValues.allSatisfy({ $0 is Bool }) else {
+            guard slots.allValues.allSatisfy({ Self.boolean($0) != nil }) else {
                 throw SecureKeypadBridgeConfigError.invalid
             }
         }
@@ -243,7 +243,7 @@ public struct SecureKeypadBridgeConfiguration {
     }
 
     private static func boundedInteger(_ value: Any?, minimum: Double, maximum: Double) -> Int? {
-        guard !(value is Bool), let number = value as? NSNumber else { return nil }
+        guard let number = value as? NSNumber else { return nil }
         guard !isBooleanNumber(number) else { return nil }
         let result = number.doubleValue
         guard result.isFinite, result.rounded(.towardZero) == result, result >= minimum, result <= maximum else {
@@ -270,7 +270,6 @@ public struct SecureKeypadBridgeConfiguration {
 
     private static func boundedInteger(_ value: Any?, default defaultValue: Int, range: ClosedRange<Int>) -> Int? {
         guard let value else { return defaultValue }
-        guard !(value is Bool) else { return nil }
         guard let number = value as? NSNumber else { return nil }
         guard !isBooleanNumber(number) else { return nil }
         let result = number.doubleValue
@@ -282,7 +281,12 @@ public struct SecureKeypadBridgeConfiguration {
     }
 
     private static func isBooleanNumber(_ value: NSNumber) -> Bool {
-        String(cString: value.objCType) == "c"
+        CFGetTypeID(value) == CFBooleanGetTypeID()
+    }
+
+    private static func boolean(_ value: Any?) -> Bool? {
+        guard let number = value as? NSNumber, isBooleanNumber(number) else { return nil }
+        return number.boolValue
     }
 
     private static func color(_ value: Any?) -> UIColor? {

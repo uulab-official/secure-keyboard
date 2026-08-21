@@ -81,6 +81,9 @@ exact release-candidate commit by the release evidence manifest.
 - Migrated the Flutter Android plugin to Flutter's built-in Kotlin compiler
   contract, pinned its minimum Flutter/Dart versions, and verified both
   legacy-disabled and enabled built-in-Kotlin host builds.
+- Fixed the Flutter iOS PlatformView factory to preserve standard creation
+  arguments and aligned all iOS bridge parsers so numeric zero values cannot be
+  rejected as Booleans at the native boundary.
 - Fixed iOS reconfiguration cleanup so a failed native session constructor
   cannot leave a freed session pointer available for a later double free.
 - Added a pre-copy 64-byte bound for Android JNI public key-ID arrays to avoid
@@ -100,6 +103,9 @@ exact release-candidate commit by the release evidence manifest.
 - Added a pinned, loopback-only Docker Compose runner for local Redis/PostgreSQL
   durable interoperability tests; it executes all three ignored suites and
   cleans up test containers on exit.
+- Added a CI contract test for the Flutter iOS host build and PlatformView
+  codec, plus a simulator smoke path that verifies native keypad buttons and
+  masked-length accessibility state without exposing input values.
 - Release staging now requires this changelog, the pinned lockfiles, SBOM,
   third-party notices, and the complete candidate metadata set.
 - Release evidence CLI verification now resolves gate, artifact, signature, and
