@@ -735,3 +735,27 @@ test("rejects an oversized signed review report before parsing it", () => {
 
   assert.ok(findings.some((finding) => finding.includes("independentReview.report") && finding.includes("must not exceed")));
 });
+
+test("rejects an approving review report with an open critical finding", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-open-critical-review-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const reportArtifact = evidence.artifacts.find(({ kind }) => kind === "independent-review-report");
+  const report = JSON.parse(readFileSync(join(root, reportArtifact.path), "utf8"));
+  report.findings = [{ id: "CRITICAL-1", severity: "critical", status: "open", summary: "Unresolved critical issue" }];
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  report.reviewerPublicKeySha256 = publicKeySha256;
+  const signedReportBytes = Buffer.from(JSON.stringify(report), "utf8");
+
+  writeFileSync(join(root, reportArtifact.path), signedReportBytes);
+  reportArtifact.sha256 = createHash("sha256").update(signedReportBytes).digest("hex");
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.signaturePath), sign(null, signedReportBytes, privateKey));
+  evidence.independentReview.publicKeySha256 = publicKeySha256;
+  evidence.artifacts.find(({ kind }) => kind === "independent-review-public-key").sha256 = publicKeySha256;
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("CRITICAL-1") && finding.includes("accepted or remediated")));
+});

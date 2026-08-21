@@ -611,6 +611,13 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
       if (!REVIEW_FINDING_STATUSES.has(finding.status)) {
         add(findings, `${findingField}.status`, "must be a supported status");
       }
+      if ((finding.severity === "critical" || finding.severity === "high") && finding.status === "open") {
+        add(
+          findings,
+          `${findingField}.status`,
+          `${finding.id} critical/high findings must be accepted or remediated before release`,
+        );
+      }
       if (
         typeof finding.summary !== "string" ||
         finding.summary.length === 0 ||

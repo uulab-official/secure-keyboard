@@ -240,7 +240,8 @@ package version, and reviewer public-key SHA-256. Its scope must cover
 and `release-process`; it must include bounded finding records and an explicit
 `approved` or `approved-with-residual-risk` decision. `not-approved`, malformed,
 secret-bearing, scope-incomplete, or over-1 MiB reports fail closed before
-release verification.
+release verification; critical/high findings must be `accepted` or
+`remediated`, never `open`.
 
 The workflow also embeds `release-candidate-metadata.json` inside the signed
 source bundle. That record is deliberately marked `candidate-only`: it binds

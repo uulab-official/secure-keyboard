@@ -46,6 +46,8 @@ exact release-candidate commit by the release evidence manifest.
   scope, findings, and an approving release decision.
 - Independent review report parsing is bounded to 1 MiB before JSON
   deserialization.
+- Release verification now rejects approving review reports with open
+  critical/high findings.
 - Bounded PostgreSQL credential loads at the configured per-account limit plus
   one row and the credential-record byte limit in SQL before materialization,
   so legacy or invalid excess rows/records cannot turn a credential read into
