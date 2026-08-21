@@ -56,7 +56,9 @@ function orderedLogs(logs) {
     if (!(typeof log.bytes === "string" || log.bytes instanceof Uint8Array)) {
       throw new Error("browser log bytes must be a string or byte array");
     }
-    byBrowser.set(log.browser, { browser: log.browser, path: log.path, bytes: Buffer.from(log.bytes) });
+    const bytes = Buffer.from(log.bytes);
+    if (bytes.length === 0) throw new Error("browser log bytes must not be empty");
+    byBrowser.set(log.browser, { browser: log.browser, path: log.path, bytes });
   });
   return BROWSERS.map((browser) => {
     const log = byBrowser.get(browser);

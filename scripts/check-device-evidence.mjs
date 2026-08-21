@@ -240,7 +240,12 @@ function verifyDigest(findings, root, field, relativePath, expectedHash) {
   const filePath = containedFilePath(findings, root, field, relativePath);
   if (!filePath) return;
   try {
-    if (statSync(filePath).size > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
+    const size = statSync(filePath).size;
+    if (size === 0) {
+      add(findings, `${field}.path`, "must not be empty");
+      return;
+    }
+    if (size > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
       add(findings, `${field}.path`, `must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
       return;
     }

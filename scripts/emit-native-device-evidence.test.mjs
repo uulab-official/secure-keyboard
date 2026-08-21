@@ -117,6 +117,14 @@ test("rejects oversized physical evidence bytes before hashing", async () => {
   assert.throws(() => buildNativeDeviceEvidence(oversized), /log bytes must not exceed/);
 });
 
+test("rejects empty physical evidence bytes before hashing", async () => {
+  const { buildNativeDeviceEvidence } = await loadEmitter();
+  const empty = completeInput();
+  empty.log.bytes = Buffer.alloc(0);
+
+  assert.throws(() => buildNativeDeviceEvidence(empty), /log bytes must not be empty/);
+});
+
 test("rejects a sentinel in a referenced physical-device artifact before writing evidence", async () => {
   const { writeNativeDeviceEvidence } = await loadEmitter();
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-sentinel-"));

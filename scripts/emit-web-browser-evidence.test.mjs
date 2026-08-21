@@ -84,6 +84,22 @@ test("rejects incomplete browser matrices and unsafe log references", () => {
   );
 });
 
+test("rejects empty browser logs before hashing evidence", () => {
+  const emptyLogs = LOGS.map((log, index) => (index === 1 ? { ...log, bytes: Buffer.alloc(0) } : log));
+
+  assert.throws(
+    () =>
+      buildWebBrowserEvidence({
+        commit: COMMIT,
+        frameworkVersion: "playwright-1.62.1",
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        logs: emptyLogs,
+      }),
+    /browser log bytes must not be empty/,
+  );
+});
+
 test("CI downloads the browser matrix logs before emitting web release evidence", () => {
   assert.match(CI_WORKFLOW, /actions\/download-artifact@[0-9a-f]{40}[\s\S]*?secure-keypad-browser-smoke-/);
   assert.match(CI_WORKFLOW, /name: Emit web browser CI release evidence[\s\S]*?emit-web-browser-evidence\.mjs/);

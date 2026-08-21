@@ -143,6 +143,21 @@ test("recomputes log and artifact digests inside the evidence root", () => {
   assert.ok(findings.some((finding) => finding.includes("logSha256")));
 });
 
+test("rejects empty logs and artifacts before a device gate can pass", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-empty-device-evidence-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, evidence.logPath), Buffer.alloc(0));
+  writeFileSync(join(root, evidence.artifacts[0].path), Buffer.alloc(0));
+  evidence.logSha256 = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
+
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+
+  assert.equal(findings.filter((finding) => finding.includes("must not be empty")).length, 2);
+});
+
 test("rejects the canonical sentinel and secret-bearing fields in referenced text artifacts", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-evidence-content-"));
   const evidence = structuredClone(VALID_NATIVE);

@@ -74,6 +74,7 @@ function validateBytes(value, field) {
     throw new Error(`${field} must be a string or byte array`);
   }
   const byteLength = typeof value === "string" ? Buffer.byteLength(value, "utf8") : value.byteLength;
+  if (byteLength === 0) throw new Error(`${field} must not be empty`);
   if (byteLength > MAX_NATIVE_EVIDENCE_FILE_BYTES) {
     throw new Error(`${field} must not exceed ${MAX_NATIVE_EVIDENCE_FILE_BYTES} bytes`);
   }
@@ -181,6 +182,7 @@ function readEvidenceFile(root, relativePath, field) {
   const filePath = containedFile(root, relativePath, field);
   const stat = lstatSync(filePath);
   if (!stat.isFile()) throw new Error(`${field} must resolve to a regular file`);
+  if (stat.size === 0) throw new Error(`${field} must not be empty`);
   if (stat.size > MAX_NATIVE_EVIDENCE_FILE_BYTES) {
     throw new Error(`${field} must not exceed ${MAX_NATIVE_EVIDENCE_FILE_BYTES} bytes`);
   }
