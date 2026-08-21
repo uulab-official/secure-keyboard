@@ -11,6 +11,9 @@ endif()
 if(NOT SECURE_KEYPAD_FFI_LIB_DIR)
     message(FATAL_ERROR "SECURE_KEYPAD_FFI_LIB_DIR must point to the Rust secure_ffi ABI directory")
 endif()
+if(NOT EXISTS "${SECURE_KEYPAD_FFI_LIB_DIR}/${ANDROID_ABI}/libsecure_ffi.a")
+    message(FATAL_ERROR "missing libsecure_ffi.a for ABI ${ANDROID_ABI} under SECURE_KEYPAD_FFI_LIB_DIR")
+endif()
 
 add_library(secure_keypad_ffi STATIC IMPORTED)
 set_target_properties(secure_keypad_ffi PROPERTIES
