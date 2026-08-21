@@ -71,6 +71,7 @@ function writeDeviceGateEvidence(
   const record = {
     schemaVersion: 1,
     commit: gate.commit,
+    gate: gate.name,
     status: "pass",
     platform,
     framework: isWeb ? "web" : "native",
@@ -202,10 +203,9 @@ test("CLI assembles and verifies a signed evidence root", () => {
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const context = { ...baseContext(), commit };
   const evidenceBytes = Buffer.from(
-    JSON.stringify({ schemaVersion: 1, commit, status: "pass" }),
+    JSON.stringify({ schemaVersion: 1, commit, gate: "rust-workspace", status: "pass" }),
     "utf8",
   );
-  const evidenceHash = createHash("sha256").update(evidenceBytes).digest("hex");
   const releaseBytes = Buffer.from("signed release bundle", "utf8");
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const publicKeyBytes = publicKey.export({ format: "der", type: "spki" });
@@ -221,7 +221,7 @@ test("CLI assembles and verifies a signed evidence root", () => {
     commit,
     status: "pass",
     evidencePath: `evidence/${name}.json`,
-    sha256: evidenceHash,
+    sha256: SHA256,
   }));
   const platformByGate = {
     "ios-device-matrix": "ios",
@@ -229,8 +229,16 @@ test("CLI assembles and verifies a signed evidence root", () => {
     "web-browser-matrix": "web",
   };
   for (const gate of gates) {
-    if (platformByGate[gate.name]) writeDeviceGateEvidence(root, gate, platformByGate[gate]);
-    else writeFileSync(join(root, gate.evidencePath), evidenceBytes);
+    if (platformByGate[gate.name]) {
+      writeDeviceGateEvidence(root, gate, platformByGate[gate]);
+    } else {
+      const gateEvidenceBytes = Buffer.from(
+        JSON.stringify({ schemaVersion: 1, commit, gate: gate.name, status: "pass" }),
+        "utf8",
+      );
+      writeFileSync(join(root, gate.evidencePath), gateEvidenceBytes);
+      gate.sha256 = hash(gateEvidenceBytes);
+    }
   }
 
   const artifacts = [

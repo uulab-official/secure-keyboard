@@ -42,7 +42,7 @@ function rejectSecretKeys(value, field = "evidence") {
   return findings;
 }
 
-function validateEvidenceRecord(record, commit) {
+function validateEvidenceRecord(record, commit, gateName) {
   if (!isRecord(record)) return ["gate evidence must be a JSON object"];
   const findings = rejectSecretKeys(record);
   if (record.schemaVersion !== 1) findings.push("gate evidence schemaVersion must equal 1");
@@ -52,6 +52,7 @@ function validateEvidenceRecord(record, commit) {
   } else if (record.commit !== commit) {
     findings.push("gate evidence commit must match the gate commit");
   }
+  if (record.gate !== gateName) findings.push("gate evidence gate must match the fragment gate");
   return findings;
 }
 
@@ -102,7 +103,7 @@ export function buildReleaseGateFragment(input) {
   } catch (error) {
     throw new Error(`gate evidence must be valid JSON: ${error.message}`);
   }
-  const findings = validateEvidenceRecord(record, commit);
+  const findings = validateEvidenceRecord(record, commit, gateName);
   if (findings.length > 0) throw new Error(findings.join("\n"));
 
   const toolchains = validateToolchains(input.toolchains);

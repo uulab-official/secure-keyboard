@@ -41,6 +41,11 @@ const ALLOWED_FRAMEWORKS = Object.freeze({
   android: new Set(["native", "react-native", "flutter"]),
   web: new Set(["web"]),
 });
+const DEVICE_RELEASE_GATES = Object.freeze({
+  "ios-device-matrix": "ios",
+  "android-device-matrix": "android",
+  "web-browser-matrix": "web",
+});
 const FORBIDDEN_KEYS = /password|secret|passphrase|sentinel|plaintext|credentialValue|input(?:Value|Text|Bytes)|^value$/i;
 const FORBIDDEN_TEXT_FIELDS = /["']?(?:password|secret|passphrase|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes))["']?\s*[:=]/i;
 
@@ -98,7 +103,7 @@ function validateTests(testCases, required, findings) {
  * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
- * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string}} [options]
+ * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string, expectedGate?: string}} [options]
  * @returns {string[]}
  */
 export function validateDeviceEvidence(evidence, options = {}) {
@@ -115,10 +120,17 @@ export function validateDeviceEvidence(evidence, options = {}) {
   if (options.expectedCommit !== undefined && !COMMIT.test(String(options.expectedCommit))) {
     add(findings, "expectedCommit", "must be a 40-character lowercase commit SHA");
   }
+  if (typeof evidence.gate !== "string" || !Object.hasOwn(DEVICE_RELEASE_GATES, evidence.gate)) {
+    add(findings, "gate", "must be a supported device release gate");
+  } else if (options.expectedGate !== undefined && evidence.gate !== options.expectedGate) {
+    add(findings, "gate", "must match the expected release gate");
+  }
   if (!Object.hasOwn(ALLOWED_FRAMEWORKS, evidence.platform)) {
     add(findings, "platform", "must be ios, android, or web");
   } else if (!ALLOWED_FRAMEWORKS[evidence.platform].has(evidence.framework)) {
     add(findings, "framework", "is not supported for the selected platform");
+  } else if (typeof evidence.gate === "string" && DEVICE_RELEASE_GATES[evidence.gate] !== evidence.platform) {
+    add(findings, "gate", "must match the evidence platform");
   }
   if (!nonEmptyString(evidence.frameworkVersion)) add(findings, "frameworkVersion", "must be non-empty");
   if (!nonEmptyString(evidence.recordedAt) || Number.isNaN(Date.parse(evidence.recordedAt))) {

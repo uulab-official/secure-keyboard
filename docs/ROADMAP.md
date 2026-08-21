@@ -189,7 +189,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Emit commit-bound CI fragments for durable backends, fuzz/LSAN, source gates, host builds, and browser-matrix logs.
 - [x] Convert the three-browser Playwright smoke logs into a validator-compatible Web evidence record without embedding raw logs.
 - [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
-- [x] Bind each referenced JSON gate record's embedded commit and pass status to its manifest gate.
+- [x] Bind each referenced JSON gate record's embedded gate name, commit, and pass status to its manifest gate.
 - [x] Revalidate iOS/Android/Web gate records, physical-device artifact categories, and nested log/artifact digests during final release verification.
 - [x] Add a checked-in release gate fragment emitter that hashes exact evidence bytes and derives commit/version from the checkout.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.

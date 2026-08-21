@@ -520,6 +520,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /DEVICE_RELEASE_GATES/, "device evidence tooling must bind records to a supported device release gate");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedGate/, "device evidence tooling must bind records to the expected release gate");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS/, "physical device evidence must require categorized review artifacts");
   const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
@@ -673,7 +675,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /validateDeviceEvidence/, "release tooling must revalidate embedded device evidence records");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyDeviceEvidenceFiles/, "release tooling must verify nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence commit/, "release tooling must reject stale embedded gate evidence commits");
-  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /Every `gate\.evidencePath` must point to a JSON object/, "release gates must require machine-readable commit-bound gate records");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence gate/, "release tooling must reject cross-gate evidence reuse");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /gate: <same gate name>/, "release gates must require machine-readable gate-bound records");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /nested log and artifact digests/, "release gates must revalidate nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
@@ -697,6 +700,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentPackageVersion/, "release evidence emitter must derive the package version from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /createHash\("sha256"\)/, "release evidence emitter must hash exact evidence bytes");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /secret-bearing evidence fields/, "release evidence emitter must reject secret-bearing evidence fields");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /match the fragment gate/, "release evidence emitter must reject cross-gate evidence reuse");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence emitter must reject sentinel and raw-input field names");
   const releaseSigner = source("scripts/sign-release.mjs", findings);
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");

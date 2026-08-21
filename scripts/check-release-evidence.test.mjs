@@ -109,6 +109,7 @@ function writeDeviceGateEvidence(root, gate, platform) {
   const record = {
     schemaVersion: 1,
     commit: gate.commit,
+    gate: gate.name,
     status: "pass",
     platform,
     framework: isWeb ? "web" : "native",
@@ -272,7 +273,7 @@ test("verifies every referenced release evidence and artifact digest", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-"));
   const evidence = completeEvidence();
   const payload = Buffer.from(
-    JSON.stringify({ schemaVersion: 1, commit: evidence.commit, status: "pass" }),
+    JSON.stringify({ schemaVersion: 1, commit: evidence.commit, gate: "rust-workspace", status: "pass" }),
     "utf8",
   );
   const sha256 = createHash("sha256").update(payload).digest("hex");
@@ -297,8 +298,12 @@ test("verifies every referenced release evidence and artifact digest", () => {
     if (platformByGate[gate.name]) {
       writeDeviceGateEvidence(root, gate, platformByGate[gate.name]);
     } else {
-      writeFileSync(join(root, gate.evidencePath), payload);
-      gate.sha256 = sha256;
+      const gatePayload = Buffer.from(
+        JSON.stringify({ schemaVersion: 1, commit: evidence.commit, gate: gate.name, status: "pass" }),
+        "utf8",
+      );
+      writeFileSync(join(root, gate.evidencePath), gatePayload);
+      gate.sha256 = createHash("sha256").update(gatePayload).digest("hex");
     }
   }
   for (const artifact of evidence.artifacts) {
@@ -339,7 +344,7 @@ test("rejects a gate evidence record bound to a different commit", () => {
   const evidence = completeEvidence();
   const gate = evidence.gates[0];
   const payload = Buffer.from(
-    JSON.stringify({ schemaVersion: 1, commit: "c".repeat(40), status: "pass" }),
+    JSON.stringify({ schemaVersion: 1, commit: "c".repeat(40), gate: gate.name, status: "pass" }),
     "utf8",
   );
   mkdirSync(join(root, "evidence"), { recursive: true });
@@ -351,12 +356,29 @@ test("rejects a gate evidence record bound to a different commit", () => {
   assert.ok(findings.some((finding) => finding.includes("gate evidence commit")));
 });
 
+test("rejects a gate evidence record reused for a different release gate", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-gate-"));
+  const evidence = completeEvidence();
+  const gate = evidence.gates[0];
+  const payload = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, commit: gate.commit, gate: "javascript-contracts", status: "pass" }),
+    "utf8",
+  );
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  writeFileSync(join(root, gate.evidencePath), payload);
+  gate.sha256 = createHash("sha256").update(payload).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("gate evidence gate")));
+});
+
 test("does not allow a minimal JSON object to satisfy a physical device gate", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-device-gate-"));
   const evidence = completeEvidence();
   const gate = evidence.gates.find((candidate) => candidate.name === "ios-device-matrix");
   const payload = Buffer.from(
-    JSON.stringify({ schemaVersion: 1, commit: gate.commit, status: "pass" }),
+    JSON.stringify({ schemaVersion: 1, commit: gate.commit, gate: gate.name, status: "pass" }),
     "utf8",
   );
   mkdirSync(join(root, "evidence"), { recursive: true });

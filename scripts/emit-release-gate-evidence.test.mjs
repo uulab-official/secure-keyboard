@@ -13,8 +13,8 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const EMIT_SCRIPT = fileURLToPath(new URL("./emit-release-gate-evidence.mjs", import.meta.url));
 const COMMIT = "a".repeat(40);
 
-function evidenceRecord(commit = COMMIT) {
-  return { schemaVersion: 1, commit, status: "pass", result: "sanitized" };
+function evidenceRecord(commit = COMMIT, gate = "rust-workspace") {
+  return { schemaVersion: 1, commit, gate, status: "pass", result: "sanitized" };
 }
 
 test("builds a commit-bound gate fragment with the exact evidence digest", () => {
@@ -104,6 +104,17 @@ test("rejects unsupported gates, stale records, unsafe paths, and secret fields"
         evidenceBytes: Buffer.from(JSON.stringify(evidenceRecord("b".repeat(40)), "utf8"), "utf8"),
       }),
     /must match the gate commit/,
+  );
+  assert.throws(
+    () =>
+      buildReleaseGateFragment({
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        gateName: "rust-workspace",
+        evidencePath: "evidence/gate.json",
+        evidenceBytes: Buffer.from(JSON.stringify(evidenceRecord(COMMIT, "javascript-contracts")), "utf8"),
+      }),
+    /must match the fragment gate/,
   );
 });
 

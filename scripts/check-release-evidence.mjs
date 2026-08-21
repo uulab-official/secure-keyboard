@@ -373,6 +373,9 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
   } else if (record.commit !== gate.commit) {
     add(findings, `${field}.evidence.commit`, "gate evidence commit must match the gate commit");
   }
+  if (record.gate !== gate.name) {
+    add(findings, `${field}.evidence.gate`, "gate evidence gate must match the release gate");
+  }
 
   const devicePolicy = DEVICE_RELEASE_GATE_POLICIES[gate.name];
   if (devicePolicy === undefined) return;
@@ -385,6 +388,7 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
   }
   for (const finding of validateDeviceEvidence(record, {
     expectedCommit: gate.commit,
+    expectedGate: gate.name,
     requirePhysicalDevice: devicePolicy.requirePhysicalDevice,
   })) {
     add(findings, `${field}.device`, finding);

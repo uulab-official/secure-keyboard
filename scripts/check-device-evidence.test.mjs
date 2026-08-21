@@ -14,6 +14,7 @@ import {
 const VALID_NATIVE = {
   schemaVersion: 1,
   commit: "0123456789abcdef0123456789abcdef01234567",
+  gate: "ios-device-matrix",
   platform: "ios",
   framework: "react-native",
   frameworkVersion: "0.87.0",
@@ -75,6 +76,7 @@ test("rejects missing pass status, secret fields, and unsafe paths", () => {
 test("requires secure context and passkey-specific checks for web evidence", () => {
   const web = {
     ...structuredClone(VALID_NATIVE),
+    gate: "web-browser-matrix",
     platform: "web",
     framework: "web",
     physicalDevice: false,
@@ -88,6 +90,18 @@ test("requires secure context and passkey-specific checks for web evidence", () 
   };
   const findings = validateDeviceEvidence(web);
   assert.ok(findings.some((finding) => finding.includes("device.secureContext")));
+});
+
+test("binds a device record to its declared release gate and platform", () => {
+  const wrongGate = structuredClone(VALID_NATIVE);
+  wrongGate.gate = "android-device-matrix";
+  const wrongGateFindings = validateDeviceEvidence(wrongGate);
+  assert.ok(wrongGateFindings.some((finding) => finding.includes("gate")));
+
+  const missingGate = structuredClone(VALID_NATIVE);
+  delete missingGate.gate;
+  const missingGateFindings = validateDeviceEvidence(missingGate);
+  assert.ok(missingGateFindings.some((finding) => finding.includes("gate")));
 });
 
 test("recomputes log and artifact digests inside the evidence root", () => {

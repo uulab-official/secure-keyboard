@@ -86,6 +86,7 @@ export function buildWebBrowserEvidence(input) {
     schemaVersion: 1,
     status: "pass",
     commit,
+    gate: "web-browser-matrix",
     platform: "web",
     framework: "web",
     frameworkVersion,
