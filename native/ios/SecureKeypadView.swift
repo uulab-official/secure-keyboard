@@ -175,6 +175,11 @@ public class SecureKeypadView: UIView {
         }
     }
 
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        refreshProtectionState()
+    }
+
     /// Starts a numeric Secure Native session and renders the supplied layout.
     public func configureNumeric(
         layout: SecureKeypadLayout,
@@ -364,15 +369,24 @@ public class SecureKeypadView: UIView {
     private func installProtectionObservers() {
         let center = NotificationCenter.default
         notificationTokens.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.setProtectedPresentation(true)
+            self?.refreshProtectionState()
         })
         notificationTokens.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.setProtectedPresentation(false)
+            self?.refreshProtectionState()
         })
         notificationTokens.append(center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            let captured = self?.window?.windowScene?.screen.isCaptured ?? false
-            self?.setProtectedPresentation(captured)
+            self?.refreshProtectionState()
         })
+        refreshProtectionState()
+    }
+
+    private func refreshProtectionState() {
+        let applicationIsActive = UIApplication.shared.applicationState == .active
+        let screenIsCaptured = window?.windowScene?.screen.isCaptured ?? false
+        setProtectedPresentation(secureKeypadShouldProtectPresentation(
+            applicationIsActive: applicationIsActive,
+            screenIsCaptured: screenIsCaptured
+        ))
     }
 
     private func setProtectedPresentation(_ protected: Bool) {

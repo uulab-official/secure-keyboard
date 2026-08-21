@@ -111,6 +111,9 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
     requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
+    requireText(findings, file, contents, /refreshProtectionState\(\)/, "iOS native keypad must recompute protection across lifecycle transitions");
+    requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
+    requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
   }

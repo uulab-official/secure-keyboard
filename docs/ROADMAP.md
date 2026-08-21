@@ -163,6 +163,7 @@ Status: release-gate automation in progress; independent/device review pending
 - [x] Complete local 10,000-iteration smoke campaigns for the auth-envelope and core-sequence targets; keep CI at a bounded 2,000-iteration smoke gate.
 - [x] Complete the local 10,000-iteration smoke campaign for the WebAuthn state target and retain its minimized corpus.
 - [x] Complete local 100,000-iteration extended campaigns for all three fuzz targets and retain the resulting corpora.
+- [x] Complete a local 1,000,000-iteration stability campaign for all three fuzz targets; keep the Linux leak-sanitizer gate separate.
 - [ ] Run the full fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.

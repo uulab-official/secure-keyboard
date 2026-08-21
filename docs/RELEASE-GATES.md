@@ -67,6 +67,14 @@ native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
 
+As an additional local stability check on 2026-08-21, each target completed
+1,000,000 iterations without a crash artifact: auth-envelope reached 1,092
+coverage counters with 466 MB final RSS, core-sequence reached 699 with 536
+MB, and WebAuthn-state reached 1,182 with 583 MB using `-max_len=131073`.
+Those RSS values are libFuzzer process measurements that include its evolving
+corpus and coverage tables; they are not an SDK memory ceiling or a leak
+result. The Linux leak-sanitizer job remains mandatory.
+
 ## Durable backend gate
 
 The feature-gated Redis and PostgreSQL adapters must compile under
