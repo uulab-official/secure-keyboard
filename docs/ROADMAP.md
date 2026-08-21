@@ -97,7 +97,7 @@ Exit criteria: RN users can customize the entire supported visual contract while
 
 ### Phase 5 — Flutter adapter
 
-Status: publishable contract, native PlatformView package, and parity gate complete; host-app build and device verification pending
+Status: publishable contract, native PlatformView package, parity gate, reproducible host build, and emulator launch smoke complete; physical-device verification pending
 
 - [x] Publish the Flutter-facing layout/theme/policy contract.
 - [x] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
@@ -108,7 +108,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
 - [x] Add an explicitly acknowledged headless controller command that forwards only a monotonic token and public key ID.
 - [x] Require an explicit native submission consumer before reporting framework success.
-- [x] Add a reproducible CI host-build gate that links the Flutter plugin and Android arm64 Rust FFI library.
+- [x] Add a reproducible CI host-build gate that links the Flutter plugin and Android arm64/x86_64 Rust FFI libraries in one multi-ABI APK.
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the Flutter plugin and XCFramework.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
 - [ ] Compile the registration in supported host apps and verify device behavior.
