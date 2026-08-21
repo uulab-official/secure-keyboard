@@ -12,6 +12,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
+import kotlin.math.floor
 
 /** Flutter registration for the native-only keypad PlatformView. */
 public class SecureKeypadFlutterPlugin : FlutterPlugin {
@@ -58,6 +59,7 @@ private class SecureKeypadFlutterPlatformView(
                     keypad.cancelSession()
                     result.success(null)
                 }
+                "pressKey" -> requestHeadlessKeyPress(call.arguments, result)
                 else -> result.notImplemented()
             }
         }
@@ -84,6 +86,7 @@ private class SecureKeypadFlutterPlatformView(
         }
         try {
             val configuration = SecureKeypadBridgeConfigParser.parse(args as? Map<*, *> ?: invalid())
+            keypad.setRendererMode(configuration.mode, configuration.acknowledgeLowerAssurance)
             if (configuration.inputPolicy == "hangul") {
                 keypad.configureHangul(
                     configuration.layout,
@@ -105,6 +108,9 @@ private class SecureKeypadFlutterPlatformView(
                     configuration.maxTokens,
                     configuration.timeoutMs,
                 )
+            }
+            configuration.headlessKeyPress?.let {
+                keypad.requestHeadlessKeyPress(it.token, it.keyId)
             }
         } catch (_: IllegalArgumentException) {
             emit(mapOf("type" to "result", "code" to "invalid"))
@@ -142,4 +148,30 @@ private class SecureKeypadFlutterPlatformView(
     }
 
     private fun invalid(): Nothing = throw IllegalArgumentException("invalid secure keypad configuration")
+
+    private fun requestHeadlessKeyPress(arguments: Any?, result: MethodChannel.Result) {
+        val command = arguments as? Map<*, *> ?: return result.error("invalid", null, null)
+        if (command.size != 2 || command.keys.any { it !is String || it !in HEADLESS_KEY_PRESS_KEYS }) {
+            return result.error("invalid", null, null)
+        }
+        val rawToken = command["token"] as? Number ?: return result.error("invalid", null, null)
+        val tokenValue = rawToken.toDouble()
+        if (!tokenValue.isFinite() || tokenValue < 0.0 ||
+            tokenValue > MAX_HEADLESS_KEY_PRESS_TOKEN.toDouble() || tokenValue != floor(tokenValue)
+        ) {
+            return result.error("invalid", null, null)
+        }
+        val keyId = command["keyId"] as? String ?: return result.error("invalid", null, null)
+        if (!keyId.matches(HEADLESS_KEY_ID_PATTERN)) {
+            return result.error("invalid", null, null)
+        }
+        keypad.requestHeadlessKeyPress(tokenValue.toLong(), keyId)
+        result.success(null)
+    }
+
+    private companion object {
+        const val MAX_HEADLESS_KEY_PRESS_TOKEN = 9_007_199_254_740_991L
+        val HEADLESS_KEY_ID_PATTERN = Regex("[a-z0-9][a-z0-9._-]{0,63}")
+        val HEADLESS_KEY_PRESS_KEYS = setOf("token", "keyId")
+    }
 }

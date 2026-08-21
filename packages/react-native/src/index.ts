@@ -1,11 +1,13 @@
 import type { HostComponent, StyleProp, ViewStyle } from "react-native";
 import {
+  KEY_ID_PATTERN,
   MAX_RENDERED_LENGTH,
   validateLayout,
   validateMaskedState,
   validateResultEvent as validateContractResultEvent,
   validateTheme,
   type KeypadLayout,
+  type KeypadMode,
   type InputPolicy as ContractInputPolicy,
   type MaskedState,
   type SecureKeypadEvent,
@@ -17,6 +19,13 @@ import {
 export const SECURE_KEYPAD_NATIVE_VIEW_NAME = "SecureKeypadView" as const;
 
 export type InputPolicy = ContractInputPolicy;
+export type SecureKeypadMode = KeypadMode;
+
+/** A public host command; it never contains or derives an input character. */
+export interface HeadlessKeyPress {
+  readonly token: number;
+  readonly keyId: string;
+}
 
 export interface SecureKeypadProps {
   /** React Native presentation style; it never crosses into the secret/session contract. */
@@ -27,12 +36,18 @@ export interface SecureKeypadProps {
   readonly theme: ThemeTokens;
   /** Selects the native/core input policy. Defaults to numeric. */
   readonly inputPolicy?: InputPolicy;
+  /** Selects the renderer. Secure Native is the default; headless-host is lower assurance. */
+  readonly mode?: SecureKeypadMode;
+  /** Required true acknowledgement before the lower-assurance host renderer can run. */
+  readonly acknowledgeLowerAssurance?: boolean;
   /** Upper bound for the number of accepted tokens. */
   readonly maxTokens?: number;
   /** Inactivity timeout in milliseconds. */
   readonly timeoutMs?: number;
   /** Monotonic, non-secret command token; changing it cancels the native session. */
   readonly cancelRequest?: number;
+  /** Monotonic public host command. Only accepted in acknowledged headless-host mode. */
+  readonly headlessKeyPress?: HeadlessKeyPress;
   /** Receives masked length/state only. */
   readonly onMaskedStateChange?: (event: MaskedStateEvent) => void;
   /** Receives a result code only; no submitted value is surfaced to JavaScript. */
@@ -106,9 +121,12 @@ const ALLOWED_PROP_NAMES = [
   "layout",
   "theme",
   "inputPolicy",
+  "mode",
+  "acknowledgeLowerAssurance",
   "maxTokens",
   "timeoutMs",
   "cancelRequest",
+  "headlessKeyPress",
   "onMaskedStateChange",
   "onResult",
 ] as const;
@@ -125,6 +143,18 @@ function hasOnlyAllowedProps(value: Record<string, unknown>): boolean {
 
 function isBoundedInteger(value: unknown, minimum: number, maximum: number): value is number {
   return Number.isInteger(value) && typeof value === "number" && value >= minimum && value <= maximum;
+}
+
+function validateHeadlessKeyPress(value: unknown): value is HeadlessKeyPress {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  return (
+    keys.length === 2 &&
+    keys.every((key) => key === "token" || key === "keyId") &&
+    isBoundedInteger(value.token, 0, Number.MAX_SAFE_INTEGER) &&
+    typeof value.keyId === "string" &&
+    KEY_ID_PATTERN.test(value.keyId)
+  );
 }
 
 /**
@@ -155,6 +185,25 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
     value.inputPolicy !== "hangul"
   ) {
     errors.push("props.inputPolicy is invalid");
+  }
+  const mode = value.mode ?? "secure-native";
+  if (mode !== "secure-native" && mode !== "headless-host") {
+    errors.push("props.mode is invalid");
+  }
+  if (value.acknowledgeLowerAssurance !== undefined && typeof value.acknowledgeLowerAssurance !== "boolean") {
+    errors.push("props.acknowledgeLowerAssurance is invalid");
+  }
+  if (mode === "headless-host" && value.acknowledgeLowerAssurance !== true) {
+    errors.push("headless-host mode requires explicit lower-assurance acknowledgement");
+  }
+  if (mode === "secure-native" && value.acknowledgeLowerAssurance === true) {
+    errors.push("lower-assurance acknowledgement requires headless-host mode");
+  }
+  if (value.headlessKeyPress !== undefined && !validateHeadlessKeyPress(value.headlessKeyPress)) {
+    errors.push("props.headlessKeyPress is invalid");
+  }
+  if (value.headlessKeyPress !== undefined && mode !== "headless-host") {
+    errors.push("headlessKeyPress requires headless-host mode");
   }
   if (value.maxTokens !== undefined && !isBoundedInteger(value.maxTokens, 1, MAX_RENDERED_LENGTH)) {
     errors.push("props.maxTokens is invalid");
@@ -197,9 +246,14 @@ export function getSecureKeypadNativeProps(props: SecureKeypadProps): SecureKeyp
     theme: props.theme,
     ...(props.style === undefined ? {} : { style: props.style }),
     ...(props.inputPolicy === undefined ? {} : { inputPolicy: props.inputPolicy }),
+    ...(props.mode === undefined ? {} : { mode: props.mode }),
+    ...(props.acknowledgeLowerAssurance === undefined
+      ? {}
+      : { acknowledgeLowerAssurance: props.acknowledgeLowerAssurance }),
     ...(props.maxTokens === undefined ? {} : { maxTokens: props.maxTokens }),
     ...(props.timeoutMs === undefined ? {} : { timeoutMs: props.timeoutMs }),
     ...(props.cancelRequest === undefined ? {} : { cancelRequest: props.cancelRequest }),
+    ...(props.headlessKeyPress === undefined ? {} : { headlessKeyPress: props.headlessKeyPress }),
   };
 }
 

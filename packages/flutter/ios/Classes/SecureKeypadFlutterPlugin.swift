@@ -59,6 +59,8 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             case "cancel":
                 self?.keypad.cancelSession()
                 result(nil)
+            case "pressKey":
+                self?.requestHeadlessKeyPress(call.arguments, result: result)
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -92,6 +94,10 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         }
         do {
             let config = try SecureKeypadBridgeConfiguration(dictionary: dictionary)
+            keypad.setRendererMode(
+                mode: config.mode,
+                acknowledgeLowerAssurance: config.acknowledgeLowerAssurance
+            )
             if config.inputPolicy == "hangul" {
                 try keypad.configureHangul(
                     layout: config.layout,
@@ -113,6 +119,9 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
                     maxTokens: config.maxTokens,
                     timeoutMs: config.timeoutMs
                 )
+            }
+            if let command = config.headlessKeyPress {
+                keypad.requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
             }
         } catch {
             emit(["type": "result", "code": "invalid"])
@@ -143,6 +152,28 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         } else {
             pendingEvent = event
         }
+    }
+
+    private func requestHeadlessKeyPress(_ arguments: Any?, result: @escaping FlutterResult) {
+        guard let dictionary = arguments as? NSDictionary,
+              dictionary.count == 2,
+              Set(dictionary.allKeys.compactMap { $0 as? String }) == ["token", "keyId"],
+              let rawToken = dictionary["token"] as? NSNumber,
+              let keyId = dictionary["keyId"] as? String else {
+            result(FlutterError(code: "invalid", message: nil, details: nil))
+            return
+        }
+        let tokenValue = rawToken.doubleValue
+        guard tokenValue.isFinite,
+              tokenValue >= 0,
+              tokenValue <= 9_007_199_254_740_991,
+              tokenValue.rounded(.towardZero) == tokenValue,
+              keyId.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil else {
+            result(FlutterError(code: "invalid", message: nil, details: nil))
+            return
+        }
+        keypad.requestHeadlessKeyPress(requestId: Int64(tokenValue), keyId: keyId)
+        result(nil)
     }
 
     deinit {

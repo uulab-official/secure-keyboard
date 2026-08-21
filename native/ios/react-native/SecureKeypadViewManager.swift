@@ -6,9 +6,12 @@ final class SecureKeypadReactView: SecureKeypadView {
     @objc var layout: NSDictionary? { didSet { configureIfReady() } }
     @objc var theme: NSDictionary? { didSet { configureIfReady() } }
     @objc var inputPolicy: NSString = "numeric" { didSet { configureIfReady() } }
+    @objc var mode: NSString = "secure-native" { didSet { configureIfReady() } }
+    @objc var acknowledgeLowerAssurance: NSNumber = false { didSet { configureIfReady() } }
     @objc var maxTokens: NSNumber = 8 { didSet { configureIfReady() } }
     @objc var timeoutMs: NSNumber = 60_000 { didSet { configureIfReady() } }
     @objc var cancelRequest: NSNumber? { didSet { requestCancelIfValid() } }
+    @objc var headlessKeyPress: NSDictionary? { didSet { configureIfReady(forceHeadlessCommand: true) } }
     @objc var onMaskedStateChange: RCTBubblingEventBlock?
     @objc var onResult: RCTBubblingEventBlock?
 
@@ -57,20 +60,35 @@ final class SecureKeypadReactView: SecureKeypadView {
         requestCancel(value)
     }
 
-    private func configureIfReady() {
+    private func configureIfReady(forceHeadlessCommand: Bool = false) {
         guard let layout, let theme else { return }
-        let config: NSDictionary = [
+        var config: [String: Any] = [
             "layout": layout,
             "theme": theme,
             "inputPolicy": inputPolicy,
+            "mode": mode,
+            "acknowledgeLowerAssurance": acknowledgeLowerAssurance,
             "maxTokens": maxTokens,
             "timeoutMs": timeoutMs,
         ]
-        let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(maxTokens)\n\(timeoutMs)"
-        guard fingerprint != configuredFingerprint else { return }
+        if let headlessKeyPress { config["headlessKeyPress"] = headlessKeyPress }
+        let config = config as NSDictionary
+        let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
+        if fingerprint == configuredFingerprint {
+            guard forceHeadlessCommand else { return }
+            do {
+                if let command = try SecureKeypadBridgeConfiguration(dictionary: config).headlessKeyPress {
+                    requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
+                }
+            } catch {
+                onResult?(["type": "result", "code": "invalid"])
+            }
+            return
+        }
         configuredFingerprint = fingerprint
         do {
             let parsed = try SecureKeypadBridgeConfiguration(dictionary: config)
+            setRendererMode(mode: parsed.mode, acknowledgeLowerAssurance: parsed.acknowledgeLowerAssurance)
             if parsed.inputPolicy == "hangul" {
                 try configureHangul(
                     layout: parsed.layout,
@@ -93,11 +111,15 @@ final class SecureKeypadReactView: SecureKeypadView {
                     timeoutMs: parsed.timeoutMs
                 )
             }
+            if let command = parsed.headlessKeyPress {
+                requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
+            }
         } catch {
             configuredFingerprint = nil
             onResult?(["type": "result", "code": "invalid"])
         }
     }
+
 }
 
 @objc(SecureKeypadViewManager)

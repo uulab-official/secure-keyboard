@@ -59,6 +59,16 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         setConfigurationValue(view, "inputPolicy", value ?: "numeric")
     }
 
+    @ReactProp(name = "mode", defaultString = "secure-native")
+    public fun setMode(view: SecureKeypadView, value: String?) {
+        setConfigurationValue(view, "mode", value ?: "secure-native")
+    }
+
+    @ReactProp(name = "acknowledgeLowerAssurance", defaultBoolean = false)
+    public fun setAcknowledgeLowerAssurance(view: SecureKeypadView, value: Boolean) {
+        setConfigurationValue(view, "acknowledgeLowerAssurance", value)
+    }
+
     @ReactProp(name = "maxTokens", defaultInt = 8)
     public fun setMaxTokens(view: SecureKeypadView, value: Int) {
         setConfigurationValue(view, "maxTokens", value)
@@ -76,6 +86,11 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             return
         }
         view.requestCancel(value.toLong())
+    }
+
+    @ReactProp(name = "headlessKeyPress")
+    public fun setHeadlessKeyPress(view: SecureKeypadView, value: ReadableMap?) {
+        setConfigurationValue(view, "headlessKeyPress", value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS))
     }
 
     override fun onDropViewInstance(view: SecureKeypadView) {
@@ -97,6 +112,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         if (layout == null || theme == null) return
         try {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
+            view.setRendererMode(parsed.mode, parsed.acknowledgeLowerAssurance)
             if (parsed.inputPolicy == "hangul") {
                 view.configureHangul(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             } else if (parsed.inputPolicy == "ascii") {
@@ -104,6 +120,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             } else {
                 view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             }
+            parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
         } catch (_: IllegalArgumentException) {
             view.releaseSession()
             emitResult(view, "invalid")
@@ -146,6 +163,7 @@ private const val MAX_PUBLIC_BRIDGE_STRING_LENGTH = 256
 
 private val LAYOUT_KEYS = setOf("schemaVersion", "id", "locale", "direction", "rows", "slots")
 private val THEME_KEYS = setOf("schemaVersion", "colors", "metrics", "typography", "animation", "feedback")
+private val HEADLESS_KEY_PRESS_KEYS = setOf("token", "keyId")
 private val NESTED_PUBLIC_KEYS = setOf(
     "schemaVersion",
     "id",
@@ -182,6 +200,8 @@ private val NESTED_PUBLIC_KEYS = setOf(
     "feedback",
     "haptic",
     "sound",
+    "token",
+    "keyId",
 )
 
 private class PublicBridgeBudget {

@@ -6,7 +6,7 @@ This project is under active development. It is not a security certification and
 
 ## Security model
 
-Mobile Secure Native Mode keeps input handling in the native/core layer and exposes only key IDs, masked state, and authentication results to framework code. Headless host rendering is specified as a future opt-in compatibility mode with a lower assurance level; the current SDK does not ship a Headless RN/Flutter renderer. Web applications should prefer WebAuthn/passkeys; a web keypad cannot make a browser page's JavaScript memory a trusted security boundary.
+Mobile Secure Native Mode keeps input handling in the native/core layer and exposes only key IDs, masked state, and authentication results to framework code. An opt-in Headless Host Mode is available for custom RN/Flutter rendering, but it is lower assurance because the host observes each public key ID and must explicitly acknowledge that trade-off. Web applications should prefer WebAuthn/passkeys; a web keypad cannot make a browser page's JavaScript memory a trusted security boundary.
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
@@ -29,9 +29,9 @@ Systems migrating from ordinary password endpoints should follow the
 - `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication service with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, atomic one-time ceremony state, and injectable credential/ceremony storage contracts.
 - `secure-ffi`: ABI v2 with opaque session/submission handles and native-only OPAQUE registration/login handoff for iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
-- `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes plus a non-secret native cancellation token.
+- `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes plus non-secret native cancellation/headless key-ID commands. Secure Native is the default.
 - `@secure-keypad/web`: passkey-first WebAuthn adapter; it converts server JSON options and serializes ceremony results without exposing password/PIN APIs. Its custom browser-keypad fallback requires explicit lower-assurance acknowledgement.
-- `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and a native-only `SecureKeypadController.cancel()`, with no `TextEditingController` or secret callback.
+- `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and native-only `SecureKeypadController.cancel()` plus an explicitly acknowledged headless `pressKey(keyId)`, with no `TextEditingController` or secret callback.
 
 The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 `DEFAULT_HANGUL_LAYOUT`, and `DEFAULT_THEME` as safe starting points for

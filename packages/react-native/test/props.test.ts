@@ -94,6 +94,79 @@ describe("React Native public prop boundary", () => {
     ).toMatchObject({ valid: false });
   });
 
+  it("requires explicit acknowledgement before enabling lower-assurance headless host mode", () => {
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+      }),
+    ).toMatchObject({ valid: false });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+        acknowledgeLowerAssurance: true,
+        headlessKeyPress: { token: 0, keyId: "digit-1" },
+      }),
+    ).toMatchObject({ valid: true });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "secure-native",
+        acknowledgeLowerAssurance: true,
+      }),
+    ).toMatchObject({ valid: false });
+  });
+
+  it("bounds the public headless key command and never accepts a value payload", () => {
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+        acknowledgeLowerAssurance: true,
+        headlessKeyPress: { token: 1, keyId: "digit-1", value: "fixture-only-secret" },
+      }),
+    ).toMatchObject({ valid: false });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+        acknowledgeLowerAssurance: true,
+        headlessKeyPress: { token: -1, keyId: "digit-1" },
+      }),
+    ).toMatchObject({ valid: false });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+        acknowledgeLowerAssurance: true,
+        headlessKeyPress: { token: 1, keyId: "../../secret" },
+      }),
+    ).toMatchObject({ valid: false });
+  });
+
+  it("serializes only the acknowledged headless public command", () => {
+    expect(
+      getSecureKeypadNativeProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        mode: "headless-host",
+        acknowledgeLowerAssurance: true,
+        headlessKeyPress: { token: 2, keyId: "digit-2" },
+      }),
+    ).toMatchObject({
+      mode: "headless-host",
+      acknowledgeLowerAssurance: true,
+      headlessKeyPress: { token: 2, keyId: "digit-2" },
+    });
+  });
+
   it("asserts invalid props using only generic, non-secret-bearing diagnostics", () => {
     expect(() =>
       assertSecureKeypadProps({

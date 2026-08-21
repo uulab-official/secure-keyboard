@@ -24,6 +24,25 @@ void main() {
     expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
   });
 
+  test('headless host mode requires explicit lower-assurance acknowledgement', () {
+    final rejected = SecureKeypadConfiguration(
+      layout: defaultNumericLayout,
+      theme: SecureKeypadTheme.defaultTheme(),
+      mode: SecureKeypadMode.headlessHost,
+    );
+    expect(rejected.validate(), contains('mode acknowledgement is invalid'));
+
+    final accepted = SecureKeypadConfiguration(
+      layout: defaultNumericLayout,
+      theme: SecureKeypadTheme.defaultTheme(),
+      mode: SecureKeypadMode.headlessHost,
+      acknowledgeLowerAssurance: true,
+    );
+    expect(accepted.validate(), isEmpty);
+    expect(accepted.toPlatformCreationParams()['mode'], 'headless-host');
+    expect(accepted.toPlatformCreationParams()['acknowledgeLowerAssurance'], isTrue);
+  });
+
   test('configuration rejects unsafe bounds and unsupported schema versions', () {
     final configuration = SecureKeypadConfiguration(
       layout: KeypadLayout(
@@ -78,13 +97,15 @@ void main() {
     expect((params['layout'] as Map<String, Object?>)['schemaVersion'], 1);
   });
 
-  test('controller exposes only a native cancel command', () async {
+  test('controller rejects commands before an acknowledged headless attach', () async {
     final controller = SecureKeypadController();
 
     await expectLater(
       controller.cancel(),
       throwsA(isA<StateError>()),
     );
+    await expectLater(controller.pressKey('digit-1'), throwsA(isA<StateError>()));
+    await expectLater(controller.pressKey('../secret'), throwsA(isA<ArgumentError>()));
   });
 
   test('masked state length is bounded at the framework event boundary', () {

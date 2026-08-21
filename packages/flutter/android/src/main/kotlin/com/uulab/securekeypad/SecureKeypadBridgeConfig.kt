@@ -9,11 +9,26 @@ internal data class SecureKeypadBridgeConfiguration(
     val inputPolicy: String,
     val maxTokens: Int,
     val timeoutMs: Long,
+    val mode: String,
+    val acknowledgeLowerAssurance: Boolean,
+    val headlessKeyPress: SecureKeypadHeadlessKeyPress?,
 )
+
+internal data class SecureKeypadHeadlessKeyPress(val token: Long, val keyId: String)
 
 internal object SecureKeypadBridgeConfigParser {
     fun parse(value: Map<*, *>): SecureKeypadBridgeConfiguration {
-        requireKeys(value, "layout", "theme", "inputPolicy", "maxTokens", "timeoutMs")
+        requireKeys(
+            value,
+            "layout",
+            "theme",
+            "inputPolicy",
+            "maxTokens",
+            "timeoutMs",
+            "mode",
+            "acknowledgeLowerAssurance",
+            "headlessKeyPress",
+        )
         val layout = parseLayout(value["layout"] as? Map<*, *> ?: invalid())
         val theme = parseTheme(value["theme"] as? Map<*, *> ?: invalid())
         val inputPolicy = (value["inputPolicy"] as? String) ?: "numeric"
@@ -22,7 +37,35 @@ internal object SecureKeypadBridgeConfigParser {
         val timeoutMs = integer(value["timeoutMs"], 60_000L)
         require(maxTokens in 1L..4_096L)
         require(timeoutMs in 1L..86_400_000L)
-        return SecureKeypadBridgeConfiguration(layout, theme, inputPolicy, maxTokens.toInt(), timeoutMs)
+        val mode = (value["mode"] as? String) ?: "secure-native"
+        require(mode == "secure-native" || mode == "headless-host")
+        val acknowledgeLowerAssurance = value["acknowledgeLowerAssurance"]?.let { it as? Boolean ?: invalid() } ?: false
+        require(
+            (mode == "secure-native" && !acknowledgeLowerAssurance) ||
+                (mode == "headless-host" && acknowledgeLowerAssurance),
+        )
+        val headlessKeyPress = if (!value.containsKey("headlessKeyPress") || value["headlessKeyPress"] == null) {
+            null
+        } else {
+            val command = value["headlessKeyPress"] as? Map<*, *> ?: invalid()
+            requireKeys(command, "token", "keyId")
+            val token = integer(command["token"] ?: invalid(), 0L)
+            require(token in 0L..9_007_199_254_740_991L)
+            val keyId = command["keyId"] as? String ?: invalid()
+            require(keyId.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")))
+            SecureKeypadHeadlessKeyPress(token, keyId)
+        }
+        require(headlessKeyPress == null || mode == "headless-host")
+        return SecureKeypadBridgeConfiguration(
+            layout,
+            theme,
+            inputPolicy,
+            maxTokens.toInt(),
+            timeoutMs,
+            mode,
+            acknowledgeLowerAssurance,
+            headlessKeyPress,
+        )
     }
 
     private fun parseLayout(value: Map<*, *>): SecureKeypadLayout {

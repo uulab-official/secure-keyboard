@@ -126,6 +126,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
     private val rootContainer: LinearLayout
     private var currentTheme: SecureKeypadTheme = SecureKeypadTheme()
     private var lastCancelRequest: Long? = null
+    private var lastHeadlessKeyPress: Long? = null
+    private var activeLayout: Map<String, SecureKeySpec> = emptyMap()
+    private var headlessHostMode = false
 
     /** Called with a native-only submission that the host must close or authenticate natively. */
     public var onSubmit: ((SecureKeypadSubmission) -> Unit)? = null
@@ -183,6 +186,46 @@ public open class SecureKeypadView @JvmOverloads constructor(
         configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.NUMERIC)
     }
 
+    /**
+     * Selects the renderer mode. Headless host mode hides the native controls
+     * and accepts only explicitly acknowledged public key-ID commands.
+     */
+    public fun setRendererMode(mode: String, acknowledgeLowerAssurance: Boolean) {
+        require(
+            (mode == "secure-native" && !acknowledgeLowerAssurance) ||
+                (mode == "headless-host" && acknowledgeLowerAssurance),
+        )
+        headlessHostMode = mode == "headless-host"
+        rootContainer.visibility = if (headlessHostMode) View.GONE else View.VISIBLE
+        importantForAccessibility = if (headlessHostMode) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    }
+
+    /** Delivers one monotonic public key-ID command in acknowledged headless mode. */
+    public fun requestHeadlessKeyPress(requestId: Long, keyId: String) {
+        if (sessionHandle == 0L || !headlessHostMode || requestId < 0 ||
+            !keyId.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
+            return
+        }
+        val previous = lastHeadlessKeyPress
+        if (previous != null && requestId < previous) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
+            return
+        }
+        if (previous == requestId) return
+        val key = activeLayout[keyId]
+        if (key == null) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
+            return
+        }
+        lastHeadlessKeyPress = requestId
+        activate(key)
+    }
+
     /** Starts a printable-ASCII Secure Native session. */
     public fun configureAscii(
         layout: SecureKeypadLayout,
@@ -232,6 +275,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeypadNative.sessionFree(sessionHandle)
             sessionHandle = 0L
         }
+        lastHeadlessKeyPress = null
     }
 
     /** Cancels the native session and zeroizes any pending input. */
@@ -281,6 +325,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     }
 
     private fun render(layout: SecureKeypadLayout) {
+        activeLayout = layout.rows.flatten().associateBy { it.id }
         keypad.removeAllViews()
         setBackgroundColor(currentTheme.backgroundColor)
         rootContainer.setPadding(

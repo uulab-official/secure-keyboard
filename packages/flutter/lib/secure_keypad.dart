@@ -15,6 +15,13 @@ import 'package:flutter/widgets.dart';
 /// Native-only policies. Web custom keypads are intentionally not represented.
 enum InputPolicy { numeric, ascii, hangul }
 
+/// Selects who renders the visible key controls.
+///
+/// Secure Native is the default and keeps both rendering and input handling
+/// inside the native boundary. Headless Host is explicitly lower assurance:
+/// the host renders public key IDs and forwards them to native code.
+enum SecureKeypadMode { secureNative, headlessHost }
+
 enum KeyRole { input, backspace, submit, clear, cancel, spacer }
 
 enum LayoutDirection { ltr, rtl }
@@ -166,6 +173,8 @@ class MaskedState {
 /// view to clear and zeroize the active session through a method channel.
 class SecureKeypadController {
   Future<void> Function()? _cancelAction;
+  Future<void> Function(int token, String keyId)? _headlessKeyPressAction;
+  int _nextHeadlessKeyPressToken = 0;
 
   /// Cancels the active native session and clears its pending input.
   Future<void> cancel() {
@@ -178,12 +187,41 @@ class SecureKeypadController {
     return action();
   }
 
-  void _attach(Future<void> Function() action) {
+  /// Forwards a public key ID to an acknowledged headless native session.
+  ///
+  /// The controller carries no key label or composed input. Tokens are
+  /// monotonic so a delayed or replayed bridge command is rejected natively.
+  Future<void> pressKey(String keyId) {
+    if (!_keyIdPattern.hasMatch(keyId)) {
+      return Future<void>.error(ArgumentError('keyId is invalid'));
+    }
+    final action = _headlessKeyPressAction;
+    if (action == null) {
+      return Future<void>.error(
+        StateError('SecureKeypadController is not attached to acknowledged headless mode'),
+      );
+    }
+    if (_nextHeadlessKeyPressToken > secureKeypadMaxHeadlessKeyPressToken) {
+      return Future<void>.error(StateError('SecureKeypadController command budget exhausted'));
+    }
+    final token = _nextHeadlessKeyPressToken;
+    _nextHeadlessKeyPressToken++;
+    return action(token, keyId);
+  }
+
+  void _attach(
+    Future<void> Function() action, {
+    Future<void> Function(int token, String keyId)? headlessKeyPressAction,
+  }) {
     _cancelAction = action;
+    _headlessKeyPressAction = headlessKeyPressAction;
+    _nextHeadlessKeyPressToken = 0;
   }
 
   void _detach() {
     _cancelAction = null;
+    _headlessKeyPressAction = null;
+    _nextHeadlessKeyPressToken = 0;
   }
 }
 
@@ -194,6 +232,8 @@ class SecureKeypadConfiguration {
     required this.layout,
     required this.theme,
     this.inputPolicy = InputPolicy.numeric,
+    this.mode = SecureKeypadMode.secureNative,
+    this.acknowledgeLowerAssurance = false,
     this.maxTokens = 4096,
     this.timeoutMs = 120000,
     this.onMaskedStateChanged,
@@ -215,6 +255,8 @@ class SecureKeypadConfiguration {
   final KeypadLayout layout;
   final SecureKeypadTheme theme;
   final InputPolicy inputPolicy;
+  final SecureKeypadMode mode;
+  final bool acknowledgeLowerAssurance;
   final int maxTokens;
   final int timeoutMs;
   final MaskedStateCallback? onMaskedStateChanged;
@@ -276,6 +318,8 @@ class SecureKeypadConfiguration {
         },
       },
       'inputPolicy': inputPolicy.name,
+      'mode': mode == SecureKeypadMode.secureNative ? 'secure-native' : 'headless-host',
+      'acknowledgeLowerAssurance': acknowledgeLowerAssurance,
       'maxTokens': maxTokens,
       'timeoutMs': timeoutMs,
     };
@@ -315,6 +359,10 @@ class SecureKeypadConfiguration {
     }
     if (!_isBoundedInteger(maxTokens, 1, 4096)) errors.add('maxTokens is invalid');
     if (!_isBoundedInteger(timeoutMs, 1, 86400000)) errors.add('timeoutMs is invalid');
+    if ((mode == SecureKeypadMode.secureNative && acknowledgeLowerAssurance) ||
+        (mode == SecureKeypadMode.headlessHost && !acknowledgeLowerAssurance)) {
+      errors.add('mode acknowledgement is invalid');
+    }
 
     const colorKeys = <String>{
       'background',
@@ -460,7 +508,19 @@ class _SecureKeypadState extends State<SecureKeypad> {
         throw StateError('SecureKeypad native view is not ready');
       }
       await channel.invokeMethod<void>('cancel');
-    });
+    }, headlessKeyPressAction: widget.configuration.mode == SecureKeypadMode.headlessHost &&
+            widget.configuration.acknowledgeLowerAssurance
+        ? (token, keyId) async {
+            final channel = _controlChannel;
+            if (channel == null) {
+              throw StateError('SecureKeypad native view is not ready');
+            }
+            await channel.invokeMethod<void>('pressKey', <String, Object?>{
+              'token': token,
+              'keyId': keyId,
+            });
+          }
+        : null);
   }
 
   void _onNativeEvent(dynamic event) {
@@ -535,6 +595,8 @@ abstract interface class SecureKeypadNativeAdapter {
 
   void dispose();
 }
+
+const int secureKeypadMaxHeadlessKeyPressToken = 9007199254740991;
 
 final RegExp _keyIdPattern = RegExp(r'^[a-z0-9][a-z0-9._-]{0,63}$');
 

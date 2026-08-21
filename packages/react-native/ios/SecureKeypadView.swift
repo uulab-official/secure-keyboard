@@ -148,6 +148,9 @@ public class SecureKeypadView: UIView {
     private var notificationTokens: [NSObjectProtocol] = []
     private var contentPaddingConstraints: [NSLayoutConstraint] = []
     private var lastCancelRequest: Int64?
+    private var lastHeadlessKeyPress: Int64?
+    private var activeLayout: [String: SecureKeySpec] = [:]
+    private var headlessHostMode = false
 
     /// Called with a native-only submission that the host must close or authenticate natively.
     public var onSubmit: ((SecureKeypadSubmission) -> Void)?
@@ -193,6 +196,41 @@ public class SecureKeypadView: UIView {
         timeoutMs: UInt64 = 60_000
     ) throws {
         try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .numeric)
+    }
+
+    /// Selects the renderer mode. Headless host mode hides native controls and
+    /// accepts only explicitly acknowledged public key-ID commands.
+    public func setRendererMode(mode: String, acknowledgeLowerAssurance: Bool) {
+        guard (mode == "secure-native" && !acknowledgeLowerAssurance) ||
+                (mode == "headless-host" && acknowledgeLowerAssurance) else {
+            onError?(1)
+            return
+        }
+        headlessHostMode = mode == "headless-host"
+        rootContainer.isHidden = headlessHostMode
+        accessibilityElementsHidden = headlessHostMode
+    }
+
+    /// Delivers one monotonic public key-ID command in acknowledged headless mode.
+    public func requestHeadlessKeyPress(requestId: Int64, keyId: String) {
+        guard session != nil,
+              headlessHostMode,
+              requestId >= 0,
+              keyId.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil else {
+            onError?(1)
+            return
+        }
+        if let previous = lastHeadlessKeyPress, requestId < previous {
+            onError?(1)
+            return
+        }
+        if lastHeadlessKeyPress == requestId { return }
+        guard let key = activeLayout[keyId] else {
+            onError?(1)
+            return
+        }
+        lastHeadlessKeyPress = requestId
+        activate(key: key)
     }
 
     /// Starts a printable-ASCII Secure Native session.
@@ -244,6 +282,7 @@ public class SecureKeypadView: UIView {
             throw SecureKeypadViewError.nativeFailure(status)
         }
         session = newSession
+        activeLayout = Dictionary(uniqueKeysWithValues: layout.rows.flatMap { $0 }.map { ($0.id, $0) })
         self.theme = theme
         rootContainer.spacing = theme.keyGap
         keypadStack.spacing = theme.keyGap
@@ -264,6 +303,7 @@ public class SecureKeypadView: UIView {
             secure_keypad_session_free(session)
             self.session = nil
         }
+        lastHeadlessKeyPress = nil
     }
 
     /// Cancels the native session and zeroizes any pending input.

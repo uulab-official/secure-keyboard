@@ -35,6 +35,32 @@ fun main() {
     val parsed = SecureKeypadBridgeConfigParser.parse(validConfiguration())
     check(parsed.layout.rows.size == 2)
     check(parsed.maxTokens == 8)
+    check(parsed.mode == "secure-native")
+    check(!parsed.acknowledgeLowerAssurance)
+
+    val headless = validConfiguration().also {
+        it["mode"] = "headless-host"
+        it["acknowledgeLowerAssurance"] = true
+        it["headlessKeyPress"] = mapOf("token" to 0, "keyId" to "digit-1")
+    }
+    check(SecureKeypadBridgeConfigParser.parse(headless).mode == "headless-host")
+    check(SecureKeypadBridgeConfigParser.parse(headless).headlessKeyPress?.keyId == "digit-1")
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also { it["mode"] = "headless-host" })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also { it["acknowledgeLowerAssurance"] = true })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            it["headlessKeyPress"] = mapOf("token" to 0, "keyId" to "digit-1")
+        })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            it["headlessKeyPress"] = "invalid"
+        })
+    }.isFailure)
 
     val topLevelSecret = validConfiguration().also { it["password"] = "never accepted" }
     check(runCatching { SecureKeypadBridgeConfigParser.parse(topLevelSecret) }.isFailure)

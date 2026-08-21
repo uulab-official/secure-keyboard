@@ -76,7 +76,7 @@ Exit criteria: Secure Native Mode works without a secret crossing the framework 
 
 ### Phase 4 — React Native adapter
 
-Status: publishable contract, native source packaging, parity gate, and Expo Development Build support complete; physical-device verification pending
+Status: publishable contract, native source packaging, parity gate, Expo Development Build support, and opt-in Headless Host command contract complete; physical-device verification pending
 
 - [x] Provide reference iOS/Android native view-manager registration.
 - [x] Include iOS/Android native source, FFI module map, and fail-closed package build manifests.
@@ -90,7 +90,7 @@ Status: publishable contract, native source packaging, parity gate, and Expo Dev
 - [x] Revalidate RN/Flutter bridge masked-state bounds and stable result-code shapes before host callbacks.
 - [x] Bound the Android RN public configuration conversion with allowlisted keys and aggregate/depth limits before native parsing.
 - [x] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
-- [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.
+- [x] Add an opt-in lower-assurance Headless Host Mode with explicit acknowledgement, monotonic public key-ID commands, and prominent documentation.
 
 Exit criteria: RN users can customize the entire supported visual contract while Secure Native Mode remains the default.
 
@@ -104,6 +104,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Reject unexpected native event fields and bounded masked metadata before Dart callbacks.
 - [x] Provide reference PlatformView/FFI registration that carries only public configuration and masked/result events.
 - [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
+- [x] Add an explicitly acknowledged headless controller command that forwards only a monotonic token and public key ID.
 - [x] Require an explicit native submission consumer before reporting framework success.
 - [x] Add a reproducible CI host-build gate that links the Flutter plugin and Android arm64 Rust FFI library.
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the Flutter plugin and XCFramework.

@@ -9,6 +9,8 @@ export const COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 export type KeyRole = "input" | "backspace" | "submit" | "clear" | "cancel" | "spacer";
 /** Native-only input policy. Browser custom keypads are intentionally excluded. */
 export type InputPolicy = "numeric" | "ascii" | "hangul";
+/** Mobile renderer mode. Secure Native remains the default and highest-assurance mode. */
+export type KeypadMode = "secure-native" | "headless-host";
 export type LayoutDirection = "ltr" | "rtl";
 
 export interface KeySpec {

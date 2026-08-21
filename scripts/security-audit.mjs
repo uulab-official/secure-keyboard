@@ -52,10 +52,13 @@ export function runSecurityAudit() {
     findings,
     "packages/react-native/src/index.ts",
     rnProps,
-    /layout|theme|inputPolicy|maxTokens|timeoutMs|cancelRequest|onMaskedStateChange|onResult/g,
+    /layout|theme|inputPolicy|mode|acknowledgeLowerAssurance|headlessKeyPress|maxTokens|timeoutMs|cancelRequest|onMaskedStateChange|onResult/g,
     "RN public props must be explicitly enumerated",
   );
   requireText(findings, "packages/react-native/src/index.ts", rnProps, /cancelRequest/, "RN must expose only a non-secret cancel command token");
+  requireText(findings, "packages/react-native/src/index.ts", rn, /SecureKeypadMode/, "RN must expose an explicit renderer mode");
+  requireText(findings, "packages/react-native/src/index.ts", rn, /acknowledgeLowerAssurance/, "RN headless mode must require explicit acknowledgement");
+  requireText(findings, "packages/react-native/src/index.ts", rn, /validateHeadlessKeyPress/, "RN headless commands must be bounded and allowlisted");
   forbidText(
     findings,
     "packages/react-native/src/index.ts",
@@ -69,6 +72,9 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypad extends StatefulWidget/, "Flutter must expose a native PlatformView widget");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypadController/, "Flutter must expose a non-secret native controller");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /invokeMethod<void>\('cancel'\)/, "Flutter controller must use a native cancel method");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /enum SecureKeypadMode/, "Flutter must expose an explicit renderer mode");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /invokeMethod<void>\('pressKey'/, "Flutter headless commands must use a native method channel");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /acknowledgeLowerAssurance/, "Flutter headless mode must require explicit acknowledgement");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /toPlatformCreationParams/, "Flutter must have an explicit public creation map");
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /TextEditingController/, "Flutter must not use a text editing controller");
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
@@ -104,6 +110,8 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission\)/, "framework bridge must require an installed native submission consumer");
     requireText(findings, file, contents, /submission\.close\(\)/, "framework bridge must release an unconsumed submission");
+    requireText(findings, file, contents, /(?:setRendererMode|mode)/, "framework bridge must enforce an explicit renderer mode");
+    requireText(findings, file, contents, /(?:headlessKeyPress|pressKey)/, "framework bridge must expose only the bounded headless key-ID command");
     forbidText(findings, file, contents, /submission\.close\(\)[\s\S]{0,100}(?:code.*success|success.*code)/, "framework bridge must not report success after unconditional release");
   }
 
@@ -117,6 +125,9 @@ export function runSecurityAudit() {
   ]) {
     const contents = source(file, findings);
     requireText(findings, file, contents, /cancelRequest/, "RN native manager must expose the non-secret cancel command");
+    requireText(findings, file, contents, /mode/, "RN native manager must expose an explicit renderer mode");
+    requireText(findings, file, contents, /acknowledgeLowerAssurance/, "RN native manager must enforce lower-assurance acknowledgement");
+    requireText(findings, file, contents, /headlessKeyPress/, "RN native manager must expose the bounded headless key-ID command");
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
@@ -138,6 +149,8 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /controlChannel/, "Flutter native plugin must expose a per-view control channel");
     requireText(findings, file, contents, /cancel/, "Flutter native plugin must implement the cancel command");
+    requireText(findings, file, contents, /pressKey/, "Flutter native plugin must implement the bounded headless key-ID command");
+    requireText(findings, file, contents, /setRendererMode|config\.mode/, "Flutter native plugin must enforce the explicit renderer mode");
   }
 
   for (const file of [
@@ -228,6 +241,9 @@ export function runSecurityAudit() {
     const manager = source(file, findings);
     requireText(findings, file, manager, /@interface RCT_EXTERN_MODULE\(SecureKeypadViewManager, RCTViewManager\)/, "React Native Objective-C export must use the current RCT_EXTERN_MODULE interface form");
     requireText(findings, file, manager, /@end\s*$/, "React Native Objective-C export must close its extern interface");
+    requireText(findings, file, manager, /mode/, "React Native Objective-C export must expose renderer mode");
+    requireText(findings, file, manager, /acknowledgeLowerAssurance/, "React Native Objective-C export must expose lower-assurance acknowledgement");
+    requireText(findings, file, manager, /headlessKeyPress/, "React Native Objective-C export must expose the public headless command");
   }
 
   for (const file of [
@@ -317,6 +333,8 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /toPlatformCreationParams\(\)\s*\{[\s\S]{0,180}validate\(\)/, "Flutter bridge serialization must fail closed for invalid configuration");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxHeadlessKeyPressToken/, "Flutter headless command tokens must be bounded");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /mode == SecureKeypadMode\.headlessHost/, "Flutter must bind headless command access to the acknowledged mode");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",

@@ -2,6 +2,7 @@ package com.uulab.securekeypad
 
 internal const val SECURE_KEYPAD_MAX_RENDERED_LENGTH = 4_096
 internal const val SECURE_KEYPAD_ERROR_INTERNAL = 7
+internal const val SECURE_KEYPAD_ERROR_INVALID = 1
 
 /** Returns whether a native display-state code is part of the public contract. */
 internal fun secureKeypadIsValidDisplayState(value: Int): Boolean = value in 0..3

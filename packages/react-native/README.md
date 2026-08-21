@@ -42,6 +42,23 @@ export function PinEntry() {
 explicit size (for example, `flex: 1`) from the host layout; it is not part of
 the native secret/session contract.
 
+For a fully custom host-rendered keypad, opt into the lower-assurance mode and
+acknowledge the trade-off explicitly. The host observes public key IDs, while
+native/core code still owns composition and the input buffer:
+
+```tsx
+<SecureKeypadView
+  {...props}
+  mode="headless-host"
+  acknowledgeLowerAssurance
+  headlessKeyPress={{ token: 0, keyId: "digit-1" }}
+/>
+```
+
+Increment the bounded `token` for each command. Do not send labels, derived
+values, or accumulated input. Secure Native remains the default and should be
+used when the native renderer is acceptable.
+
 For native passwords containing letters and symbols, use `inputPolicy: "ascii"`
 with public `ascii-XX` key IDs. The label is presentation-only; browser
 JavaScript is not a trusted secret-memory boundary, so use the passkey adapter

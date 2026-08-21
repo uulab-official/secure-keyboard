@@ -28,6 +28,12 @@ and call `await controller.cancel()`. The controller contains no input and
 uses the per-view native method channel; native code clears and zeroizes the
 session before emitting the normal masked `cancelled` state/result events.
 
+For a fully custom host-rendered keypad, set
+`mode: SecureKeypadMode.headlessHost` and
+`acknowledgeLowerAssurance: true`, then call `await controller.pressKey("digit-1")`.
+This lower-assurance path lets the host observe public key IDs; it never sends
+labels, derived values, or accumulated input. Secure Native is the default.
+
 The plugin build is fail-closed. Before iOS CocoaPods integration, copy the
 matching Rust `secure_ffi` XCFramework into the plugin's `ios/` directory as
 `ios/secure_ffi.xcframework` (or stage `ios/libsecure_ffi.a` for a

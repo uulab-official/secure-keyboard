@@ -16,11 +16,15 @@ The default mode for mobile. A native renderer receives a serializable layout an
 
 ### Headless Host Mode
 
-The contract reserves an opt-in compatibility mode for applications that render
-keys in React Native or Flutter. It is fully composable, but the host runtime
-can observe key events and it must be documented as lower assurance. The
-current SDK does not ship a Headless RN/Flutter renderer; if one is added, it
-must never be the default for authentication.
+The SDK provides an opt-in compatibility mode for applications that render keys
+in React Native or Flutter. It is fully composable, but the host runtime can
+observe every public key ID and therefore receives a weaker security boundary.
+The mode requires `acknowledgeLowerAssurance: true`, is rejected unless the
+mode is explicitly `headless-host`, and must never be the default for
+authentication. Native/core code still owns the composition buffer; the host
+command contains only a bounded monotonic token and public `keyId`, never a
+label-derived value or accumulated input. Duplicate tokens are ignored and
+older tokens are rejected.
 
 ### Web Mode
 
@@ -46,7 +50,7 @@ Consumers must not receive or provide:
 - a mapping callback that receives the secret value;
 - raw secret values in analytics or error events.
 
-The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. The layout contract includes a `cancel` action role, and RN/Flutter host cancellation commands carry only a monotonic public token or method name; activating either path calls native cancellation, clears the core buffer, and emits only `displayState: cancelled` plus a `cancelled` result code. State events expose only length, masked display state, validation state, and result codes. Framework adapters must revalidate exact event keys, state length (`0..4096`), and stable result-code shapes before invoking application callbacks; malformed metadata fails closed as a generic error and is never echoed.
+The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. The layout contract includes a `cancel` action role, and RN/Flutter host cancellation commands carry only a monotonic public token or method name; activating either path calls native cancellation, clears the core buffer, and emits only `displayState: cancelled` plus a `cancelled` result code. In acknowledged Headless Host Mode, `pressKey(keyId)` carries only a bounded monotonic token and public key ID; it is unavailable in Secure Native Mode. State events expose only length, masked display state, validation state, and result codes. Framework adapters must revalidate exact event keys, state length (`0..4096`), and stable result-code shapes before invoking application callbacks; malformed metadata fails closed as a generic error and is never echoed.
 
 The native C ABI is an opaque-handle boundary. It accepts public key IDs as
 bounded pointer/length inputs and returns only masked state or stable error

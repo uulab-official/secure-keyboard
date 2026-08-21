@@ -1,6 +1,11 @@
 import Foundation
 import UIKit
 
+public struct SecureKeypadHeadlessKeyPress {
+    public let token: Int64
+    public let keyId: String
+}
+
 /// A framework-neutral public configuration decoded at the native boundary.
 /// It contains layout and theme data only; no entered input is representable.
 public struct SecureKeypadBridgeConfiguration {
@@ -9,9 +14,12 @@ public struct SecureKeypadBridgeConfiguration {
     public let inputPolicy: String
     public let maxTokens: Int
     public let timeoutMs: UInt64
+    public let mode: String
+    public let acknowledgeLowerAssurance: Bool
+    public let headlessKeyPress: SecureKeypadHeadlessKeyPress?
 
     public init(dictionary: NSDictionary) throws {
-        guard Self.onlyKeys(dictionary, ["layout", "theme", "inputPolicy", "maxTokens", "timeoutMs"]) else {
+        guard Self.onlyKeys(dictionary, ["layout", "theme", "inputPolicy", "maxTokens", "timeoutMs", "mode", "acknowledgeLowerAssurance", "headlessKeyPress"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         guard let layoutValue = dictionary["layout"] as? NSDictionary,
@@ -33,6 +41,31 @@ public struct SecureKeypadBridgeConfiguration {
         }
         maxTokens = parsedMaxTokens
         timeoutMs = UInt64(parsedTimeoutMs)
+        let parsedMode = (dictionary["mode"] as? String) ?? "secure-native"
+        guard parsedMode == "secure-native" || parsedMode == "headless-host" else {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
+        let parsedAcknowledgement = (dictionary["acknowledgeLowerAssurance"] as? Bool) ?? false
+        guard (parsedMode == "secure-native" && !parsedAcknowledgement) ||
+                (parsedMode == "headless-host" && parsedAcknowledgement) else {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
+        mode = parsedMode
+        acknowledgeLowerAssurance = parsedAcknowledgement
+        headlessKeyPress = try Self.parseHeadlessKeyPress(dictionary["headlessKeyPress"], mode: parsedMode)
+    }
+
+    private static func parseHeadlessKeyPress(_ value: Any?, mode: String) throws -> SecureKeypadHeadlessKeyPress? {
+        guard let value else { return nil }
+        guard let dictionary = value as? NSDictionary,
+              onlyKeys(dictionary, ["token", "keyId"]),
+              let token = boundedInteger(dictionary["token"], minimum: 0, maximum: 9_007_199_254_740_991),
+              let keyId = dictionary["keyId"] as? String,
+              keyId.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil,
+              mode == "headless-host" else {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
+        return SecureKeypadHeadlessKeyPress(token: Int64(token), keyId: keyId)
     }
 
     private static func parseLayout(_ value: NSDictionary) throws -> SecureKeypadLayout {
