@@ -97,6 +97,7 @@ export function runSecurityAudit() {
     "packages/flutter/ios/Classes/SecureKeypadView.swift",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /case \.cancel:/, "iOS native keypad must implement the explicit cancel action");
     requireText(findings, file, contents, /takeOpaqueHandle\(\)/, "iOS native submission must have an opaque transfer API");
     requireText(findings, file, contents, /public enum SecureKeypadNativeSubmissionRouter/, "iOS native handoff must be explicitly routed");
   }
@@ -106,6 +107,8 @@ export function runSecurityAudit() {
     "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /CANCEL/, "Android native keypad must implement the explicit cancel action");
+    requireText(findings, file, contents, /sessionCancel/, "Android native keypad must call the C ABI cancellation path");
     requireText(findings, file, contents, /takeNativeHandle\(\)/, "Android native submission must have an opaque transfer API");
     requireText(findings, file, contents, /object SecureKeypadNativeSubmissionRouter/, "Android native handoff must be explicitly routed");
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
@@ -158,6 +161,16 @@ export function runSecurityAudit() {
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
+  const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
+  for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /SecureKeyRole\.CANCEL/, "Android bridge parser must accept the explicit cancel role");
+  }
 
   const opaqueHttp = source("crates/secure-auth-http/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /pub struct HttpDeploymentContext/, "OPAQUE HTTP routes must require an explicit deployment context");
