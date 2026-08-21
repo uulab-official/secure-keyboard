@@ -13,6 +13,7 @@ import {
 
 const VALID_NATIVE = {
   schemaVersion: 1,
+  status: "pass",
   commit: "0123456789abcdef0123456789abcdef01234567",
   gate: "ios-device-matrix",
   platform: "ios",
@@ -55,6 +56,15 @@ test("can bind a device record to an expected checkout commit", () => {
   const findings = validateDeviceEvidence(VALID_NATIVE, { expectedCommit: "f".repeat(40) });
 
   assert.ok(findings.some((finding) => finding.includes("commit") && finding.includes("expected")));
+});
+
+test("requires an explicit passing device evidence status", () => {
+  const missing = structuredClone(VALID_NATIVE);
+  delete missing.status;
+  const failed = { ...structuredClone(VALID_NATIVE), status: "failed" };
+
+  assert.ok(validateDeviceEvidence(missing).some((finding) => finding.includes("status")));
+  assert.ok(validateDeviceEvidence(failed).some((finding) => finding.includes("status")));
 });
 
 test("rejects missing pass status, secret fields, and unsafe paths", () => {

@@ -112,6 +112,7 @@ export function validateDeviceEvidence(evidence, options = {}) {
   rejectSecretKeys(evidence, "root", findings);
 
   if (evidence.schemaVersion !== 1) add(findings, "schemaVersion", "must be 1");
+  if (evidence.status !== "pass") add(findings, "status", "must be exactly 'pass'");
   if (typeof evidence.commit !== "string" || !COMMIT.test(evidence.commit)) {
     add(findings, "commit", "must be a 40-character lowercase commit SHA");
   } else if (options.expectedCommit !== undefined && evidence.commit !== options.expectedCommit) {

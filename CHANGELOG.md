@@ -84,3 +84,5 @@ exact release-candidate commit by the release evidence manifest.
   fail-closed cleanup against the live backend.
 - Release evidence tests now cover rejection of under-specified CI gate
   records before digest and signature verification is treated as sufficient.
+- Standalone device evidence validation now requires an explicit top-level
+  `status: "pass"`, matching the final release verifier's fail-closed policy.

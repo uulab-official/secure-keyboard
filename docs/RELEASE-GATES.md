@@ -141,6 +141,10 @@ rejects duplicate gate names, artifact kinds, and referenced paths, refuses
 symlink escapes, and fails if the resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
+The standalone device-evidence validator also requires `status: "pass"` on
+every platform record; a record with passing test-case fields but a missing or
+non-passing top-level status cannot be used as device evidence.
+
 Every `gate.evidencePath` must point to a JSON object with
 `{schemaVersion: 1, gate: <same gate name>, commit: <same gate SHA>, status: "pass"}`. CI-owned gates additionally
 require `evidenceKind: "ci-command"`, a sanitized `runner`, an ISO-8601
