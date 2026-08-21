@@ -42,6 +42,28 @@ public struct SecureKeypadBridgeConfiguration {
         guard let schemaVersion = value["schemaVersion"] as? NSNumber, schemaVersion.intValue == 1 else {
             throw SecureKeypadBridgeConfigError.invalid
         }
+        if value.allKeys.contains(where: { ($0 as? String) == "id" }) {
+            guard let id = value["id"] as? String,
+                  id.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil else {
+                throw SecureKeypadBridgeConfigError.invalid
+            }
+        }
+        if value.allKeys.contains(where: { ($0 as? String) == "locale" }) {
+            guard let locale = value["locale"] as? String,
+                  locale.range(of: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$", options: .regularExpression) != nil else {
+                throw SecureKeypadBridgeConfigError.invalid
+            }
+        }
+        if value.allKeys.contains(where: { ($0 as? String) == "direction" }) {
+            guard value["direction"] as? String == "ltr" || value["direction"] as? String == "rtl" else {
+                throw SecureKeypadBridgeConfigError.invalid
+            }
+        }
+        if let slots = try Self.optionalMap(value["slots"], allowed: ["header", "display", "footer", "error"]) {
+            guard slots.allValues.allSatisfy({ $0 is Bool }) else {
+                throw SecureKeypadBridgeConfigError.invalid
+            }
+        }
         guard let rows = value["rows"] as? NSArray, rows.count > 0, rows.count <= 16 else {
             throw SecureKeypadBridgeConfigError.invalid
         }
@@ -64,6 +86,20 @@ public struct SecureKeypadBridgeConfiguration {
                       id.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil,
                       ids.insert(id).inserted else {
                     throw SecureKeypadBridgeConfigError.invalid
+                }
+                if key.allKeys.contains(where: { ($0 as? String) == "label" }) {
+                    guard key["label"] is String else { throw SecureKeypadBridgeConfigError.invalid }
+                }
+                for field in ["icon", "testId"] {
+                    if key.allKeys.contains(where: { ($0 as? String) == field }) {
+                        guard let publicId = key[field] as? String,
+                              publicId.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil else {
+                            throw SecureKeypadBridgeConfigError.invalid
+                        }
+                    }
+                }
+                if key.allKeys.contains(where: { ($0 as? String) == "accessibilityLabel" }) {
+                    guard key["accessibilityLabel"] is String else { throw SecureKeypadBridgeConfigError.invalid }
                 }
                 let label = (key["label"] as? String) ?? (key["icon"] as? String) ?? id
                 guard label.utf8.count <= 16 else {
@@ -95,6 +131,7 @@ public struct SecureKeypadBridgeConfiguration {
               let metrics = value["metrics"] as? NSDictionary,
               onlyKeys(colors, ["background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error"]),
               onlyKeys(metrics, ["keyHeight", "keyGap", "keyRadius", "contentPadding"]),
+              let typography = try Self.optionalMap(value["typography"], allowed: ["keyFontSize", "keyFontWeight"]),
               let keyHeight = number(metrics["keyHeight"]),
               let keyGap = number(metrics["keyGap"]),
               let keyRadius = number(metrics["keyRadius"]),
@@ -102,12 +139,42 @@ public struct SecureKeypadBridgeConfiguration {
               let background = color(colors["background"]),
               let keyColor = color(colors["keyBackground"]),
               let keyPressedColor = color(colors["keyPressedBackground"]),
-              let keyTextColor = color(colors["keyForeground"]) else {
+              let keyTextColor = color(colors["keyForeground"]),
+              color(colors["error"]) != nil else {
             throw SecureKeypadBridgeConfigError.invalid
         }
-        guard keyHeight >= 1, keyHeight <= 256, keyGap >= 0, keyGap <= 256,
-              keyRadius >= 0, keyRadius <= 256, contentPadding >= 0, contentPadding <= 256 else {
+        guard keyHeight >= 32, keyHeight <= 160, keyGap >= 0, keyGap <= 48,
+              keyRadius >= 0, keyRadius <= 80, contentPadding >= 0, contentPadding <= 80,
+              let keyFontSize = number(typography["keyFontSize"]), keyFontSize >= 10, keyFontSize <= 72,
+              validFontWeight(typography["keyFontWeight"]) else {
             throw SecureKeypadBridgeConfigError.invalid
+        }
+        if let animation = try Self.optionalMap(value["animation"], allowed: ["pressDurationMs", "maskRevealDurationMs"]) {
+            if animation.allKeys.contains(where: { ($0 as? String) == "pressDurationMs" }) {
+                guard let duration = boundedInteger(animation["pressDurationMs"], minimum: 0, maximum: 500) else {
+                    throw SecureKeypadBridgeConfigError.invalid
+                }
+                _ = duration
+            }
+            if animation.allKeys.contains(where: { ($0 as? String) == "maskRevealDurationMs" }) {
+                guard let duration = boundedInteger(animation["maskRevealDurationMs"], minimum: 0, maximum: 2_000) else {
+                    throw SecureKeypadBridgeConfigError.invalid
+                }
+                _ = duration
+            }
+        }
+        if let feedback = try Self.optionalMap(value["feedback"], allowed: ["haptic", "sound"]) {
+            if feedback.allKeys.contains(where: { ($0 as? String) == "haptic" }) {
+                guard let haptic = feedback["haptic"] as? String,
+                      ["none", "light", "medium", "heavy"].contains(haptic) else {
+                    throw SecureKeypadBridgeConfigError.invalid
+                }
+            }
+            if feedback.allKeys.contains(where: { ($0 as? String) == "sound" }) {
+                guard let sound = feedback["sound"] as? String, ["none", "click"].contains(sound) else {
+                    throw SecureKeypadBridgeConfigError.invalid
+                }
+            }
         }
         var theme = SecureKeypadTheme()
         theme.backgroundColor = background
@@ -118,12 +185,7 @@ public struct SecureKeypadBridgeConfiguration {
         theme.keyGap = CGFloat(keyGap)
         theme.keyRadius = CGFloat(keyRadius)
         theme.contentPadding = CGFloat(contentPadding)
-        if let typography = value["typography"] as? NSDictionary,
-           onlyKeys(typography, ["keyFontSize", "keyFontWeight"]),
-           let fontSize = number(typography["keyFontSize"]),
-           fontSize >= 1, fontSize <= 128 {
-            theme.keyFontSize = CGFloat(fontSize)
-        }
+        theme.keyFontSize = CGFloat(keyFontSize)
         return theme
     }
 
@@ -141,6 +203,31 @@ public struct SecureKeypadBridgeConfiguration {
         return result.isFinite ? result : nil
     }
 
+    private static func boundedInteger(_ value: Any?, minimum: Double, maximum: Double) -> Int? {
+        guard !(value is Bool), let number = value as? NSNumber else { return nil }
+        let result = number.doubleValue
+        guard result.isFinite, result.rounded(.towardZero) == result, result >= minimum, result <= maximum else {
+            return nil
+        }
+        return Int(result)
+    }
+
+    private static func validFontWeight(_ value: Any?) -> Bool {
+        if let string = value as? String {
+            return ["400", "500", "600", "700"].contains(string)
+        }
+        guard let weight = boundedInteger(value, minimum: 400, maximum: 700) else { return false }
+        return [400, 500, 600, 700].contains(weight)
+    }
+
+    private static func optionalMap(_ value: Any?, allowed: [String]) throws -> NSDictionary? {
+        guard let value else { return nil }
+        guard let dictionary = value as? NSDictionary, onlyKeys(dictionary, allowed) else {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
+        return dictionary
+    }
+
     private static func boundedInteger(_ value: Any?, default defaultValue: Int, range: ClosedRange<Int>) -> Int? {
         guard let value else { return defaultValue }
         guard !(value is Bool) else { return nil }
@@ -155,7 +242,8 @@ public struct SecureKeypadBridgeConfiguration {
 
     private static func color(_ value: Any?) -> UIColor? {
         guard let hex = value as? String else { return nil }
-        let normalized = hex.dropFirst(hex.first == "#" ? 1 : 0)
+        guard hex.hasPrefix("#") else { return nil }
+        let normalized = hex.dropFirst()
         guard normalized.count == 6 || normalized.count == 8,
               let raw = UInt64(normalized, radix: 16) else { return nil }
         let alpha: CGFloat

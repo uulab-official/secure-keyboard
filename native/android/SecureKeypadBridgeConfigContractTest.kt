@@ -54,4 +54,35 @@ fun main() {
 
     val booleanMaxTokens = validConfiguration().also { it["maxTokens"] = true }
     check(runCatching { SecureKeypadBridgeConfigParser.parse(booleanMaxTokens) }.isFailure)
+
+    val secretInSlots = validConfiguration().also {
+        @Suppress("UNCHECKED_CAST")
+        val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
+        layout["slots"] = mapOf("secret" to true)
+        it["layout"] = layout
+    }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(secretInSlots) }.isFailure)
+
+    val secretInAnimation = validConfiguration().also {
+        @Suppress("UNCHECKED_CAST")
+        val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+        theme["animation"] = mapOf("rawInput" to "never accepted")
+        it["theme"] = theme
+    }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(secretInAnimation) }.isFailure)
+
+    val invalidErrorColor = validConfiguration().also {
+        @Suppress("UNCHECKED_CAST")
+        val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+        theme["colors"] = mapOf(
+            "background" to "#101114",
+            "keyBackground" to "#23262D",
+            "keyForeground" to "#FFFFFF",
+            "keyPressedBackground" to "#3B82F6",
+            "keyDisabledBackground" to "#4B5563",
+            "error" to "never accepted",
+        )
+        it["theme"] = theme
+    }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(invalidErrorColor) }.isFailure)
 }

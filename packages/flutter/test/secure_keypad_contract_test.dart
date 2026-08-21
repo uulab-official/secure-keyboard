@@ -121,4 +121,25 @@ void main() {
       isFalse,
     );
   });
+
+  test('rejects secret-bearing nested theme fields before bridge serialization', () {
+    final baseTheme = SecureKeypadTheme.defaultTheme();
+    final colors = Map<String, String>.of(baseTheme.colors)
+      ..['secret'] = '#000000';
+    final configuration = SecureKeypadConfiguration(
+      layout: defaultNumericLayout,
+      theme: SecureKeypadTheme(
+        colors: colors,
+        metrics: baseTheme.metrics,
+        keyFontSize: baseTheme.keyFontSize,
+        keyFontWeight: baseTheme.keyFontWeight,
+        haptic: baseTheme.haptic,
+        sound: baseTheme.sound,
+        pressDurationMs: baseTheme.pressDurationMs,
+        maskRevealDurationMs: baseTheme.maskRevealDurationMs,
+      ),
+    );
+
+    expect(configuration.validate(), contains('theme.colors is invalid'));
+  });
 }

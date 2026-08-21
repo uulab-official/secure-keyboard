@@ -28,6 +28,20 @@ internal object SecureKeypadBridgeConfigParser {
     private fun parseLayout(value: Map<*, *>): SecureKeypadLayout {
         requireKeys(value, "schemaVersion", "id", "locale", "direction", "rows", "slots")
         require((value["schemaVersion"] as? Number)?.toDouble() == 1.0)
+        if (value.containsKey("id")) {
+            val id = value["id"] as? String ?: invalid()
+            require(id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")))
+        }
+        if (value.containsKey("locale")) {
+            val locale = value["locale"] as? String ?: invalid()
+            require(locale.matches(Regex("[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?")))
+        }
+        if (value.containsKey("direction")) {
+            require(value["direction"] == "ltr" || value["direction"] == "rtl")
+        }
+        optionalMap(value["slots"], "header", "display", "footer", "error")?.values?.forEach {
+            require(it is Boolean)
+        }
         val rows = value["rows"] as? List<*> ?: invalid()
         require(rows.isNotEmpty() && rows.size <= 16)
         val ids = HashSet<String>()
@@ -40,6 +54,16 @@ internal object SecureKeypadBridgeConfigParser {
                 val id = key["id"] as? String ?: invalid()
                 require(id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")))
                 require(ids.add(id))
+                if (key.containsKey("label")) require(key["label"] is String)
+                if (key.containsKey("icon")) {
+                    val icon = key["icon"] as? String ?: invalid()
+                    require(icon.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")))
+                }
+                if (key.containsKey("accessibilityLabel")) require(key["accessibilityLabel"] is String)
+                if (key.containsKey("testId")) {
+                    val testId = key["testId"] as? String ?: invalid()
+                    require(testId.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")))
+                }
                 val roleValue = key["role"] as? String ?: invalid()
                 val role = when (roleValue) {
                     "input" -> SecureKeyRole.INPUT
@@ -67,13 +91,28 @@ internal object SecureKeypadBridgeConfigParser {
         val metrics = value["metrics"] as? Map<*, *> ?: invalid()
         requireKeys(colors, "background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error")
         requireKeys(metrics, "keyHeight", "keyGap", "keyRadius", "contentPadding")
-        val typography = value["typography"] as? Map<*, *>
-        typography?.let { requireKeys(it, "keyFontSize", "keyFontWeight") }
-        val keyHeight = metric(metrics, "keyHeight", 1f, 256f)
-        val keyGap = metric(metrics, "keyGap", 0f, 256f)
-        val keyRadius = metric(metrics, "keyRadius", 0f, 256f)
-        val contentPadding = metric(metrics, "contentPadding", 0f, 256f)
-        val keyFontSize = typography?.get("keyFontSize")?.let { number(it, 1f, 128f) } ?: 24f
+        val typography = optionalMap(value["typography"], "keyFontSize", "keyFontWeight") ?: invalid()
+        val keyHeight = metric(metrics, "keyHeight", 32f, 160f)
+        val keyGap = metric(metrics, "keyGap", 0f, 48f)
+        val keyRadius = metric(metrics, "keyRadius", 0f, 80f)
+        val contentPadding = metric(metrics, "contentPadding", 0f, 80f)
+        color(colors, "error")
+        val keyFontSize = number(typography["keyFontSize"] ?: invalid(), 10f, 72f)
+        validateFontWeight(typography["keyFontWeight"] ?: invalid())
+        optionalMap(value["animation"], "pressDurationMs", "maskRevealDurationMs")?.let {
+            if (it.containsKey("pressDurationMs")) boundedInteger(it["pressDurationMs"], 0L, 500L)
+            if (it.containsKey("maskRevealDurationMs")) boundedInteger(it["maskRevealDurationMs"], 0L, 2_000L)
+        }
+        optionalMap(value["feedback"], "haptic", "sound")?.let {
+            if (it.containsKey("haptic")) {
+                val haptic = it["haptic"] as? String ?: invalid()
+                require(haptic in setOf("none", "light", "medium", "heavy"))
+            }
+            if (it.containsKey("sound")) {
+                val sound = it["sound"] as? String ?: invalid()
+                require(sound in setOf("none", "click"))
+            }
+        }
         return SecureKeypadTheme(
             backgroundColor = color(colors, "background"),
             keyColor = color(colors, "keyBackground"),
@@ -91,6 +130,7 @@ internal object SecureKeypadBridgeConfigParser {
 
     private fun color(value: Map<*, *>, key: String): Int {
         val text = value[key] as? String ?: invalid()
+        require(text.startsWith("#"))
         val hex = text.removePrefix("#")
         require(hex.length == 6 || hex.length == 8)
         val raw = hex.toLongOrNull(16) ?: invalid()
@@ -115,6 +155,27 @@ internal object SecureKeypadBridgeConfigParser {
         val result = (value as? Number)?.toDouble() ?: invalid()
         require(result.isFinite() && floor(result) == result)
         return result.toLong()
+    }
+
+    private fun boundedInteger(value: Any?, minimum: Long, maximum: Long): Long {
+        val result = (value as? Number)?.toDouble() ?: invalid()
+        require(result.isFinite() && floor(result) == result && result >= minimum && result <= maximum)
+        return result.toLong()
+    }
+
+    private fun validateFontWeight(value: Any) {
+        when (value) {
+            is String -> require(value == "400" || value == "500" || value == "600" || value == "700")
+            is Number -> require(boundedInteger(value, 400L, 700L) in setOf(400L, 500L, 600L, 700L))
+            else -> invalid()
+        }
+    }
+
+    private fun optionalMap(value: Any?, vararg allowed: String): Map<*, *>? {
+        if (value == null) return null
+        val map = value as? Map<*, *> ?: invalid()
+        requireKeys(map, *allowed)
+        return map
     }
 
     private fun requireKeys(value: Map<*, *>, vararg allowed: String) {

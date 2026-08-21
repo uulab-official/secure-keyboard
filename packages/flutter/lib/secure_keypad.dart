@@ -137,6 +137,22 @@ enum HapticFeedbackStyle { none, light, medium, heavy }
 
 enum SoundFeedback { none, click }
 
+final RegExp _colorPattern = RegExp(r'^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$');
+final RegExp _localePattern = RegExp(r'^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$');
+
+bool _hasExactKeys(Iterable<String> keys, Set<String> expected) {
+  final actual = keys.toSet();
+  return actual.length == expected.length && actual.containsAll(expected);
+}
+
+bool _isBoundedNumber(num? value, num minimum, num maximum) {
+  return value != null && value.isFinite && value >= minimum && value <= maximum;
+}
+
+bool _isBoundedInteger(num? value, int minimum, int maximum) {
+  return value != null && value.isFinite && value == value.round() && value >= minimum && value <= maximum;
+}
+
 class MaskedState {
   const MaskedState({required this.length, required this.displayState});
 
@@ -267,7 +283,14 @@ class SecureKeypadConfiguration {
   List<String> validate() {
     final errors = <String>[];
     if (layout.schemaVersion != 1) errors.add('layout.schemaVersion is unsupported');
+    if (layout.id != null && !_keyIdPattern.hasMatch(layout.id!)) {
+      errors.add('layout.id is invalid');
+    }
+    if (layout.locale != null && !_localePattern.hasMatch(layout.locale!)) {
+      errors.add('layout.locale is invalid');
+    }
     if (layout.rows.isEmpty || layout.rows.length > 16) errors.add('layout.rows is invalid');
+    final keyIds = <String>{};
     for (var rowIndex = 0; rowIndex < layout.rows.length; rowIndex++) {
       final row = layout.rows[rowIndex];
       if (row.isEmpty || row.length > 32) {
@@ -278,6 +301,7 @@ class SecureKeypadConfiguration {
         final key = row[keyIndex];
         final path = 'layout.rows[$rowIndex][$keyIndex]';
         if (!_keyIdPattern.hasMatch(key.id)) errors.add('$path.id is invalid');
+        if (!keyIds.add(key.id)) errors.add('$path.id is duplicated');
         if (key.label != null && key.label!.length > 16) errors.add('$path.label is invalid');
         if (key.icon != null && !_keyIdPattern.hasMatch(key.icon!)) errors.add('$path.icon is invalid');
         if (key.accessibilityLabel != null && key.accessibilityLabel!.length > 80) {
@@ -286,11 +310,40 @@ class SecureKeypadConfiguration {
         if (key.testId != null && !_keyIdPattern.hasMatch(key.testId!)) errors.add('$path.testId is invalid');
       }
     }
-    if (maxTokens < 1 || maxTokens > 4096) errors.add('maxTokens is invalid');
-    if (timeoutMs < 1 || timeoutMs > 86400000) errors.add('timeoutMs is invalid');
-    if (theme.keyFontSize <= 0 || theme.keyFontSize > 128) errors.add('theme.keyFontSize is invalid');
+    if (!_isBoundedInteger(maxTokens, 1, 4096)) errors.add('maxTokens is invalid');
+    if (!_isBoundedInteger(timeoutMs, 1, 86400000)) errors.add('timeoutMs is invalid');
+
+    const colorKeys = <String>{
+      'background',
+      'keyBackground',
+      'keyForeground',
+      'keyPressedBackground',
+      'keyDisabledBackground',
+      'error',
+    };
+    if (!_hasExactKeys(theme.colors.keys, colorKeys) ||
+        theme.colors.values.any((color) => !_colorPattern.hasMatch(color))) {
+      errors.add('theme.colors is invalid');
+    }
+
+    const metricKeys = <String>{'keyHeight', 'keyGap', 'keyRadius', 'contentPadding'};
+    if (!_hasExactKeys(theme.metrics.keys, metricKeys) ||
+        !_isBoundedNumber(theme.metrics['keyHeight'], 32, 160) ||
+        !_isBoundedNumber(theme.metrics['keyGap'], 0, 48) ||
+        !_isBoundedNumber(theme.metrics['keyRadius'], 0, 80) ||
+        !_isBoundedNumber(theme.metrics['contentPadding'], 0, 80)) {
+      errors.add('theme.metrics is invalid');
+    }
+
+    if (!_isBoundedNumber(theme.keyFontSize, 10, 72)) errors.add('theme.keyFontSize is invalid');
     if (theme.keyFontWeight != 400 && theme.keyFontWeight != 500 && theme.keyFontWeight != 600 && theme.keyFontWeight != 700) {
       errors.add('theme.keyFontWeight is invalid');
+    }
+    if (!_isBoundedInteger(theme.pressDurationMs, 0, 500)) {
+      errors.add('theme.pressDurationMs is invalid');
+    }
+    if (!_isBoundedInteger(theme.maskRevealDurationMs, 0, 2000)) {
+      errors.add('theme.maskRevealDurationMs is invalid');
     }
     return errors;
   }

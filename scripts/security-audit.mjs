@@ -290,6 +290,10 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /isSecureKeypadNativeEventShapeValid/, "Flutter must reject unexpected native event fields");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_onNativeEvent\([\s\S]{0,500}isSecureKeypadRenderedLengthValid/, "Flutter must validate masked event length before invoking callbacks");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /bool _hasExactKeys\(/, "Flutter configuration maps must use an exact-key allowlist");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_colorPattern/, "Flutter theme colors must be format-validated before bridge serialization");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
@@ -298,6 +302,7 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /SecureKeyRole\.CANCEL/, "Android bridge parser must accept the explicit cancel role");
     requireText(findings, file, contents, /private fun integer\(/, "Android bridge parser must reject fractional numeric configuration values");
+    requireText(findings, file, contents, /private fun optionalMap\(/, "Android bridge parser must reject unknown nested configuration fields");
   }
   for (const file of [
     "native/ios/SecureKeypadBridgeConfig.swift",
@@ -306,6 +311,7 @@ export function runSecurityAudit() {
   ]) {
     const contents = source(file, findings);
     requireText(findings, file, contents, /private static func boundedInteger\(/, "iOS bridge parser must reject fractional numeric configuration values");
+    requireText(findings, file, contents, /private static func optionalMap\(/, "iOS bridge parser must reject unknown nested configuration fields");
   }
 
   const opaqueHttp = source("crates/secure-auth-http/src/lib.rs", findings);
