@@ -197,6 +197,15 @@ jobs:
         run: |
           flutter pub get
           flutter build apk --debug --target-platform android-arm64
+      - name: Emit Flutter Android FFI checksum manifest
+        run: |
+          shasum -a 256 "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a/libsecure_ffi.a" \
+            > "$RUNNER_TEMP/secure-keypad-ffi/secure-ffi-android-arm64.sha256"
+          cat "$RUNNER_TEMP/secure-keypad-ffi/secure-ffi-android-arm64.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secure-ffi-android-arm64-flutter-host-and-checksum
+          path: ${{ runner.temp }}/secure-keypad-ffi
 
   react-native-host-build:
     name: Compile React Native Android host integration
@@ -304,6 +313,15 @@ jobs:
           grep -q '"@secure-keypad/react-native"' "$RUNNER_TEMP/react-native-config.json"
           cd android
           ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Emit React Native Android FFI checksum manifest
+        run: |
+          shasum -a 256 "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a/libsecure_ffi.a" \
+            > "$RUNNER_TEMP/secure-keypad-ffi/secure-ffi-android-arm64.sha256"
+          cat "$RUNNER_TEMP/secure-keypad-ffi/secure-ffi-android-arm64.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secure-ffi-android-arm64-react-native-host-and-checksum
+          path: ${{ runner.temp }}/secure-keypad-ffi
 
   fuzz:
     name: Fuzz bounded auth decoder

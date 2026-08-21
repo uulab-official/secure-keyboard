@@ -114,9 +114,9 @@ Flutter and React Native host apps against the publishable plugins and Rust FFI
 library. The
 React Native gate pins RN `0.87.0`, CLI `20.2.0`, Node `22.13.0`, and Java 17;
 the Flutter gates pin Flutter `3.47.0`. These are reproducible host-link
-baselines, not device behavior or accessibility sign-offs. CI emits a
-file-level SHA-256 manifest for the iOS XCFramework, dependency metadata, and
-an SPDX SBOM through
+baselines, not device behavior or accessibility sign-offs. CI emits file-level
+SHA-256 manifests for the iOS XCFramework and Android arm64 FFI host artifacts,
+dependency metadata, and an SPDX SBOM through
 Syft/Anchore. Before a public release, the artifact must include the exact
 Rust/Node/Flutter/native toolchain versions, the notices in
 `docs/THIRD-PARTY-NOTICES.md`, threat model, and signed checksums.
