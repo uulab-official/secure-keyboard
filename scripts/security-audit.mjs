@@ -496,7 +496,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
   const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
-  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /status --porcelain/, "release evidence emitter must require a clean checkout");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /"status",\s*"--porcelain/, "release evidence emitter must require a clean checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentPackageVersion/, "release evidence emitter must derive the package version from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /createHash\("sha256"\)/, "release evidence emitter must hash exact evidence bytes");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /secret-bearing evidence fields/, "release evidence emitter must reject secret-bearing evidence fields");
