@@ -19,8 +19,10 @@ autofill services, and VoiceOver/TalkBack behavior. Simulators/emulators may
 supplement the matrix but cannot replace those checks.
 
 The iOS CI host job additionally installs and launches the generated React
-Native and Flutter hosts in an available Simulator and uploads no-input
-screenshots. This catches packaging and launch regressions only; it is not
+Native and Flutter hosts in an available Simulator and uploads screenshots.
+The generated Flutter host also runs a UI test that taps one numeric key and
+asserts masked-length state while rejecting the public key label. This catches
+packaging, launch, and basic masked-rendering regressions only; it is not
 physical-device evidence and does not replace the matrix above.
 
 The Android CI host jobs additionally build arm64 and x86_64 FFI variants. A

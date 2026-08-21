@@ -41,6 +41,13 @@ test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
   assert.match(FLUTTER_IOS_HOST, /config\.build_settings\['ONLY_ACTIVE_ARCH'\]\s*=\s*'YES'/);
   assert.match(FLUTTER_IOS_HOST, /ARCHS = arm64;/);
   assert.match(FLUTTER_IOS_HOST, /ONLY_ACTIVE_ARCH = YES;/);
+  assert.match(FLUTTER_IOS_HOST, /RunnerTests\/RunnerTests\.swift/);
+  assert.match(FLUTTER_IOS_HOST, /com\.apple\.product-type\.bundle\.ui-testing/);
+  assert.match(FLUTTER_IOS_HOST, /xcodebuild -workspace "\$HOST_DIR\/ios\/Runner\.xcworkspace"/);
+  assert.match(FLUTTER_IOS_HOST, /xcrun simctl list devices available -j/);
+  assert.match(FLUTTER_IOS_HOST, /-destination "platform=iOS Simulator,id=\$SIMULATOR_ID"/);
+  assert.match(FLUTTER_IOS_HOST, /digitOne\.tap\(\)/);
+  assert.match(FLUTTER_IOS_HOST, /1 characters entered/);
   assert.match(
     WORKFLOW,
     /APP_PATH: \$\{\{ runner\.temp \}\}\/secure-keypad-flutter-ios-host\/build\/ios\/iphonesimulator\/Runner\.app/,
@@ -51,6 +58,22 @@ test("Flutter iOS PlatformView preserves standard creation arguments", () => {
   assert.match(FLUTTER_PLUGIN, /func createArgsCodec\(\) -> FlutterMessageCodec & NSObjectProtocol/);
   assert.match(FLUTTER_PLUGIN, /FlutterStandardMessageCodec\.sharedInstance\(\)/);
   assert.match(FLUTTER_PLUGIN, /guard let dictionary = Self\.dictionary\(arguments\)/);
+});
+
+test("Flutter iOS UI test stays isolated from CocoaPods test-target linkage", () => {
+  const flutterBuildIndex = FLUTTER_IOS_HOST.indexOf(
+    "flutter build ios --simulator --no-codesign",
+  );
+  const postBuildIsolationIndex = FLUTTER_IOS_HOST.indexOf(
+    'project = Path(os.environ["HOST_DIR"]) / "ios/Runner.xcodeproj/project.pbxproj"',
+    flutterBuildIndex,
+  );
+
+  assert.notEqual(flutterBuildIndex, -1);
+  assert.notEqual(postBuildIsolationIndex, -1);
+  assert.match(FLUTTER_IOS_HOST.slice(postBuildIsolationIndex), /PBXFrameworksBuildPhase/);
+  assert.match(FLUTTER_IOS_HOST.slice(postBuildIsolationIndex), /Pods_RunnerTests\.framework/);
+  assert.match(FLUTTER_IOS_HOST.slice(postBuildIsolationIndex), /baseConfigurationReference/);
 });
 
 test("iOS bridge numeric parsing keeps integer zero distinct from Boolean", () => {

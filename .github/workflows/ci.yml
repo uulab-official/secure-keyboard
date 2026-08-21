@@ -881,6 +881,20 @@ jobs:
               r"\1IPHONEOS_DEPLOYMENT_TARGET = 15.1;\n\1ARCHS = arm64;\n\1ONLY_ACTIVE_ARCH = YES;",
               project_contents,
           )
+          project_contents = project_contents.replace(
+              'productType = "com.apple.product-type.bundle.unit-test";',
+              'productType = "com.apple.product-type.bundle.ui-testing";',
+          )
+          project_contents = re.sub(
+              r'(?m)^\s+BUNDLE_LOADER = "\$\(TEST_HOST\)";\n',
+              "",
+              project_contents,
+          )
+          project_contents = re.sub(
+              r'(?m)^\s+TEST_HOST = "\$\(BUILT_PRODUCTS_DIR\)/Runner\.app/\$\(BUNDLE_EXECUTABLE_FOLDER_PATH\)/Runner";\n',
+              "",
+              project_contents,
+          )
           project.write_text(project_contents)
           (host / "lib/main.dart").write_text('''
           import 'package:flutter/material.dart';
@@ -913,6 +927,26 @@ jobs:
             }
           }
           ''')
+          (host / "ios/RunnerTests/RunnerTests.swift").write_text('''
+          import XCTest
+
+          final class RunnerTests: XCTestCase {
+            func testSecureKeypadRuntime() {
+              let app = XCUIApplication(bundleIdentifier: "dev.uulab.secureKeypadHost")
+              app.activate()
+
+              let digitOne = app.buttons["digit-1"]
+              XCTAssertTrue(digitOne.waitForExistence(timeout: 10))
+              XCTAssertTrue(app.buttons["Continue"].exists)
+              XCTAssertTrue(app.buttons["Cancel"].exists)
+
+              digitOne.tap()
+              let maskedState = app.descendants(matching: .any)["1 characters entered"]
+              XCTAssertTrue(maskedState.waitForExistence(timeout: 3))
+              XCTAssertFalse(app.staticTexts["digit-1"].exists)
+            }
+          }
+          ''')
           PY
           cd ios
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" pod install
@@ -929,6 +963,83 @@ jobs:
           cd "$HOST_DIR"
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
             FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --simulator --no-codesign
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          project = Path(os.environ["HOST_DIR"]) / "ios/Runner.xcodeproj/project.pbxproj"
+          project_contents = project.read_text()
+          test_target_start = project_contents.index(
+              "\t\t331C8080294A63A400263BE5 /* RunnerTests */ = {"
+          )
+          test_target_end = project_contents.index("\n\t\t};", test_target_start)
+          test_target = project_contents[test_target_start:test_target_end]
+          test_target = re.sub(
+              r"\n\s+[A-F0-9]+ /\* \[CP\] Check Pods Manifest\.lock \*/,\n",
+              "\n",
+              test_target,
+          )
+          project_contents = (
+              project_contents[:test_target_start]
+              + test_target
+              + project_contents[test_target_end:]
+          )
+          framework_phase_start = None
+          framework_phase_end = None
+          for match in re.finditer(
+              r"(?m)^\t\t[A-F0-9]+ /\* Frameworks \*/ = \{\n\t\t\tisa = PBXFrameworksBuildPhase;",
+              project_contents,
+          ):
+              candidate_end = project_contents.index("\n\t\t};", match.start())
+              candidate = project_contents[match.start():candidate_end]
+              if "Pods_RunnerTests.framework in Frameworks" in candidate:
+                  framework_phase_start = match.start()
+                  framework_phase_end = candidate_end
+                  break
+          if framework_phase_start is None or framework_phase_end is None:
+              raise ValueError("RunnerTests framework phase not found")
+          framework_phase = project_contents[framework_phase_start:framework_phase_end]
+          framework_phase = re.sub(
+              r"\n\s+[A-F0-9]+ /\* Pods_RunnerTests\.framework in Frameworks \*/,\n",
+              "\n",
+              framework_phase,
+          )
+          project_contents = (
+              project_contents[:framework_phase_start]
+              + framework_phase
+              + project_contents[framework_phase_end:]
+          )
+          project_contents = re.sub(
+              r'(?m)^\s+baseConfigurationReference = [A-F0-9]+ /\* Pods-RunnerTests\.[^*]+ \*/;\n',
+              "",
+              project_contents,
+          )
+          project.write_text(project_contents)
+          PY
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c '
+          import json
+          import sys
+
+          data = json.load(sys.stdin)
+          for runtime in data.get("devices", {}).values():
+              for device in runtime:
+                  if device.get("isAvailable") and device.get("name", "").startswith("iPhone "):
+                      print(device["udid"])
+                      raise SystemExit
+          ' )"
+          test -n "$SIMULATOR_ID"
+          xcodebuild -workspace "$HOST_DIR/ios/Runner.xcworkspace" \
+            -scheme Runner \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            BUILD_DIR="$HOST_DIR/build/ios" \
+            OBJROOT="$HOST_DIR/build/ios" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            test
       - name: Launch the Flutter host in an iOS Simulator
         env:
           APP_PATH: ${{ runner.temp }}/secure-keypad-flutter-ios-host/build/ios/iphonesimulator/Runner.app

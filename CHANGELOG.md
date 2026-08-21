@@ -104,8 +104,8 @@ exact release-candidate commit by the release evidence manifest.
   durable interoperability tests; it executes all three ignored suites and
   cleans up test containers on exit.
 - Added a CI contract test for the Flutter iOS host build and PlatformView
-  codec, plus a simulator smoke path that verifies native keypad buttons and
-  masked-length accessibility state without exposing input values.
+  codec, plus a simulator UI test and smoke path that verifies native keypad
+  buttons and masked-length accessibility state without exposing input values.
 - Release staging now requires this changelog, the pinned lockfiles, SBOM,
   third-party notices, and the complete candidate metadata set.
 - Release evidence CLI verification now resolves gate, artifact, signature, and
