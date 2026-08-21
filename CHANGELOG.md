@@ -86,3 +86,6 @@ exact release-candidate commit by the release evidence manifest.
   records before digest and signature verification is treated as sufficient.
 - Standalone device evidence validation now requires an explicit top-level
   `status: "pass"`, matching the final release verifier's fail-closed policy.
+- Added a native iOS/Android device-evidence emitter that requires the complete
+  physical test matrix and artifact categories, hashes files in-place, and
+  rejects the disposable sentinel before writing release fragments.

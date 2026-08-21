@@ -818,6 +818,11 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /DEVICE_RELEASE_GATES/, "device evidence tooling must bind records to a supported device release gate");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedGate/, "device evidence tooling must bind records to the expected release gate");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS/, "physical device evidence must require categorized review artifacts");
+  const nativeEvidenceEmitter = source("scripts/emit-native-device-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /REQUIRED_NATIVE_ARTIFACT_KINDS/, "native evidence emitter must require all physical artifact categories");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /NATIVE_TEST_CASES/, "native evidence emitter must require the complete native test matrix");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /verifyDeviceEvidenceFiles/, "native evidence emitter must verify referenced files before writing evidence");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /currentCommit/, "native evidence emitter must derive the checkout commit");
   const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /sanitized CI gate record/, "CI gate evidence must reject raw log payloads");
@@ -1011,6 +1016,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /verifyReleaseEvidenceFiles/, "release evidence merging must verify referenced files after assembly");
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
+  requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
   const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /"status",\s*"--porcelain/, "release evidence emitter must require a clean checkout");

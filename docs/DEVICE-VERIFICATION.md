@@ -104,6 +104,44 @@ The validator also recomputes the log and artifact digests inside the evidence
 root and rejects symlinks that resolve outside it. This still does not replace
 independent review of screenshots or the physical-device run.
 
+Use the checked-in native emitter after the physical run. It requires every
+native test case and every physical artifact category, reads files only inside
+the evidence root, rejects the disposable sentinel before writing output, and
+derives the current clean checkout commit and Contracts package version:
+
+```sh
+node scripts/emit-native-device-evidence.mjs \
+  "$RUNNER_TEMP/release-evidence" \
+  "evidence/ios-rn.json" \
+  "fragments/ios-rn.json" \
+  --platform ios \
+  --framework react-native \
+  --framework-version 0.87.0 \
+  --model "iPhone 17 Pro" \
+  --os-version 26.5 \
+  --os-build 23A000 \
+  --log logs/ios-rn.txt \
+  --artifact screen-capture=artifacts/ios-screen.png \
+  --artifact background-snapshot=artifacts/ios-task-switcher.png \
+  --artifact accessibility-report=artifacts/ios-voiceover.txt \
+  --artifact autofill-clipboard-report=artifacts/ios-autofill.txt \
+  --artifact crash-report-review=artifacts/ios-crash-review.txt \
+  --artifact native-checksum=artifacts/secure-ffi.sha256 \
+  --test-case maskedStateOnly \
+  --test-case captureAndBackground \
+  --test-case screenshotsAndBackgroundSnapshots \
+  --test-case autofillAndClipboard \
+  --test-case accessibility \
+  --test-case crashReportReview \
+  --test-case lifecycleAndZeroization \
+  --test-case serverReplayRateLimit \
+  --test-case protocolDowngrade
+```
+
+Repeat with `--platform android` and the Android model/OS build. The emitter
+creates only hashes and public metadata; it never embeds log, screenshot, or
+crash-report bytes in the JSON record.
+
 Use the checked-in disposable sentinel `secure-keypad-test-sentinel-7f2c4e` for
 the device matrix. `check-device-evidence.mjs` recomputes every referenced
 digest and rejects that sentinel plus common secret-bearing text fields in

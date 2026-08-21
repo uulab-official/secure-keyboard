@@ -145,6 +145,12 @@ The standalone device-evidence validator also requires `status: "pass"` on
 every platform record; a record with passing test-case fields but a missing or
 non-passing top-level status cannot be used as device evidence.
 
+Physical iOS/Android operators should use
+`scripts/emit-native-device-evidence.mjs` to produce the device record and
+fragment. It requires all native test cases and categorized physical artifacts,
+hashes the exact files inside the evidence root, and rejects the canonical test
+sentinel before output is written.
+
 Every `gate.evidencePath` must point to a JSON object with
 `{schemaVersion: 1, gate: <same gate name>, commit: <same gate SHA>, status: "pass"}`. CI-owned gates additionally
 require `evidenceKind: "ci-command"`, a sanitized `runner`, an ISO-8601
