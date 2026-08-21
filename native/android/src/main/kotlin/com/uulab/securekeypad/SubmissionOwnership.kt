@@ -2,7 +2,8 @@ package com.uulab.securekeypad
 
 /**
  * Delivers an opaque native handle or releases it when no host callback is
- * installed. The host callback owns the handle after delivery.
+ * installed. The host callback owns the handle after delivery. If the
+ * callback throws, the handle is released before the exception is rethrown.
  */
 internal fun <T> deliverOrRelease(
     value: T,
@@ -12,6 +13,11 @@ internal fun <T> deliverOrRelease(
     if (callback == null) {
         release(value)
     } else {
-        callback(value)
+        try {
+            callback(value)
+        } catch (error: Throwable) {
+            release(value)
+            throw error
+        }
     }
 }

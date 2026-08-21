@@ -134,7 +134,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     init {
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         isSaveEnabled = false
-        context.findActivity()?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        requireSecureWindow()
 
         setBackgroundColor(currentTheme.backgroundColor)
         rootContainer = LinearLayout(context).apply {
@@ -156,6 +156,16 @@ public open class SecureKeypadView @JvmOverloads constructor(
         rootContainer.addView(display, LinearLayout.LayoutParams(-1, 72))
         rootContainer.addView(keypad, LinearLayout.LayoutParams(-1, -2))
         addView(rootContainer, LayoutParams(-1, -2))
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        requireSecureWindow()
+    }
+
+    private fun requireSecureWindow() {
+        val activity = context.findActivity() ?: error("secure keypad requires an Activity window")
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
     /** Starts a numeric Secure Native session and renders the supplied layout. */

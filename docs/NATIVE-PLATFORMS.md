@@ -71,7 +71,9 @@ this assembly and parses both package Podspecs against the result.
 `FrameLayout` with public key/layout/theme models. It resolves the host
 `Activity` through framework `ContextWrapper` chains before applying
 `FLAG_SECURE`, so React Native and Flutter wrapper contexts do not silently
-lose screenshot protection. It releases the native session when the window
+lose screenshot protection. Construction and attachment fail closed when no
+`Activity` window can be resolved, and attachment reasserts `FLAG_SECURE` if a
+host changed the window flags. It releases the native session when the window
 loses focus or becomes invisible, which zeroizes pending input instead of
 keeping it through an app/window transition. The JNI adapter in
 `native/android/src/main/cpp/secure_keypad_jni.c` owns only pointer handles and

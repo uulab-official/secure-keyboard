@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { findMutableCiActionLines, runSecurityAudit } from "./security-audit.mjs";
 
@@ -15,4 +16,14 @@ test("CI action audit rejects mutable refs and accepts immutable revisions", () 
     ].join("\n")),
     ["      - uses: actions/checkout@v4"],
   );
+});
+
+test("Android secure native view fails closed without a secure Activity window", () => {
+  const source = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /findActivity\(\)\s*\?:\s*error/);
+  assert.match(source, /onAttachedToWindow\(\)[\s\S]*addFlags\(WindowManager\.LayoutParams\.FLAG_SECURE\)/);
 });

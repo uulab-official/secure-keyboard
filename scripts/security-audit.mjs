@@ -300,6 +300,18 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /message\(FATAL_ERROR/, "Android package must fail closed without the FFI library");
   }
 
+  const androidSubmissionOwnership = source(
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt",
+    findings,
+  );
+  requireText(
+    findings,
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt",
+    androidSubmissionOwnership,
+    /catch \(error: Throwable\)[\s\S]*release\(value\)[\s\S]*throw error/,
+    "Android submission delivery must release opaque input when a host consumer throws",
+  );
+
   for (const mismatch of findNativePackageParityMismatches(ROOT)) {
     findings.push({ rule: "native-package-parity", file: mismatch.destination, detail: mismatch.reason });
   }
