@@ -10,6 +10,19 @@ const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)|^value$/i;
+const REVIEW_REPORT_TYPE = "independent-security-review";
+const REVIEW_SCOPE = Object.freeze([
+  "native-input-boundary",
+  "opaque-authentication",
+  "http-json-transport",
+  "replay-rate-limit-backends",
+  "framework-adapters",
+  "device-runtime-evidence",
+  "release-process",
+]);
+const REVIEW_DECISIONS = new Set(["approved", "approved-with-residual-risk", "not-approved"]);
+const REVIEW_FINDING_SEVERITIES = new Set(["critical", "high", "medium", "low", "informational"]);
+const REVIEW_FINDING_STATUSES = new Set(["open", "accepted", "remediated"]);
 
 /**
  * Gates that must be independently evidenced before a public release claim.
@@ -503,9 +516,110 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
       return;
     }
     const valid = verify(null, signedArtifactBytes, publicKey, readFileSync(signaturePath));
-    if (!valid) add(findings, fieldName, "detached Ed25519 signature verification failed");
+    if (!valid) {
+      add(findings, fieldName, "detached Ed25519 signature verification failed");
+    } else if (fieldName === "independentReview") {
+      verifyIndependentReviewReport(findings, signedArtifactBytes, descriptor, evidence);
+    }
   } catch (error) {
     add(findings, fieldName, `detached Ed25519 signature could not be verified: ${error.message}`);
+  }
+}
+
+function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
+  const field = "independentReview.report";
+  let report;
+  try {
+    report = JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch (error) {
+    add(findings, field, `must be a structured JSON report: ${error.message}`);
+    return;
+  }
+  if (!isRecord(report)) {
+    add(findings, field, "must be a JSON object");
+    return;
+  }
+  checkSecretKeys(findings, report, field);
+  const allowedKeys = new Set([
+    "schemaVersion",
+    "reportType",
+    "reviewedCommit",
+    "reviewedPackageVersion",
+    "reviewerPublicKeySha256",
+    "scope",
+    "findings",
+    "decision",
+  ]);
+  for (const key of Object.keys(report)) {
+    if (!allowedKeys.has(key)) add(findings, `${field}.${key}`, "unsupported review report field");
+  }
+  if (report.schemaVersion !== 1) add(findings, `${field}.schemaVersion`, "must equal 1");
+  if (report.reportType !== REVIEW_REPORT_TYPE) {
+    add(findings, `${field}.reportType`, `must equal ${REVIEW_REPORT_TYPE}`);
+  }
+  if (typeof report.reviewedCommit !== "string" || !COMMIT.test(report.reviewedCommit)) {
+    add(findings, `${field}.reviewedCommit`, "must be the exact 40-character reviewed commit SHA");
+  } else if (report.reviewedCommit !== evidence.commit) {
+    add(findings, `${field}.reviewedCommit`, "must match the manifest commit");
+  }
+  if (typeof report.reviewedPackageVersion !== "string" || !VERSION.test(report.reviewedPackageVersion)) {
+    add(findings, `${field}.reviewedPackageVersion`, "must be the reviewed semantic package version");
+  } else if (report.reviewedPackageVersion !== evidence.packageVersion) {
+    add(findings, `${field}.reviewedPackageVersion`, "must match the manifest package version");
+  }
+  if (!SHA256.test(String(report.reviewerPublicKeySha256))) {
+    add(findings, `${field}.reviewerPublicKeySha256`, "must be a lowercase SHA-256 digest");
+  } else if (report.reviewerPublicKeySha256 !== descriptor.publicKeySha256) {
+    add(findings, `${field}.reviewerPublicKeySha256`, "must match the signed-report public-key fingerprint");
+  }
+  if (!Array.isArray(report.scope) || report.scope.length === 0 || report.scope.length > REVIEW_SCOPE.length) {
+    add(findings, `${field}.scope`, "must contain the complete independent-review scope");
+  } else {
+    const scope = new Set(report.scope);
+    if (scope.size !== report.scope.length || scope.size !== REVIEW_SCOPE.length) {
+      add(findings, `${field}.scope`, "must contain each required scope exactly once");
+    }
+    for (const requiredScope of REVIEW_SCOPE) {
+      if (!scope.has(requiredScope)) add(findings, `${field}.scope`, `must include ${requiredScope}`);
+    }
+  }
+  if (!Array.isArray(report.findings) || report.findings.length > 256) {
+    add(findings, `${field}.findings`, "must be an array with at most 256 entries");
+  } else {
+    report.findings.forEach((finding, index) => {
+      const findingField = `${field}.findings[${index}]`;
+      if (!isRecord(finding)) {
+        add(findings, findingField, "must be an object");
+        return;
+      }
+      for (const key of Object.keys(finding)) {
+        if (!["id", "severity", "status", "summary"].includes(key)) {
+          add(findings, `${findingField}.${key}`, "unsupported finding field");
+        }
+      }
+      if (typeof finding.id !== "string" || !/^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(finding.id)) {
+        add(findings, `${findingField}.id`, "must be a bounded finding identifier");
+      }
+      if (!REVIEW_FINDING_SEVERITIES.has(finding.severity)) {
+        add(findings, `${findingField}.severity`, "must be a supported severity");
+      }
+      if (!REVIEW_FINDING_STATUSES.has(finding.status)) {
+        add(findings, `${findingField}.status`, "must be a supported status");
+      }
+      if (
+        typeof finding.summary !== "string" ||
+        finding.summary.length === 0 ||
+        finding.summary.length > 500 ||
+        /[\r\n]/.test(finding.summary)
+      ) {
+        add(findings, `${findingField}.summary`, "must be a bounded single-line summary");
+      }
+    });
+  }
+  if (!REVIEW_DECISIONS.has(report.decision)) {
+    add(findings, `${field}.decision`, "must be an explicit release decision");
+  } else if (report.decision === "not-approved") {
+    add(findings, `${field}.decision`, "must approve the reviewed release");
   }
 }
 

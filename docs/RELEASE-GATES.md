@@ -231,6 +231,17 @@ The checked-in release-candidate workflow runs the bundle job in the
 configure that environment with required reviewers and the signing secret;
 the workflow file alone cannot establish those GitHub-side protections.
 
+The independently signed review artifact must be a structured JSON report, not
+an arbitrary signed note. Its `schemaVersion` is `1`, `reportType` is
+`independent-security-review`, and it must bind the exact manifest commit,
+package version, and reviewer public-key SHA-256. Its scope must cover
+`native-input-boundary`, `opaque-authentication`, `http-json-transport`,
+`replay-rate-limit-backends`, `framework-adapters`, `device-runtime-evidence`,
+and `release-process`; it must include bounded finding records and an explicit
+`approved` or `approved-with-residual-risk` decision. `not-approved`, malformed,
+secret-bearing, or scope-incomplete reports fail closed before release
+verification.
+
 The workflow also embeds `release-candidate-metadata.json` inside the signed
 source bundle. That record is deliberately marked `candidate-only`: it binds
 the exact checkout and package version, enumerates every final gate, and

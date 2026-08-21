@@ -154,10 +154,30 @@ function writeCompleteEvidenceFixture(root) {
   const signature = sign(null, releasePayload, privateKey);
   const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
   const { privateKey: reviewPrivateKey, publicKey: reviewPublicKey } = generateKeyPairSync("ed25519");
-  const reviewPayload = Buffer.from("independent-review-fixture", "utf8");
   const reviewPublicKeyDer = reviewPublicKey.export({ format: "der", type: "spki" });
-  const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
   const reviewPublicKeySha256 = createHash("sha256").update(reviewPublicKeyDer).digest("hex");
+  const reviewPayload = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      reportType: "independent-security-review",
+      reviewedCommit: commit,
+      reviewedPackageVersion: evidence.packageVersion,
+      reviewerPublicKeySha256: reviewPublicKeySha256,
+      scope: [
+        "native-input-boundary",
+        "opaque-authentication",
+        "http-json-transport",
+        "replay-rate-limit-backends",
+        "framework-adapters",
+        "device-runtime-evidence",
+        "release-process",
+      ],
+      findings: [],
+      decision: "approved",
+    }),
+    "utf8",
+  );
+  const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
 
   mkdirSync(join(root, "evidence"), { recursive: true });
   const platformByGate = {
@@ -391,10 +411,30 @@ test("verifies every referenced release evidence and artifact digest", () => {
   const signature = sign(null, releasePayload, privateKey);
   const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
   const { privateKey: reviewPrivateKey, publicKey: reviewPublicKey } = generateKeyPairSync("ed25519");
-  const reviewPayload = Buffer.from("independent-review-fixture", "utf8");
   const reviewPublicKeyDer = reviewPublicKey.export({ format: "der", type: "spki" });
-  const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
   const reviewPublicKeySha256 = createHash("sha256").update(reviewPublicKeyDer).digest("hex");
+  const reviewPayload = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      reportType: "independent-security-review",
+      reviewedCommit: evidence.commit,
+      reviewedPackageVersion: evidence.packageVersion,
+      reviewerPublicKeySha256: reviewPublicKeySha256,
+      scope: [
+        "native-input-boundary",
+        "opaque-authentication",
+        "http-json-transport",
+        "replay-rate-limit-backends",
+        "framework-adapters",
+        "device-runtime-evidence",
+        "release-process",
+      ],
+      findings: [],
+      decision: "approved",
+    }),
+    "utf8",
+  );
+  const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
 
   for (const gate of evidence.gates) {
     mkdirSync(join(root, "evidence"), { recursive: true });
@@ -649,4 +689,29 @@ test("rejects an empty independently signed review report", () => {
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   assert.ok(findings.some((finding) => finding.includes("independentReview") && finding.includes("non-empty")));
+});
+
+test("rejects a signed review report without structured scope and release decision", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-unstructured-review-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  const report = Buffer.from(
+    JSON.stringify({ schemaVersion: 1, reportType: "independent-security-review" }),
+    "utf8",
+  );
+  const reportArtifact = evidence.artifacts.find(({ kind }) => kind === "independent-review-report");
+  writeFileSync(join(root, reportArtifact.path), report);
+  reportArtifact.sha256 = createHash("sha256").update(report).digest("hex");
+  writeFileSync(join(root, evidence.independentReview.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.independentReview.signaturePath), sign(null, report, privateKey));
+  evidence.independentReview.publicKeySha256 = publicKeySha256;
+  evidence.artifacts.find(({ kind }) => kind === "independent-review-public-key").sha256 = publicKeySha256;
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("independentReview.report.reviewedCommit")));
+  assert.ok(findings.some((finding) => finding.includes("independentReview.report.scope")));
+  assert.ok(findings.some((finding) => finding.includes("independentReview.report.decision")));
 });
