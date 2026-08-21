@@ -179,10 +179,12 @@ jobs:
 
             @override
             Widget build(BuildContext context) {
+              final controller = SecureKeypadController();
               return MaterialApp(
                 home: Scaffold(
                   body: SecureKeypad(
                     configuration: SecureKeypadConfiguration.defaultNumeric(),
+                    controller: controller,
                   ),
                 ),
               );
@@ -297,6 +299,7 @@ jobs:
                   inputPolicy="numeric"
                   maxTokens={8}
                   timeoutMs={60000}
+                  cancelRequest={0}
                 />
               </SafeAreaView>
             );
