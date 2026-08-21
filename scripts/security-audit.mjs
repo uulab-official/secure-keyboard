@@ -300,6 +300,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_colorPattern/, "Flutter theme colors must be format-validated before bridge serialization");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /toPlatformCreationParams\(\)\s*\{[\s\S]{0,180}validate\(\)/, "Flutter bridge serialization must fail closed for invalid configuration");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",

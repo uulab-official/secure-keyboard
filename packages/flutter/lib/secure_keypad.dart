@@ -225,6 +225,9 @@ class SecureKeypadConfiguration {
   /// This map intentionally has no callback, text, password, or secret field.
   /// The native plugin receives it once when the platform view is created.
   Map<String, Object?> toPlatformCreationParams() {
+    if (validate().isNotEmpty) {
+      throw ArgumentError('invalid secure keypad configuration');
+    }
     return <String, Object?>{
       'layout': <String, Object?>{
         'schemaVersion': layout.schemaVersion,

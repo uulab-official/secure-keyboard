@@ -141,5 +141,9 @@ void main() {
     );
 
     expect(configuration.validate(), contains('theme.colors is invalid'));
+    expect(
+      () => configuration.toPlatformCreationParams(),
+      throwsA(isA<ArgumentError>()),
+    );
   });
 }
