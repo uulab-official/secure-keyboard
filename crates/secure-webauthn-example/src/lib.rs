@@ -42,6 +42,9 @@ pub use storage::{
     CredentialStoreError, InMemoryCeremonyStateStore, InMemoryCredentialStore,
 };
 
+#[cfg(any(feature = "postgres-backend", feature = "redis-backend"))]
+pub use storage::{WebAuthnStateKey, MAX_PROTECTED_CEREMONY_RECORD_BYTES};
+
 #[cfg(feature = "postgres-backend")]
 pub use storage_postgres::{
     PostgresStorageConfigError, PostgresWebAuthnStore, POSTGRES_SCHEMA_SQL,

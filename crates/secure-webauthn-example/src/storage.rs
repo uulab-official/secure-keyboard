@@ -1,8 +1,15 @@
 use crate::{
     MAX_CEREMONY_STATE_BYTES, MAX_CEREMONY_TTL, MAX_CREDENTIALS_PER_USER, MAX_PENDING_CEREMONIES,
 };
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+use aes_gcm::{
+    aead::{AeadInPlace, KeyInit},
+    Aes256Gcm, Nonce,
+};
 use rand::{rngs::OsRng, RngCore};
 use secure_auth_server::LoginStateHandle;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     sync::Mutex,
@@ -11,6 +18,8 @@ use std::{
 use uuid::Uuid;
 use webauthn_rs::prelude::{AuthenticationResult, Passkey};
 use zeroize::Zeroize;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+use zeroize::Zeroizing;
 
 /// The ceremony operation namespace used to prevent registration/authentication
 /// handles from being consumed through the wrong route.
@@ -61,7 +70,128 @@ pub(crate) fn validate_backend_ttl(ttl: Duration) -> Result<u64, CeremonyStoreEr
     Ok(millis)
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const PROTECTED_MAGIC: &[u8; 4] = b"SKWP";
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const PROTECTED_VERSION: u16 = 1;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const PROTECTED_HEADER_BYTES: usize = 4 + 2 + 12;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const PROTECTED_TAG_BYTES: usize = 16;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const PROTECTED_AAD: &[u8] = b"secure-keypad:webauthn-ceremony-state:v1";
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+const MAX_CEREMONY_RECORD_BYTES: usize = CEREMONY_RECORD_HEADER_BYTES + MAX_CEREMONY_STATE_BYTES;
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+/// Maximum encrypted ceremony record size accepted by the durable adapters.
+pub const MAX_PROTECTED_CEREMONY_RECORD_BYTES: usize =
+    PROTECTED_HEADER_BYTES + PROTECTED_TAG_BYTES + MAX_CEREMONY_RECORD_BYTES;
+
+/// A 32-byte host-managed key used to protect durable `WebAuthn` ceremony
+/// records before they are written to Redis or `PostgreSQL`.
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+pub struct WebAuthnStateKey(Zeroizing<[u8; 32]>);
+
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+impl WebAuthnStateKey {
+    /// Restores a key only when the representation is exactly 32 bytes.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        Some(Self(Zeroizing::new(bytes.try_into().ok()?)))
+    }
+
+    /// Generates a key with the operating-system CSPRNG.
+    #[must_use]
+    pub fn generate() -> Self {
+        let mut bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut bytes);
+        Self(Zeroizing::new(bytes))
+    }
+}
+
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+#[derive(Clone)]
+pub(crate) struct WebAuthnStateProtector {
+    key: Arc<Zeroizing<[u8; 32]>>,
+    namespace: String,
+}
+
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+impl WebAuthnStateProtector {
+    pub(crate) fn new(key: WebAuthnStateKey, namespace: &str) -> Self {
+        Self {
+            key: Arc::new(key.0),
+            namespace: namespace.to_owned(),
+        }
+    }
+
+    fn cipher(&self) -> Aes256Gcm {
+        let Ok(cipher) = Aes256Gcm::new_from_slice(&self.key[..]) else {
+            unreachable!("a fixed 32-byte key always initializes AES-256-GCM");
+        };
+        cipher
+    }
+
+    fn associated_data(&self) -> Vec<u8> {
+        let mut aad = Vec::with_capacity(PROTECTED_AAD.len() + 1 + self.namespace.len());
+        aad.extend_from_slice(PROTECTED_AAD);
+        aad.push(b':');
+        aad.extend_from_slice(self.namespace.as_bytes());
+        aad
+    }
+
+    pub(crate) fn seal(&self, plaintext: &[u8]) -> Result<Zeroizing<Vec<u8>>, CeremonyStoreError> {
+        if plaintext.is_empty() || plaintext.len() > MAX_CEREMONY_RECORD_BYTES {
+            return Err(CeremonyStoreError::StateTooLarge);
+        }
+        let mut nonce = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce);
+        let mut ciphertext = Zeroizing::new(plaintext.to_vec());
+        let aad = self.associated_data();
+        self.cipher()
+            .encrypt_in_place(Nonce::from_slice(&nonce), &aad, &mut *ciphertext)
+            .map_err(|_| CeremonyStoreError::Unavailable)?;
+        let total = PROTECTED_HEADER_BYTES
+            .checked_add(ciphertext.len())
+            .ok_or(CeremonyStoreError::StateTooLarge)?;
+        if total > MAX_PROTECTED_CEREMONY_RECORD_BYTES {
+            return Err(CeremonyStoreError::StateTooLarge);
+        }
+        let mut protected = Vec::with_capacity(total);
+        protected.extend_from_slice(PROTECTED_MAGIC);
+        protected.extend_from_slice(&PROTECTED_VERSION.to_le_bytes());
+        protected.extend_from_slice(&nonce);
+        protected.extend_from_slice(&ciphertext);
+        Ok(Zeroizing::new(protected))
+    }
+
+    pub(crate) fn open(
+        &self,
+        protected: Vec<u8>,
+    ) -> Result<Zeroizing<Vec<u8>>, CeremonyStoreError> {
+        let protected = Zeroizing::new(protected);
+        if protected.len() < PROTECTED_HEADER_BYTES + PROTECTED_TAG_BYTES
+            || protected.len() > MAX_PROTECTED_CEREMONY_RECORD_BYTES
+            || &protected[..4] != PROTECTED_MAGIC
+            || u16::from_le_bytes(
+                protected[4..6]
+                    .try_into()
+                    .map_err(|_| CeremonyStoreError::InvalidState)?,
+            ) != PROTECTED_VERSION
+        {
+            return Err(CeremonyStoreError::InvalidState);
+        }
+        let nonce = Nonce::from_slice(&protected[6..PROTECTED_HEADER_BYTES]);
+        let mut ciphertext = Zeroizing::new(protected[PROTECTED_HEADER_BYTES..].to_vec());
+        let aad = self.associated_data();
+        self.cipher()
+            .decrypt_in_place(nonce, &aad, &mut *ciphertext)
+            .map_err(|_| CeremonyStoreError::InvalidState)?;
+        Ok(Zeroizing::new(core::mem::take(&mut *ciphertext)))
+    }
+}
+
+#[cfg(all(test, any(feature = "redis-backend", feature = "postgres-backend")))]
 mod tests {
     use super::*;
 
@@ -73,6 +203,40 @@ mod tests {
             validate_backend_ttl(MAX_CEREMONY_TTL + Duration::from_secs(1)),
             Err(CeremonyStoreError::InvalidTtl)
         );
+    }
+
+    #[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+    #[test]
+    fn durable_ceremony_records_are_authenticated_before_persistence() {
+        let kind = CeremonyKind::Authentication;
+        let user_id = Uuid::from_u128(7);
+        let encoded = encode_ceremony_record(kind, user_id, b"server-owned-state").unwrap();
+        let protector = WebAuthnStateProtector::new(
+            WebAuthnStateKey::from_bytes(&[7u8; 32]).expect("exactly 32 bytes"),
+            "tenant-a",
+        );
+        let protected = protector.seal(encoded.as_slice()).unwrap();
+
+        assert_ne!(protected.as_slice(), encoded.as_slice());
+        let opened = protector.open(protected.to_vec()).unwrap();
+        let decoded = decode_ceremony_record(opened.as_slice()).unwrap();
+        assert_eq!(decoded.kind(), kind);
+        assert_eq!(decoded.user_id(), user_id);
+        assert_eq!(decoded.as_bytes(), b"server-owned-state");
+
+        let mut tampered = protected.to_vec();
+        *tampered.last_mut().expect("authentication tag") ^= 1;
+        assert!(protector.open(tampered).is_err());
+        let wrong_key = WebAuthnStateProtector::new(
+            WebAuthnStateKey::from_bytes(&[8u8; 32]).expect("exactly 32 bytes"),
+            "tenant-a",
+        );
+        assert!(wrong_key.open(protected.to_vec()).is_err());
+        let wrong_namespace = WebAuthnStateProtector::new(
+            WebAuthnStateKey::from_bytes(&[7u8; 32]).expect("exactly 32 bytes"),
+            "tenant-b",
+        );
+        assert!(wrong_namespace.open(protected.to_vec()).is_err());
     }
 }
 

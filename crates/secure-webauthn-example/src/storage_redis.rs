@@ -2,7 +2,7 @@ use crate::{
     storage::{
         decode_ceremony_record, encode_ceremony_record, validate_backend_ttl, CeremonyKind,
         CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
-        CredentialStoreError,
+        CredentialStoreError, WebAuthnStateKey, WebAuthnStateProtector,
     },
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
     MAX_PENDING_CEREMONIES,
@@ -88,13 +88,17 @@ impl std::error::Error for RedisStorageConfigError {}
 pub struct RedisWebAuthnStore {
     pool: Pool<redis::Client>,
     namespace: String,
+    protector: WebAuthnStateProtector,
 }
 
 impl RedisWebAuthnStore {
     /// Creates a TLS-protected Redis store.
     ///
     /// The URL must use `rediss://`. The pool size is bounded to prevent an
-    /// accidental configuration from exhausting the Redis server.
+    /// accidental configuration from exhausting the Redis server. The key is
+    /// used to authenticate and encrypt serialized ceremony records before
+    /// persistence and must be shared by instances that consume the same
+    /// namespace.
     ///
     /// # Errors
     ///
@@ -104,8 +108,9 @@ impl RedisWebAuthnStore {
         url: &str,
         namespace: &str,
         pool_size: u32,
+        encryption_key: WebAuthnStateKey,
     ) -> Result<Self, RedisStorageConfigError> {
-        Self::build(url, namespace, pool_size, true)
+        Self::build(url, namespace, pool_size, true, encryption_key)
     }
 
     /// Creates a Redis store for an isolated local test instance.
@@ -122,7 +127,13 @@ impl RedisWebAuthnStore {
         namespace: &str,
         pool_size: u32,
     ) -> Result<Self, RedisStorageConfigError> {
-        Self::build(url, namespace, pool_size, false)
+        Self::build(
+            url,
+            namespace,
+            pool_size,
+            false,
+            WebAuthnStateKey::generate(),
+        )
     }
 
     fn build(
@@ -130,6 +141,7 @@ impl RedisWebAuthnStore {
         namespace: &str,
         pool_size: u32,
         require_tls: bool,
+        encryption_key: WebAuthnStateKey,
     ) -> Result<Self, RedisStorageConfigError> {
         validate_namespace(namespace)?;
         if pool_size == 0 || pool_size > 256 {
@@ -147,6 +159,7 @@ impl RedisWebAuthnStore {
         Ok(Self {
             pool,
             namespace: namespace.to_owned(),
+            protector: WebAuthnStateProtector::new(encryption_key, namespace),
         })
     }
 
@@ -196,6 +209,7 @@ impl CeremonyStateStore for RedisWebAuthnStore {
             return Err(CeremonyStoreError::StateTooLarge);
         }
         let encoded = encode_ceremony_record(kind, user_id, state)?;
+        let protected = self.protector.seal(encoded.as_slice())?;
         let mut connection = self.connection()?;
         for _ in 0..HANDLE_ATTEMPTS {
             let handle = LoginStateHandle::generate();
@@ -203,7 +217,7 @@ impl CeremonyStateStore for RedisWebAuthnStore {
             let inserted: i64 = Script::new(INSERT_SCRIPT)
                 .key(key)
                 .key(self.pending_index_key())
-                .arg(encoded.as_slice())
+                .arg(protected.as_slice())
                 .arg(ttl_millis)
                 .arg(MAX_PENDING_CEREMONIES)
                 .invoke(&mut *connection)
@@ -233,8 +247,8 @@ impl CeremonyStateStore for RedisWebAuthnStore {
         let Some(encoded) = encoded else {
             return Ok(None);
         };
-        let encoded = zeroize::Zeroizing::new(encoded);
-        let state = decode_ceremony_record(&encoded)?;
+        let encoded = self.protector.open(encoded)?;
+        let state = decode_ceremony_record(encoded.as_slice())?;
         if state.kind() != kind {
             return Ok(None);
         }

@@ -1,7 +1,8 @@
 use crate::{
     storage::{
-        validate_backend_ttl, CeremonyKind, CeremonyState, CeremonyStateStore, CeremonyStoreError,
-        CredentialStore, CredentialStoreError,
+        decode_ceremony_record, encode_ceremony_record, validate_backend_ttl, CeremonyKind,
+        CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
+        CredentialStoreError, WebAuthnStateKey, WebAuthnStateProtector,
     },
     MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
     MAX_PENDING_CEREMONIES,
@@ -40,10 +41,19 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_ceremonies (
     CONSTRAINT secure_keypad_webauthn_ceremony_kind
         CHECK (kind IN (1, 2)),
     CONSTRAINT secure_keypad_webauthn_ceremony_state_length
-        CHECK (octet_length(state) BETWEEN 1 AND 131072)
+        CHECK (octet_length(state) BETWEEN 1 AND 131128)
 );
 CREATE INDEX IF NOT EXISTS secure_keypad_webauthn_ceremonies_expiry_idx
     ON secure_keypad_webauthn_ceremonies (expires_at);
+
+-- The encrypted ceremony envelope is larger than the historical plaintext
+-- bound. Recreate this one constraint so an existing deployment is upgraded
+-- instead of leaving the old 131072-byte limit in place.
+ALTER TABLE secure_keypad_webauthn_ceremonies
+    DROP CONSTRAINT IF EXISTS secure_keypad_webauthn_ceremony_state_length;
+ALTER TABLE secure_keypad_webauthn_ceremonies
+    ADD CONSTRAINT secure_keypad_webauthn_ceremony_state_length
+    CHECK (octet_length(state) BETWEEN 1 AND 131128);
 
 CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_credentials (
     namespace TEXT NOT NULL,
@@ -127,7 +137,7 @@ BEGIN
     ) THEN
         ALTER TABLE secure_keypad_webauthn_ceremonies
             ADD CONSTRAINT secure_keypad_webauthn_ceremony_state_length
-            CHECK (octet_length(state) BETWEEN 1 AND 131072);
+            CHECK (octet_length(state) BETWEEN 1 AND 131128);
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
@@ -188,9 +198,10 @@ impl std::error::Error for PostgresStorageConfigError {}
 
 /// A PostgreSQL-backed implementation of both `WebAuthn` storage contracts.
 ///
-/// `from_config` accepts an explicit TLS connector so production deployments
-/// can use their certificate policy. `from_config_for_local_testing` is the
-/// only convenience constructor and deliberately uses `NoTls`. Operations
+/// `from_config` accepts an explicit TLS connector and a host-managed key so
+/// production deployments can use their certificate policy and authenticate
+/// ceremony records at rest. `from_config_for_local_testing` is the only
+/// convenience constructor and deliberately uses `NoTls`. Operations
 /// use a bounded `r2d2` pool. Ceremony consumption is one `DELETE ...
 /// RETURNING` statement, registration uses a per-account advisory lock, and
 /// credential updates lock the row and require the expected revision.
@@ -204,6 +215,7 @@ where
 {
     pool: Pool<PostgresConnectionManager<T>>,
     namespace: String,
+    protector: WebAuthnStateProtector,
 }
 
 impl<T> PostgresWebAuthnStore<T>
@@ -213,7 +225,8 @@ where
     T::Stream: Send,
     <T::TlsConnect as postgres::tls::TlsConnect<Socket>>::Future: Send,
 {
-    /// Creates a store with an explicit `PostgreSQL` TLS connector.
+    /// Creates a store with an explicit `PostgreSQL` TLS connector and a
+    /// host-managed key for authenticated ceremony-state encryption.
     ///
     /// # Errors
     ///
@@ -224,8 +237,9 @@ where
         tls: T,
         namespace: &str,
         pool_size: u32,
+        encryption_key: WebAuthnStateKey,
     ) -> Result<Self, PostgresStorageConfigError> {
-        Self::build(config, tls, namespace, pool_size, true)
+        Self::build(config, tls, namespace, pool_size, true, encryption_key)
     }
 
     fn build(
@@ -234,6 +248,7 @@ where
         namespace: &str,
         pool_size: u32,
         require_tls: bool,
+        encryption_key: WebAuthnStateKey,
     ) -> Result<Self, PostgresStorageConfigError> {
         if require_tls
             && (config.get_ssl_mode() != SslMode::Require
@@ -254,6 +269,7 @@ where
         Ok(Self {
             pool,
             namespace: namespace.to_owned(),
+            protector: WebAuthnStateProtector::new(encryption_key, namespace),
         })
     }
 
@@ -286,7 +302,14 @@ impl PostgresWebAuthnStore<NoTls> {
         namespace: &str,
         pool_size: u32,
     ) -> Result<Self, PostgresStorageConfigError> {
-        Self::build(config, NoTls, namespace, pool_size, false)
+        Self::build(
+            config,
+            NoTls,
+            namespace,
+            pool_size,
+            false,
+            WebAuthnStateKey::generate(),
+        )
     }
 }
 
@@ -312,6 +335,8 @@ where
         }
         let ttl_millis = i64::try_from(validate_backend_ttl(ttl)?)
             .map_err(|_| CeremonyStoreError::InvalidTtl)?;
+        let encoded = encode_ceremony_record(kind, user_id, state)?;
+        let protected = self.protector.seal(encoded.as_slice())?;
         let mut client = self.connection()?;
         let mut transaction = client
             .transaction()
@@ -356,7 +381,7 @@ where
                         &handle_bytes,
                         &kind_tag,
                         &user_id,
-                        &state,
+                        &protected.as_slice(),
                         &ttl_millis,
                     ],
             )
@@ -392,11 +417,16 @@ where
         };
         let stored_kind: i16 = row.get(0);
         let user_id: Uuid = row.get(1);
-        let state: Vec<u8> = row.get(2);
+        let protected: Vec<u8> = row.get(2);
         if stored_kind != kind_tag {
             return Ok(None);
         }
-        CeremonyState::new(kind, user_id, state).map(Some)
+        let encoded = self.protector.open(protected)?;
+        let state = decode_ceremony_record(encoded.as_slice())?;
+        if state.kind() != kind || state.user_id() != user_id {
+            return Err(CeremonyStoreError::InvalidState);
+        }
+        Ok(Some(state))
     }
 }
 
@@ -604,6 +634,9 @@ mod tests {
     fn schema_enforces_the_application_namespace_contract() {
         assert!(POSTGRES_SCHEMA_SQL.contains("CHECK (octet_length(namespace) BETWEEN 1 AND 64)"));
         assert!(POSTGRES_SCHEMA_SQL.contains("CHECK (namespace ~ '^[A-Za-z0-9._-]+$')"));
+        assert!(POSTGRES_SCHEMA_SQL.contains("CHECK (octet_length(state) BETWEEN 1 AND 131128)"));
+        assert!(POSTGRES_SCHEMA_SQL
+            .contains("DROP CONSTRAINT IF EXISTS secure_keypad_webauthn_ceremony_state_length"));
         assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_ceremonies"));
         assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_credentials"));
         assert!(POSTGRES_SCHEMA_SQL.contains("FROM pg_constraint"));

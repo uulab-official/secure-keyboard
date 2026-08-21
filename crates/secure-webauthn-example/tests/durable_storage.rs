@@ -10,7 +10,12 @@ use secure_webauthn_example::RedisStorageConfigError;
 #[test]
 fn redis_configuration_fails_closed_by_default() {
     assert!(matches!(
-        secure_webauthn_example::RedisWebAuthnStore::from_url("redis://127.0.0.1:6379", "test", 4,),
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            "redis://127.0.0.1:6379",
+            "test",
+            4,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        ),
         Err(RedisStorageConfigError::InsecureUrl)
     ));
     assert!(matches!(
@@ -49,6 +54,7 @@ fn postgres_production_configuration_requires_tls() {
             postgres::NoTls,
             "test",
             4,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
         ),
         Err(PostgresStorageConfigError::InsecureConfig)
     ));
@@ -66,6 +72,7 @@ fn postgres_production_configuration_rejects_no_tls_with_required_sslmode() {
             postgres::NoTls,
             "test",
             4,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
         ),
         Err(PostgresStorageConfigError::InsecureConfig)
     ));
@@ -78,7 +85,12 @@ fn redis_ceremony_state_is_atomic_and_one_time() {
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
     let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
     let store = if url.starts_with("rediss://") {
-        secure_webauthn_example::RedisWebAuthnStore::from_url(&url, &namespace, 4)
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            4,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
     } else {
         secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
             &url, &namespace, 4,

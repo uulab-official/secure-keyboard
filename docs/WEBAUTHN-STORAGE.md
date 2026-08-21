@@ -22,14 +22,18 @@ service type, so a durable backend remains inside the server boundary.
 The reference crate also ships opt-in `redis-backend` and `postgres-backend`
 implementations. They use bounded `r2d2` pools with a five-second acquisition
 timeout, bounded per-namespace pending ceremonies, bounded credential records,
-require TLS-first constructors, and keep plaintext/`NoTls` constructors
-explicitly named for local testing. PostgreSQL production configuration also
+TLS-first constructors, and host-managed `WebAuthnStateKey` encryption for
+serialized ceremony records. Production constructors require the key so a
+record cannot be persisted without authenticated at-rest protection; all
+instances consuming one namespace must use the same key during the retention
+window. Plaintext/`NoTls` constructors are explicitly named for local testing
+and generate an ephemeral key. PostgreSQL production configuration also
 requires `sslmode=require`; the adapter rejects weaker modes and the built-in
 `NoTls` connector before pool construction. They are blocking adapters; async hosts must invoke them on a
 blocking worker. The
 PostgreSQL migration is exported as `POSTGRES_SCHEMA_SQL` and must be applied
 by the deployment migration system. It enforces bounded safe namespaces,
-handle/kind/state limits, credential ID and passkey record limits, and
+  handle/kind/ciphertext-state limits, credential ID and passkey record limits, and
 non-negative revisions in the database; the same constraints are idempotently
 added when upgrading existing ceremony and credential tables.
 Constraint-validation failures must fail the deployment migration.
@@ -38,8 +42,10 @@ Constraint-validation failures must fail the deployment migration.
 
 The serialized state is server-owned challenge state wrapped in the pinned
 `WEBAUTHN_CEREMONY_STATE_VERSION` envelope. It is not a password and
-must never be sent to the browser. Backend records should include a versioned
-kind/principal envelope and use a namespace such as:
+must never be sent to the browser. The built-in adapters wrap the complete
+versioned kind/principal record in an AES-256-GCM envelope before persistence;
+the 32-byte `WebAuthnStateKey` must remain in a secret manager or KMS-backed
+configuration. Backend keys use a namespace such as:
 
 ```text
 skp:webauthn:v1:registration:{lowercase-hex-32-byte-handle}

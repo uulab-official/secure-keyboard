@@ -179,6 +179,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a native C ABI sequence fuzz target covering opaque handle ownership and cancellation.
 - [x] Add a bounded WebAuthn versioned-ceremony-state fuzz target and CI smoke gate.
 - [x] Add feature-gated Redis/PostgreSQL storage adapters with bounded pools, atomic consume, credential uniqueness, and post-authentication CAS updates.
+- [x] Encrypt and authenticate built-in WebAuthn ceremony records with a host-managed namespace-bound key and bounded ciphertext schema.
 - [x] Bound durable credential record bytes and per-namespace pending ceremonies; clean expired durable ceremony rows/index entries during atomic writes/consumes.
 - [x] Make PostgreSQL durable namespace and record-bound constraints idempotently upgrade existing rate-limit, ceremony, and credential tables.
 - [x] Add isolated Redis/PostgreSQL service interoperability tests to CI.

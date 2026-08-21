@@ -13,6 +13,8 @@ layer adds:
 - atomic one-time consume semantics for registration/authentication state;
 - a 15-minute maximum lifetime for pending ceremony state across all storage
   backends;
+- AES-256-GCM authenticated encryption of durable ceremony records with a
+  host-managed `WebAuthnStateKey`;
 - generic public errors and unknown-account behavior;
 - credential uniqueness and a bounded per-account credential count;
 - persistence of authenticator counter/backup-state changes.
@@ -42,15 +44,19 @@ dependencies:
 secure-webauthn-example = { version = "0.1.0", features = ["redis-backend", "postgres-backend"] }
 ```
 
-`RedisWebAuthnStore::from_url` requires `rediss://`; PostgreSQL production
-configuration requires `sslmode=require` plus an explicit TLS connector, and
-rejects the built-in `NoTls` connector even when that mode is set. The explicit
-`from_insecure_url_for_local_testing` and PostgreSQL `NoTls` constructors are
-for isolated development only. Apply `POSTGRES_SCHEMA_SQL`
-through the host's migration system before constructing a PostgreSQL store.
-These adapters expose
-blocking operations and must run on a blocking worker when called from an
-async framework.
+`RedisWebAuthnStore::from_url` requires `rediss://` and a host-managed
+`WebAuthnStateKey`; PostgreSQL production configuration requires
+`sslmode=require`, an explicit TLS connector, and the same key on all instances
+that consume a namespace. Both reject unsafe transport configuration before
+pool construction. The explicit `from_insecure_url_for_local_testing` and
+PostgreSQL `NoTls` constructors generate an ephemeral key and are for isolated
+development only. Apply `POSTGRES_SCHEMA_SQL` through the host's migration
+system before constructing a PostgreSQL store. These adapters expose blocking
+operations and must run on a blocking worker when called from an async
+framework. Ceremony records are encrypted and authenticated by the adapters;
+credential records contain public passkey material but still require backend
+access control and deployment-level encryption at rest where account metadata
+is sensitive.
 
 The pinned `webauthn-rs` `danger-allow-state-serialisation` feature is enabled
 because a distributed server must serialize ceremony state between instances.
