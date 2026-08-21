@@ -80,6 +80,9 @@ jobs:
           SECURE_KEYPAD_REDIS_URL=redis://127.0.0.1:6379 \
           SECURE_KEYPAD_POSTGRES_URL='host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres' \
             cargo test --locked -p secure-auth-server --all-features --test durable_rate_limit -- --ignored --nocapture
+          SECURE_KEYPAD_REDIS_URL=redis://127.0.0.1:6379 \
+          SECURE_KEYPAD_POSTGRES_URL='host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres' \
+            cargo test --locked -p secure-auth-server --all-features --test durable_one_time_state -- --ignored --nocapture
           cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
           RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
           pnpm audit --audit-level high

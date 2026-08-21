@@ -8,6 +8,7 @@
 //! instances must implement the same one-use `take` semantics with an atomic
 //! Redis, database, or equivalent store.
 
+mod opaque_state_codec;
 mod rate_limit;
 mod service;
 
@@ -16,6 +17,12 @@ mod rate_limit_postgres;
 
 #[cfg(feature = "redis-backend")]
 mod rate_limit_redis;
+
+#[cfg(feature = "redis-backend")]
+mod opaque_state_redis;
+
+#[cfg(feature = "postgres-backend")]
+mod opaque_state_postgres;
 
 pub use rate_limit::{
     InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
@@ -30,6 +37,15 @@ pub use rate_limit_postgres::{
 
 #[cfg(feature = "redis-backend")]
 pub use rate_limit_redis::{RedisRateLimitConfigError, RedisRateLimiter};
+
+#[cfg(feature = "redis-backend")]
+pub use opaque_state_redis::{RedisOneTimeLoginStateStore, RedisOneTimeStateConfigError};
+
+#[cfg(feature = "postgres-backend")]
+pub use opaque_state_postgres::{
+    PostgresOneTimeLoginStateStore, PostgresOneTimeStateConfigError,
+    POSTGRES_ONE_TIME_LOGIN_STATE_SCHEMA_SQL,
+};
 
 use rand::{rngs::OsRng, RngCore};
 use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_SERVER_LOGIN_STATE_BYTES};
@@ -46,6 +62,8 @@ const HANDLE_ATTEMPTS: usize = 4;
 pub const MAX_IN_MEMORY_ENTRIES: usize = 100_000;
 /// Maximum serialized state size accepted by the reference store.
 pub const MAX_STORED_STATE_BYTES: usize = MAX_SERVER_LOGIN_STATE_BYTES;
+/// Maximum TTL accepted by the distributed one-time OPAQUE state adapters.
+pub const MAX_DISTRIBUTED_LOGIN_STATE_TTL: Duration = Duration::from_secs(15 * 60);
 
 /// A fixed-size opaque bearer handle for one pending login state.
 ///

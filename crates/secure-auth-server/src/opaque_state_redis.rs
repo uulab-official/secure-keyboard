@@ -1,0 +1,249 @@
+use crate::opaque_state_codec::{
+    decode_bound_state, encode_bound_state, MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES,
+};
+use crate::{
+    BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, StoreError,
+    MAX_DISTRIBUTED_LOGIN_STATE_TTL, MAX_IN_MEMORY_ENTRIES,
+};
+use r2d2::{Pool, PooledConnection};
+use redis::Script;
+use sha2::{Digest, Sha256};
+use std::{fmt, time::Duration};
+
+const HANDLE_ATTEMPTS: usize = 8;
+const MAX_NAMESPACE_BYTES: usize = 64;
+const MAX_POOL_SIZE: u32 = 256;
+const INSERT_SCRIPT: &str = r"
+local time = redis.call('TIME')
+local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[3]) then
+  return 0
+end
+local inserted = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2])
+if not inserted then
+  return -1
+end
+redis.call('ZADD', KEYS[2], now_ms + tonumber(ARGV[2]), ARGV[4])
+local index_ttl = redis.call('PTTL', KEYS[2])
+if index_ttl < tonumber(ARGV[2]) then
+  redis.call('PEXPIRE', KEYS[2], ARGV[2])
+end
+return 1
+";
+
+const CONSUME_SCRIPT: &str = r"
+local time = redis.call('TIME')
+local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local value = redis.call('GET', KEYS[1])
+if value then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[1])
+end
+return value
+";
+
+/// Configuration errors returned while constructing a Redis one-time store.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RedisOneTimeStateConfigError {
+    /// The URL could not be parsed by redis-rs.
+    InvalidUrl,
+    /// The URL is not TLS-protected.
+    InsecureUrl,
+    /// The namespace is empty, oversized, or contains unsafe key characters.
+    InvalidNamespace,
+    /// The connection pool size is outside the bounded adapter limit.
+    InvalidPoolSize,
+    /// The active state capacity is outside the bounded adapter limit.
+    InvalidCapacity,
+    /// The state TTL is zero, too large, or cannot be represented in Redis PX.
+    InvalidTtl,
+    /// The connection pool could not be constructed.
+    PoolBuild,
+}
+
+impl fmt::Display for RedisOneTimeStateConfigError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidUrl => "invalid redis URL",
+            Self::InsecureUrl => "opaque one-time state requires a TLS Redis URL",
+            Self::InvalidNamespace => "invalid Redis opaque-state namespace",
+            Self::InvalidPoolSize => "invalid Redis opaque-state pool size",
+            Self::InvalidCapacity => "invalid Redis opaque-state capacity",
+            Self::InvalidTtl => "invalid Redis opaque-state TTL",
+            Self::PoolBuild => "Redis opaque-state pool construction failed",
+        })
+    }
+}
+
+impl std::error::Error for RedisOneTimeStateConfigError {}
+
+/// Redis-backed implementation of the bound one-time OPAQUE state contract.
+///
+/// Insertion is an atomic `SET NX PX` plus active-key capacity script. Consume
+/// is an atomic read/delete/index-removal script. Handles are SHA-256 hashed
+/// before entering Redis and all operations are blocking.
+#[derive(Clone)]
+pub struct RedisOneTimeLoginStateStore {
+    pool: Pool<redis::Client>,
+    namespace: String,
+    ttl_millis: u64,
+    max_entries: usize,
+}
+
+impl RedisOneTimeLoginStateStore {
+    /// Creates a TLS-protected Redis one-time state store.
+    ///
+    /// # Errors
+    ///
+    /// Returns a configuration error when the URL, namespace, pool, capacity,
+    /// or TTL violates the bounded production policy.
+    pub fn from_url(
+        url: &str,
+        namespace: &str,
+        pool_size: u32,
+        max_entries: usize,
+        ttl: Duration,
+    ) -> Result<Self, RedisOneTimeStateConfigError> {
+        Self::build(url, namespace, pool_size, max_entries, ttl, true)
+    }
+
+    /// Creates a plaintext store only for an isolated local test instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns a configuration error when the URL, namespace, pool, capacity,
+    /// or TTL violates the bounded local-test policy.
+    pub fn from_insecure_url_for_local_testing(
+        url: &str,
+        namespace: &str,
+        pool_size: u32,
+        max_entries: usize,
+        ttl: Duration,
+    ) -> Result<Self, RedisOneTimeStateConfigError> {
+        Self::build(url, namespace, pool_size, max_entries, ttl, false)
+    }
+
+    fn build(
+        url: &str,
+        namespace: &str,
+        pool_size: u32,
+        max_entries: usize,
+        ttl: Duration,
+        require_tls: bool,
+    ) -> Result<Self, RedisOneTimeStateConfigError> {
+        validate_namespace(namespace)?;
+        if pool_size == 0 || pool_size > MAX_POOL_SIZE {
+            return Err(RedisOneTimeStateConfigError::InvalidPoolSize);
+        }
+        if max_entries == 0 || max_entries > MAX_IN_MEMORY_ENTRIES {
+            return Err(RedisOneTimeStateConfigError::InvalidCapacity);
+        }
+        let ttl_millis = ttl_millis(ttl)?;
+        if require_tls && !url.starts_with("rediss://") {
+            return Err(RedisOneTimeStateConfigError::InsecureUrl);
+        }
+        let client =
+            redis::Client::open(url).map_err(|_| RedisOneTimeStateConfigError::InvalidUrl)?;
+        let pool = Pool::builder()
+            .max_size(pool_size)
+            .connection_timeout(Duration::from_secs(5))
+            .build(client)
+            .map_err(|_| RedisOneTimeStateConfigError::PoolBuild)?;
+        Ok(Self {
+            pool,
+            namespace: namespace.to_owned(),
+            ttl_millis,
+            max_entries,
+        })
+    }
+
+    fn connection(&self) -> Result<PooledConnection<redis::Client>, StoreError> {
+        self.pool.get().map_err(|_| StoreError::Unavailable)
+    }
+
+    fn state_key(&self, hash: &str) -> String {
+        format!("{}:opaque:v1:login:{hash}", self.namespace)
+    }
+
+    fn pending_index_key(&self) -> String {
+        format!("{}:opaque:v1:login:pending", self.namespace)
+    }
+}
+
+impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
+    fn insert_bound(&self, state: BoundLoginState) -> Result<LoginStateHandle, StoreError> {
+        let encoded = encode_bound_state(state)?;
+        if encoded.len() > MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES {
+            return Err(StoreError::StateTooLarge);
+        }
+        let mut connection = self.connection()?;
+        for _ in 0..HANDLE_ATTEMPTS {
+            let handle = LoginStateHandle::generate();
+            let handle_hash = hash_handle(&handle);
+            let inserted: i64 = Script::new(INSERT_SCRIPT)
+                .key(self.state_key(&handle_hash))
+                .key(self.pending_index_key())
+                .arg(encoded.as_slice())
+                .arg(self.ttl_millis)
+                .arg(self.max_entries)
+                .arg(&handle_hash)
+                .invoke(&mut *connection)
+                .map_err(|_| StoreError::Unavailable)?;
+            match inserted {
+                1 => return Ok(handle),
+                0 => return Err(StoreError::CapacityReached),
+                -1 => {}
+                _ => return Err(StoreError::Unavailable),
+            }
+        }
+        Err(StoreError::HandleCollision)
+    }
+
+    fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError> {
+        let handle_hash = hash_handle(handle);
+        let mut connection = self.connection()?;
+        let encoded: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
+            .key(self.state_key(&handle_hash))
+            .key(self.pending_index_key())
+            .arg(&handle_hash)
+            .invoke(&mut *connection)
+            .map_err(|_| StoreError::Unavailable)?;
+        encoded.map(decode_bound_state).transpose()
+    }
+}
+
+fn ttl_millis(ttl: Duration) -> Result<u64, RedisOneTimeStateConfigError> {
+    let millis = u64::try_from(ttl.as_millis())
+        .ok()
+        .filter(|millis| *millis > 0 && i64::try_from(*millis).is_ok())
+        .ok_or(RedisOneTimeStateConfigError::InvalidTtl)?;
+    if ttl > MAX_DISTRIBUTED_LOGIN_STATE_TTL {
+        return Err(RedisOneTimeStateConfigError::InvalidTtl);
+    }
+    Ok(millis)
+}
+
+fn hash_handle(handle: &LoginStateHandle) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let digest = Sha256::digest(handle.as_bytes());
+    let mut encoded = String::with_capacity(64);
+    for byte in digest {
+        encoded.push(HEX[(byte >> 4) as usize] as char);
+        encoded.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    encoded
+}
+
+fn validate_namespace(namespace: &str) -> Result<(), RedisOneTimeStateConfigError> {
+    if namespace.is_empty()
+        || namespace.len() > MAX_NAMESPACE_BYTES
+        || !namespace
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+    {
+        return Err(RedisOneTimeStateConfigError::InvalidNamespace);
+    }
+    Ok(())
+}

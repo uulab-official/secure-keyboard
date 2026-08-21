@@ -390,18 +390,21 @@ where
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RegistrationStartRequest {
     identifier: String,
     envelope: AuthEnvelope,
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct EnvelopeRequest {
     identifier: String,
     envelope: AuthEnvelope,
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LoginStartRequest {
     credential_identifier: String,
     client_identifier: String,
@@ -410,6 +413,7 @@ struct LoginStartRequest {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LoginFinishRequest {
     handle: String,
     envelope: AuthEnvelope,

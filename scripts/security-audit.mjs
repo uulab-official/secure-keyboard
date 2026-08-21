@@ -355,6 +355,21 @@ export function runSecurityAudit() {
   const authServerManifest = source("crates/secure-auth-server/Cargo.toml", findings);
   requireText(findings, "crates/secure-auth-server/Cargo.toml", authServerManifest, /redis-backend/, "Redis rate limiting must be explicitly feature-gated");
   requireText(findings, "crates/secure-auth-server/Cargo.toml", authServerManifest, /postgres-backend/, "PostgreSQL rate limiting must be explicitly feature-gated");
+  const opaqueStateCodec = source("crates/secure-auth-server/src/opaque_state_codec.rs", findings);
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_codec.rs", opaqueStateCodec, /RECORD_VERSION/, "OPAQUE durable state must use a versioned record format");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_codec.rs", opaqueStateCodec, /MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES/, "OPAQUE durable state records must be bounded before persistence");
+  const opaqueStateRedis = source("crates/secure-auth-server/src/opaque_state_redis.rs", findings);
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /INSERT_SCRIPT/, "Redis OPAQUE state insertion must use one atomic script");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /CONSUME_SCRIPT/, "Redis OPAQUE state consumption must use one atomic script");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /Sha256/, "Redis OPAQUE state handles must be hashed before storage");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_redis.rs", opaqueStateRedis, /rediss:\/\//, "Redis OPAQUE state must require TLS by default");
+  const opaqueStatePostgres = source("crates/secure-auth-server/src/opaque_state_postgres.rs", findings);
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /POSTGRES_ONE_TIME_LOGIN_STATE_SCHEMA_SQL/, "PostgreSQL OPAQUE state must ship an explicit migration");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /pg_advisory_xact_lock/, "PostgreSQL OPAQUE state capacity must be serialized");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /DELETE FROM secure_keypad_opaque_login_states[\s\S]{0,240}RETURNING state/, "PostgreSQL OPAQUE state consumption must be atomic");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /MakeTlsConnect/, "PostgreSQL OPAQUE state must accept an explicit TLS connector");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /SslMode::Require/, "PostgreSQL OPAQUE state must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-auth-server/src/opaque_state_postgres.rs", opaqueStatePostgres, /CHECK \(octet_length\(state\) BETWEEN 1 AND 32768\)/, "PostgreSQL OPAQUE state schema must enforce bounded records");
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /Sha256/, "Redis rate-limit keys must be hashed before storage");
@@ -394,6 +409,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /idempotently[\s\S]{0,100}existing ceremony and credential tables/, "WebAuthn storage guide must document durable schema upgrades");
   const distributedBackendGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
+  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /RedisOneTimeLoginStateStore/, "distributed backend guide must document the durable OPAQUE one-time adapter");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently[\s\S]{0,100}existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
   const nativePlatformsGuide = source("docs/NATIVE-PLATFORMS.md", findings);
   requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /SecureKeypadPresentation\.kt/, "native platform guide must compile the Android presentation contract source");
@@ -510,6 +526,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /services:/, "release candidate must provide isolated durable backend services");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_storage/, "release candidate must execute WebAuthn durable interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_rate_limit/, "release candidate must execute distributed rate-limit interoperability tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_one_time_state/, "release candidate must execute distributed OPAQUE one-time-state interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
@@ -524,6 +541,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /nightly-2026-08-19/, "Fuzz CI must use the repository-pinned nightly toolchain");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /toolchain install nightly --|cargo \+nightly fuzz/, "Fuzz CI must not float on the nightly channel");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /durable_one_time_state/, "CI must run distributed OPAQUE one-time-state interoperability tests");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-version-parity/, "CI must test public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /check:release-version-parity/, "CI must enforce public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");

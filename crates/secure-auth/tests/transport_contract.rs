@@ -150,6 +150,20 @@ fn serde_deserialization_rejects_invalid_payload_bounds() {
 }
 
 #[test]
+fn serde_deserialization_rejects_unknown_secret_bearing_fields() {
+    let mut wire = serde_json::json!({
+        "protocol_version": PROTOCOL_VERSION,
+        "suite_id": CIPHER_SUITE_ID,
+        "message_kind": "CredentialRequest",
+        "server_key_id": "server-key-2026",
+        "payload": [102, 105, 120, 116, 117, 114, 101]
+    });
+    wire["rawInput"] = serde_json::json!("must-not-cross-opaque-boundary");
+
+    assert!(serde_json::from_value::<AuthEnvelope>(wire).is_err());
+}
+
+#[test]
 fn json_decoder_returns_a_validated_envelope() {
     let envelope = AuthEnvelope::new(
         AuthMessageKind::CredentialRequest,

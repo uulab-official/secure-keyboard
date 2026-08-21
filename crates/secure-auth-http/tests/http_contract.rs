@@ -210,6 +210,48 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
 }
 
 #[test]
+fn route_rejects_unknown_secret_bearing_request_fields() {
+    let (setup, _) = registered_fixture();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let router = HttpAuthRouter::new(
+        service,
+        FixtureRepository::with(CREDENTIAL_ID, registered_fixture().1),
+    );
+    let (_, request) = client_registration_start(PASSWORD).unwrap();
+    let envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationRequest,
+        CIPHER_SUITE_ID,
+        &request,
+    )
+    .unwrap();
+    let body = serde_json::to_vec(&serde_json::json!({
+        "identifier": "fixture-user",
+        "envelope": envelope,
+        "password": "must-not-cross-opaque-boundary"
+    }))
+    .unwrap();
+
+    let response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/start",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            body: &body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+
+    assert_eq!(response.status, 400);
+    assert_eq!(response.body, br#"{"error":"invalid_request"}"#);
+}
+
+#[test]
 fn login_routes_complete_opaque_flow_and_consume_handle_once() {
     let (setup, credential) = registered_fixture();
     let service = ServerAuthService::new(

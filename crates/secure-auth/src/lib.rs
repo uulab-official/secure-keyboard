@@ -149,6 +149,7 @@ impl core::fmt::Debug for AuthEnvelope {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AuthEnvelopeWire {
     protocol_version: u16,
     suite_id: String,

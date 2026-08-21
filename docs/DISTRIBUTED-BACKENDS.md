@@ -1,9 +1,12 @@
 # Distributed replay and rate-limit backends
 
-The reference stores in `secure-auth-server` are bounded and atomic only
-inside one process. A multi-instance deployment must implement the same
-contracts with a durable, access-controlled backend before it enables a load
-balancer or failover.
+The process-local reference stores in `secure-auth-server` are bounded and
+atomic only inside one process. The crate also provides opt-in Redis and
+PostgreSQL implementations of the OPAQUE one-time state contract and Redis
+and PostgreSQL rate-limit implementations. A multi-instance deployment must
+still choose the TLS constructor, apply the exported PostgreSQL migration,
+and run the isolated interoperability tests before enabling a load balancer
+or failover.
 
 ## One-time OPAQUE ceremony state
 
@@ -26,12 +29,13 @@ format version. The backend operation must:
    temporary-unavailable response; and
 6. never log keys, handles, state bytes, credential IDs, or client responses.
 
-Redis 6.2+ can use `GETDEL`. On older Redis, use a small server-side Lua
-   transaction that reads and deletes the key in one operation; do not issue a
-   separate `GET` followed by `DEL`. PostgreSQL-style stores should use
-   `DELETE ... WHERE key = $1 AND expires_at > now() RETURNING value` inside a
-   single transaction. The adapter must reconstruct `BoundLoginState` with its
-   bounded identifiers before returning it to `ServerAuthService`.
+`RedisOneTimeLoginStateStore` uses a small server-side Lua transaction with
+`GETDEL`-equivalent read-and-delete semantics; do not issue a separate `GET`
+followed by `DEL`. PostgreSQL-style stores should use `DELETE ... WHERE key =
+$1 AND expires_at > now() RETURNING value` inside a single atomic operation.
+The built-in PostgreSQL adapter does this and also uses an advisory lock for
+insert capacity. Both built-in adapters reconstruct `BoundLoginState` with
+bounded identifiers before returning it to `ServerAuthService`.
 
 ## Atomic rate limiting
 
