@@ -18,6 +18,12 @@ valid Ed25519 signature. It uploads a candidate artifact only; it does not
 publish a GitHub release or bypass the external device, backend, and
 independent-review gates below.
 
+The same immutable candidate job starts isolated Redis 7.2 and PostgreSQL 16
+services and runs both durable `--ignored` interoperability suites before
+building the bundle. Those services are test infrastructure only; production
+deployments still require TLS-first configuration and an operator-reviewed
+schema migration.
+
 ## Reproducible local gates
 
 ```sh

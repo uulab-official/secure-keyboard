@@ -15,9 +15,30 @@ jobs:
   bundle:
     name: Build and sign release candidate bundle
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
+    services:
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -52,6 +73,12 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo test --locked --workspace --all-features
+          SECURE_KEYPAD_REDIS_URL=redis://127.0.0.1:6379 \
+          SECURE_KEYPAD_POSTGRES_URL='host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres' \
+            cargo test --locked -p secure-webauthn-example --all-features --test durable_storage -- --ignored --nocapture
+          SECURE_KEYPAD_REDIS_URL=redis://127.0.0.1:6379 \
+          SECURE_KEYPAD_POSTGRES_URL='host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres' \
+            cargo test --locked -p secure-auth-server --all-features --test durable_rate_limit -- --ignored --nocapture
           cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
           RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
           pnpm audit --audit-level high
