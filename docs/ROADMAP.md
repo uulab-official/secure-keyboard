@@ -146,7 +146,8 @@ Status: release-gate automation in progress; independent/device review pending
 
 - [x] Create an OWASP MASVS/MASTG evidence map; independent assessor sign-off remains pending.
 - [x] Add strict Rust/TypeScript/Flutter CI checks, dependency audit, bounded auth-decoder fuzz target, and dependency metadata artifact generation.
-- [ ] Run the fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
+- [x] Add bounded auth-decoder and native/core state-machine fuzz targets with retained corpora.
+- [ ] Run the full fuzz campaign across parser/native-boundary corpora and add memory/leak tests.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.
 - [ ] Obtain an independent security review before claiming production readiness.

@@ -514,6 +514,7 @@ version = "0.1.0"
 dependencies = [
  "libfuzzer-sys",
  "secure-auth",
+ "secure-core",
 ]
 
 [[package]]

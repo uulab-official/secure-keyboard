@@ -39,8 +39,8 @@ export function PinEntry() {
 This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
 
 Build integration is intentionally fail-closed. Before `pod install`, set
-`SECURE_KEYPAD_FFI_LIB` to a matching Rust `secure_ffi` static library (a
-universal/fat artifact or the host's architecture-specific CocoaPods input).
+`SECURE_KEYPAD_FFI_XCFRAMEWORK` to a matching Rust `secure_ffi` XCFramework.
+`SECURE_KEYPAD_FFI_LIB` is supported only for a single-platform host build.
 Before the Android external-native build, set
 `SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
 `<abi>/libsecure_ffi.a` for every ABI shipped by the app. The library must be

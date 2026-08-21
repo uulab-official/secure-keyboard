@@ -36,6 +36,8 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm test:native-parity
       - run: pnpm check:native-parity
+      - run: pnpm test:security-audit
+      - run: pnpm security-audit
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
       - run: pnpm --dir packages/contracts build
@@ -80,6 +82,10 @@ jobs:
         run: cargo +nightly fuzz check auth_envelope
       - name: Run bounded fuzz smoke test
         run: cargo +nightly fuzz run auth_envelope -- -runs=2000
+      - name: Build native/core fuzz target
+        run: cargo +nightly fuzz check core_sequence
+      - name: Run bounded native/core fuzz smoke test
+        run: cargo +nightly fuzz run core_sequence -- -runs=2000
 
   sbom:
     name: Produce dependency SBOM artifact
@@ -125,6 +131,28 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - name: Build release FFI libraries for device and simulator
+        run: |
+          cargo build --release -p secure-ffi --target aarch64-apple-ios
+          cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
+      - name: Assemble and inspect the release XCFramework
+        run: |
+          xcodebuild -create-xcframework \
+            -library target/aarch64-apple-ios/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -library target/aarch64-apple-ios-sim/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -output "$RUNNER_TEMP/secure_ffi.xcframework"
+          plutil -extract AvailableLibraries xml1 -o - "$RUNNER_TEMP/secure_ffi.xcframework/Info.plist"
+      - name: Parse package Podspecs against the release XCFramework
+        run: |
+          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
+            pod ipc spec packages/react-native/SecureKeypadReactNative.podspec >/tmp/secure-keypad-rn-podspec.json
+          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
+            pod ipc spec packages/flutter/ios/secure_keypad_flutter.podspec >/tmp/secure-keypad-flutter-podspec.json
       - name: Swift presentation contract
         run: |
           swiftc -warnings-as-errors \

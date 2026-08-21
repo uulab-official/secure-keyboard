@@ -15,6 +15,8 @@ pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
 pnpm check:native-parity
+pnpm test:security-audit
+pnpm security-audit
 pnpm --dir packages/contracts typecheck
 pnpm --dir packages/contracts test
 pnpm --dir packages/contracts build
@@ -48,8 +50,9 @@ target or corpus regression before release.
 
 ## Artifact and platform gates
 
-CI also validates the C header, native Swift/Kotlin contracts, Flutter analyze
-and tests, emits dependency metadata, and generates an SPDX SBOM through
+CI also builds the iOS `secure_ffi` device/simulator libraries into an
+XCFramework, validates the C header and native Swift/Kotlin contracts, runs
+Flutter analyze/tests, emits dependency metadata, and generates an SPDX SBOM through
 Syft/Anchore. Before a public release, the artifact must include the exact
 Rust/Node/Flutter/native toolchain versions, the notices in
 `docs/THIRD-PARTY-NOTICES.md`, threat model, and signed checksums.

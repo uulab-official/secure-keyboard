@@ -12,10 +12,18 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 secure-auth = { path = "../crates/secure-auth" }
+secure-core = { path = "../crates/secure-core" }
 
 [[bin]]
 name = "auth_envelope"
 path = "fuzz_targets/auth_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "core_sequence"
+path = "fuzz_targets/core_sequence.rs"
 test = false
 doc = false
 bench = false

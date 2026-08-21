@@ -59,6 +59,10 @@ cargo build --release -p secure-ffi --target aarch64-apple-ios
 cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
 ```
 
+For a release artifact, combine the device and simulator libraries into an
+XCFramework and pass its path as `SECURE_KEYPAD_FFI_XCFRAMEWORK`; CI performs
+this assembly and parses both package Podspecs against the result.
+
 ## Android
 
 `native/android/src/main/kotlin/.../SecureKeypadView.kt` is a custom
@@ -130,8 +134,9 @@ React Native package paths:
 - `packages/react-native/ios` contains the UIKit view manager and FFI module.
 - `packages/react-native/android` contains the Kotlin view manager and JNI
   CMake target.
-- `packages/react-native/SecureKeypadReactNative.podspec` requires
-  `SECURE_KEYPAD_FFI_LIB` to point to the matching Rust static library.
+- `packages/react-native/SecureKeypadReactNative.podspec` prefers
+  `SECURE_KEYPAD_FFI_XCFRAMEWORK` and supports `SECURE_KEYPAD_FFI_LIB` only as
+  a single-platform fallback.
 - Android CMake requires `SECURE_KEYPAD_FFI_LIB_DIR` with one
   `libsecure_ffi.a` per shipped ABI.
 - The Android module respects the host's `android.builtInKotlin` setting;
@@ -141,7 +146,7 @@ React Native package paths:
 Flutter package paths:
 
 - `packages/flutter/ios/Classes` contains the PlatformView plugin and FFI
-  module; the podspec uses the same `SECURE_KEYPAD_FFI_LIB` contract.
+  module; the podspec uses the same XCFramework-first FFI contract.
 - `packages/flutter/android` contains the PlatformView plugin and JNI CMake
   target with the same ABI directory contract.
 - `SecureKeypad` creates the native PlatformView and forwards only public

@@ -19,9 +19,13 @@ Pod::Spec.new do |spec|
     'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/Classes/SecureKeypadFFI'
   }
 
+  ffi_xcframework = ENV['SECURE_KEYPAD_FFI_XCFRAMEWORK']
   ffi_library = ENV['SECURE_KEYPAD_FFI_LIB']
-  unless ffi_library && File.file?(ffi_library)
-    raise 'SECURE_KEYPAD_FFI_LIB must point to the matching secure_ffi static library before pod install'
+  if ffi_xcframework && Dir.exist?(ffi_xcframework)
+    spec.vendored_frameworks = ffi_xcframework
+  elsif ffi_library && File.file?(ffi_library)
+    spec.vendored_libraries = ffi_library
+  else
+    raise 'SECURE_KEYPAD_FFI_XCFRAMEWORK or SECURE_KEYPAD_FFI_LIB must point to matching secure_ffi artifacts before pod install'
   end
-  spec.vendored_libraries = ffi_library
 end

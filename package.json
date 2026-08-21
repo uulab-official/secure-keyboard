@@ -4,6 +4,8 @@
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "check:native-parity": "node scripts/check-native-package-parity.mjs",
-    "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs"
+    "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs",
+    "security-audit": "node scripts/security-audit.mjs",
+    "test:security-audit": "node --test scripts/security-audit.test.mjs"
   }
 }

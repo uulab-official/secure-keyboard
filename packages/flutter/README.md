@@ -21,8 +21,9 @@ decision. Host-native authentication must install
 `takeNativeHandle()` on Android, and consume the handle out-of-band. No handle
 is exposed to Dart.
 
-The plugin build is fail-closed. Set `SECURE_KEYPAD_FFI_LIB` to the matching
-Rust `secure_ffi` static library before iOS CocoaPods integration. Set
+The plugin build is fail-closed. Set `SECURE_KEYPAD_FFI_XCFRAMEWORK` to the
+matching Rust `secure_ffi` XCFramework before iOS CocoaPods integration.
+`SECURE_KEYPAD_FFI_LIB` is supported only for a single-platform host build. Set
 `SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
 `<abi>/libsecure_ffi.a` before the Android external-native build. Build the
 library from the same source revision and release profile as the plugin.
