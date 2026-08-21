@@ -3,7 +3,7 @@ Pod::Spec.new do |spec|
   spec.version = '0.1.0'
   spec.summary = 'Secure Native keypad Flutter plugin'
   spec.description = 'A native-only keypad PlatformView that exports masked state and public result codes.'
-  spec.homepage = 'https://github.com/uulab/secure-keyboard'
+  spec.homepage = 'https://github.com/uulab-official/secure-keyboard'
   spec.license = { :type => 'MIT' }
   spec.author = { 'UULab' => 'security@uulab.dev' }
   spec.source = { :path => '.' }

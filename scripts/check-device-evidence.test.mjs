@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { validateDeviceEvidence } from "./check-device-evidence.mjs";
+import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
 
 const VALID_NATIVE = {
   schemaVersion: 1,
@@ -60,4 +64,32 @@ test("requires secure context and passkey-specific checks for web evidence", () 
   };
   const findings = validateDeviceEvidence(web);
   assert.ok(findings.some((finding) => finding.includes("device.secureContext")));
+});
+
+test("recomputes log and artifact digests inside the evidence root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-evidence-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  const log = Buffer.from("sanitized runtime log", "utf8");
+  const artifact = Buffer.from("native checksum manifest", "utf8");
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, evidence.logPath), log);
+  writeFileSync(join(root, evidence.artifacts[0].path), artifact);
+  evidence.logSha256 = createHash("sha256").update(log).digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256").update(artifact).digest("hex");
+
+  assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
+
+  writeFileSync(join(root, evidence.logPath), Buffer.from("tampered", "utf8"));
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+  assert.ok(findings.some((finding) => finding.includes("logSha256")));
+});
+
+test("rejects duplicate evidence paths before file verification", () => {
+  const evidence = structuredClone(VALID_NATIVE);
+  evidence.artifacts[0].path = evidence.logPath;
+
+  const findings = validateDeviceEvidence(evidence);
+
+  assert.ok(findings.some((finding) => finding.includes("artifacts[0].path") && finding.includes("unique")));
 });

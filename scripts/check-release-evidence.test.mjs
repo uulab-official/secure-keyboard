@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -36,8 +36,17 @@ function completeEvidence() {
       { kind: "native-checksum", path: "artifacts/native.sha256", sha256: SHA256 },
       { kind: "sbom", path: "artifacts/secure-keypad.sbom.spdx.json", sha256: SHA256 },
       { kind: "license-notices", path: "artifacts/THIRD-PARTY-NOTICES.md", sha256: SHA256 },
-      { kind: "release-signature", path: "artifacts/secure-keypad.release.sigstore.json", sha256: SHA256 },
+      { kind: "release-bundle", path: "artifacts/secure-keypad-release.tar.gz", sha256: SHA256 },
+      { kind: "release-signature", path: "artifacts/secure-keypad-release.sig", sha256: SHA256 },
+      { kind: "release-public-key", path: "artifacts/secure-keypad-release.pub.der", sha256: SHA256 },
     ],
+    signature: {
+      algorithm: "ed25519",
+      publicKeyPath: "artifacts/secure-keypad-release.pub.der",
+      signedArtifactPath: "artifacts/secure-keypad-release.tar.gz",
+      signaturePath: "artifacts/secure-keypad-release.sig",
+      publicKeySha256: SHA256,
+    },
   };
 }
 
@@ -81,11 +90,42 @@ test("rejects unsafe paths, bad hashes, failed statuses, and secret-bearing fiel
   assert.ok(findings.some((finding) => finding.includes("password")));
 });
 
+test("rejects duplicate evidence paths and an unbound signature", () => {
+  const evidence = completeEvidence();
+  evidence.gates[1].evidencePath = evidence.gates[0].evidencePath;
+  evidence.artifacts[0].path = evidence.gates[0].evidencePath;
+  evidence.signature.signedArtifactPath = "artifacts/not-listed.bin";
+  evidence.signature.publicKeyPath = "artifacts/native.sha256";
+
+  const findings = validateReleaseEvidence(evidence);
+
+  assert.ok(findings.some((finding) => finding.includes("evidencePath") && finding.includes("unique")));
+  assert.ok(findings.some((finding) => finding.includes("artifacts[0].path") && finding.includes("unique")));
+  assert.ok(findings.some((finding) => finding.includes("signedArtifactPath") && finding.includes("artifact")));
+  assert.ok(findings.some((finding) => finding.includes("publicKeyPath") && finding.includes("release-public-key")));
+});
+
+test("binds release evidence to the exact commit and package version", () => {
+  const evidence = completeEvidence();
+  const findings = validateReleaseEvidence(evidence, {
+    expectedCommit: "c".repeat(40),
+    expectedPackageVersion: "0.1.1",
+  });
+
+  assert.ok(findings.some((finding) => finding.includes("commit") && finding.includes("current")));
+  assert.ok(findings.some((finding) => finding.includes("packageVersion") && finding.includes("current")));
+});
+
 test("verifies every referenced release evidence and artifact digest", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-evidence-"));
   const evidence = completeEvidence();
   const payload = Buffer.from("release-evidence-fixture", "utf8");
   const sha256 = createHash("sha256").update(payload).digest("hex");
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const releasePayload = Buffer.from("signed-release-fixture", "utf8");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const signature = sign(null, releasePayload, privateKey);
+  const publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
 
   for (const gate of evidence.gates) {
     mkdirSync(join(root, "evidence"), { recursive: true });
@@ -94,13 +134,48 @@ test("verifies every referenced release evidence and artifact digest", () => {
   }
   for (const artifact of evidence.artifacts) {
     mkdirSync(join(root, "artifacts"), { recursive: true });
-    writeFileSync(join(root, artifact.path), payload);
-    artifact.sha256 = sha256;
+    if (artifact.kind === "release-bundle") {
+      writeFileSync(join(root, artifact.path), releasePayload);
+      artifact.sha256 = createHash("sha256").update(releasePayload).digest("hex");
+    } else if (artifact.kind === "release-signature") {
+      writeFileSync(join(root, artifact.path), signature);
+      artifact.sha256 = createHash("sha256").update(signature).digest("hex");
+    } else {
+      writeFileSync(join(root, artifact.path), payload);
+      artifact.sha256 = sha256;
+    }
   }
+  writeFileSync(join(root, evidence.signature.publicKeyPath), publicKeyDer);
+  evidence.signature.publicKeySha256 = publicKeySha256;
+  evidence.artifacts.find((artifact) => artifact.kind === "release-public-key").sha256 = publicKeySha256;
 
   assert.deepEqual(verifyReleaseEvidenceFiles(evidence, root), []);
 
   writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("tampered", "utf8"));
   const findings = verifyReleaseEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
+});
+
+test("rejects a tampered detached release signature", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-signature-"));
+  const evidence = completeEvidence();
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const releasePayload = Buffer.from("signed-release-fixture", "utf8");
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const signature = sign(null, releasePayload, privateKey);
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, evidence.signature.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.signature.signedArtifactPath), releasePayload);
+  writeFileSync(join(root, evidence.signature.signaturePath), Buffer.from(signature).reverse());
+  evidence.signature.publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+  evidence.artifacts.find((artifact) => artifact.kind === "release-bundle").sha256 = createHash("sha256")
+    .update(releasePayload)
+    .digest("hex");
+  evidence.artifacts.find((artifact) => artifact.kind === "release-signature").sha256 = createHash("sha256")
+    .update(Buffer.from(signature).reverse())
+    .digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("signature")));
 });

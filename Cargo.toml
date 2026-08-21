@@ -14,6 +14,8 @@ resolver = "2"
 edition = "2021"
 license = "MIT"
 rust-version = "1.85"
+repository = "https://github.com/uulab-official/secure-keyboard"
+homepage = "https://github.com/uulab-official/secure-keyboard"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

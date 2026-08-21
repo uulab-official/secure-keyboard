@@ -2,7 +2,7 @@
 name = "secure-auth-axum"
 version = "0.1.0"
 description = "Compile-tested Axum adapter for Secure Keypad OPAQUE authentication"
-repository = "https://github.com/uulab/secure-keyboard"
+repository = "https://github.com/uulab-official/secure-keyboard"
 readme = "README.md"
 edition.workspace = true
 license.workspace = true

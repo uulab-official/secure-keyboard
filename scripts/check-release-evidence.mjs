@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { createHash, createPublicKey, verify } from "node:crypto";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +61,15 @@ function checkEvidencePath(findings, field, value) {
   }
 }
 
+function checkUniquePath(findings, paths, field, value) {
+  if (!isSafeRelativePath(value)) return;
+  if (paths.has(value)) {
+    add(findings, field, "must be unique across release evidence");
+  } else {
+    paths.add(value);
+  }
+}
+
 function checkSecretKeys(findings, value, field = "manifest") {
   if (!isRecord(value) && !Array.isArray(value)) {
     return;
@@ -76,14 +86,16 @@ function checkSecretKeys(findings, value, field = "manifest") {
 /**
  * Validates the shape of a release evidence manifest.
  *
- * This is a schema and policy check. It does not verify the referenced files,
- * cryptographic signatures, CI provenance, or the reviewer's identity; the
- * release process must verify those references independently.
+ * This is a schema and policy check. Referenced file digests and the detached
+ * signature are verified separately by [`verifyReleaseEvidenceFiles`]. CI
+ * provenance, trusted-key identity, and reviewer identity remain external
+ * release-process responsibilities.
  *
  * @param {unknown} evidence
+ * @param {{expectedCommit?: string, expectedPackageVersion?: string}} [context]
  * @returns {string[]}
  */
-export function validateReleaseEvidence(evidence) {
+export function validateReleaseEvidence(evidence, context = {}) {
   const findings = [];
 
   if (!isRecord(evidence)) {
@@ -97,6 +109,8 @@ export function validateReleaseEvidence(evidence) {
   }
   if (typeof evidence.commit !== "string" || !COMMIT.test(evidence.commit)) {
     add(findings, "commit", "must be a 40-character lowercase commit SHA");
+  } else if (context.expectedCommit && evidence.commit !== context.expectedCommit) {
+    add(findings, "commit", "must match the current checkout commit");
   }
   if (
     typeof evidence.createdAt !== "string" ||
@@ -107,6 +121,8 @@ export function validateReleaseEvidence(evidence) {
   }
   if (typeof evidence.packageVersion !== "string" || !VERSION.test(evidence.packageVersion)) {
     add(findings, "packageVersion", "must be a semantic version");
+  } else if (context.expectedPackageVersion && evidence.packageVersion !== context.expectedPackageVersion) {
+    add(findings, "packageVersion", "must match the current release version");
   }
 
   const requiredToolchains = ["rust", "node", "flutter", "reactNative", "ndk"];
@@ -121,6 +137,7 @@ export function validateReleaseEvidence(evidence) {
   }
 
   const gatesByName = new Map();
+  const referencedPaths = new Set();
   if (!Array.isArray(evidence.gates)) {
     add(findings, "gates", "must contain every required release gate");
   } else {
@@ -141,6 +158,7 @@ export function validateReleaseEvidence(evidence) {
         add(findings, `${field}.status`, "must equal pass");
       }
       checkEvidencePath(findings, `${field}.evidencePath`, gate.evidencePath);
+      checkUniquePath(findings, referencedPaths, `${field}.evidencePath`, gate.evidencePath);
       checkHash(findings, `${field}.sha256`, gate.sha256);
     });
   }
@@ -151,6 +169,7 @@ export function validateReleaseEvidence(evidence) {
   }
 
   const artifactKinds = new Set();
+  const artifactsByPath = new Map();
   if (!Array.isArray(evidence.artifacts) || evidence.artifacts.length === 0) {
     add(findings, "artifacts", "must contain hashed release artifacts");
   } else {
@@ -162,27 +181,80 @@ export function validateReleaseEvidence(evidence) {
       }
       if (typeof artifact.kind !== "string" || artifact.kind.length === 0) {
         add(findings, `${field}.kind`, "must be a non-empty artifact kind");
+      } else if (artifactKinds.has(artifact.kind)) {
+        add(findings, `${field}.kind`, "must not be duplicated");
       } else {
         artifactKinds.add(artifact.kind);
       }
       checkEvidencePath(findings, `${field}.path`, artifact.path);
+      checkUniquePath(findings, referencedPaths, `${field}.path`, artifact.path);
+      if (isSafeRelativePath(artifact.path)) artifactsByPath.set(artifact.path, artifact);
       checkHash(findings, `${field}.sha256`, artifact.sha256);
     });
   }
-  for (const requiredArtifact of ["native-checksum", "sbom", "license-notices", "release-signature"]) {
+  for (const requiredArtifact of [
+    "native-checksum",
+    "sbom",
+    "license-notices",
+    "release-bundle",
+    "release-public-key",
+    "release-signature",
+  ]) {
     if (!artifactKinds.has(requiredArtifact)) {
       add(findings, "artifacts", `missing required artifact ${requiredArtifact}`);
+    }
+  }
+
+  if (!isRecord(evidence.signature)) {
+    add(findings, "signature", "must contain an Ed25519 detached-signature descriptor");
+  } else {
+    if (evidence.signature.algorithm !== "ed25519") {
+      add(findings, "signature.algorithm", "must equal ed25519");
+    }
+    for (const field of ["publicKeyPath", "signedArtifactPath", "signaturePath"]) {
+      checkEvidencePath(findings, `signature.${field}`, evidence.signature[field]);
+    }
+    checkHash(findings, "signature.publicKeySha256", evidence.signature.publicKeySha256);
+    const signedArtifact = artifactsByPath.get(evidence.signature.signedArtifactPath);
+    if (signedArtifact?.kind !== "release-bundle") {
+      add(findings, "signature.signedArtifactPath", "must reference the release-bundle artifact");
+    }
+    const publicKeyArtifact = artifactsByPath.get(evidence.signature.publicKeyPath);
+    if (publicKeyArtifact?.kind !== "release-public-key") {
+      add(findings, "signature.publicKeyPath", "must reference the release-public-key artifact");
+    }
+    const signatureArtifact = artifactsByPath.get(evidence.signature.signaturePath);
+    if (signatureArtifact?.kind !== "release-signature") {
+      add(findings, "signature.signaturePath", "must reference the release-signature artifact");
     }
   }
 
   return findings;
 }
 
+function containedFilePath(findings, root, field, relativePath) {
+  if (!isSafeRelativePath(relativePath)) return undefined;
+  try {
+    const realRoot = realpathSync(root);
+    const realFile = realpathSync(path.resolve(realRoot, relativePath));
+    const relative = path.relative(realRoot, realFile);
+    if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      add(findings, `${field}.path`, "must resolve inside the evidence root");
+      return undefined;
+    }
+    return realFile;
+  } catch (error) {
+    add(findings, `${field}.path`, `could not resolve ${relativePath}: ${error.message}`);
+    return undefined;
+  }
+}
+
 function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
   if (!isSafeRelativePath(relativePath) || !SHA256.test(String(expectedHash))) {
     return;
   }
-  const absolutePath = path.resolve(root, relativePath);
+  const absolutePath = containedFilePath(findings, root, field, relativePath);
+  if (!absolutePath) return;
   try {
     const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
     if (actualHash !== expectedHash) {
@@ -190,6 +262,35 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
     }
   } catch (error) {
     add(findings, `${field}.path`, `could not read ${relativePath}: ${error.message}`);
+  }
+}
+
+function verifyDetachedSignature(findings, evidence, root) {
+  if (!isRecord(evidence?.signature)) return;
+  const descriptor = evidence.signature;
+  const publicKeyPath = containedFilePath(findings, root, "signature.publicKeyPath", descriptor.publicKeyPath);
+  const signedArtifactPath = containedFilePath(
+    findings,
+    root,
+    "signature.signedArtifactPath",
+    descriptor.signedArtifactPath,
+  );
+  const signaturePath = containedFilePath(findings, root, "signature.signaturePath", descriptor.signaturePath);
+  if (!publicKeyPath || !signedArtifactPath || !signaturePath || !SHA256.test(String(descriptor.publicKeySha256))) {
+    return;
+  }
+  try {
+    const publicKeyBytes = readFileSync(publicKeyPath);
+    const publicKeyHash = createHash("sha256").update(publicKeyBytes).digest("hex");
+    if (publicKeyHash !== descriptor.publicKeySha256) {
+      add(findings, "signature.publicKeySha256", "does not match the referenced public key");
+      return;
+    }
+    const publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
+    const valid = verify(null, readFileSync(signedArtifactPath), publicKey, readFileSync(signaturePath));
+    if (!valid) add(findings, "signature", "detached Ed25519 signature verification failed");
+  } catch (error) {
+    add(findings, "signature", `detached Ed25519 signature could not be verified: ${error.message}`);
   }
 }
 
@@ -216,7 +317,26 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
     if (!isRecord(artifact)) continue;
     verifyFileDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
   }
+  verifyDetachedSignature(findings, evidence, root);
   return findings;
+}
+
+function currentCommit(root) {
+  try {
+    const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    return COMMIT.test(commit) ? commit : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function currentPackageVersion(root) {
+  try {
+    const packageJson = JSON.parse(readFileSync(path.join(root, "packages/contracts/package.json"), "utf8"));
+    return typeof packageJson.version === "string" ? packageJson.version : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function main() {
@@ -236,7 +356,15 @@ function main() {
     return;
   }
 
-  const findings = validateReleaseEvidence(evidence);
+  const expectedCommit = currentCommit(process.cwd());
+  const expectedPackageVersion = currentPackageVersion(process.cwd());
+  const contextFindings = [];
+  if (!expectedCommit) add(contextFindings, "commit", "current checkout commit could not be determined");
+  if (!expectedPackageVersion) add(contextFindings, "packageVersion", "current release version could not be determined");
+  const findings = [
+    ...contextFindings,
+    ...validateReleaseEvidence(evidence, { expectedCommit, expectedPackageVersion }),
+  ];
   if (findings.length > 0) {
     console.error(findings.map((finding) => `- ${finding}`).join("\n"));
     process.exitCode = 1;

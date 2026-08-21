@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,6 +35,16 @@ function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isSafeRelativePath(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !path.isAbsolute(value) &&
+    !value.includes("\\") &&
+    !value.split("/").includes("..")
+  );
+}
+
 function add(findings, pathName, detail) {
   findings.push(`${pathName}: ${detail}`);
 }
@@ -64,9 +75,10 @@ function validateTests(testCases, required, findings) {
 /**
  * Validates one sanitized device/browser verification record.
  *
- * The validator checks metadata and hashes only; it does not treat a record as
- * proof that the underlying test actually happened. An independent reviewer
- * must still inspect the attached logs and artifacts.
+ * The validator checks metadata and digest fields but does not treat a record
+ * as proof that the underlying test actually happened. An independent
+ * reviewer must still inspect the attached logs and artifacts; use
+ * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
  * @returns {string[]}
@@ -106,8 +118,11 @@ export function validateDeviceEvidence(evidence) {
 
   validateTests(evidence.testCases, evidence.platform === "web" ? WEB_TESTS : NATIVE_TESTS, findings);
   if (evidence.sanitizedLogs !== true) add(findings, "sanitizedLogs", "must be true");
-  if (typeof evidence.logPath !== "string" || path.isAbsolute(evidence.logPath) || evidence.logPath.includes("..")) {
+  const referencedPaths = new Set();
+  if (!isSafeRelativePath(evidence.logPath)) {
     add(findings, "logPath", "must be a relative, non-parent path");
+  } else {
+    referencedPaths.add(evidence.logPath);
   }
   if (typeof evidence.logSha256 !== "string" || !SHA256.test(evidence.logSha256)) {
     add(findings, "logSha256", "must be a lowercase SHA-256 digest");
@@ -121,12 +136,67 @@ export function validateDeviceEvidence(evidence) {
         add(findings, artifactPath, "must be an object");
         return;
       }
-      if (typeof artifact.path !== "string" || path.isAbsolute(artifact.path) || artifact.path.includes("..")) {
+      if (!isSafeRelativePath(artifact.path)) {
         add(findings, `${artifactPath}.path`, "must be a relative, non-parent path");
+      } else if (referencedPaths.has(artifact.path)) {
+        add(findings, `${artifactPath}.path`, "must be unique across evidence files");
+      } else {
+        referencedPaths.add(artifact.path);
       }
       if (typeof artifact.sha256 !== "string" || !SHA256.test(artifact.sha256)) {
         add(findings, `${artifactPath}.sha256`, "must be a lowercase SHA-256 digest");
       }
+    });
+  }
+  return findings;
+}
+
+function containedFilePath(findings, root, field, relativePath) {
+  if (!isSafeRelativePath(relativePath)) return undefined;
+  try {
+    const realRoot = realpathSync(root);
+    const realFile = realpathSync(path.resolve(realRoot, relativePath));
+    const relative = path.relative(realRoot, realFile);
+    if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      add(findings, `${field}.path`, "must resolve inside the evidence root");
+      return undefined;
+    }
+    return realFile;
+  } catch (error) {
+    add(findings, `${field}.path`, `could not resolve ${relativePath}: ${error.message}`);
+    return undefined;
+  }
+}
+
+function verifyDigest(findings, root, field, relativePath, expectedHash) {
+  if (!isSafeRelativePath(relativePath) || !SHA256.test(String(expectedHash))) return;
+  const filePath = containedFilePath(findings, root, field, relativePath);
+  if (!filePath) return;
+  try {
+    const actualHash = createHash("sha256").update(readFileSync(filePath)).digest("hex");
+    if (actualHash !== expectedHash) add(findings, `${field}Sha256`, `does not match ${relativePath}`);
+  } catch (error) {
+    add(findings, `${field}Path`, `could not read ${relativePath}: ${error.message}`);
+  }
+}
+
+/**
+ * Recomputes the digest of every log and native artifact referenced by an
+ * otherwise valid evidence record. Symlinks resolving outside the evidence
+ * root are rejected so a record cannot hash an unrelated host file.
+ *
+ * @param {unknown} evidence
+ * @param {string} root
+ * @returns {string[]}
+ */
+export function verifyDeviceEvidenceFiles(evidence, root) {
+  if (!isRecord(evidence)) return ["root: file verification requires an evidence object"];
+  const findings = [];
+  verifyDigest(findings, root, "log", evidence.logPath, evidence.logSha256);
+  if (Array.isArray(evidence.artifacts)) {
+    evidence.artifacts.forEach((artifact, index) => {
+      if (!isRecord(artifact)) return;
+      verifyDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
     });
   }
   return findings;
@@ -140,7 +210,7 @@ function checkFile(filePath) {
     process.stderr.write(`device evidence could not be read: ${error.message}\n`);
     return 1;
   }
-  const findings = validateDeviceEvidence(evidence);
+  const findings = [...validateDeviceEvidence(evidence), ...verifyDeviceEvidenceFiles(evidence, ROOT)];
   for (const finding of findings) process.stderr.write(`device evidence: ${finding}\n`);
   return findings.length === 0 ? 0 : 1;
 }

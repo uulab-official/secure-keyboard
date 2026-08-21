@@ -84,5 +84,6 @@ pnpm test:device-evidence
 node scripts/check-device-evidence.mjs path/to/device-evidence.json
 ```
 
-Validation checks the record shape only; it does not replace independent review
-of the attached logs, screenshots, native artifacts, or physical-device run.
+The validator also recomputes the log and artifact digests inside the evidence
+root and rejects symlinks that resolve outside it. This still does not replace
+independent review of screenshots or the physical-device run.

@@ -318,6 +318,9 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /FLAG_SECURE/, "device verification must cover Android screenshot protection");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /VoiceOver and TalkBack/, "device verification must cover accessibility surfaces");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /replay, expired-state,[\s\S]*rate-limit/i, "device verification must cover server replay and rate-limit behavior");
+  const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /verifyDeviceEvidenceFiles/, "device evidence tooling must recompute referenced file digests");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
@@ -338,7 +341,22 @@ export function runSecurityAudit() {
       detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
     });
   }
+  const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  for (const line of findMutableCiActionLines(releaseWorkflow)) {
+    findings.push({
+      rule: "ci-action-immutability",
+      file: ".github/workflows/release-candidate.yml",
+      detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
+    });
+  }
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /runs-on:\s*ubuntu-24\.04/, "release workflow must use the repository-pinned runner image");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/sign-release\.mjs/, "release workflow must produce the detached signature through the audited signer");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
+  forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo clippy --locked --workspace/, "CI Rust lint must use the locked dependency graph");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*ubuntu-24\.04/, "Linux CI jobs must use the repository-pinned runner image");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /runs-on:\s*macos-15/, "Apple CI jobs must use the repository-pinned runner image");
@@ -396,6 +414,12 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-security-review/, "release evidence must require an independent security review");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
+  const releaseSigner = source("scripts/sign-release.mjs", findings);
+  requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
+  requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");
+  requireText(findings, "scripts/sign-release.mjs", releaseSigner, /sign\(null, artifact, privateKey\)/, "release signing must create a detached signature over the artifact");
 
   return findings;
 }

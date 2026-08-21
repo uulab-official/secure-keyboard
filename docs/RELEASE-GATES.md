@@ -10,16 +10,23 @@ labels. The adjacent action version comment is informational only; changing an
 action or runner requires an explicit revision update and a passing security
 audit.
 
+The manual `.github/workflows/release-candidate.yml` workflow builds a
+deterministic candidate bundle from an exact ref and fails closed unless the
+protected `RELEASE_SIGNING_KEY_PEM` environment secret produces a valid
+Ed25519 signature. It uploads a candidate artifact only; it does not publish a
+GitHub release or bypass the external device, backend, and independent-review
+gates below.
+
 ## Reproducible local gates
 
 ```sh
 cargo fmt --all -- --check
-cargo test --workspace --all-features
-cargo test -p secure-webauthn-example
-cargo test -p secure-webauthn-example --test storage_contract
-cargo test -p secure-auth-axum --all-features
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps
+cargo test --locked --workspace --all-features
+cargo test --locked -p secure-webauthn-example
+cargo test --locked -p secure-webauthn-example --test storage_contract
+cargo test --locked -p secure-auth-axum --all-features
+cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
@@ -27,6 +34,7 @@ pnpm check:native-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence
+pnpm test:sign-release
 pnpm test:device-evidence
 pnpm test:security-audit
 pnpm security-audit
@@ -69,21 +77,38 @@ must not introduce a client-side replayable hash.
 ## Release evidence manifest
 
 Before a public release claim, produce a machine-readable evidence manifest and
-validate its schema:
+validate its schema and detached signature:
 
 ```sh
 node scripts/check-release-evidence.mjs path/to/release-evidence.json
 ```
 
+Create the detached Ed25519 signature and public-key material with a protected
+maintainer key. The private key is read only and is never copied into the
+release bundle or printed:
+
+```sh
+node scripts/sign-release.mjs \
+  artifacts/secure-keypad-release.tar.gz \
+  /protected/path/secure-keypad-release-signing-key.pem \
+  artifacts/secure-keypad-release.sig \
+  artifacts/secure-keypad-release.pub.der
+```
+
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
-notices, a hashed `release-signature` artifact, a Linux LeakSanitizer result,
+notices, a hashed release bundle, DER public key, and `release-signature`
+artifacts, a Linux LeakSanitizer result,
 physical iOS/Android and Web browser matrix results, an independent security
 review, and signed-release evidence.
-The command checks shape, paths, required statuses, and recomputes SHA-256 for
-every referenced evidence/artifact file. It does not verify CI provenance,
-signatures, or reviewer identity; those references must still be verified
-independently against the exact commit.
+The `signature` descriptor must bind the listed release bundle, signature
+artifact, and DER-encoded Ed25519 public key. The command checks shape, paths,
+required statuses, recomputes SHA-256 for every referenced evidence/artifact
+file, rejects duplicate evidence paths, ensures the manifest commit/version
+match the current checkout, and verifies the detached Ed25519 signature. It
+does not establish trust in the maintainer key or verify CI provenance/reviewer
+identity; the trusted public-key fingerprint, CI attestation, and reviewer
+identity must still be verified independently against the exact commit.
 
 ## Fuzz gate
 

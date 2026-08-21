@@ -1,8 +1,8 @@
 name: secure_keypad_flutter
 description: Secure Native Flutter contract for a customizable virtual keypad.
 version: 0.1.0
-repository: https://github.com/uulab/secure-keyboard
-issue_tracker: https://github.com/uulab/secure-keyboard/issues
+repository: https://github.com/uulab-official/secure-keyboard
+issue_tracker: https://github.com/uulab-official/secure-keyboard/issues
 license: MIT
 
 environment:

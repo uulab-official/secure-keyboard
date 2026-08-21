@@ -1,0 +1,119 @@
+name: Release candidate bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Exact branch, tag, or commit to bundle"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Build and sign release candidate bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
+        with:
+          components: rustfmt, clippy
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.13.0"
+          cache: pnpm
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: "3.47.0"
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - name: Run release source gates
+        run: |
+          cargo fmt --all -- --check
+          cargo test --locked --workspace --all-features
+          cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+          RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
+          pnpm audit --audit-level high
+          pnpm test:native-parity
+          pnpm check:native-parity
+          pnpm test:release-version-parity
+          pnpm check:release-version-parity
+          pnpm test:release-evidence
+          pnpm test:sign-release
+          pnpm test:device-evidence
+          pnpm test:security-audit
+          pnpm security-audit
+          pnpm -r test
+          pnpm -r typecheck
+          pnpm -r build
+      - name: Run Flutter release gates
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test
+          dart pub publish --dry-run
+        working-directory: packages/flutter
+      - name: Prepare release output directory
+        run: mkdir -p "$RELEASE_DIR"
+      - name: Generate SPDX release SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: ${{ env.RELEASE_DIR }}/secure-keypad.sbom.spdx.json
+          upload-artifact: false
+      - name: Assemble deterministic source and package bundle
+        run: |
+          mkdir -p "$RELEASE_DIR/packages" "$RELEASE_DIR/source"
+          pnpm --dir packages/contracts pack --pack-destination "$RELEASE_DIR/packages"
+          pnpm --dir packages/react-native pack --pack-destination "$RELEASE_DIR/packages"
+          pnpm --dir packages/web pack --pack-destination "$RELEASE_DIR/packages"
+          cargo package --locked --workspace --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
+          cp "$RUNNER_TEMP/secure-keypad-cargo-target/package/"*.crate "$RELEASE_DIR/packages/"
+          cp Cargo.lock pnpm-lock.yaml LICENSE-MIT "$RELEASE_DIR/source/"
+          cp "$RELEASE_DIR/secure-keypad.sbom.spdx.json" "$RELEASE_DIR/source/secure-keypad.sbom.spdx.json"
+          mkdir -p "$RELEASE_DIR/source/packages"
+          cp -R packages/flutter "$RELEASE_DIR/source/packages/flutter"
+          cp -R docs "$RELEASE_DIR/source/docs"
+          cp docs/THIRD-PARTY-NOTICES.md "$RELEASE_DIR/source/THIRD-PARTY-NOTICES.md"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf "$RELEASE_DIR/secure-keypad-release.tar.gz" -C "$RELEASE_DIR/source" .
+      - name: Sign release bundle with the protected maintainer key
+        env:
+          RELEASE_SIGNING_KEY_PEM: ${{ secrets.RELEASE_SIGNING_KEY_PEM }}
+        run: |
+          test -n "$RELEASE_SIGNING_KEY_PEM"
+          umask 077
+          printf '%s' "$RELEASE_SIGNING_KEY_PEM" > "$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
+          node scripts/sign-release.mjs \
+            "$RELEASE_DIR/secure-keypad-release.tar.gz" \
+            "$RUNNER_TEMP/secure-keypad-release-signing-key.pem" \
+            "$RELEASE_DIR/secure-keypad-release.sig" \
+            "$RELEASE_DIR/secure-keypad-release.pub.der"
+          rm -f "$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
+      - name: Emit release artifact checksums
+        run: |
+          (
+            cd "$RELEASE_DIR"
+            find . -type f ! -name secure-keypad-release.sha256 -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > secure-keypad-release.sha256
+          )
+          cat "$RELEASE_DIR/secure-keypad-release.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-release-candidate
+          path: ${{ runner.temp }}/secure-keypad-release
+          if-no-files-found: error

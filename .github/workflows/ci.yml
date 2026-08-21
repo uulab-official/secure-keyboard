@@ -18,11 +18,11 @@ jobs:
         with:
           components: rustfmt, clippy
       - run: cargo fmt --all -- --check
-      - run: cargo test --workspace --all-features
-      - run: cargo test -p secure-webauthn-example
-      - run: cargo test -p secure-auth-axum --all-features
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - run: RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps
+      - run: cargo test --locked --workspace --all-features
+      - run: cargo test --locked -p secure-webauthn-example
+      - run: cargo test --locked -p secure-auth-axum --all-features
+      - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - run: RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 
   durable-backends:
     name: Redis/PostgreSQL interoperability
@@ -80,6 +80,7 @@ jobs:
       - run: pnpm test:release-version-parity
       - run: pnpm check:release-version-parity
       - run: pnpm test:release-evidence
+      - run: pnpm test:sign-release
       - run: pnpm test:device-evidence
       - run: pnpm test:security-audit
       - run: pnpm security-audit

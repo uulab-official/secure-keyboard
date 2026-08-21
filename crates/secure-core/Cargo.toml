@@ -2,6 +2,7 @@
 name = "secure-core"
 version = "0.1.0"
 description = "Memory-conscious, framework-neutral secure keypad core"
+repository = "https://github.com/uulab-official/secure-keyboard"
 license = "MIT"
 edition.workspace = true
 rust-version.workspace = true

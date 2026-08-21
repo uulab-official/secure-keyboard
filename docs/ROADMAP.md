@@ -174,6 +174,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Complete a local 1,000,000-iteration stability campaign for all four fuzz targets; keep the Linux leak-sanitizer gate separate.
 - [x] Add a reproducible CI 1,000,000-iteration campaign with a bounded libFuzzer RSS guard.
 - [x] Add a machine-readable release evidence manifest contract for sanitizer, durable-backend, device, independent-review, and signed-release gates.
+- [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
 - [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.

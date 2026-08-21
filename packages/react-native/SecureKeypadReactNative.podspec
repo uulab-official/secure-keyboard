@@ -3,10 +3,10 @@ Pod::Spec.new do |spec|
   spec.version = '0.1.0'
   spec.summary = 'Secure Native keypad React Native bridge'
   spec.description = 'A native-only keypad bridge that exports masked state and public result codes.'
-  spec.homepage = 'https://github.com/uulab/secure-keyboard'
+  spec.homepage = 'https://github.com/uulab-official/secure-keyboard'
   spec.license = { :type => 'MIT' }
   spec.author = { 'UULab' => 'security@uulab.dev' }
-  spec.source = { :git => 'https://github.com/uulab/secure-keyboard.git', :tag => spec.version.to_s }
+  spec.source = { :git => 'https://github.com/uulab-official/secure-keyboard.git', :tag => spec.version.to_s }
   spec.platforms = { :ios => '15.0' }
   spec.swift_version = '5.9'
   spec.requires_arc = true

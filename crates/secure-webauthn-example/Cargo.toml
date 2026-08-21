@@ -2,6 +2,7 @@
 name = "secure-webauthn-example"
 version = "0.1.0"
 description = "Passkey registration and authentication reference service for Secure Keypad"
+repository = "https://github.com/uulab-official/secure-keyboard"
 license = "MIT"
 readme = "README.md"
 edition.workspace = true

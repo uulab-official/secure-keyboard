@@ -2,6 +2,7 @@
 name = "secure-auth-http"
 version = "0.1.0"
 description = "Bounded HTTP/JSON route contract for Secure Keypad OPAQUE authentication"
+repository = "https://github.com/uulab-official/secure-keyboard"
 license = "MIT"
 readme = "README.md"
 edition.workspace = true
