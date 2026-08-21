@@ -359,6 +359,9 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /label\.utf8\.count\s*<=\s*16/, "iOS bridge configuration must bound key label bytes");
     requireText(findings, file, contents, /accessibilityLabel\.utf8\.count\s*<=\s*80/, "iOS bridge configuration must bound accessibility label bytes");
+    requireText(findings, file, contents, /exactKeys\(colors, \[\"background\", \"keyBackground\", \"keyForeground\", \"keyPressedBackground\", \"keyDisabledBackground\", \"error\"\]\)/, "iOS bridge configuration must require every theme color key");
+    requireText(findings, file, contents, /exactKeys\(metrics, \[\"keyHeight\", \"keyGap\", \"keyRadius\", \"contentPadding\"\]\)/, "iOS bridge configuration must require every theme metric key");
+    requireText(findings, file, contents, /private static func exactKeys/, "iOS bridge configuration must distinguish exact required maps from optional maps");
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
@@ -368,6 +371,9 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /label\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*16/, "Android bridge configuration must bound key label bytes");
     requireText(findings, file, contents, /accessibilityLabel\.toByteArray\(Charsets\.UTF_8\)\.size\s*<=\s*80/, "Android bridge configuration must bound accessibility label bytes");
+    requireText(findings, file, contents, /requireExactKeys\(colors, \"background\", \"keyBackground\", \"keyForeground\", \"keyPressedBackground\", \"keyDisabledBackground\", \"error\"\)/, "Android bridge configuration must require every theme color key");
+    requireText(findings, file, contents, /requireExactKeys\(metrics, \"keyHeight\", \"keyGap\", \"keyRadius\", \"contentPadding\"\)/, "Android bridge configuration must require every theme metric key");
+    requireText(findings, file, contents, /private fun requireExactKeys/, "Android bridge configuration must distinguish exact required maps from optional maps");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);

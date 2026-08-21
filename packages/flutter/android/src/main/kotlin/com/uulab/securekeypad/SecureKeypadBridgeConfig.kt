@@ -132,8 +132,8 @@ internal object SecureKeypadBridgeConfigParser {
         require((value["schemaVersion"] as? Number)?.toDouble() == 1.0)
         val colors = value["colors"] as? Map<*, *> ?: invalid()
         val metrics = value["metrics"] as? Map<*, *> ?: invalid()
-        requireKeys(colors, "background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error")
-        requireKeys(metrics, "keyHeight", "keyGap", "keyRadius", "contentPadding")
+        requireExactKeys(colors, "background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error")
+        requireExactKeys(metrics, "keyHeight", "keyGap", "keyRadius", "contentPadding")
         val typography = optionalMap(value["typography"], "keyFontSize", "keyFontWeight") ?: invalid()
         val keyHeight = metric(metrics, "keyHeight", 32f, 160f)
         val keyGap = metric(metrics, "keyGap", 0f, 48f)
@@ -224,6 +224,12 @@ internal object SecureKeypadBridgeConfigParser {
     private fun requireKeys(value: Map<*, *>, vararg allowed: String) {
         val allowedKeys = allowed.toSet()
         require(value.keys.all { it is String && it in allowedKeys })
+    }
+
+    private fun requireExactKeys(value: Map<*, *>, vararg required: String) {
+        val requiredKeys = required.toSet()
+        require(value.size == requiredKeys.size)
+        require(value.keys.all { it is String && it in requiredKeys })
     }
 
     private fun invalid(): Nothing = throw IllegalArgumentException("invalid secure keypad configuration")

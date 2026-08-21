@@ -18,6 +18,9 @@ exact release-candidate commit by the release evidence manifest.
 - Enforced monotonic React Native cancellation tokens on iOS and Android:
   delayed lower tokens are rejected, equal replays are coalesced, and only a
   newer token can clear the native session.
+- Made native iOS/Android bridge parsers require the complete versioned theme
+  color and metric maps; missing public fields now fail closed consistently with
+  the RN, Flutter, and shared contract validators.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,
   and preserved terminal result events under queue pressure.
 - Capped WebAuthn pending ceremony retention at 15 minutes across all storage

@@ -162,8 +162,8 @@ public struct SecureKeypadBridgeConfiguration {
               schemaVersion.intValue == 1,
               let colors = value["colors"] as? NSDictionary,
               let metrics = value["metrics"] as? NSDictionary,
-              onlyKeys(colors, ["background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error"]),
-              onlyKeys(metrics, ["keyHeight", "keyGap", "keyRadius", "contentPadding"]),
+              exactKeys(colors, ["background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error"]),
+              exactKeys(metrics, ["keyHeight", "keyGap", "keyRadius", "contentPadding"]),
               let typography = try Self.optionalMap(value["typography"], allowed: ["keyFontSize", "keyFontWeight"]),
               let keyHeight = number(metrics["keyHeight"]),
               let keyGap = number(metrics["keyGap"]),
@@ -228,6 +228,10 @@ public struct SecureKeypadBridgeConfiguration {
             guard let key = key as? String else { return false }
             return allowedKeys.contains(key)
         }
+    }
+
+    private static func exactKeys(_ value: NSDictionary, _ required: [String]) -> Bool {
+        onlyKeys(value, required) && value.count == Set(required).count
     }
 
     private static func number(_ value: Any?) -> Double? {
