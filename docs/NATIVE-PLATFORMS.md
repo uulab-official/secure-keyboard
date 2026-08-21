@@ -10,7 +10,9 @@ never use a text input widget for the secret. The repository pins Rust
 `native/ios/SecureKeypadView.swift` is a UIKit view that accepts public layout
 and theme values, sends key IDs to the Rust C ABI, and renders only bullets and
 non-secret state. It masks presentation while the app is inactive or the
-screen is captured. The submission callback is native-only.
+screen is captured, and releases the native session when the app resigns
+active so pending input is zeroized rather than resumed after backgrounding.
+The submission callback is native-only.
 
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
@@ -69,7 +71,9 @@ this assembly and parses both package Podspecs against the result.
 `FrameLayout` with public key/layout/theme models. It resolves the host
 `Activity` through framework `ContextWrapper` chains before applying
 `FLAG_SECURE`, so React Native and Flutter wrapper contexts do not silently
-lose screenshot protection. The JNI adapter in
+lose screenshot protection. It releases the native session when the window
+loses focus or becomes invisible, which zeroizes pending input instead of
+keeping it through an app/window transition. The JNI adapter in
 `native/android/src/main/cpp/secure_keypad_jni.c` owns only pointer handles and
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
 excluded, and no `EditText` is created.

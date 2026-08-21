@@ -418,7 +418,7 @@ public class SecureKeypadView: UIView {
     private func installProtectionObservers() {
         let center = NotificationCenter.default
         notificationTokens.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.refreshProtectionState()
+            self?.handleWillResignActive()
         })
         notificationTokens.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.refreshProtectionState()
@@ -427,6 +427,12 @@ public class SecureKeypadView: UIView {
             self?.refreshProtectionState()
         })
         refreshProtectionState()
+    }
+
+    private func handleWillResignActive() {
+        releaseSession()
+        setProtectedPresentation(true)
+        onMaskedStateChanged?(0, 3)
     }
 
     private func refreshProtectionState() {
@@ -441,6 +447,11 @@ public class SecureKeypadView: UIView {
     private func setProtectedPresentation(_ protected: Bool) {
         protectedPresentation = protected
         isUserInteractionEnabled = !protected
+        guard session != nil else {
+            displayLabel.text = protected ? "Protected" : ""
+            displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: 0, protected: protected)
+            return
+        }
         refreshMaskedState()
     }
 

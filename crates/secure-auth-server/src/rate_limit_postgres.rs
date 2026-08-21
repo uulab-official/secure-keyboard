@@ -36,7 +36,7 @@ pub enum PostgresRateLimitConfigError {
     InvalidCapacity,
     /// The fixed-window duration cannot be represented by `PostgreSQL`.
     InvalidPolicy,
-    /// The production configuration does not require `PostgreSQL` TLS.
+    /// The supplied production configuration does not require `PostgreSQL` TLS.
     InsecureConfig,
     /// The connection pool could not be constructed.
     PoolBuild,

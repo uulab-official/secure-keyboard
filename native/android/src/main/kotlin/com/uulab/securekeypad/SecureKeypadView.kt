@@ -243,6 +243,24 @@ public open class SecureKeypadView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (!hasWindowFocus) zeroizeSessionForLifecycleLoss()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility != View.VISIBLE) zeroizeSessionForLifecycleLoss()
+    }
+
+    private fun zeroizeSessionForLifecycleLoss() {
+        if (sessionHandle == 0L) return
+        releaseSession()
+        display.text = ""
+        display.contentDescription = "No input"
+        onMaskedStateChanged?.invoke(0, 3)
+    }
+
     private fun render(layout: SecureKeypadLayout) {
         keypad.removeAllViews()
         setBackgroundColor(currentTheme.backgroundColor)

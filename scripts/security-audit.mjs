@@ -151,6 +151,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /object SecureKeypadNativeSubmissionRouter/, "Android native handoff must be explicitly routed");
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
+    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
+    requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
@@ -162,6 +164,8 @@ export function runSecurityAudit() {
   ]) {
     const contents = source(file, findings);
     requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
+    requireText(findings, file, contents, /willResignActiveNotification[\s\S]{0,240}handleWillResignActive\(\)/, "iOS native keypad must handle application resign-active transitions");
+    requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseSession\(\)/, "iOS native keypad must zeroize when the application resigns active state");
     requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
     requireText(findings, file, contents, /refreshProtectionState\(\)/, "iOS native keypad must recompute protection across lifecycle transitions");
     requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
