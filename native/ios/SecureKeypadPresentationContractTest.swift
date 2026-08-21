@@ -20,5 +20,9 @@ struct SecureKeypadPresentationContractTest {
         precondition(secureKeypadDisplayStateName(0) == "empty")
         precondition(secureKeypadDisplayStateName(3) == "cancelled")
         precondition(secureKeypadDisplayStateName(4) == "invalid")
+        precondition(secureKeypadMonotonicCommandDecision(previous: nil, requestId: 0) == .accept)
+        precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 5) == .accept)
+        precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 4) == .ignore)
+        precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 3) == .invalid)
     }
 }

@@ -3,6 +3,23 @@ import Foundation
 let secureKeypadMaxRenderedLength = 4_096
 let secureKeypadInternalError: UInt32 = 7
 
+enum SecureKeypadCommandDecision: Equatable {
+    case accept
+    case ignore
+    case invalid
+}
+
+func secureKeypadMonotonicCommandDecision(previous: Int64?, requestId: Int64) -> SecureKeypadCommandDecision {
+    if requestId < 0 {
+        return .invalid
+    }
+    if let previous, requestId < previous { return .invalid }
+    if let previous, requestId == previous {
+        return .ignore
+    }
+    return .accept
+}
+
 /// Returns whether the native presentation must hide sensitive UI state.
 /// Screen capture remains protected across app-active transitions.
 func secureKeypadShouldProtectPresentation(applicationIsActive: Bool, screenIsCaptured: Bool) -> Bool {

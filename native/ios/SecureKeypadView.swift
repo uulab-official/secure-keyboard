@@ -323,20 +323,15 @@ public class SecureKeypadView: UIView {
 
     /// Applies a monotonic, non-secret host command exactly once.
     public func requestCancel(_ requestId: Int64) {
-        guard requestId >= 0 else {
+        switch secureKeypadMonotonicCommandDecision(previous: lastCancelRequest, requestId: requestId) {
+        case .invalid:
             onError?(1)
+        case .ignore:
             return
+        case .accept:
+            lastCancelRequest = requestId
+            cancelSession()
         }
-        let previous = lastCancelRequest
-        if let previous {
-            guard requestId >= previous else {
-                onError?(1)
-                return
-            }
-            if requestId == previous { return }
-        }
-        lastCancelRequest = requestId
-        cancelSession()
     }
 
     private func installViews() {

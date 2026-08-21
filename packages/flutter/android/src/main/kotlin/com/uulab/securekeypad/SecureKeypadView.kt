@@ -296,18 +296,14 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     /** Applies a monotonic, non-secret host command exactly once. */
     public fun requestCancel(requestId: Long) {
-        if (requestId < 0) {
-            onError?.invoke(1)
-            return
+        when (secureKeypadMonotonicCommandDecision(lastCancelRequest, requestId)) {
+            SecureKeypadCommandDecision.INVALID -> onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
+            SecureKeypadCommandDecision.IGNORE -> return
+            SecureKeypadCommandDecision.ACCEPT -> {
+                lastCancelRequest = requestId
+                cancelSession()
+            }
         }
-        val previous = lastCancelRequest
-        if (previous != null && requestId < previous) {
-            onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
-            return
-        }
-        if (previous != null && requestId == previous) return
-        lastCancelRequest = requestId
-        cancelSession()
     }
 
     override fun onDetachedFromWindow() {
