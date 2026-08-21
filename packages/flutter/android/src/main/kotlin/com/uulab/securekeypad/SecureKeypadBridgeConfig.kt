@@ -1,5 +1,7 @@
 package com.uulab.securekeypad
 
+import kotlin.math.floor
+
 /** Public framework configuration decoded before it reaches the native view. */
 internal data class SecureKeypadBridgeConfiguration(
     val layout: SecureKeypadLayout,
@@ -16,11 +18,11 @@ internal object SecureKeypadBridgeConfigParser {
         val theme = parseTheme(value["theme"] as? Map<*, *> ?: invalid())
         val inputPolicy = (value["inputPolicy"] as? String) ?: "numeric"
         require(inputPolicy == "numeric" || inputPolicy == "ascii" || inputPolicy == "hangul")
-        val maxTokens = (value["maxTokens"] as? Number)?.toInt() ?: 8
-        val timeoutMs = (value["timeoutMs"] as? Number)?.toLong() ?: 60_000L
-        require(maxTokens in 1..4_096)
-        require(timeoutMs in 1..86_400_000L)
-        return SecureKeypadBridgeConfiguration(layout, theme, inputPolicy, maxTokens, timeoutMs)
+        val maxTokens = integer(value["maxTokens"], 8L)
+        val timeoutMs = integer(value["timeoutMs"], 60_000L)
+        require(maxTokens in 1L..4_096L)
+        require(timeoutMs in 1L..86_400_000L)
+        return SecureKeypadBridgeConfiguration(layout, theme, inputPolicy, maxTokens.toInt(), timeoutMs)
     }
 
     private fun parseLayout(value: Map<*, *>): SecureKeypadLayout {
@@ -106,6 +108,13 @@ internal object SecureKeypadBridgeConfigParser {
         val result = (value as? Number)?.toFloat() ?: invalid()
         require(result.isFinite() && result in minimum..maximum)
         return result
+    }
+
+    private fun integer(value: Any?, default: Long): Long {
+        if (value == null) return default
+        val result = (value as? Number)?.toDouble() ?: invalid()
+        require(result.isFinite() && floor(result) == result)
+        return result.toLong()
     }
 
     private fun requireKeys(value: Map<*, *>, vararg allowed: String) {

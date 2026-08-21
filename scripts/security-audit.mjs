@@ -295,6 +295,15 @@ export function runSecurityAudit() {
   ]) {
     const contents = source(file, findings);
     requireText(findings, file, contents, /SecureKeyRole\.CANCEL/, "Android bridge parser must accept the explicit cancel role");
+    requireText(findings, file, contents, /private fun integer\(/, "Android bridge parser must reject fractional numeric configuration values");
+  }
+  for (const file of [
+    "native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/react-native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /private static func boundedInteger\(/, "iOS bridge parser must reject fractional numeric configuration values");
   }
 
   const opaqueHttp = source("crates/secure-auth-http/src/lib.rs", findings);

@@ -45,4 +45,13 @@ fun main() {
     layout["secret"] = "never accepted"
     nestedSecret["layout"] = layout
     check(runCatching { SecureKeypadBridgeConfigParser.parse(nestedSecret) }.isFailure)
+
+    val fractionalMaxTokens = validConfiguration().also { it["maxTokens"] = 1.5 }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(fractionalMaxTokens) }.isFailure)
+
+    val fractionalTimeout = validConfiguration().also { it["timeoutMs"] = 1.5 }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(fractionalTimeout) }.isFailure)
+
+    val booleanMaxTokens = validConfiguration().also { it["maxTokens"] = true }
+    check(runCatching { SecureKeypadBridgeConfigParser.parse(booleanMaxTokens) }.isFailure)
 }

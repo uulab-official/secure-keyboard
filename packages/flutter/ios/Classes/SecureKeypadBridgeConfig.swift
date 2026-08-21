@@ -27,13 +27,12 @@ public struct SecureKeypadBridgeConfiguration {
         }
         inputPolicy = policy
 
-        let parsedMaxTokens = (dictionary["maxTokens"] as? NSNumber)?.intValue ?? 8
-        let parsedTimeoutMs = (dictionary["timeoutMs"] as? NSNumber)?.uint64Value ?? 60_000
-        guard (1...4_096).contains(parsedMaxTokens), (1...86_400_000).contains(parsedTimeoutMs) else {
+        guard let parsedMaxTokens = Self.boundedInteger(dictionary["maxTokens"], default: 8, range: 1...4_096),
+              let parsedTimeoutMs = Self.boundedInteger(dictionary["timeoutMs"], default: 60_000, range: 1...86_400_000) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         maxTokens = parsedMaxTokens
-        timeoutMs = parsedTimeoutMs
+        timeoutMs = UInt64(parsedTimeoutMs)
     }
 
     private static func parseLayout(_ value: NSDictionary) throws -> SecureKeypadLayout {
@@ -140,6 +139,18 @@ public struct SecureKeypadBridgeConfiguration {
         guard let number = value as? NSNumber else { return nil }
         let result = number.doubleValue
         return result.isFinite ? result : nil
+    }
+
+    private static func boundedInteger(_ value: Any?, default defaultValue: Int, range: ClosedRange<Int>) -> Int? {
+        guard let value else { return defaultValue }
+        guard !(value is Bool) else { return nil }
+        guard let number = value as? NSNumber else { return nil }
+        let result = number.doubleValue
+        guard result.isFinite,
+              result.rounded(.towardZero) == result,
+              result >= Double(range.lowerBound),
+              result <= Double(range.upperBound) else { return nil }
+        return Int(result)
     }
 
     private static func color(_ value: Any?) -> UIColor? {
