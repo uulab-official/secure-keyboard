@@ -672,6 +672,12 @@ export function runSecurityAudit() {
   const durableOneTimeStateTest = source("crates/secure-auth-server/tests/durable_one_time_state.rs", findings);
   requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /SKPE/, "durable OPAQUE service tests must verify encrypted storage records");
   requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /second_store|cross_instance_handle/, "durable OPAQUE service tests must verify same-key cross-instance consumption");
+  requireText(findings, "crates/secure-auth-server/tests/durable_one_time_state.rs", durableOneTimeStateTest, /redis_oversized_state_is_removed_before_materialization/, "durable OPAQUE Redis tests must verify oversized values are removed before materialization");
+  const durableRateLimitTest = source("crates/secure-auth-server/tests/durable_rate_limit.rs", findings);
+  requireText(findings, "crates/secure-auth-server/tests/durable_rate_limit.rs", durableRateLimitTest, /redis_oversized_counter_is_removed_before_lua_get/, "durable Redis rate-limit tests must verify oversized counters are removed before Lua GET");
+  const durableWebAuthnTest = source("crates/secure-webauthn-example/tests/durable_storage.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_ceremony_value_is_removed_before_materialization/, "durable WebAuthn Redis tests must verify oversized ceremony values are removed before materialization");
+  requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_credential_value_fails_closed_before_json_decode/, "durable WebAuthn Redis tests must verify oversized credentials fail closed before JSON decoding");
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT[\s\S]{0,500}STRLEN[\s\S]{0,260}'GET'/, "Redis rate limiting must bound counter bytes before GET");

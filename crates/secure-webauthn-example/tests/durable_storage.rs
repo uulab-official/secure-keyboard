@@ -1,4 +1,5 @@
 use secure_webauthn_example::{CeremonyKind, CeremonyStateStore};
+use std::fmt::Write as _;
 
 #[cfg(feature = "postgres-backend")]
 use secure_webauthn_example::PostgresStorageConfigError;
@@ -137,6 +138,111 @@ fn redis_ceremony_state_is_atomic_and_one_time() {
         .take(CeremonyKind::Registration, &handle)
         .expect("Redis replay lookup should succeed")
         .is_none());
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_oversized_ceremony_value_is_removed_before_materialization() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = if url.starts_with("rediss://") {
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            2,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
+    } else {
+        secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+            &url, &namespace, 2,
+        )
+    }
+    .expect("Redis store should construct");
+    let handle = store
+        .insert(
+            CeremonyKind::Authentication,
+            uuid::Uuid::new_v4(),
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .expect("Redis insert should succeed");
+    let mut handle_hex = String::with_capacity(64);
+    for byte in handle.as_bytes() {
+        let _ = write!(handle_hex, "{byte:02x}");
+    }
+    let key = format!("{namespace}:webauthn:v1:authentication:{handle_hex}");
+    let pending_index = format!("{namespace}:webauthn:v1:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SET")
+        .arg(&key)
+        .arg(vec![
+            0x55u8;
+            secure_webauthn_example::MAX_PROTECTED_CEREMONY_RECORD_BYTES
+                + 1
+        ])
+        .query::<()>(&mut inspection)
+        .expect("Redis oversized record should be writable for the migration test");
+    assert!(matches!(
+        store.take(CeremonyKind::Authentication, &handle),
+        Err(secure_webauthn_example::CeremonyStoreError::Unavailable)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&key)
+        .query(&mut inspection)
+        .expect("Redis key existence check should succeed");
+    let pending_count: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis pending index check should succeed");
+    assert_eq!(exists, 0);
+    assert_eq!(pending_count, 0);
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_oversized_credential_value_fails_closed_before_json_decode() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = if url.starts_with("rediss://") {
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            2,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
+    } else {
+        secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+            &url, &namespace, 2,
+        )
+    }
+    .expect("Redis store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let key = format!("{namespace}:webauthn:v1:credentials:{user_id}");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SET")
+        .arg(&key)
+        .arg(vec![
+            0x55u8;
+            secure_webauthn_example::MAX_CREDENTIAL_RECORD_BYTES + 1
+        ])
+        .query::<()>(&mut inspection)
+        .expect("Redis oversized credential should be writable for the migration test");
+    assert!(matches!(
+        secure_webauthn_example::CredentialStore::load(&store, user_id),
+        Err(secure_webauthn_example::CredentialStoreError::InvalidRecord)
+    ));
+    redis::cmd("DEL")
+        .arg(&key)
+        .query::<()>(&mut inspection)
+        .expect("Redis oversized credential cleanup should succeed");
 }
 
 #[cfg(feature = "postgres-backend")]

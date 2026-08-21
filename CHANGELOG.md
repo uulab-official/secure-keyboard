@@ -68,3 +68,6 @@ exact release-candidate commit by the release evidence manifest.
   `GenericArray` copies that bypass the zeroizing helper.
 - CI and release-candidate workflows now run the pinned RustSec dependency
   audit alongside the existing JavaScript dependency audit.
+- Durable Redis service gates now inject oversized legacy ceremony, OPAQUE
+  state, credential, and rate-limit values and verify pre-materialization
+  fail-closed cleanup against the live backend.
