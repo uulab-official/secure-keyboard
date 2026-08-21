@@ -240,6 +240,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@1\.97\.1/, "CI Rust jobs must use the repository-pinned toolchain");
+  forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@stable/, "CI must not float on the stable Rust channel");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
