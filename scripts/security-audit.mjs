@@ -660,6 +660,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-xcframework-and-checksum/, "CI must retain the native artifact checksum manifest");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-flutter-host-and-checksum/, "CI must retain the Flutter Android FFI checksum manifest");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-react-native-host-and-checksum/, "CI must retain the React Native Android FFI checksum manifest");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/contracts pack --dry-run/, "CI must inspect the publishable contracts npm tarball");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/web pack --dry-run/, "CI must inspect the publishable Web npm tarball");
   const reactNativeAndroidBuild = source("packages/react-native/android/build.gradle", findings);
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAndroidBuild, /externalNativeBuild/, "React Native package must retain its native Android build boundary");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);

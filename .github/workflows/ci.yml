@@ -125,6 +125,8 @@ jobs:
       - run: pnpm --dir packages/web typecheck
       - run: pnpm --dir packages/web test
       - run: pnpm --dir packages/web build
+      - run: pnpm --dir packages/contracts pack --dry-run
+      - run: pnpm --dir packages/web pack --dry-run
 
   web-browser-matrix:
     name: Web adapter runtime smoke (${{ matrix.browser }})
