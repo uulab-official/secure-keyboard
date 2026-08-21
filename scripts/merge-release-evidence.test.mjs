@@ -32,6 +32,7 @@ function completeFragments() {
   const context = baseContext();
   const gates = REQUIRED_RELEASE_GATES.map((name) => ({
     name,
+    commit: context.commit,
     status: "pass",
     evidencePath: `evidence/${name}.json`,
     sha256: SHA256,
@@ -151,6 +152,7 @@ test("CLI assembles and verifies a signed evidence root", () => {
 
   const gates = REQUIRED_RELEASE_GATES.map((name) => ({
     name,
+    commit,
     status: "pass",
     evidencePath: `evidence/${name}.json`,
     sha256: evidenceHash,

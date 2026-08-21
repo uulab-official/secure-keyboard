@@ -31,6 +31,7 @@ function completeEvidence() {
     },
     gates: REQUIRED_RELEASE_GATES.map((name) => ({
       name,
+      commit: "b".repeat(40),
       status: "pass",
       evidencePath: `evidence/${name}.json`,
       sha256: SHA256,
@@ -133,6 +134,22 @@ test("binds release evidence to the exact commit and package version", () => {
   assert.ok(
     findings.some(
       (finding) => finding.includes("reviewedPackageVersion") && finding.includes("manifest"),
+    ),
+  );
+});
+
+test("requires every release gate to bind the exact manifest commit", () => {
+  const missingCommit = completeEvidence();
+  delete missingCommit.gates[0].commit;
+  const missingFindings = validateReleaseEvidence(missingCommit);
+  assert.ok(missingFindings.some((finding) => finding.includes("gates[0].commit")));
+
+  const mismatchedCommit = completeEvidence();
+  mismatchedCommit.gates[1].commit = "c".repeat(40);
+  const mismatchFindings = validateReleaseEvidence(mismatchedCommit);
+  assert.ok(
+    mismatchFindings.some(
+      (finding) => finding.includes("gates[1].commit") && finding.includes("manifest"),
     ),
   );
 });

@@ -138,6 +138,9 @@ artifacts, an independent-review report, reviewer DER public key, and
 `independent-review-signature` artifacts, a Linux LeakSanitizer result,
 physical iOS/Android and Web browser matrix results, an independent security
 review, and signed-release evidence.
+Every gate entry must also carry the exact 40-character commit SHA it verified;
+the validator rejects a missing or mismatched gate commit before accepting the
+manifest.
 The `signature` descriptor must bind the listed release bundle, signature
 artifact, and DER-encoded Ed25519 public key. The command checks shape, paths,
 required statuses, recomputes SHA-256 for every referenced evidence/artifact

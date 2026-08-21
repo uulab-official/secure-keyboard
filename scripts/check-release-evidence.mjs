@@ -154,6 +154,13 @@ export function validateReleaseEvidence(evidence, context = {}) {
       } else {
         gatesByName.set(gate.name, gate);
       }
+      if (typeof gate.commit !== "string" || !COMMIT.test(gate.commit)) {
+        add(findings, `${field}.commit`, "must be the exact 40-character gate commit SHA");
+      } else if (COMMIT.test(evidence.commit) && gate.commit !== evidence.commit) {
+        add(findings, `${field}.commit`, "must match the manifest commit");
+      } else if (context.expectedCommit && gate.commit !== context.expectedCommit) {
+        add(findings, `${field}.commit`, "must match the current checkout commit");
+      }
       if (gate.status !== "pass") {
         add(findings, `${field}.status`, "must equal pass");
       }
