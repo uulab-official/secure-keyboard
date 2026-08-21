@@ -93,7 +93,10 @@ SecureKeypad(
 The native parser rejects unknown fields, duplicate IDs, oversized labels, and
 unsupported policy values before the session is created. Theme values can be
 changed freely within the bounded schema; the input buffer and native
-submission ownership do not change with the theme.
+submission ownership do not change with the theme. On React Native Android,
+the native bridge also rejects unknown layout/theme keys before reading their
+values and bounds the defensive public-value conversion; configuration is
+never an input-value channel.
 
 ## Printable ASCII policy (native only)
 

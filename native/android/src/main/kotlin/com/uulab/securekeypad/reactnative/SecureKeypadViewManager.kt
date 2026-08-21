@@ -46,12 +46,12 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     @ReactProp(name = "layout")
     public fun setLayout(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "layout", value?.toPublicMap())
+        setConfigurationValue(view, "layout", value?.toPublicMap(LAYOUT_KEYS))
     }
 
     @ReactProp(name = "theme")
     public fun setTheme(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "theme", value?.toPublicMap())
+        setConfigurationValue(view, "theme", value?.toPublicMap(THEME_KEYS))
     }
 
     @ReactProp(name = "inputPolicy", defaultString = "numeric")
@@ -138,32 +138,107 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     }
 }
 
-private fun ReadableMap.toPublicMap(): Map<String, Any?> {
+private const val MAX_PUBLIC_BRIDGE_DEPTH = 8
+private const val MAX_PUBLIC_BRIDGE_NODES = 4_096
+private const val MAX_PUBLIC_BRIDGE_KEYS = 64
+private const val MAX_PUBLIC_BRIDGE_ITEMS = 512
+private const val MAX_PUBLIC_BRIDGE_STRING_LENGTH = 256
+
+private val LAYOUT_KEYS = setOf("schemaVersion", "id", "locale", "direction", "rows", "slots")
+private val THEME_KEYS = setOf("schemaVersion", "colors", "metrics", "typography", "animation", "feedback")
+private val NESTED_PUBLIC_KEYS = setOf(
+    "schemaVersion",
+    "id",
+    "locale",
+    "direction",
+    "rows",
+    "slots",
+    "header",
+    "display",
+    "footer",
+    "error",
+    "label",
+    "icon",
+    "role",
+    "accessibilityLabel",
+    "testId",
+    "colors",
+    "background",
+    "keyBackground",
+    "keyForeground",
+    "keyPressedBackground",
+    "keyDisabledBackground",
+    "metrics",
+    "keyHeight",
+    "keyGap",
+    "keyRadius",
+    "contentPadding",
+    "typography",
+    "keyFontSize",
+    "keyFontWeight",
+    "animation",
+    "pressDurationMs",
+    "maskRevealDurationMs",
+    "feedback",
+    "haptic",
+    "sound",
+)
+
+private class PublicBridgeBudget {
+    private var nodes = 0
+
+    fun visit() {
+        nodes += 1
+        require(nodes <= MAX_PUBLIC_BRIDGE_NODES)
+    }
+}
+
+private fun ReadableMap.toPublicMap(
+    allowedKeys: Set<String>,
+    budget: PublicBridgeBudget = PublicBridgeBudget(),
+    depth: Int = 0,
+): Map<String, Any?> {
+    require(depth <= MAX_PUBLIC_BRIDGE_DEPTH)
+    budget.visit()
     val result = mutableMapOf<String, Any?>()
     val iterator = keySetIterator()
+    var keyCount = 0
     while (iterator.hasNextKey()) {
+        keyCount += 1
+        require(keyCount <= MAX_PUBLIC_BRIDGE_KEYS)
         val key = iterator.nextKey()
-        result[key] = getPublicValue(key)
+        require(key in allowedKeys)
+        result[key] = getPublicValue(key, budget, depth + 1)
     }
     return result
 }
 
-private fun ReadableArray.toPublicList(): List<Any?> = (0 until size()).map { index ->
-    when (getType(index)) {
-        ReadableType.Map -> getMap(index)?.toPublicMap()
-        ReadableType.Array -> getArray(index)?.toPublicList()
-        ReadableType.String -> getString(index)
-        ReadableType.Number -> getDouble(index)
-        ReadableType.Boolean -> getBoolean(index)
-        ReadableType.Null -> null
+private fun ReadableArray.toPublicList(budget: PublicBridgeBudget, depth: Int): List<Any?> {
+    require(depth <= MAX_PUBLIC_BRIDGE_DEPTH)
+    require(size() <= MAX_PUBLIC_BRIDGE_ITEMS)
+    budget.visit()
+    return (0 until size()).map { index ->
+        when (getType(index)) {
+            ReadableType.Map -> getMap(index)?.toPublicMap(NESTED_PUBLIC_KEYS, budget, depth + 1)
+            ReadableType.Array -> getArray(index)?.toPublicList(budget, depth + 1)
+            ReadableType.String -> getString(index).also { requirePublicString(it, budget) }
+            ReadableType.Number -> getDouble(index).also { budget.visit() }
+            ReadableType.Boolean -> getBoolean(index).also { budget.visit() }
+            ReadableType.Null -> null.also { budget.visit() }
+        }
     }
 }
 
-private fun ReadableMap.getPublicValue(key: String): Any? = when (getType(key)) {
-    ReadableType.Map -> getMap(key)?.toPublicMap()
-    ReadableType.Array -> getArray(key)?.toPublicList()
-    ReadableType.String -> getString(key)
-    ReadableType.Number -> getDouble(key)
-    ReadableType.Boolean -> getBoolean(key)
-    ReadableType.Null -> null
+private fun ReadableMap.getPublicValue(key: String, budget: PublicBridgeBudget, depth: Int): Any? = when (getType(key)) {
+    ReadableType.Map -> getMap(key)?.toPublicMap(NESTED_PUBLIC_KEYS, budget, depth)
+    ReadableType.Array -> getArray(key)?.toPublicList(budget, depth)
+    ReadableType.String -> getString(key).also { requirePublicString(it, budget) }
+    ReadableType.Number -> getDouble(key).also { budget.visit() }
+    ReadableType.Boolean -> getBoolean(key).also { budget.visit() }
+    ReadableType.Null -> null.also { budget.visit() }
+}
+
+private fun requirePublicString(value: String?, budget: PublicBridgeBudget) {
+    budget.visit()
+    if (value != null) require(value.length <= MAX_PUBLIC_BRIDGE_STRING_LENGTH)
 }

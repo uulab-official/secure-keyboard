@@ -119,6 +119,17 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /cancelRequest/, "RN native manager must expose the non-secret cancel command");
   }
   for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /toPublicMap\(LAYOUT_KEYS\)/, "RN Android layout conversion must use an explicit allowlist");
+    requireText(findings, file, contents, /toPublicMap\(THEME_KEYS\)/, "RN Android theme conversion must use an explicit allowlist");
+    requireText(findings, file, contents, /require\(key in allowedKeys\)/, "RN Android must reject unknown keys before reading bridge values");
+    requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_NODES/, "RN Android public bridge conversion must bound aggregate nodes");
+    requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_STRING_LENGTH/, "RN Android public bridge conversion must bound string values");
+  }
+  for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
     "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
     "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
