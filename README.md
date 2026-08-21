@@ -29,9 +29,9 @@ Systems migrating from ordinary password endpoints should follow the
 - `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication service with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, atomic one-time ceremony state, and injectable credential/ceremony storage contracts.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
-- `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes.
+- `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes plus a non-secret native cancellation token.
 - `@secure-keypad/web`: passkey-first WebAuthn adapter; it converts server JSON options and serializes ceremony results without exposing password/PIN APIs. Its custom browser-keypad fallback requires explicit lower-assurance acknowledgement.
-- `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and has no `TextEditingController` or secret callback.
+- `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and a native-only `SecureKeypadController.cancel()`, with no `TextEditingController` or secret callback.
 
 The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
 `DEFAULT_HANGUL_LAYOUT`, and `DEFAULT_THEME` as safe starting points for

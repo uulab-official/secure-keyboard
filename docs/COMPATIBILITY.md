@@ -12,9 +12,14 @@ package must not silently update the authentication suite.
 | Axum server adapter | package `0.1.0`; `axum = 0.8.9`; optional `webauthn` feature | Use the workspace lockfile, pass a validated deployment context, resolve WebAuthn principals from host-session request parts only, and keep TLS/proxy, rate-limit, session, and durable-store policy in the host application. |
 | WebAuthn example | `webauthn-rs = 0.5.4` plus server-only `danger-allow-state-serialisation` | Keep the verifier and serialized ceremony/credential formats under one lockfile. Use `WebAuthnService<C, S>` with protected durable stores before deployment; never serialize ceremony state client-side. |
 | React Native | package `0.1.0`; peer `react-native >=0.76` | Compile the package native sources against the exact host RN/React versions and install a native submission consumer. Expo Go is unsupported. |
-| Flutter | package `0.1.0`; Dart `>=3.4.0 <4.0.0` | Run `flutter analyze`, `flutter test`, and a host app build with the selected stable Flutter/AGP toolchain. |
+| Flutter | package `0.1.0`; Dart `>=3.4.0 <4.0.0` | Run `flutter analyze`, `flutter test`, and a host app build with the selected stable Flutter/AGP toolchain. `SecureKeypadController.cancel()` is a native method-channel command and carries no input. |
 | iOS | iOS 15.0 minimum for UIKit configuration APIs | Ship matching device/simulator Rust static libraries and verify background/capture masking on supported OS versions. |
 | Android | API 24 minimum; CMake 3.22.1 contract | Ship `libsecure_ffi.a` for every ABI and verify `android.builtInKotlin`/host Gradle compatibility. |
+
+The React Native `cancelRequest` prop is a non-negative safe integer command
+token; its first value establishes a baseline and each subsequent value
+cancels the native session. Neither framework controller path transports a
+secret or opaque submission handle.
 
 ## Upgrade procedure
 
