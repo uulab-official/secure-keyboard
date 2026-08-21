@@ -196,7 +196,12 @@ export function runSecurityAudit() {
   const distributedGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
-  requireText(findings, ".github/workflows/ci.yml", source(".github/workflows/ci.yml", findings), /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
+  const ciWorkflow = source(".github/workflows/ci.yml", findings);
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
+  const reactNativeAndroidBuild = source("packages/react-native/android/build.gradle", findings);
+  requireText(findings, "packages/react-native/android/build.gradle", reactNativeAndroidBuild, /externalNativeBuild/, "React Native package must retain its native Android build boundary");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");

@@ -89,7 +89,12 @@ memory/leak gate can be closed.
 
 CI also builds the iOS `secure_ffi` device/simulator libraries into an
 XCFramework, validates the C header and native Swift/Kotlin contracts, runs
-Flutter analyze/tests, emits dependency metadata, and generates an SPDX SBOM through
+Flutter analyze/tests, and compiles ephemeral Android arm64 Flutter and React
+Native host apps against the publishable plugins and Rust FFI library. The
+React Native gate pins RN `0.87.0`, CLI `20.2.0`, Node `22.13.0`, and Java 17;
+the Flutter gates pin Flutter `3.47.0`. These are reproducible host-link
+baselines, not device behavior or accessibility sign-offs. CI also emits
+dependency metadata and generates an SPDX SBOM through
 Syft/Anchore. Before a public release, the artifact must include the exact
 Rust/Node/Flutter/native toolchain versions, the notices in
 `docs/THIRD-PARTY-NOTICES.md`, threat model, and signed checksums.
@@ -98,8 +103,9 @@ Rust/Node/Flutter/native toolchain versions, the notices in
 
 - Native RN view-manager and Flutter PlatformView/FFI registration reference
   source is included in both publishable packages and checked for parity, but
-  each host application must compile it against its chosen RN/Flutter versions,
-  install a native submission consumer, and run the device matrix.
+  both CI host-build gates must be green and each target host application must
+  still compile it against its chosen RN/Flutter versions, install a native
+  submission consumer, and run the device matrix.
 - WebAuthn reference verification service, injectable storage contracts,
   feature-gated Redis/PostgreSQL adapters, bounded framework-neutral HTTP
   contract, and compile-tested Axum integration are shipped. Host-session/CSRF
