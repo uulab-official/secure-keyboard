@@ -10,7 +10,7 @@ const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const SECRET_KEY = /password|passphrase|secret|plaintext|credentialValue|inputValue|inputText/i;
+const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)/i;
 const TOOLCHAIN_NAMES = new Set(["rust", "node", "flutter", "reactNative", "ndk"]);
 
 function isRecord(value) {

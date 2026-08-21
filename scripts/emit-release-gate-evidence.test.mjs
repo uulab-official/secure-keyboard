@@ -80,6 +80,20 @@ test("rejects unsupported gates, stale records, unsafe paths, and secret fields"
       }),
     /secret-bearing evidence fields/,
   );
+  for (const key of ["sentinel", "inputBytes", "credentialBytes", "rawInput"]) {
+    assert.throws(
+      () =>
+        buildReleaseGateFragment({
+          commit: COMMIT,
+          packageVersion: "0.1.0",
+          gateName: "rust-workspace",
+          evidencePath: "evidence/gate.json",
+          evidenceBytes: Buffer.from(JSON.stringify({ ...evidenceRecord(), [key]: "never" }), "utf8"),
+        }),
+      /secret-bearing evidence fields/,
+      `must reject ${key}`,
+    );
+  }
   assert.throws(
     () =>
       buildReleaseGateFragment({

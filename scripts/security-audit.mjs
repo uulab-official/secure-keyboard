@@ -572,6 +572,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release evidence must support a protected reviewer-key fingerprint");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence must reject sentinel and raw-input field names");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyGateEvidenceRecord/, "release tooling must bind embedded gate evidence records");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /DEVICE_RELEASE_GATE_POLICIES/, "release tooling must map device gates to their expected platforms");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /validateDeviceEvidence/, "release tooling must revalidate embedded device evidence records");
@@ -601,6 +602,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentPackageVersion/, "release evidence emitter must derive the package version from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /createHash\("sha256"\)/, "release evidence emitter must hash exact evidence bytes");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /secret-bearing evidence fields/, "release evidence emitter must reject secret-bearing evidence fields");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence emitter must reject sentinel and raw-input field names");
   const releaseSigner = source("scripts/sign-release.mjs", findings);
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /asymmetricKeyType !== \"ed25519\"/, "release signing must reject non-Ed25519 keys");
   requireText(findings, "scripts/sign-release.mjs", releaseSigner, /private key is read only/i, "release signing must not copy or log the private key");

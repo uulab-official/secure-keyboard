@@ -85,7 +85,8 @@ Each platform/framework run should produce one JSON record containing:
   `screen-capture`, `background-snapshot`, `accessibility-report`,
   `autofill-clipboard-report`, `crash-report-review`, and `native-checksum`.
 
-The record validator rejects secret-bearing field names, absolute/parent paths,
+The record validator rejects secret-bearing field names (including sentinel
+values, raw input bytes, and credential byte fields), absolute/parent paths,
 missing test passes, invalid hashes, and WebAuthn records without secure
 context evidence:
 
