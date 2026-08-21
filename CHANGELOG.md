@@ -49,3 +49,5 @@ exact release-candidate commit by the release evidence manifest.
 - Release evidence CLI verification now resolves gate, artifact, signature, and
   nested device files relative to the manifest's evidence root, matching the
   documented fragment-merge workflow.
+- Secure-core now explicitly zeroizes the intermediate rendered Hangul
+  code-point buffer after encoding it into the native secret buffer.

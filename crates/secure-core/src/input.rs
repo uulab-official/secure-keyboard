@@ -1,6 +1,6 @@
 use core::fmt;
 
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::hangul;
 use crate::secret_buffer::{SecretBuffer, SecretTokenBuffer};
@@ -213,17 +213,30 @@ impl SecretInput {
     }
 
     pub(crate) fn into_secret_buffer(self) -> SecretBuffer {
-        let mut rendered = hangul::render(self.tokens.as_slice());
-        let mut buffer = SecretBuffer::with_capacity(rendered.len().saturating_mul(4));
-        hangul::encode_utf8(&mut rendered, &mut buffer);
-        buffer
+        let mut rendered = Zeroizing::new(hangul::render(self.tokens.as_slice()));
+        encode_rendered_to_secret_buffer(&mut rendered)
     }
+}
+
+fn encode_rendered_to_secret_buffer(rendered: &mut Vec<u32>) -> SecretBuffer {
+    let mut buffer = SecretBuffer::with_capacity(rendered.len().saturating_mul(4));
+    hangul::encode_utf8(rendered, &mut buffer);
+    rendered.zeroize();
+    buffer
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{InputPolicy, SecretInput};
+    use super::{encode_rendered_to_secret_buffer, InputPolicy, SecretInput};
     use crate::MAX_INPUT_TOKENS;
+
+    #[test]
+    fn rendered_secret_codepoints_are_zeroized_after_encoding() {
+        let mut rendered = vec![0x1100_u32, 0x1161_u32, 0xac00_u32];
+        let _encoded = encode_rendered_to_secret_buffer(&mut rendered);
+
+        assert!(rendered.iter().all(|codepoint| *codepoint == 0));
+    }
 
     #[test]
     fn policy_storage_is_bounded_to_the_native_contract_limit() {
