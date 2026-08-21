@@ -89,6 +89,8 @@ covered by the same CI stability and Linux leak-sanitizer commands.
 Those RSS values are libFuzzer process measurements that include its evolving
 corpus and coverage tables; they are not an SDK memory ceiling or a leak
 result. The Linux leak-sanitizer job remains mandatory.
+The CI fuzz job uploads the 1M and LeakSanitizer logs as the
+`secure-keypad-fuzz-logs` artifact, including failed campaign output.
 
 ## Durable backend gate
 

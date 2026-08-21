@@ -340,6 +340,8 @@ jobs:
         run: rustup toolchain install nightly-2026-08-19 --profile minimal
       - name: Install cargo-fuzz
         run: cargo +nightly-2026-08-19 install cargo-fuzz --locked
+      - name: Prepare fuzz evidence log directory
+        run: mkdir -p "$RUNNER_TEMP/secure-keypad-fuzz-logs"
       - name: Build fuzz target
         run: cargo +nightly-2026-08-19 fuzz check auth_envelope
       - name: Run bounded fuzz smoke test
@@ -358,16 +360,29 @@ jobs:
         run: cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=2000 -max_len=131073
       - name: Run extended parser and native-boundary stability campaigns
         run: |
-          cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
-          cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
-          cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024
-          cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=1000000 -max_len=131073 -rss_limit_mb=1024
+          cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-1m.log"
+          cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-1m.log"
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-1m.log"
+          cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=1000000 -max_len=131073 -rss_limit_mb=1024 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-1m.log"
       - name: Run Linux leak-sanitizer fuzz smoke campaigns
         run: |
-          cargo +nightly-2026-08-19 fuzz run auth_envelope --sanitizer=leak -- -runs=10000
-          cargo +nightly-2026-08-19 fuzz run core_sequence --sanitizer=leak -- -runs=10000
-          cargo +nightly-2026-08-19 fuzz run ffi_sequence --sanitizer=leak -- -runs=10000 -max_len=4096
-          cargo +nightly-2026-08-19 fuzz run webauthn_state --sanitizer=leak -- -runs=10000 -max_len=131073
+          cargo +nightly-2026-08-19 fuzz run auth_envelope --sanitizer=leak -- -runs=10000 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-lsan.log"
+          cargo +nightly-2026-08-19 fuzz run core_sequence --sanitizer=leak -- -runs=10000 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-lsan.log"
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence --sanitizer=leak -- -runs=10000 -max_len=4096 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-lsan.log"
+          cargo +nightly-2026-08-19 fuzz run webauthn_state --sanitizer=leak -- -runs=10000 -max_len=131073 \
+            2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-lsan.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secure-keypad-fuzz-logs
+          path: ${{ runner.temp }}/secure-keypad-fuzz-logs
 
   sbom:
     name: Produce dependency SBOM artifact
