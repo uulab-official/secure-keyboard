@@ -64,6 +64,8 @@ exact release-candidate commit by the release evidence manifest.
 - Added bounded, checked-in native FFI fuzz seeds for numeric, printable-ASCII,
   and Hangul constructor paths, with a CI contract test preventing any fuzz
   target from silently falling back to an empty corpus.
+- Made the extended fuzz and Linux LeakSanitizer log pipelines fail closed on
+  a failed campaign instead of allowing `tee` to mask the command status.
 
 ### Verification
 

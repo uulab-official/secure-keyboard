@@ -103,3 +103,14 @@ test("CI emits durable and fuzz gate fragments only after their command groups",
   assert.match(CI_WORKFLOW, /fuzz-stability[\s\S]*?linux-leak-sanitizer/);
   assert.match(CI_WORKFLOW, /name: secure-keypad-ci-gate-fuzz/);
 });
+
+test("CI fuzz and LeakSanitizer log pipelines fail closed on a failed campaign", () => {
+  assert.match(
+    CI_WORKFLOW,
+    /name: Run extended parser and native-boundary stability campaigns[\s\S]*?run: \|\n\s+set -euo pipefail[\s\S]*?tee \"\$RUNNER_TEMP\/secure-keypad-fuzz-logs\/webauthn_state-1m\.log\"/,
+  );
+  assert.match(
+    CI_WORKFLOW,
+    /name: Run Linux leak-sanitizer fuzz smoke campaigns[\s\S]*?run: \|\n\s+set -euo pipefail[\s\S]*?tee \"\$RUNNER_TEMP\/secure-keypad-fuzz-logs\/webauthn_state-lsan\.log\"/,
+  );
+});

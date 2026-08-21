@@ -507,6 +507,7 @@ jobs:
         run: cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=2000 -max_len=131073
       - name: Run extended parser and native-boundary stability campaigns
         run: |
+          set -euo pipefail
           cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-1m.log"
           cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
@@ -517,6 +518,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-1m.log"
       - name: Run Linux leak-sanitizer fuzz smoke campaigns
         run: |
+          set -euo pipefail
           cargo +nightly-2026-08-19 fuzz run auth_envelope --sanitizer=leak -- -runs=10000 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-lsan.log"
           cargo +nightly-2026-08-19 fuzz run core_sequence --sanitizer=leak -- -runs=10000 \
