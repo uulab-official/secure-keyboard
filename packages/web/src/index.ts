@@ -299,6 +299,44 @@ function boundedTimeout(value: unknown): number | undefined {
   return value;
 }
 
+function toNativeAuthenticatorSelection(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) invalidOptions("WebAuthn authenticatorSelection is invalid");
+  const allowed = ["authenticatorAttachment", "residentKey", "requireResidentKey", "userVerification"];
+  if (Object.keys(value).some((key) => !allowed.includes(key))) {
+    invalidOptions("WebAuthn authenticatorSelection is invalid");
+  }
+  const result: Record<string, unknown> = {};
+  if (value.authenticatorAttachment !== undefined) {
+    if (value.authenticatorAttachment !== "cross-platform" && value.authenticatorAttachment !== "platform") {
+      invalidOptions("WebAuthn authenticatorSelection is invalid");
+    }
+    result.authenticatorAttachment = value.authenticatorAttachment;
+  }
+  if (value.residentKey !== undefined) {
+    if (![
+      "discouraged",
+      "preferred",
+      "required",
+    ].includes(String(value.residentKey))) {
+      invalidOptions("WebAuthn authenticatorSelection is invalid");
+    }
+    result.residentKey = value.residentKey;
+  }
+  if (value.requireResidentKey !== undefined) {
+    if (typeof value.requireResidentKey !== "boolean") {
+      invalidOptions("WebAuthn authenticatorSelection is invalid");
+    }
+    result.requireResidentKey = value.requireResidentKey;
+  }
+  if (value.userVerification !== undefined) {
+    if (!["discouraged", "preferred", "required"].includes(String(value.userVerification))) {
+      invalidOptions("WebAuthn authenticatorSelection is invalid");
+    }
+    result.userVerification = value.userVerification;
+  }
+  return result;
+}
+
 function copyBoundedExtensionValue(
   value: unknown,
   field: string,
@@ -425,8 +463,7 @@ function toNativeCreationOptions(options: WebAuthnCreationOptionsJson): Record<s
   const excludeCredentials = toNativeCredentials(options.excludeCredentials, "excludeCredentials");
   if (excludeCredentials !== undefined) publicKey.excludeCredentials = excludeCredentials;
   if (options.authenticatorSelection !== undefined) {
-    if (!isRecord(options.authenticatorSelection)) invalidOptions("WebAuthn authenticatorSelection is invalid");
-    publicKey.authenticatorSelection = { ...options.authenticatorSelection };
+    publicKey.authenticatorSelection = toNativeAuthenticatorSelection(options.authenticatorSelection);
   }
   if (options.attestation !== undefined) {
     if (!["none", "indirect", "direct", "enterprise"].includes(options.attestation)) {

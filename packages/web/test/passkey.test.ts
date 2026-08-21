@@ -195,6 +195,18 @@ describe("passkey registration", () => {
     ).rejects.toMatchObject({ code: "invalid-options" });
   });
 
+  it("whitelists authenticator selection fields before handing them to the browser", async () => {
+    await expect(
+      createPasskey(
+        {
+          ...creationOptions,
+          authenticatorSelection: { residentKey: "required", unexpected: "ignored" } as never,
+        },
+        environment({ create: async () => null, get: async () => null }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+  });
+
   it("rejects prototype-pollution keys in server extension JSON", async () => {
     const extensions = JSON.parse('{"__proto__":{"polluted":true}}');
 
