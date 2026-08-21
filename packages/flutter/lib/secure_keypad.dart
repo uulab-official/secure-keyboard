@@ -14,7 +14,7 @@ import 'package:flutter/widgets.dart';
 
 enum InputPolicy { numeric, hangul }
 
-enum KeyRole { input, backspace, submit, clear, spacer }
+enum KeyRole { input, backspace, submit, clear, cancel, spacer }
 
 enum LayoutDirection { ltr, rtl }
 
@@ -412,6 +412,9 @@ const KeypadLayout defaultNumericLayout = KeypadLayout(
       KeySpec(id: 'digit-0', label: '0', role: KeyRole.input),
       KeySpec(id: 'backspace', label: 'Delete', role: KeyRole.backspace),
     ],
-    <KeySpec>[KeySpec(id: 'submit', label: 'Continue', role: KeyRole.submit)],
+    <KeySpec>[
+      KeySpec(id: 'cancel', label: 'Cancel', role: KeyRole.cancel),
+      KeySpec(id: 'submit', label: 'Continue', role: KeyRole.submit),
+    ],
   ],
 );

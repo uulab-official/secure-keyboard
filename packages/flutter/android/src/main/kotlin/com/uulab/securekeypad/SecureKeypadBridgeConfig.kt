@@ -52,6 +52,7 @@ internal object SecureKeypadBridgeConfigParser {
                     "backspace" -> SecureKeyRole.BACKSPACE
                     "clear" -> SecureKeyRole.CLEAR
                     "submit" -> SecureKeyRole.SUBMIT
+                    "cancel" -> SecureKeyRole.CANCEL
                     "spacer" -> SecureKeyRole.SPACER
                     else -> invalid()
                 }

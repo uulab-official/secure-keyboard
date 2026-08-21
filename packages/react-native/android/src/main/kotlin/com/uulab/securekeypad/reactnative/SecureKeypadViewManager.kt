@@ -27,6 +27,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         return SecureKeypadView(reactContext).also { view ->
             view.onMaskedStateChanged = { length, displayState ->
                 emitState(view, length, displayState)
+                if (displayState == 3) emitResult(view, "cancelled")
             }
             view.onError = { code ->
                 emitResult(view, if (code == 4) "locked" else "error")
