@@ -80,6 +80,12 @@ The server integration uses a versioned PAKE contract. OPAQUE is the preferred p
 
 OPAQUE registration uploads, credential files, server setup material, and transport messages are sensitive. Registration uploads and credential files require protected transport/storage, while server setup material requires secret-store or HSM-backed handling. The protocol engine does not by itself provide HTTPS, rate limiting, replay policy, session-token issuance, or key rotation; those belong to the server integration layer.
 
+The framework-neutral HTTP/JSON contracts require the host to provide an
+explicit `csrf_validated` result derived from request metadata and the host
+session/origin policy. Axum adapters require a request-parts CSRF callback and
+reject a failed result before buffering JSON; no adapter may infer CSRF state
+from a request body.
+
 Minimum protocol metadata:
 
 ```json
