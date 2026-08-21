@@ -146,6 +146,9 @@ export function runSecurityAudit() {
   const auth = source("crates/secure-auth/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_JSON_BODY_BYTES: usize = 128 \* 1024/, "auth JSON body must be bounded");
+  const authManifest = source("crates/secure-auth/Cargo.toml", findings);
+  requireText(findings, "crates/secure-auth/Cargo.toml", authManifest, /opaque-ke\s*=\s*\{\s*version\s*=\s*"=4\.0\.1"/, "OPAQUE dependency must be exact-pinned");
+  forbidText(findings, "crates/secure-auth/Cargo.toml", authManifest, /opaque-ke\s*=\s*\{\s*version\s*=\s*"4\.0\.1"/, "OPAQUE dependency must not allow semver patch drift");
 
   const web = source("packages/web/src/index.ts", findings);
   requireText(findings, "packages/web/src/index.ts", web, /WEB_FALLBACK_WARNING_CODE/, "Web fallback warning must be stable");
