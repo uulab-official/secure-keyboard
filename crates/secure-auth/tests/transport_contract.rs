@@ -166,3 +166,18 @@ fn json_decoder_rejects_oversized_bodies_and_malformed_envelopes() {
         Err(AuthError::MalformedTransport)
     ));
 }
+
+#[test]
+fn envelope_debug_redacts_transport_payload() {
+    let envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialRequest,
+        "server-key-2026",
+        &Message::from_bytes(b"fixture-only-opaque-payload"),
+    )
+    .unwrap();
+
+    let debug = format!("{envelope:?}");
+
+    assert!(debug.contains("payload_len"));
+    assert!(!debug.contains("payload:"));
+}

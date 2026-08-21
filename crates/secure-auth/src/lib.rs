@@ -93,14 +93,29 @@ pub enum AuthMessageKind {
 /// logging/storage policies. This envelope rejects unsupported versions,
 /// suites, message kinds, and server key IDs before a protocol state machine
 /// consumes the payload. It does not itself provide replay storage, rate
-/// limiting, TLS, or session-token issuance.
-#[derive(Debug, Serialize)]
+/// limiting, TLS, or session-token issuance. Its [`core::fmt::Debug`] output
+/// is intentionally redacted and contains only public metadata plus payload
+/// length.
+#[derive(Serialize)]
 pub struct AuthEnvelope {
     protocol_version: u16,
     suite_id: String,
     message_kind: AuthMessageKind,
     server_key_id: String,
     payload: Vec<u8>,
+}
+
+impl core::fmt::Debug for AuthEnvelope {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("AuthEnvelope")
+            .field("protocol_version", &self.protocol_version)
+            .field("suite_id", &self.suite_id)
+            .field("message_kind", &self.message_kind)
+            .field("server_key_id", &self.server_key_id)
+            .field("payload_len", &self.payload.len())
+            .finish()
+    }
 }
 
 #[derive(Deserialize)]

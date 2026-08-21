@@ -64,6 +64,11 @@ export function runSecurityAudit() {
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter.match(/toPlatformCreationParams\(\)[\s\S]*?\n  \}/)?.[0] ?? "", /onResult|onMaskedStateChanged/, "Flutter native creation params must not serialize callbacks");
 
+  const authDebug = source("crates/secure-auth/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /impl core::fmt::Debug for AuthEnvelope/, "OPAQUE transport Debug must be manually redacted");
+  requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /field\("payload_len", &self\.payload\.len\(\)\)/, "OPAQUE transport Debug may expose payload length only");
+  forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");
+
   const nativeManagers = [
     "native/ios/react-native/SecureKeypadViewManager.swift",
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
