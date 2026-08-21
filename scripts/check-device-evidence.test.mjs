@@ -19,7 +19,7 @@ const VALID_NATIVE = {
   platform: "ios",
   framework: "react-native",
   frameworkVersion: "0.87.0",
-  recordedAt: "2026-08-21T12:00:00Z",
+  recordedAt: "2026-08-21T12:00:00.000Z",
   physicalDevice: true,
   device: { model: "iPhone", osVersion: "26.5", osBuild: "23A000" },
   testCases: {
@@ -65,6 +65,16 @@ test("requires an explicit passing device evidence status", () => {
 
   assert.ok(validateDeviceEvidence(missing).some((finding) => finding.includes("status")));
   assert.ok(validateDeviceEvidence(failed).some((finding) => finding.includes("status")));
+});
+
+test("rejects noncanonical timestamps and oversized device metadata", () => {
+  const noncanonical = structuredClone(VALID_NATIVE);
+  noncanonical.recordedAt = "2026-08-21T12:00:00Z";
+  const oversized = structuredClone(VALID_NATIVE);
+  oversized.device.model = "m".repeat(121);
+
+  assert.ok(validateDeviceEvidence(noncanonical).some((finding) => finding.includes("recordedAt")));
+  assert.ok(validateDeviceEvidence(oversized).some((finding) => finding.includes("device.model")));
 });
 
 test("rejects missing pass status, secret fields, and unsafe paths", () => {

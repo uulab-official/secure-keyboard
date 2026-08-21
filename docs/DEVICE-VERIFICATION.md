@@ -74,8 +74,8 @@ Each platform/framework run should produce one JSON record containing:
 
 - `schemaVersion: 1`, `status: "pass"`, and the exact release gate name
   (`ios-device-matrix`, `android-device-matrix`, or
-  `web-browser-matrix`), exact 40-character commit SHA, framework version, timestamp, and
-  `physicalDevice` flag;
+  `web-browser-matrix`), exact 40-character commit SHA, framework version,
+  canonical millisecond UTC timestamp, and `physicalDevice` flag;
 - device/browser model, OS version/build, and `secureContext: true` for Web;
 - every applicable test case with the exact status `pass`;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,

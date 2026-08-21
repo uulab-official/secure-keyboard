@@ -809,6 +809,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /verifyDeviceEvidenceFiles/, "device evidence tooling must recompute referenced file digests");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /ISO_TIMESTAMP/, "device evidence tooling must require canonical timestamps");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /value\.length <= 120/, "device evidence tooling must bound metadata labels");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /evidence\.status !== \"pass\"/, "device evidence tooling must require an explicit passing top-level status");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /SANITIZED_TEST_SENTINEL/, "device evidence tooling must reject the canonical test sentinel");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /scanEvidenceFileContent/, "device evidence tooling must scan referenced content for secret-bearing text");

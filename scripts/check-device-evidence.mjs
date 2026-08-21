@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 /**
  * Public disposable value for device runs. Evidence scanners reject this
  * literal so a test sentinel cannot accidentally be retained in an artifact.
@@ -55,7 +56,7 @@ function isRecord(value) {
 }
 
 function nonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return typeof value === "string" && value.length <= 120 && !/[\r\n]/.test(value) && value.trim().length > 0;
 }
 
 function isSafeRelativePath(value) {
@@ -135,8 +136,12 @@ export function validateDeviceEvidence(evidence, options = {}) {
     add(findings, "gate", "must match the evidence platform");
   }
   if (!nonEmptyString(evidence.frameworkVersion)) add(findings, "frameworkVersion", "must be non-empty");
-  if (!nonEmptyString(evidence.recordedAt) || Number.isNaN(Date.parse(evidence.recordedAt))) {
-    add(findings, "recordedAt", "must be an ISO-8601 timestamp");
+  if (
+    !nonEmptyString(evidence.recordedAt) ||
+    !ISO_TIMESTAMP.test(evidence.recordedAt) ||
+    new Date(evidence.recordedAt).toISOString() !== evidence.recordedAt
+  ) {
+    add(findings, "recordedAt", "must be an ISO-8601 UTC timestamp");
   }
   if (typeof evidence.physicalDevice !== "boolean") add(findings, "physicalDevice", "must be boolean");
   if (

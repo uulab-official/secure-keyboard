@@ -91,3 +91,5 @@ exact release-candidate commit by the release evidence manifest.
   rejects the disposable sentinel before writing release fragments.
 - Bounded native device evidence files to 32 MiB before hashing or content
   scanning to keep release verification fail-closed under oversized artifacts.
+- Device evidence validation now requires canonical millisecond UTC timestamps
+  and bounds device/browser metadata labels before accepting a record.
