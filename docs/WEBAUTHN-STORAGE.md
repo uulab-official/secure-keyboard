@@ -23,7 +23,9 @@ requires `sslmode=require` and the adapter rejects weaker modes before pool
 construction. They are blocking adapters; async hosts must invoke them on a
 blocking worker. The
 PostgreSQL migration is exported as `POSTGRES_SCHEMA_SQL` and must be applied
-by the deployment migration system.
+by the deployment migration system. It enforces bounded safe namespaces in the
+database and idempotently upgrades existing ceremony and credential tables;
+constraint-validation failures must fail the deployment migration.
 
 ## Ceremony state
 

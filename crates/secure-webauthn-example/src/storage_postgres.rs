@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_ceremonies (
     state BYTEA NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (namespace, handle, kind),
+    CONSTRAINT secure_keypad_webauthn_ceremony_namespace_length
+        CHECK (octet_length(namespace) BETWEEN 1 AND 64),
+    CONSTRAINT secure_keypad_webauthn_ceremony_namespace_chars
+        CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
     CHECK (octet_length(handle) = 32),
     CHECK (kind IN (1, 2)),
     CHECK (octet_length(state) BETWEEN 1 AND 131072)
@@ -45,9 +49,54 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_credentials (
     passkey JSONB NOT NULL,
     revision BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (namespace, user_id, credential_id),
+    CONSTRAINT secure_keypad_webauthn_credential_namespace_length
+        CHECK (octet_length(namespace) BETWEEN 1 AND 64),
+    CONSTRAINT secure_keypad_webauthn_credential_namespace_chars
+        CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
     CHECK (octet_length(credential_id) BETWEEN 1 AND 1024),
     CHECK (octet_length(passkey::text) BETWEEN 2 AND 262144)
 );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_ceremonies'::regclass
+          AND conname = 'secure_keypad_webauthn_ceremony_namespace_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_ceremonies
+            ADD CONSTRAINT secure_keypad_webauthn_ceremony_namespace_length
+            CHECK (octet_length(namespace) BETWEEN 1 AND 64);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_ceremonies'::regclass
+          AND conname = 'secure_keypad_webauthn_ceremony_namespace_chars'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_ceremonies
+            ADD CONSTRAINT secure_keypad_webauthn_ceremony_namespace_chars
+            CHECK (namespace ~ '^[A-Za-z0-9._-]+$');
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_credentials'::regclass
+          AND conname = 'secure_keypad_webauthn_credential_namespace_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_credentials
+            ADD CONSTRAINT secure_keypad_webauthn_credential_namespace_length
+            CHECK (octet_length(namespace) BETWEEN 1 AND 64);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_credentials'::regclass
+          AND conname = 'secure_keypad_webauthn_credential_namespace_chars'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_credentials
+            ADD CONSTRAINT secure_keypad_webauthn_credential_namespace_chars
+            CHECK (namespace ~ '^[A-Za-z0-9._-]+$');
+    END IF;
+END
+$$;
 ";
 
 /// Configuration errors returned while constructing a PostgreSQL-backed store.
@@ -483,4 +532,18 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresStorageConfigError>
         return Err(PostgresStorageConfigError::InvalidNamespace);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::POSTGRES_SCHEMA_SQL;
+
+    #[test]
+    fn schema_enforces_the_application_namespace_contract() {
+        assert!(POSTGRES_SCHEMA_SQL.contains("CHECK (octet_length(namespace) BETWEEN 1 AND 64)"));
+        assert!(POSTGRES_SCHEMA_SQL.contains("CHECK (namespace ~ '^[A-Za-z0-9._-]+$')"));
+        assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_ceremonies"));
+        assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_credentials"));
+        assert!(POSTGRES_SCHEMA_SQL.contains("FROM pg_constraint"));
+    }
 }

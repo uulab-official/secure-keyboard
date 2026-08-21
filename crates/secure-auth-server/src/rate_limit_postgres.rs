@@ -18,11 +18,38 @@ CREATE TABLE IF NOT EXISTS secure_keypad_rate_limit_windows (
     attempts BIGINT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (namespace, key_hash),
+    CONSTRAINT secure_keypad_rate_limit_namespace_length
+        CHECK (octet_length(namespace) BETWEEN 1 AND 64),
+    CONSTRAINT secure_keypad_rate_limit_namespace_chars
+        CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
     CHECK (octet_length(key_hash) = 32),
     CHECK (attempts BETWEEN 1 AND 4294967295)
 );
 CREATE INDEX IF NOT EXISTS secure_keypad_rate_limit_windows_expiry_idx
     ON secure_keypad_rate_limit_windows (expires_at);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_rate_limit_windows'::regclass
+          AND conname = 'secure_keypad_rate_limit_namespace_length'
+    ) THEN
+        ALTER TABLE secure_keypad_rate_limit_windows
+            ADD CONSTRAINT secure_keypad_rate_limit_namespace_length
+            CHECK (octet_length(namespace) BETWEEN 1 AND 64);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_rate_limit_windows'::regclass
+          AND conname = 'secure_keypad_rate_limit_namespace_chars'
+    ) THEN
+        ALTER TABLE secure_keypad_rate_limit_windows
+            ADD CONSTRAINT secure_keypad_rate_limit_namespace_chars
+            CHECK (namespace ~ '^[A-Za-z0-9._-]+$');
+    END IF;
+END
+$$;
 ";
 
 /// Configuration errors returned while constructing a `PostgreSQL` rate limiter.
@@ -309,4 +336,20 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresRateLimitConfigErro
         return Err(PostgresRateLimitConfigError::InvalidNamespace);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::POSTGRES_RATE_LIMIT_SCHEMA_SQL;
+
+    #[test]
+    fn schema_enforces_the_application_namespace_contract() {
+        assert!(POSTGRES_RATE_LIMIT_SCHEMA_SQL
+            .contains("CHECK (octet_length(namespace) BETWEEN 1 AND 64)"));
+        assert!(POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains("CHECK (namespace ~ '^[A-Za-z0-9._-]+$')"));
+        assert!(
+            POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_rate_limit_windows")
+        );
+        assert!(POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains("FROM pg_constraint"));
+    }
 }

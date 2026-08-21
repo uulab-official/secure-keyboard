@@ -285,12 +285,19 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /pg_advisory_xact_lock/, "PostgreSQL rate limiting must serialize capacity/check updates");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /MakeTlsConnect/, "PostgreSQL rate limiting must accept an explicit TLS connector");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /SslMode::Require/, "PostgreSQL rate limiting must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL rate-limit schema must enforce bounded namespaces");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL rate-limit schema must enforce safe namespaces");
   const postgresStorage = source("crates/secure-webauthn-example/src/storage_postgres.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /MakeTlsConnect/, "PostgreSQL WebAuthn storage must accept an explicit TLS connector");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /SslMode::Require/, "PostgreSQL WebAuthn storage must reject configurations that can downgrade TLS");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL WebAuthn schema must enforce bounded namespaces");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL WebAuthn schema must enforce safe namespaces");
   const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");
+  requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /idempotently upgrades existing ceremony and credential tables/, "WebAuthn storage guide must document durable schema upgrades");
+  const distributedBackendGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
+  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently adds those constraints to an existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",
