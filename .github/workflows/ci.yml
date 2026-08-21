@@ -371,8 +371,8 @@ jobs:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
       - name: Build release FFI libraries for device and simulator
         run: |
-          cargo build --release -p secure-ffi --target aarch64-apple-ios
-          cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios-sim
       - name: Assemble and inspect the release XCFramework
         run: |
           xcodebuild -create-xcframework \
@@ -454,3 +454,113 @@ jobs:
             -include-runtime -jvm-target 17 -Werror \
             -d /tmp/secure-keypad-bridge-config-contract.jar
           java -jar /tmp/secure-keypad-bridge-config-contract.jar
+
+  ios-host-builds:
+    name: Compile iOS RN and Flutter host integrations
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          cache: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir packages/contracts build
+      - run: pnpm --dir packages/react-native build
+      - name: Build the matching iOS FFI XCFramework
+        run: |
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios-sim
+          xcodebuild -create-xcframework \
+            -library target/aarch64-apple-ios/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -library target/aarch64-apple-ios-sim/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -output "$RUNNER_TEMP/secure_ffi.xcframework"
+      - name: Create the React Native iOS host
+        env:
+          HOST_DIR: ${{ runner.temp }}/secure-keypad-react-native-ios-host
+          RN_PACKAGE_DIR: ${{ runner.temp }}/secure-keypad-react-native-ios-package
+          CONTRACTS_PACKAGE_DIR: ${{ runner.temp }}/secure-keypad-contracts-ios-package
+        run: |
+          npx --yes @react-native-community/cli@20.2.0 init SecureKeypadHost \
+            --version 0.87.0 --directory "$HOST_DIR" --skip-install
+          mkdir -p "$RN_PACKAGE_DIR" "$CONTRACTS_PACKAGE_DIR"
+          cp -R "$GITHUB_WORKSPACE/packages/react-native/." "$RN_PACKAGE_DIR/"
+          cp -R "$GITHUB_WORKSPACE/packages/contracts/." "$CONTRACTS_PACKAGE_DIR/"
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          host = Path(os.environ["HOST_DIR"])
+          rn_package = Path(os.environ["RN_PACKAGE_DIR"])
+          contracts_package = Path(os.environ["CONTRACTS_PACKAGE_DIR"])
+          rn_manifest_path = rn_package / "package.json"
+          rn_manifest = json.loads(rn_manifest_path.read_text())
+          rn_manifest["dependencies"]["@secure-keypad/contracts"] = f"file:{contracts_package}"
+          rn_manifest_path.write_text(json.dumps(rn_manifest, indent=2) + "\n")
+          host_manifest_path = host / "package.json"
+          host_manifest = json.loads(host_manifest_path.read_text())
+          host_manifest.setdefault("dependencies", {})["@secure-keypad/react-native"] = f"file:{rn_package}"
+          host_manifest_path.write_text(json.dumps(host_manifest, indent=2) + "\n")
+          podfile = host / "ios/Podfile"
+          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.0'", podfile.read_text(), flags=re.MULTILINE))
+          project = host / "ios/SecureKeypadHost.xcodeproj/project.pbxproj"
+          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.0;", project.read_text()))
+          PY
+      - name: Link and compile the React Native iOS host
+        env:
+          SECURE_KEYPAD_FFI_XCFRAMEWORK: ${{ runner.temp }}/secure_ffi.xcframework
+        working-directory: ${{ runner.temp }}/secure-keypad-react-native-ios-host
+        run: |
+          npm install --no-audit --no-fund
+          npx react-native config > "$RUNNER_TEMP/react-native-ios-config.json"
+          grep -q '"@secure-keypad/react-native"' "$RUNNER_TEMP/react-native-ios-config.json"
+          cd ios
+          pod install
+          xcodebuild -workspace SecureKeypadHost.xcworkspace \
+            -scheme SecureKeypadHost \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Create and compile the Flutter iOS host
+        env:
+          HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host
+        run: |
+          flutter create --platforms=ios --org dev.uulab --project-name secure_keypad_host "$HOST_DIR"
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          host = Path(os.environ["HOST_DIR"])
+          pubspec = host / "pubspec.yaml"
+          contents = pubspec.read_text()
+          dependency = (
+              "dependencies:\n"
+              "  secure_keypad_flutter:\n"
+              f"    path: {Path(os.environ['GITHUB_WORKSPACE']) / 'packages/flutter'}\n"
+          )
+          pubspec.write_text(contents.replace("dependencies:\n", dependency, 1))
+          podfile = host / "ios/Podfile"
+          podfile.write_text(re.sub(r"^platform :ios,.*$", "platform :ios, '15.0'", podfile.read_text(), flags=re.MULTILINE))
+          project = host / "ios/Runner.xcodeproj/project.pbxproj"
+          project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.0;", project.read_text()))
+          PY
+          cd "$HOST_DIR"
+          flutter pub get
+          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
+            flutter build ios --simulator --no-codesign

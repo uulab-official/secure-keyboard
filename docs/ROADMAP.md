@@ -77,6 +77,7 @@ Status: publishable contract, native source packaging, and parity gate complete;
 - [x] Require an explicit native submission consumer before reporting framework success.
 - [x] Accept only serializable layout, theme, and policy objects.
 - [x] Add a reproducible CI host-build gate that links the React Native package and Android arm64 Rust FFI library.
+- [x] Add a reproducible CI iOS Simulator host-build gate that links the React Native package and XCFramework.
 - [ ] Expose controller commands and masked state events.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.
@@ -94,6 +95,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
 - [x] Require an explicit native submission consumer before reporting framework success.
 - [x] Add a reproducible CI host-build gate that links the Flutter plugin and Android arm64 Rust FFI library.
+- [x] Add a reproducible CI iOS Simulator host-build gate that links the Flutter plugin and XCFramework.
 - [ ] Compile the registration in supported host apps and verify device behavior.
 - [x] Provide examples for numeric PIN, Hangul password, and branded themes.
 
