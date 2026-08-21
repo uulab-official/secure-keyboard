@@ -354,6 +354,12 @@ public open class SecureKeypadView @JvmOverloads constructor(
         val length = (packed ushr 32).toInt()
         val displayState = packed.toInt()
         if (length !in 0..SECURE_KEYPAD_MAX_RENDERED_LENGTH) {
+            releaseSession()
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+            return
+        }
+        if (!secureKeypadIsValidDisplayState(displayState)) {
+            releaseSession()
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
             return
         }

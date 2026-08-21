@@ -14,6 +14,11 @@ func secureKeypadIsValidRenderedLength(_ length: Int) -> Bool {
     (0...secureKeypadMaxRenderedLength).contains(length)
 }
 
+/// Returns whether a native display-state code is part of the public contract.
+func secureKeypadIsValidDisplayState(_ value: UInt32) -> Bool {
+    (0...3).contains(value)
+}
+
 /// Produces masked display text from length only.
 func secureKeypadMaskedDisplayText(length: Int, protected: Bool) -> String {
     precondition(secureKeypadIsValidRenderedLength(length))

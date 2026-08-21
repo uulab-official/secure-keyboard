@@ -417,6 +417,11 @@ public class SecureKeypadView: UIView {
             onError?(secureKeypadInternalError)
             return
         }
+        guard secureKeypadIsValidDisplayState(state.display_state) else {
+            releaseSession()
+            onError?(secureKeypadInternalError)
+            return
+        }
         displayLabel.text = secureKeypadMaskedDisplayText(length: count, protected: protectedPresentation)
         displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: count, protected: protectedPresentation)
         onMaskedStateChanged?(state.length, state.display_state)

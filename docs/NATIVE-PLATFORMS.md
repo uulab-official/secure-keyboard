@@ -104,7 +104,9 @@ KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/ko
 
 `SecureKeypadPresentation.kt` centralizes the bounded masked display and
 accessibility announcements. It accepts only the native masked length and a
-protected-state flag; it cannot format or retain an input value. The standalone
+protected-state flag; it cannot format or retain an input value. Native display
+state codes outside `empty`/`masked`/`submitted`/`cancelled` release the session
+and emit an internal error instead of being mapped to `empty`. The standalone
 `native/android/SecureKeypadPresentationContractTest.kt` checks empty/masked/
 protected announcements and rejects lengths outside the native 4,096-token
 display bound without requiring an Android runtime. The equivalent iOS helper

@@ -10,4 +10,7 @@ fun main() {
     check(secureKeypadAccessibilityLabel(3, protected = true) == "Protected")
     check(runCatching { secureKeypadMaskedDisplayText(-1) }.isFailure)
     check(runCatching { secureKeypadAccessibilityLabel(4_097) }.isFailure)
+    check(secureKeypadIsValidDisplayState(0))
+    check(secureKeypadIsValidDisplayState(3))
+    check(!secureKeypadIsValidDisplayState(4))
 }

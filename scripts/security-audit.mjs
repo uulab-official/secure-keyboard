@@ -167,6 +167,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /SECURE_KEYPAD_MAX_RENDERED_LENGTH/, "Android presentation must bound rendered masked length");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "Android presentation must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "Android accessibility must expose only masked state and length");
+    requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "Android presentation must validate native display-state codes");
     forbidText(findings, file, contents, /password|secret|plaintext|inputValue|inputText/i, "Android presentation contract must not mention secret-bearing fields");
   }
   for (const file of [
@@ -185,6 +186,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
     requireText(findings, file, contents, /secureKeypadIsValidRenderedLength/, "iOS native keypad must bound masked rendering before allocation");
+    requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "iOS native keypad must reject invalid display-state codes");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");

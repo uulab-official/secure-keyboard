@@ -45,7 +45,8 @@ only the opaque submission capability.
    releases the native session on resign-active, and that Android retains
    `FLAG_SECURE` through framework wrapper contexts, reassert it when focus
    returns after host flag changes, while releasing the native session when its
-   window loses focus or becomes invisible.
+   window loses focus or becomes invisible. Injected or malformed native
+   display-state codes must fail closed rather than being mapped to `empty`.
 3. Attempt autofill and clipboard operations. Verify no editable text control,
    autofill suggestion, clipboard write, or password-manager value is created.
 4. Exercise VoiceOver and TalkBack. Verify that labels expose key semantics and

@@ -14,5 +14,8 @@ struct SecureKeypadPresentationContractTest {
         precondition(secureKeypadAccessibilityLabel(length: 3, protected: true) == "Protected")
         precondition(!secureKeypadIsValidRenderedLength(-1))
         precondition(!secureKeypadIsValidRenderedLength(4_097))
+        precondition(secureKeypadIsValidDisplayState(0))
+        precondition(secureKeypadIsValidDisplayState(3))
+        precondition(!secureKeypadIsValidDisplayState(4))
     }
 }
