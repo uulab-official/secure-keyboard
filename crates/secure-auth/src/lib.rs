@@ -807,8 +807,8 @@ pub fn client_registration_finish(
             ),
         )
         .map_err(|_| AuthError::Protocol)?;
-    let message = message_from_serialized(result.message.serialize())?;
     let export_key = secret_output_from_zeroizing(result.export_key);
+    let message = message_from_serialized(result.message.serialize())?;
     Ok((message, export_key))
 }
 
@@ -884,8 +884,8 @@ pub fn client_registration_finish_from_native_state(
         result.ok_or(AuthError::Protocol)?
     }
     .map_err(|_| AuthError::Protocol)?;
-    let message = message_from_serialized(result.message.serialize())?;
     let export_key = secret_output_from_zeroizing(result.export_key);
+    let message = message_from_serialized(result.message.serialize())?;
     Ok((message, export_key))
 }
 
@@ -1025,8 +1025,8 @@ pub fn client_login_finish(
             ),
         )
         .map_err(|_| AuthError::InvalidLogin)?;
-    let message = message_from_serialized(result.message.serialize())?;
     let session_key = secret_output_from_zeroizing(result.session_key);
+    let message = message_from_serialized(result.message.serialize())?;
     Ok((message, session_key))
 }
 
@@ -1068,8 +1068,8 @@ pub fn client_login_finish_from_native_state(
         result.ok_or(AuthError::InvalidLogin)?
     }
     .map_err(|_| AuthError::InvalidLogin)?;
-    let message = message_from_serialized(result.message.serialize())?;
     let session_key = secret_output_from_zeroizing(result.session_key);
+    let message = message_from_serialized(result.message.serialize())?;
     Ok((message, session_key))
 }
 
