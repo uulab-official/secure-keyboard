@@ -106,3 +106,30 @@ test("all public adapters apply the same UTF-8 byte bounds to labels", () => {
   assert.match(contractsSource, /MAX_ACCESSIBILITY_LABEL_BYTES\s*=\s*80/);
   assert.match(contractsSource, /function utf8ByteLength/);
 });
+
+test("Flutter native event bridges retain a bounded backlog without overwriting terminal results", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /MAX_PENDING_EVENTS\s*=\s*32/);
+    assert.match(source, /ArrayDeque/);
+    assert.match(source, /pendingEvents/);
+    assert.match(source, /removeFirst/);
+    assert.doesNotMatch(source, /pendingEvent\s*:/);
+  }
+
+  const iosSources = [
+    "../native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+  ];
+  for (const relativePath of iosSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /maxPendingEvents\s*=\s*32/);
+    assert.match(source, /pendingEvents/);
+    assert.match(source, /removeFirst/);
+    assert.doesNotMatch(source, /pendingEvent\s*:/);
+  }
+});

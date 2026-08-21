@@ -21,7 +21,10 @@ releases the submission and emits `error`; it is not a server authentication
 decision. Host-native authentication must install
 `SecureKeypadNativeSubmissionRouter`, call `takeOpaqueHandle()` on iOS or
 `takeNativeHandle()` on Android, and consume the handle out-of-band. No handle
-is exposed to Dart.
+is exposed to Dart. If the Dart listener is temporarily unavailable, each
+native event bridge retains a bounded backlog of 32 public events, coalesces
+adjacent masked-state updates, and evicts state before terminal result events.
+The backlog is cleared when the native view is disposed.
 
 For host-driven cancellation, pass a `SecureKeypadController` to the widget
 and call `await controller.cancel()`. The controller contains no input and

@@ -12,6 +12,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
+import java.util.ArrayDeque
 import kotlin.math.floor
 
 /** Flutter registration for the native-only keypad PlatformView. */
@@ -49,7 +50,7 @@ private class SecureKeypadFlutterPlatformView(
     private val eventChannel = EventChannel(messenger, "secure_keypad/events/$viewId")
     private val controlChannel = MethodChannel(messenger, "secure_keypad/control/$viewId")
     private var eventSink: EventChannel.EventSink? = null
-    private var pendingEvent: Map<String, Any?>? = null
+    private val pendingEvents = ArrayDeque<Map<String, Any?>>()
 
     init {
         eventChannel.setStreamHandler(this)
@@ -124,13 +125,13 @@ private class SecureKeypadFlutterPlatformView(
         controlChannel.setMethodCallHandler(null)
         keypad.releaseSession()
         eventSink = null
+        pendingEvents.clear()
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
         eventSink = events
-        pendingEvent?.let {
-            events.success(it)
-            pendingEvent = null
+        while (pendingEvents.isNotEmpty()) {
+            events.success(pendingEvents.removeFirst())
         }
     }
 
@@ -140,11 +141,26 @@ private class SecureKeypadFlutterPlatformView(
 
     private fun emit(event: Map<String, Any?>) {
         val sink = eventSink
-        if (sink == null) {
-            pendingEvent = event
-        } else {
+        if (sink != null) {
             sink.success(event)
+            return
         }
+        if (event["type"] == "state" && pendingEvents.peekLast()?.get("type") == "state") {
+            pendingEvents.removeLast()
+        }
+        if (pendingEvents.size >= MAX_PENDING_EVENTS) {
+            val iterator = pendingEvents.iterator()
+            var removedState = false
+            while (iterator.hasNext()) {
+                if (iterator.next()["type"] == "state") {
+                    iterator.remove()
+                    removedState = true
+                    break
+                }
+            }
+            if (!removedState) pendingEvents.removeFirst()
+        }
+        pendingEvents.addLast(event)
     }
 
     private fun invalid(): Nothing = throw IllegalArgumentException("invalid secure keypad configuration")
@@ -170,6 +186,7 @@ private class SecureKeypadFlutterPlatformView(
     }
 
     private companion object {
+        const val MAX_PENDING_EVENTS = 32
         const val MAX_HEADLESS_KEY_PRESS_TOKEN = 9_007_199_254_740_991L
         val HEADLESS_KEY_ID_PATTERN = Regex("[a-z0-9][a-z0-9._-]{0,63}")
         val HEADLESS_KEY_PRESS_KEYS = setOf("token", "keyId")

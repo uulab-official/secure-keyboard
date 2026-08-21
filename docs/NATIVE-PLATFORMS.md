@@ -27,7 +27,10 @@ host iOS target and link React Native plus the matching `secure-ffi` artifact.
 `native/ios/flutter/SecureKeypadFlutterPlugin.swift` registers a
 `secure_keypad/native` PlatformView and a per-view event channel. Creation
 arguments are public configuration only; the event channel carries masked state
-and result codes only. Add the file to the host Flutter iOS target and register
+and result codes only. Each Flutter native event bridge uses a bounded 32-entry
+backlog while the Dart listener is unavailable, coalesces adjacent state events,
+and preferentially evicts state metadata so a terminal result is not overwritten.
+Add the file to the host Flutter iOS target and register
 the plugin with the same Rust artifact.
 
 Local typecheck:

@@ -40,7 +40,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
     private let eventChannel: FlutterEventChannel
     private let controlChannel: FlutterMethodChannel
     private var eventSink: FlutterEventSink?
-    private var pendingEvent: [String: Any]?
+    private var pendingEvents: [[String: Any]] = []
 
     init(frame: CGRect, viewId: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
         keypad = SecureKeypadView(frame: frame)
@@ -134,9 +134,8 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
 
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         eventSink = events
-        if let pendingEvent {
-            events(pendingEvent)
-            self.pendingEvent = nil
+        while !pendingEvents.isEmpty {
+            events(pendingEvents.removeFirst())
         }
         return nil
     }
@@ -149,9 +148,20 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
     private func emit(_ event: [String: Any]) {
         if let eventSink {
             eventSink(event)
-        } else {
-            pendingEvent = event
+            return
         }
+        if event["type"] as? String == "state",
+           pendingEvents.last?["type"] as? String == "state" {
+            pendingEvents.removeLast()
+        }
+        if pendingEvents.count >= Self.maxPendingEvents {
+            if let stateIndex = pendingEvents.firstIndex(where: { $0["type"] as? String == "state" }) {
+                pendingEvents.remove(at: stateIndex)
+            } else {
+                pendingEvents.removeFirst()
+            }
+        }
+        pendingEvents.append(event)
     }
 
     private func requestHeadlessKeyPress(_ arguments: Any?, result: @escaping FlutterResult) {
@@ -182,4 +192,6 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         controlChannel.setMethodCallHandler(nil)
         keypad.releaseSession()
     }
+
+    private static let maxPendingEvents = 32
 }

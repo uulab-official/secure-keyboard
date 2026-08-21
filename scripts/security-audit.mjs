@@ -205,6 +205,28 @@ export function runSecurityAudit() {
   }
 
   for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /MAX_PENDING_EVENTS\s*=\s*32/, "Flutter Android event backlog must have a small fixed bound");
+    requireText(findings, file, contents, /ArrayDeque/, "Flutter Android event backlog must use a bounded FIFO queue");
+    requireText(findings, file, contents, /pendingEvents/, "Flutter Android event backlog must be explicit and auditable");
+    requireText(findings, file, contents, /removeFirst/, "Flutter Android event backlog must evict oldest entries when bounded");
+    forbidText(findings, file, contents, /pendingEvent\s*:/, "Flutter Android must not overwrite the backlog with a single pending event");
+  }
+  for (const file of [
+    "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /maxPendingEvents\s*=\s*32/, "Flutter iOS event backlog must have a small fixed bound");
+    requireText(findings, file, contents, /pendingEvents/, "Flutter iOS event backlog must be explicit and auditable");
+    requireText(findings, file, contents, /removeFirst/, "Flutter iOS event backlog must evict oldest entries when bounded");
+    forbidText(findings, file, contents, /pendingEvent\s*:/, "Flutter iOS must not overwrite the backlog with a single pending event");
+  }
+
+  for (const file of [
     "native/ios/react-native/SecureKeypadViewManager.swift",
     "packages/react-native/ios/SecureKeypadViewManager.swift",
     "native/ios/react-native/SecureKeypadViewManager.m",
