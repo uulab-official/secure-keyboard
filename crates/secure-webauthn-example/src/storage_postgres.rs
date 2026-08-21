@@ -17,8 +17,6 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey};
 
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
-const MAX_CREDENTIAL_ROWS: i64 = (MAX_CREDENTIALS_PER_USER + 1) as i64;
-const MAX_CREDENTIAL_RECORD_BYTES_I64: i64 = MAX_CREDENTIAL_RECORD_BYTES as i64;
 const POSTGRES_CREDENTIAL_LOAD_SQL: &str = r"
 SELECT CASE
            WHEN octet_length(passkey::text) <= $4 THEN passkey
@@ -455,14 +453,18 @@ where
 {
     fn load(&self, user_id: Uuid) -> Result<Vec<Passkey>, CredentialStoreError> {
         let mut client = self.credential_connection()?;
+        let max_credential_rows = i64::try_from(MAX_CREDENTIALS_PER_USER + 1)
+            .map_err(|_| CredentialStoreError::InvalidRecord)?;
+        let max_credential_record_bytes = i64::try_from(MAX_CREDENTIAL_RECORD_BYTES)
+            .map_err(|_| CredentialStoreError::InvalidRecord)?;
         let rows = client
             .query(
                 POSTGRES_CREDENTIAL_LOAD_SQL,
                 &[
                     &self.namespace,
                     &user_id,
-                    &MAX_CREDENTIAL_ROWS,
-                    &MAX_CREDENTIAL_RECORD_BYTES_I64,
+                    &max_credential_rows,
+                    &max_credential_record_bytes,
                 ],
             )
             .map_err(|_| CredentialStoreError::Unavailable)?;
@@ -649,11 +651,10 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresStorageConfigError>
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_CREDENTIAL_ROWS, POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_SCHEMA_SQL};
+    use super::{POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_SCHEMA_SQL};
 
     #[test]
     fn credential_load_query_bounds_rows_and_bytes_before_materialization() {
-        assert_eq!(MAX_CREDENTIAL_ROWS, 65);
         assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("LIMIT $3"));
         assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("octet_length(passkey::text) <= $4"));
     }
