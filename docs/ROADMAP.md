@@ -64,6 +64,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Provide native submission-to-OPAQUE handoff without exposing a password or client session key.
 - [x] Add background masking, screenshot/capture handling, and autofill/clipboard restrictions.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
+- [x] Wire a native `cancel` action through the ABI and both framework event contracts.
 - [ ] Complete device-level accessibility review and native snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.
@@ -78,6 +79,7 @@ Status: publishable contract, native source packaging, and parity gate complete;
 - [x] Accept only serializable layout, theme, and policy objects.
 - [x] Add a reproducible CI host-build gate that links the React Native package and Android arm64 Rust FFI library.
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the React Native package and XCFramework.
+- [x] Expose an explicit native `cancel` layout action that clears input without a framework secret channel.
 - [ ] Expose controller commands and masked state events.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.

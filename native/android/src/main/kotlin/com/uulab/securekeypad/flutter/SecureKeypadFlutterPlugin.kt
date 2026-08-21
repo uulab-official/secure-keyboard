@@ -58,6 +58,7 @@ private class SecureKeypadFlutterPlatformView(
                     "displayState" to com.uulab.securekeypad.secureKeypadDisplayStateName(displayState),
                 ),
             )
+            if (displayState == 3) emit(mapOf("type" to "result", "code" to "cancelled"))
         }
         keypad.onError = {
             emit(mapOf("type" to "result", "code" to "error"))

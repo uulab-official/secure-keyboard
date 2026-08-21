@@ -359,6 +359,27 @@ pub unsafe extern "C" fn secure_keypad_session_clear(
     })
 }
 
+/// Cancels a session and zeroizes any buffered input without creating a
+/// submission. Cancellation is idempotent for a live session.
+///
+/// # Safety
+///
+/// `session` must be a live, exclusively owned handle and must not be used
+/// concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn secure_keypad_session_cancel(
+    session: *mut SecureKeypadSession,
+) -> SecureKeypadError {
+    contain_panic(|| {
+        if session.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The caller contract guarantees a live, exclusive session.
+        unsafe { &mut *session }.core.cancel();
+        SecureKeypadError::Ok
+    })
+}
+
 /// Refreshes timeout state and writes only masked state to `output`.
 ///
 /// # Safety

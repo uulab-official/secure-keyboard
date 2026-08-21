@@ -29,6 +29,9 @@ final class SecureKeypadReactView: SecureKeypadView {
                 "length": length,
                 "displayState": secureKeypadDisplayStateName(displayState),
             ])
+            if displayState == 3 {
+                self?.onResult?(["type": "result", "code": "cancelled"])
+            }
         }
         onError = { [weak self] _ in
             self?.onResult?(["type": "result", "code": "error"])

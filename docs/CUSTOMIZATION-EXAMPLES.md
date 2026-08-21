@@ -27,7 +27,10 @@ const brandedNumericLayout: KeypadLayout = {
       { id: "digit-0", label: "0", role: "input", accessibilityLabel: "Zero" },
       { id: "backspace", label: "Delete", role: "backspace" },
     ],
-    [{ id: "submit", label: "Continue", role: "submit" }],
+    [
+      { id: "cancel", label: "Cancel", role: "cancel" },
+      { id: "submit", label: "Continue", role: "submit" },
+    ],
   ],
   slots: { header: true, display: true, footer: true, error: true },
 };
@@ -67,6 +70,7 @@ final hangul = KeypadLayout(
     <KeySpec>[
       KeySpec(id: 'clear', label: '초기화', role: KeyRole.clear),
       KeySpec(id: 'backspace', label: '삭제', role: KeyRole.backspace),
+      KeySpec(id: 'cancel', label: '취소', role: KeyRole.cancel),
       KeySpec(id: 'submit', label: '확인', role: KeyRole.submit),
     ],
   ],

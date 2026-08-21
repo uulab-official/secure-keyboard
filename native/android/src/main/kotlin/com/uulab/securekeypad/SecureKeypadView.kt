@@ -21,6 +21,7 @@ public enum class SecureKeyRole {
     BACKSPACE,
     CLEAR,
     SUBMIT,
+    CANCEL,
     SPACER,
 }
 
@@ -201,6 +202,14 @@ public open class SecureKeypadView @JvmOverloads constructor(
         }
     }
 
+    /** Cancels the native session and zeroizes any pending input. */
+    public fun cancelSession() {
+        if (sessionHandle == 0L) return
+        val status = SecureKeypadNative.sessionCancel(sessionHandle)
+        if (status != 0) onError?.invoke(status)
+        refreshMaskedState()
+    }
+
     override fun onDetachedFromWindow() {
         releaseSession()
         super.onDetachedFromWindow()
@@ -255,6 +264,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     SecureKeypadNative::submissionFree,
                 )
             }
+            SecureKeyRole.CANCEL -> status = SecureKeypadNative.sessionCancel(sessionHandle)
             SecureKeyRole.SPACER -> return
         }
         if (status != 0) onError?.invoke(status)
@@ -335,6 +345,11 @@ private object SecureKeypadNative {
         return nativeSessionClear(handle)
     }
 
+    fun sessionCancel(handle: Long): Int {
+        ensureLoaded()
+        return nativeSessionCancel(handle)
+    }
+
     fun sessionRefresh(handle: Long): Long {
         ensureLoaded()
         return nativeSessionRefresh(handle)
@@ -356,6 +371,7 @@ private object SecureKeypadNative {
     private external fun nativeSessionPressKey(handle: Long, keyId: ByteArray): Int
     private external fun nativeSessionBackspace(handle: Long): Int
     private external fun nativeSessionClear(handle: Long): Int
+    private external fun nativeSessionCancel(handle: Long): Int
     private external fun nativeSessionRefresh(handle: Long): Long
     private external fun nativeSessionSubmit(handle: Long): Long
     private external fun nativeSubmissionFree(handle: Long)

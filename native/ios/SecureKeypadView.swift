@@ -19,6 +19,7 @@ public enum SecureKeyRole: String {
     case backspace
     case clear
     case submit
+    case cancel
     case spacer
 }
 
@@ -248,6 +249,16 @@ public class SecureKeypadView: UIView {
         }
     }
 
+    /// Cancels the native session and zeroizes any pending input.
+    public func cancelSession() {
+        guard let session else { return }
+        let status = secure_keypad_session_cancel(session)
+        if status != 0 {
+            onError?(status)
+        }
+        refreshMaskedState()
+    }
+
     private func installViews() {
         backgroundColor = theme.backgroundColor
         displayLabel.textAlignment = .center
@@ -340,6 +351,8 @@ public class SecureKeypadView: UIView {
                     submission.close()
                 }
             }
+        case .cancel:
+            status = secure_keypad_session_cancel(session)
         case .spacer:
             return
         }

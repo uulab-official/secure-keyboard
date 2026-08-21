@@ -4,7 +4,7 @@ export const KEY_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 export const LOCALE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
 export const COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 
-export type KeyRole = "input" | "backspace" | "submit" | "clear" | "spacer";
+export type KeyRole = "input" | "backspace" | "submit" | "clear" | "cancel" | "spacer";
 export type LayoutDirection = "ltr" | "rtl";
 
 export interface KeySpec {
@@ -98,7 +98,10 @@ export const DEFAULT_NUMERIC_LAYOUT = {
       { id: "digit-0", label: "0", role: "input" },
       { id: "backspace", label: "Delete", role: "backspace" },
     ],
-    [{ id: "submit", label: "Continue", role: "submit" }],
+    [
+      { id: "cancel", label: "Cancel", role: "cancel" },
+      { id: "submit", label: "Continue", role: "submit" },
+    ],
   ],
   slots: { header: true, display: true, footer: true, error: true },
 } as const satisfies KeypadLayout;
@@ -128,6 +131,7 @@ export const DEFAULT_HANGUL_LAYOUT = {
     [
       { id: "clear", label: "초기화", role: "clear" },
       { id: "backspace", label: "삭제", role: "backspace" },
+      { id: "cancel", label: "취소", role: "cancel" },
       { id: "submit", label: "확인", role: "submit" },
     ],
   ],
@@ -164,7 +168,7 @@ export interface ValidationResult {
   readonly errors: readonly string[];
 }
 
-const KEY_ROLES: readonly KeyRole[] = ["input", "backspace", "submit", "clear", "spacer"];
+const KEY_ROLES: readonly KeyRole[] = ["input", "backspace", "submit", "clear", "cancel", "spacer"];
 const FONT_WEIGHTS: readonly ThemeTokens["typography"]["keyFontWeight"][] = ["400", "500", "600", "700"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {

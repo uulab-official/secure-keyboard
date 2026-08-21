@@ -74,6 +74,9 @@ secure_keypad_error_t secure_keypad_session_backspace(
 secure_keypad_error_t secure_keypad_session_clear(
     secure_keypad_session_t *session);
 
+secure_keypad_error_t secure_keypad_session_cancel(
+    secure_keypad_session_t *session);
+
 secure_keypad_error_t secure_keypad_session_refresh(
     secure_keypad_session_t *session,
     secure_keypad_masked_state_t *output);

@@ -56,6 +56,9 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
                 "length": length,
                 "displayState": secureKeypadDisplayStateName(displayState),
             ])
+            if displayState == 3 {
+                self?.emit(["type": "result", "code": "cancelled"])
+            }
         }
         keypad.onError = { [weak self] _ in
             self?.emit(["type": "result", "code": "error"])

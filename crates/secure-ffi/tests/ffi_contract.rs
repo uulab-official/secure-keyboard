@@ -8,12 +8,13 @@ use secure_ffi::{
     secure_keypad_auth_message_copy, secure_keypad_auth_message_free,
     secure_keypad_auth_message_new, secure_keypad_auth_message_size,
     secure_keypad_client_login_finish, secure_keypad_client_login_free,
-    secure_keypad_client_login_start, secure_keypad_session_backspace, secure_keypad_session_clear,
-    secure_keypad_session_free, secure_keypad_session_new_hangul,
-    secure_keypad_session_new_numeric, secure_keypad_session_press_key,
-    secure_keypad_session_refresh, secure_keypad_session_submit, secure_keypad_submission_free,
-    SecureKeypadAuthMessage, SecureKeypadClientLogin, SecureKeypadDisplayState, SecureKeypadError,
-    SecureKeypadMaskedState, SecureKeypadSession, SecureKeypadSubmission,
+    secure_keypad_client_login_start, secure_keypad_session_backspace,
+    secure_keypad_session_cancel, secure_keypad_session_clear, secure_keypad_session_free,
+    secure_keypad_session_new_hangul, secure_keypad_session_new_numeric,
+    secure_keypad_session_press_key, secure_keypad_session_refresh, secure_keypad_session_submit,
+    secure_keypad_submission_free, SecureKeypadAuthMessage, SecureKeypadClientLogin,
+    SecureKeypadDisplayState, SecureKeypadError, SecureKeypadMaskedState, SecureKeypadSession,
+    SecureKeypadSubmission,
 };
 
 #[test]
@@ -124,6 +125,38 @@ fn hangul_ffi_preserves_composed_rendered_length() {
     assert_eq!(
         unsafe { secure_keypad_session_clear(session) },
         SecureKeypadError::Ok
+    );
+
+    unsafe { secure_keypad_session_free(session) };
+}
+
+#[test]
+fn ffi_cancel_zeroizes_input_and_closes_the_session() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(4, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    let key = b"digit-7";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Ok
+    );
+
+    assert_eq!(
+        unsafe { secure_keypad_session_cancel(session) },
+        SecureKeypadError::Ok
+    );
+    let mut state = SecureKeypadMaskedState::default();
+    assert_eq!(
+        unsafe { secure_keypad_session_refresh(session, &mut state) },
+        SecureKeypadError::Ok
+    );
+    assert_eq!(state.length, 0);
+    assert_eq!(state.display_state, SecureKeypadDisplayState::Cancelled);
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Inactive
     );
 
     unsafe { secure_keypad_session_free(session) };

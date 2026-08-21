@@ -130,6 +130,7 @@ export function runSecurityAudit() {
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_submission_free/, "C ABI must expose submission ownership release");
+  requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_cancel/, "C ABI must expose explicit cancellation and zeroization");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_login_start/, "C ABI must expose native-only auth handoff");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
@@ -155,6 +156,8 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /fallback-not-acknowledged/, "Web fallback must fail closed without acknowledgement");
   requireText(findings, "packages/web/src/index.ts", web, /createPasskey/, "Web adapter must expose passkey-first registration");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
+  const contracts = source("packages/contracts/src/index.ts", findings);
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
 
   const opaqueHttp = source("crates/secure-auth-http/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /pub struct HttpDeploymentContext/, "OPAQUE HTTP routes must require an explicit deployment context");

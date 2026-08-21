@@ -37,6 +37,15 @@ describe("public customization contract", () => {
     expect(validateTheme({ ...exampleTheme, metrics: { ...exampleTheme.metrics, keyHeight: 1000 } }).valid).toBe(false);
   });
 
+  it("accepts an explicit cancel action without adding a secret channel", () => {
+    expect(
+      validateLayout({
+        schemaVersion: 1,
+        rows: [[{ id: "cancel", label: "Cancel", role: "cancel" }]],
+      }),
+    ).toEqual({ valid: true, errors: [] });
+  });
+
   it("does not echo supplied field values in validation errors", () => {
     const result = validateLayout({ ...exampleLayout, password: "fixture-only-secret" });
     expect(result.errors.join(" ")).not.toContain("fixture-only-secret");

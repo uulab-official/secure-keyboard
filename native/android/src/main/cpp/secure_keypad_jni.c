@@ -72,6 +72,14 @@ Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionClear(
     return (jint)secure_keypad_session_clear(session_from_handle(handle));
 }
 
+JNIEXPORT jint JNICALL
+Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionCancel(
+    JNIEnv *env, jobject object, jlong handle) {
+    (void)env;
+    (void)object;
+    return (jint)secure_keypad_session_cancel(session_from_handle(handle));
+}
+
 JNIEXPORT jlong JNICALL
 Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionRefresh(
     JNIEnv *env, jobject object, jlong handle) {

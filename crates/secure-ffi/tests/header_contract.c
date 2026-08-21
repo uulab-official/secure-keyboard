@@ -16,6 +16,8 @@ int main(void) {
     (void)secure_keypad_session_new_numeric(4, 60000, &session);
     (void)secure_keypad_session_press_key(session, (const uint8_t *)"digit-1", 7);
     (void)secure_keypad_session_refresh(session, &state);
+    (void)secure_keypad_session_cancel(session);
+    (void)secure_keypad_session_refresh(session, &state);
     (void)secure_keypad_session_submit(session, &submission);
     secure_keypad_submission_free(submission);
     secure_keypad_session_free(session);
