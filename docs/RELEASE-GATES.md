@@ -56,7 +56,7 @@ set. HTTP deployments must also be reviewed against
 The `fuzz/auth_envelope` target exercises the raw-body and bounded-payload
 decoder, `fuzz/core_sequence` exercises the native/core state machine, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
-CI builds all three with `cargo-fuzz` on nightly and runs a bounded
+CI builds all three with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign
 with a 1 GiB libFuzzer RSS guard. The current local verification completed
 100,000 iterations for all three targets: auth-envelope, core-sequence, and

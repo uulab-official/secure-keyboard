@@ -246,6 +246,8 @@ export function runSecurityAudit() {
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /27\.1\.12297006/, "Android host builds must use the repository-pinned NDK");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /ANDROID_NDK_LATEST_HOME|find[^\n]*SDK_ROOT\/ndk/, "Android host builds must not select an unpinned latest NDK");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /nightly-2026-08-19/, "Fuzz CI must use the repository-pinned nightly toolchain");
+  forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /toolchain install nightly --|cargo \+nightly fuzz/, "Fuzz CI must not float on the nightly channel");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /durable_rate_limit/, "CI must run distributed rate-limit interoperability tests");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
