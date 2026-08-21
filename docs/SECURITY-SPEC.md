@@ -16,7 +16,11 @@ The default mode for mobile. A native renderer receives a serializable layout an
 
 ### Headless Host Mode
 
-An opt-in compatibility mode for applications that render keys in React Native or Flutter. It is fully composable, but the host runtime can observe key events and must be documented as lower assurance. It must never be the default for authentication.
+The contract reserves an opt-in compatibility mode for applications that render
+keys in React Native or Flutter. It is fully composable, but the host runtime
+can observe key events and it must be documented as lower assurance. The
+current SDK does not ship a Headless RN/Flutter renderer; if one is added, it
+must never be the default for authentication.
 
 ### Web Mode
 

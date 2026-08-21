@@ -37,6 +37,18 @@ describe("public customization contract", () => {
     expect(validateTheme({ ...exampleTheme, metrics: { ...exampleTheme.metrics, keyHeight: 1000 } }).valid).toBe(false);
   });
 
+  it("rejects duplicate key IDs across layout rows", () => {
+    expect(
+      validateLayout({
+        schemaVersion: 1,
+        rows: [
+          [{ id: "digit-1", role: "input" }],
+          [{ id: "digit-1", role: "input" }],
+        ],
+      }),
+    ).toMatchObject({ valid: false });
+  });
+
   it("accepts an explicit cancel action without adding a secret channel", () => {
     expect(
       validateLayout({

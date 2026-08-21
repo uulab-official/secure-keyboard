@@ -269,8 +269,12 @@ export function runSecurityAudit() {
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"ascii"/, "public contracts must enumerate the native printable-ASCII policy");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
+  requireText(findings, "packages/contracts/src/index.ts", contracts, /is duplicated/, "public layout contract must reject duplicate key IDs before native serialization");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /MAX_RENDERED_LENGTH/, "public contracts must bound masked state metadata");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /validateMaskedState/, "public contracts must validate masked state metadata");
+  const layoutSchema = source("schema/layout.schema.json", findings);
+  requireText(findings, "schema/layout.schema.json", layoutSchema, /"role"\s*:\s*\{\s*"enum"\s*:\s*\[[^\]]*"cancel"/, "JSON layout schema must expose the explicit cancel role");
+  requireText(findings, "schema/layout.schema.json", layoutSchema, /"additionalProperties"\s*:\s*false/, "JSON layout schema must reject unsupported configuration fields");
   const reactNativeContract = source("packages/react-native/src/index.ts", findings);
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /validateMaskedStateEvent/, "React Native must expose masked event validation at the bridge boundary");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /createSecureKeypadEventHandlers/, "React Native must install fail-closed event handlers");

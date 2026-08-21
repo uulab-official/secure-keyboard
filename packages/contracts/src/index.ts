@@ -287,12 +287,20 @@ export function validateLayout(value: unknown): ValidationResult {
   if (!Array.isArray(value.rows) || value.rows.length < 1 || value.rows.length > 16) {
     errors.push("layout.rows is invalid");
   } else {
+    const keyIds = new Set<string>();
     value.rows.forEach((row, rowIndex) => {
       if (!Array.isArray(row) || row.length < 1 || row.length > 32) {
         errors.push(`layout.rows[${rowIndex}] is invalid`);
         return;
       }
-      row.forEach((key, keyIndex) => validateKey(key, errors, `layout.rows[${rowIndex}][${keyIndex}]`));
+      row.forEach((key, keyIndex) => {
+        const path = `layout.rows[${rowIndex}][${keyIndex}]`;
+        validateKey(key, errors, path);
+        if (isRecord(key) && typeof key.id === "string") {
+          if (keyIds.has(key.id)) errors.push(`${path}.id is duplicated`);
+          keyIds.add(key.id);
+        }
+      });
     });
   }
   if (value.slots !== undefined) {
