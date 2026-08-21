@@ -10,12 +10,13 @@ labels. The adjacent action version comment is informational only; changing an
 action or runner requires an explicit revision update and a passing security
 audit.
 
-The manual `.github/workflows/release-candidate.yml` workflow builds a
-deterministic candidate bundle from an exact ref and fails closed unless the
-protected `RELEASE_SIGNING_KEY_PEM` environment secret produces a valid
-Ed25519 signature. It uploads a candidate artifact only; it does not publish a
-GitHub release or bypass the external device, backend, and independent-review
-gates below.
+The manual `.github/workflows/release-candidate.yml` workflow requires a
+40-character lowercase commit SHA, proves that checkout `HEAD` equals that
+SHA, and builds a deterministic candidate bundle from it. It fails closed
+unless the protected `RELEASE_SIGNING_KEY_PEM` environment secret produces a
+valid Ed25519 signature. It uploads a candidate artifact only; it does not
+publish a GitHub release or bypass the external device, backend, and
+independent-review gates below.
 
 ## Reproducible local gates
 

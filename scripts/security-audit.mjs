@@ -374,6 +374,10 @@ export function runSecurityAudit() {
     });
   }
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /ref:\s*\n\s*description:[^\n]*40-character commit SHA[\s\S]{0,180}required:\s*true/, "release workflow must require an immutable commit input");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_REF:\s*\$\{\{\s*inputs\.ref\s*\}\}/, "release workflow must validate the requested immutable commit ref");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /\[\[\s*\"\$RELEASE_REF\"\s*=~\s*\^\[0-9a-f\]\{40\}\$\s*\]\]/, "release workflow must reject mutable or malformed release refs");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /git rev-parse HEAD\)\"\s*=\s*\"\$RELEASE_REF/, "release workflow must prove checkout HEAD equals the requested release commit");
   for (const line of findMutableCiActionLines(releaseWorkflow)) {
     findings.push({
       rule: "ci-action-immutability",

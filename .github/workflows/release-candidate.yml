@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Exact branch, tag, or commit to bundle"
-        required: false
+        description: "Exact 40-character commit SHA to bundle"
+        required: true
         type: string
 
 permissions:
@@ -23,6 +23,16 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+      - name: Require immutable release commit
+        env:
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          test -n "$RELEASE_REF"
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
         with:
           components: rustfmt, clippy
