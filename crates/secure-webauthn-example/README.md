@@ -22,7 +22,9 @@ layer adds:
 - `WebAuthnService<C, S>` storage injection for durable credential records and
   serialized one-time ceremony state, with atomic backend contracts.
 - opt-in `redis-backend` and `postgres-backend` adapters with bounded pools,
-  TLS-first constructors, atomic ceremony consume, and credential CAS rules.
+  per-namespace pending ceremony capacity, bounded credential records,
+  TLS-first constructors, atomic ceremony consume, expiry cleanup, and
+  credential CAS rules.
 
 `WebAuthnExampleService` is deliberately process-local. It is a reference
 configuration, not a drop-in production database. A production deployment
