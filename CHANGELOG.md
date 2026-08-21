@@ -48,6 +48,10 @@ exact release-candidate commit by the release evidence manifest.
   deserialization.
 - Release verification now rejects approving review reports with open
   critical/high findings.
+- Final release evidence verification now bounds gate records, release
+  artifacts, detached signatures, public keys, and signed reports before
+  hashing, parsing, or cryptographic verification; oversized evidence fails
+  closed.
 - Independent review findings now require affected scope, reproduction,
   remediation-owner, and retest-evidence fields before a signed report can
   satisfy the release gate.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -734,6 +734,38 @@ test("rejects an oversized signed review report before parsing it", () => {
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   assert.ok(findings.some((finding) => finding.includes("independentReview.report") && finding.includes("must not exceed")));
+});
+
+test("rejects an oversized release signature before verification", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-release-signature-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const signatureArtifact = evidence.artifacts.find(({ kind }) => kind === "release-signature");
+  const oversizedSignature = Buffer.alloc(65, 0);
+  writeFileSync(join(root, signatureArtifact.path), oversizedSignature);
+  signatureArtifact.sha256 = createHash("sha256").update(oversizedSignature).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("signature") && finding.includes("must not exceed 64")));
+});
+
+test("rejects an oversized release bundle before hashing or signature verification", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-release-bundle-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const bundleArtifact = evidence.artifacts.find(({ kind }) => kind === "release-bundle");
+  const bundlePath = join(root, bundleArtifact.path);
+  writeFileSync(bundlePath, Buffer.from("sparse bundle\n", "utf8"));
+  truncateSync(bundlePath, 512 * 1024 * 1024 + 1);
+  bundleArtifact.sha256 = SHA256;
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  const bundleIndex = evidence.artifacts.indexOf(bundleArtifact);
+  assert.ok(
+    findings.some(
+      (finding) => finding.includes(`artifacts[${bundleIndex}].path`) && finding.includes("must not exceed"),
+    ),
+  );
 });
 
 test("rejects an approving review report with an open critical finding", () => {

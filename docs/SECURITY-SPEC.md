@@ -68,7 +68,8 @@ function. ABI version 2 is required for the registration handoff; native hosts
 must compare `secure_keypad_abi_version()` with the header's
 `SECURE_KEYPAD_ABI_VERSION` before creating a session and fail closed on a
 mismatch. The shipped iOS view and Android JNI bridge enforce this check.
-Version 1 does not provide a production-safe native registration path.
+ABI v1 is not a supported production registration path; hosts must ship the
+ABI v2 header, native library, and registration handoff as one versioned set.
 
 RN and Flutter bridges require an explicitly installed native submission
 consumer. Without one, submit zeroizes/releases the opaque handle and emits an

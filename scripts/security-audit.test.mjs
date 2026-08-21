@@ -55,6 +55,16 @@ test("native host ABI expectations stay synchronized with the FFI header", () =>
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
 
+test("security specification describes the shipped ABI v2 registration boundary", () => {
+  const specification = readFileSync(
+    new URL("../docs/SECURITY-SPEC.md", import.meta.url),
+    "utf8",
+  );
+  assert.match(specification, /ABI version 2 is required for the registration handoff/);
+  assert.match(specification, /ABI v1 is not a supported production registration path/);
+  assert.doesNotMatch(specification, /Version 1 does not provide a production-safe native registration path/);
+});
+
 test("native views enforce bounded public layout and theme configuration", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

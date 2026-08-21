@@ -24,6 +24,10 @@ const REVIEW_DECISIONS = new Set(["approved", "approved-with-residual-risk", "no
 const REVIEW_FINDING_SEVERITIES = new Set(["critical", "high", "medium", "low", "informational"]);
 const REVIEW_FINDING_STATUSES = new Set(["open", "accepted", "remediated"]);
 const REVIEW_REPORT_MAX_BYTES = 1 * 1024 * 1024;
+const MAX_GATE_EVIDENCE_BYTES = 1 * 1024 * 1024;
+const MAX_RELEASE_ARTIFACT_BYTES = 512 * 1024 * 1024;
+const MAX_PUBLIC_KEY_BYTES = 1_024;
+const ED25519_SIGNATURE_BYTES = 64;
 
 /**
  * Gates that must be independently evidenced before a public release claim.
@@ -124,6 +128,17 @@ function checkUniquePath(findings, paths, field, value) {
   } else {
     paths.add(value);
   }
+}
+
+function maxArtifactBytes(kind) {
+  if (kind === "release-public-key" || kind === "independent-review-public-key") {
+    return MAX_PUBLIC_KEY_BYTES;
+  }
+  if (kind === "release-signature" || kind === "independent-review-signature") {
+    return ED25519_SIGNATURE_BYTES;
+  }
+  if (kind === "independent-review-report") return REVIEW_REPORT_MAX_BYTES;
+  return MAX_RELEASE_ARTIFACT_BYTES;
 }
 
 function checkSecretKeys(findings, value, field = "manifest") {
@@ -377,7 +392,14 @@ function containedFilePath(findings, root, field, relativePath) {
   }
 }
 
-function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
+function verifyFileDigest(
+  findings,
+  root,
+  field,
+  relativePath,
+  expectedHash,
+  maximumBytes = MAX_RELEASE_ARTIFACT_BYTES,
+) {
   if (!isSafeRelativePath(relativePath) || !SHA256.test(String(expectedHash))) {
     return;
   }
@@ -393,6 +415,10 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
       add(findings, `${field}.path`, "must not be empty");
       return;
     }
+    if (fileStats.size > maximumBytes) {
+      add(findings, `${field}.path`, `must not exceed ${maximumBytes} bytes`);
+      return;
+    }
     const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
     if (actualHash !== expectedHash) {
       add(findings, `${field}.sha256`, `does not match ${relativePath}`);
@@ -402,14 +428,38 @@ function verifyFileDigest(findings, root, field, relativePath, expectedHash) {
   }
 }
 
+function readBoundedFile(findings, absolutePath, field, maximumBytes) {
+  try {
+    const fileStats = statSync(absolutePath);
+    if (!fileStats.isFile()) {
+      add(findings, `${field}.path`, "must reference a regular file");
+      return undefined;
+    }
+    if (fileStats.size === 0) {
+      add(findings, `${field}.path`, "must be non-empty");
+      return undefined;
+    }
+    if (fileStats.size > maximumBytes) {
+      add(findings, `${field}.path`, `must not exceed ${maximumBytes} bytes`);
+      return undefined;
+    }
+    return readFileSync(absolutePath);
+  } catch (error) {
+    add(findings, `${field}.path`, `could not read evidence file: ${error.message}`);
+    return undefined;
+  }
+}
+
 function verifyGateEvidenceRecord(findings, root, field, gate) {
   if (!isSafeRelativePath(gate.evidencePath) || !COMMIT.test(String(gate.commit))) return;
   const absolutePath = containedFilePath(findings, root, field, gate.evidencePath);
   if (!absolutePath) return;
 
+  const recordBytes = readBoundedFile(findings, absolutePath, field, MAX_GATE_EVIDENCE_BYTES);
+  if (recordBytes === undefined) return;
   let record;
   try {
-    record = JSON.parse(readFileSync(absolutePath, "utf8"));
+    record = JSON.parse(recordBytes.toString("utf8"));
   } catch (error) {
     add(findings, `${field}.evidencePath`, `gate evidence must be a JSON record: ${error.message}`);
     return;
@@ -504,23 +554,36 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
     return;
   }
   try {
-    const publicKeyBytes = readFileSync(publicKeyPath);
+    const publicKeyBytes = readBoundedFile(
+      findings,
+      publicKeyPath,
+      `${fieldName}.publicKeyPath`,
+      MAX_PUBLIC_KEY_BYTES,
+    );
+    const signedArtifactBytes = readBoundedFile(
+      findings,
+      signedArtifactPath,
+      fieldName === "independentReview" ? `${fieldName}.report` : `${fieldName}.signedArtifactPath`,
+      fieldName === "independentReview" ? REVIEW_REPORT_MAX_BYTES : MAX_RELEASE_ARTIFACT_BYTES,
+    );
+    const signatureBytes = readBoundedFile(
+      findings,
+      signaturePath,
+      `${fieldName}.signaturePath`,
+      ED25519_SIGNATURE_BYTES,
+    );
+    if (publicKeyBytes === undefined || signedArtifactBytes === undefined || signatureBytes === undefined) return;
+    if (signatureBytes.length !== ED25519_SIGNATURE_BYTES) {
+      add(findings, `${fieldName}.signaturePath`, `must contain exactly ${ED25519_SIGNATURE_BYTES} bytes`);
+      return;
+    }
     const publicKeyHash = createHash("sha256").update(publicKeyBytes).digest("hex");
     if (publicKeyHash !== descriptor.publicKeySha256) {
       add(findings, `${fieldName}.publicKeySha256`, "does not match the referenced public key");
       return;
     }
     const publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
-    const signedArtifactBytes = readFileSync(signedArtifactPath);
-    if (signedArtifactBytes.length === 0) {
-      add(findings, fieldName, "signed artifact must be non-empty");
-      return;
-    }
-    if (fieldName === "independentReview" && signedArtifactBytes.length > REVIEW_REPORT_MAX_BYTES) {
-      add(findings, "independentReview.report", `must not exceed ${REVIEW_REPORT_MAX_BYTES} bytes`);
-      return;
-    }
-    const valid = verify(null, signedArtifactBytes, publicKey, readFileSync(signaturePath));
+    const valid = verify(null, signedArtifactBytes, publicKey, signatureBytes);
     if (!valid) {
       add(findings, fieldName, "detached Ed25519 signature verification failed");
     } else if (fieldName === "independentReview") {
@@ -680,12 +743,26 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
   }
   for (const [index, gate] of evidence.gates.entries()) {
     if (!isRecord(gate)) continue;
-    verifyFileDigest(findings, root, `gates[${index}]`, gate.evidencePath, gate.sha256);
+    verifyFileDigest(
+      findings,
+      root,
+      `gates[${index}]`,
+      gate.evidencePath,
+      gate.sha256,
+      MAX_GATE_EVIDENCE_BYTES,
+    );
     verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate);
   }
   for (const [index, artifact] of evidence.artifacts.entries()) {
     if (!isRecord(artifact)) continue;
-    verifyFileDigest(findings, root, `artifacts[${index}]`, artifact.path, artifact.sha256);
+    verifyFileDigest(
+      findings,
+      root,
+      `artifacts[${index}]`,
+      artifact.path,
+      artifact.sha256,
+      maxArtifactBytes(artifact.kind),
+    );
   }
   verifyDetachedSignature(findings, evidence, root, "signature");
   verifyDetachedSignature(findings, evidence, root, "independentReview");
