@@ -349,8 +349,12 @@ public open class SecureKeypadView @JvmOverloads constructor(
         val packed = SecureKeypadNative.sessionRefresh(sessionHandle)
         val length = (packed ushr 32).toInt()
         val displayState = packed.toInt()
-        display.text = if (length == 0) "" else "•".repeat(length)
-        display.contentDescription = if (length == 0) "No input" else "${length} characters entered"
+        if (length !in 0..SECURE_KEYPAD_MAX_RENDERED_LENGTH) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+            return
+        }
+        display.text = secureKeypadMaskedDisplayText(length)
+        display.contentDescription = secureKeypadAccessibilityLabel(length)
         onMaskedStateChanged?.invoke(length, displayState)
     }
 

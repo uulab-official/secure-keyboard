@@ -158,6 +158,17 @@ export function runSecurityAudit() {
     forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
   }
   for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /SECURE_KEYPAD_MAX_RENDERED_LENGTH/, "Android presentation must bound rendered masked length");
+    requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "Android presentation must render masked text through one bounded helper");
+    requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "Android accessibility must expose only masked state and length");
+    forbidText(findings, file, contents, /password|secret|plaintext|inputValue|inputText/i, "Android presentation contract must not mention secret-bearing fields");
+  }
+  for (const file of [
     "native/ios/SecureKeypadView.swift",
     "packages/react-native/ios/SecureKeypadView.swift",
     "packages/flutter/ios/Classes/SecureKeypadView.swift",
@@ -316,6 +327,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /idempotently[\s\S]{0,100}existing ceremony and credential tables/, "WebAuthn storage guide must document durable schema upgrades");
   const distributedBackendGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently[\s\S]{0,100}existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
+  const nativePlatformsGuide = source("docs/NATIVE-PLATFORMS.md", findings);
+  requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /SecureKeypadPresentation\.kt/, "native platform guide must compile the Android presentation contract source");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",
@@ -445,6 +458,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation accessibility contract/, "CI must execute the Android presentation accessibility contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /web-browser-matrix/, "CI must include a real browser adapter smoke matrix");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /playwright install --with-deps/, "CI browser smoke must install its pinned browser runtime explicitly");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:web-browser/, "CI browser smoke must execute the checked-in runtime harness");

@@ -601,6 +601,7 @@ jobs:
           test -x "$KOTLINC_BIN"
           "$KOTLINC_BIN" \
             native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt \
             native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
             native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
             -classpath "$ANDROID_JAR" \
@@ -617,6 +618,18 @@ jobs:
             native/android/SubmissionOwnershipContractTest.kt \
             -include-runtime -d /tmp/secure-keypad-submission-contract.jar
           java -jar /tmp/secure-keypad-submission-contract.jar
+      - name: Android presentation accessibility contract
+        run: |
+          KOTLINC_BIN="$(command -v kotlinc || true)"
+          if [ -z "$KOTLINC_BIN" ]; then
+            KOTLINC_BIN="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+          fi
+          test -x "$KOTLINC_BIN"
+          "$KOTLINC_BIN" \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt \
+            native/android/SecureKeypadPresentationContractTest.kt \
+            -include-runtime -d /tmp/secure-keypad-presentation-contract.jar
+          java -jar /tmp/secure-keypad-presentation-contract.jar
       - name: Android bridge configuration contract
         run: |
           ANDROID_ROOT="$HOME/Library/Android/sdk"
@@ -630,6 +643,7 @@ jobs:
           test -x "$KOTLINC_BIN"
           "$KOTLINC_BIN" \
             native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt \
             native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
             native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
             native/android/SecureKeypadBridgeConfigContractTest.kt \

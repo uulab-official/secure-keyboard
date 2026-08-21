@@ -95,10 +95,18 @@ Local checks with the Android SDK installed:
 ANDROID_JAR="$HOME/Library/Android/sdk/platforms/android-37.0/android.jar"
 KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
 "$KOTLINC" native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+  native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt \
   native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
   native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
   -classpath "$ANDROID_JAR" -jvm-target 17 -Werror -d /tmp/secure-keypad-android.jar
 ```
+
+`SecureKeypadPresentation.kt` centralizes the bounded masked display and
+accessibility announcements. It accepts only the native masked length and a
+protected-state flag; it cannot format or retain an input value. The standalone
+`native/android/SecureKeypadPresentationContractTest.kt` checks empty/masked/
+protected announcements and rejects lengths outside the native 4,096-token
+display bound without requiring an Android runtime.
 
 The ownership contract is also executable without Android:
 

@@ -24,6 +24,8 @@ export const NATIVE_PACKAGE_MIRRORS = Object.freeze([
   ["crates/secure-ffi/include/secure_keypad.h", "packages/flutter/ios/Classes/SecureKeypadFFI/secure_keypad.h"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt"],
+  ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt"],
+  ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt", "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt", "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt"],
