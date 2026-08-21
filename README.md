@@ -10,6 +10,7 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
+Review the [changelog](CHANGELOG.md) for security fixes and release-candidate changes.
 Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
 Use the [HTTP deployment baseline](docs/HTTP-DEPLOYMENT.md) when embedding the
 server routes behind TLS or a reverse proxy.

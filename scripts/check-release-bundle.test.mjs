@@ -72,6 +72,7 @@ function createValidStaging() {
   );
   writeFile(root, "source/Cargo.lock", "# cargo lock fixture\n");
   writeFile(root, "source/pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
+  writeFile(root, "source/CHANGELOG.md", "# Changelog\n\n## Unreleased\n");
   writeFile(root, "source/LICENSE-MIT", "MIT License\n");
   writeFile(root, "source/THIRD-PARTY-NOTICES.md", "# Third-party notices\n");
   writeFile(root, "source/secure-keypad.sbom.spdx.json", JSON.stringify({
@@ -101,6 +102,17 @@ test("release staging requires the complete signed-bundle input contract", () =>
   const root = createValidStaging();
   try {
     assert.deepEqual(checkReleaseStaging(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging requires the security changelog", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/CHANGELOG.md"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("CHANGELOG.md")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
