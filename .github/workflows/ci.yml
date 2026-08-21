@@ -124,6 +124,11 @@ jobs:
         run: cargo +nightly fuzz check webauthn_state
       - name: Run bounded WebAuthn state fuzz smoke test
         run: cargo +nightly fuzz run webauthn_state -- -runs=2000 -max_len=131073
+      - name: Run Linux leak-sanitizer fuzz smoke campaigns
+        run: |
+          cargo +nightly fuzz run auth_envelope --sanitizer=leak -- -runs=10000
+          cargo +nightly fuzz run core_sequence --sanitizer=leak -- -runs=10000
+          cargo +nightly fuzz run webauthn_state --sanitizer=leak -- -runs=10000 -max_len=131073
 
   sbom:
     name: Produce dependency SBOM artifact

@@ -57,9 +57,11 @@ decoder, `fuzz/core_sequence` exercises the native/core state machine, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
 CI builds all three with `cargo-fuzz` on nightly and runs a bounded
 2,000-iteration smoke campaign. The current local verification completed
-10,000 iterations for all three targets: auth-envelope, core-sequence, and
-webauthn-state. The runs retained their minimized corpora under
-`fuzz/corpus/` and produced no crash artifact. Any new parser or
+100,000 iterations for all three targets: auth-envelope, core-sequence, and
+webauthn-state; the WebAuthn run used `-max_len=131073` to exercise the
+128 KiB rejection boundary. The extended runs retained their corpora under
+`fuzz/corpus/`, produced no crash artifact, and observed peak RSS below
+131 MB on the local arm64 runner. Any new parser or
 native-boundary decoder must add a corresponding target or corpus regression
 before release. These smoke campaigns are not a substitute for the full
 campaign and memory/leak testing listed in the roadmap.
@@ -72,6 +74,11 @@ must run against isolated Redis and PostgreSQL services in CI or a release
 environment with `--ignored`; they verify one-time consume, namespace/kind
 isolation, and replay rejection. Plaintext Redis/`NoTls` constructors are
 allowed only in that isolated test job, never in a production configuration.
+
+The Linux fuzz job also runs all three targets under Rust's leak sanitizer.
+The local macOS arm64 runner cannot execute that sanitizer because the target
+does not support it; therefore a green Linux CI result is required before the
+memory/leak gate can be closed.
 
 ## Artifact and platform gates
 
