@@ -36,7 +36,7 @@ const ALLOWED_FRAMEWORKS = Object.freeze({
   android: new Set(["native", "react-native", "flutter"]),
   web: new Set(["web"]),
 });
-const FORBIDDEN_KEYS = /password|secret|passphrase|sentinel|plaintext|credentialValue|input(?:Value|Text|Bytes)/i;
+const FORBIDDEN_KEYS = /password|secret|passphrase|sentinel|plaintext|credentialValue|input(?:Value|Text|Bytes)|^value$/i;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);

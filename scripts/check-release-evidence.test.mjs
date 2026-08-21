@@ -161,6 +161,7 @@ test("rejects unsafe paths, bad hashes, failed statuses, and secret-bearing fiel
   evidence.artifacts[0].path = "/tmp/native.sha256";
   evidence.password = "must never be recorded";
   evidence.sanitized = { sentinel: "fixture-only-sentinel", inputBytes: [1, 2, 3] };
+  evidence.value = "must never be recorded";
 
   const findings = validateReleaseEvidence(evidence);
 
@@ -172,6 +173,7 @@ test("rejects unsafe paths, bad hashes, failed statuses, and secret-bearing fiel
   assert.ok(findings.some((finding) => finding.includes("password")));
   assert.ok(findings.some((finding) => finding.includes("sentinel")));
   assert.ok(findings.some((finding) => finding.includes("inputBytes")));
+  assert.ok(findings.some((finding) => finding.includes("value")));
 });
 
 test("rejects duplicate evidence paths and an unbound signature", () => {

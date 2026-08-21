@@ -56,12 +56,14 @@ test("rejects missing pass status, secret fields, and unsafe paths", () => {
   const invalid = structuredClone(VALID_NATIVE);
   invalid.testCases.accessibility = "skipped";
   invalid.sentinel = "must never be stored";
+  invalid.value = "must never be stored";
   invalid.logPath = "/tmp/raw.log";
   invalid.artifacts[0].sha256 = "not-a-hash";
 
   const findings = validateDeviceEvidence(invalid);
   assert.ok(findings.some((finding) => finding.includes("testCases.accessibility")));
   assert.ok(findings.some((finding) => finding.includes("secret-bearing")));
+  assert.ok(findings.some((finding) => finding.includes("root.value")));
   assert.ok(findings.some((finding) => finding.includes("logPath")));
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
 });
