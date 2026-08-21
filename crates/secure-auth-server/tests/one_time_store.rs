@@ -16,7 +16,7 @@ fn take_through_backend_contract<S: OneTimeLoginStateStore>(
 fn a_login_state_is_consumed_at_most_once() {
     let store = InMemoryOneTimeLoginStore::new(4, Duration::from_secs(60)).unwrap();
     let handle = store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap())
         .unwrap();
 
     let state = store
@@ -31,7 +31,7 @@ fn a_login_state_is_consumed_at_most_once() {
 fn expired_state_is_not_returned() {
     let store = InMemoryOneTimeLoginStore::new(4, Duration::ZERO).unwrap();
     let handle = store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap())
         .unwrap();
 
     assert!(store.take(&handle).unwrap().is_none());
@@ -42,16 +42,16 @@ fn expired_state_is_not_returned() {
 fn store_enforces_capacity_and_recovers_after_consumption() {
     let store = InMemoryOneTimeLoginStore::new(1, Duration::from_secs(60)).unwrap();
     let first = store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-first"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-first").unwrap())
         .unwrap();
     assert!(matches!(
-        store.insert(ServerLoginStateBytes::from_bytes(b"fixture-second")),
+        store.insert(ServerLoginStateBytes::from_bytes(b"fixture-second").unwrap()),
         Err(StoreError::CapacityReached)
     ));
 
     assert!(store.take(&first).unwrap().is_some());
     assert!(store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-third"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-third").unwrap())
         .is_ok());
 }
 
@@ -59,7 +59,7 @@ fn store_enforces_capacity_and_recovers_after_consumption() {
 fn handles_are_fixed_size_opaque_values() {
     let store = InMemoryOneTimeLoginStore::new(1, Duration::from_secs(60)).unwrap();
     let handle = store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap())
         .unwrap();
 
     assert_eq!(handle.as_bytes().len(), 32);
@@ -80,11 +80,10 @@ fn store_rejects_unsafe_capacity_ttl_and_state_size() {
         Err(StoreError::InvalidTtl)
     ));
 
-    let store = InMemoryOneTimeLoginStore::new(1, Duration::from_secs(1)).unwrap();
     let oversized = vec![0u8; MAX_STORED_STATE_BYTES + 1];
     assert!(matches!(
-        store.insert(ServerLoginStateBytes::from_bytes(&oversized)),
-        Err(StoreError::StateTooLarge)
+        ServerLoginStateBytes::from_bytes(&oversized),
+        Err(secure_auth::AuthError::MessageTooLarge)
     ));
 }
 
@@ -92,12 +91,12 @@ fn store_rejects_unsafe_capacity_ttl_and_state_size() {
 fn bound_and_unbound_handles_cannot_be_consumed_through_the_wrong_contract() {
     let store = InMemoryOneTimeLoginStore::new(2, Duration::from_secs(60)).unwrap();
     let unbound = store
-        .insert(ServerLoginStateBytes::from_bytes(b"fixture-unbound"))
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-unbound").unwrap())
         .unwrap();
     let bound = store
         .insert_bound(
             BoundLoginState::new(
-                ServerLoginStateBytes::from_bytes(b"fixture-bound"),
+                ServerLoginStateBytes::from_bytes(b"fixture-bound").unwrap(),
                 b"fixture-client",
                 b"fixture-server",
             )
@@ -115,7 +114,7 @@ fn bound_and_unbound_handles_cannot_be_consumed_through_the_wrong_contract() {
     ));
     assert!(matches!(
         BoundLoginState::new(
-            ServerLoginStateBytes::from_bytes(b"fixture"),
+            ServerLoginStateBytes::from_bytes(b"fixture").unwrap(),
             b"",
             b"server"
         ),

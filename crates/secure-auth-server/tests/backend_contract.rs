@@ -43,7 +43,7 @@ impl BoundOneTimeLoginStateStore for AtomicBoundStore {
 fn external_backend_can_implement_atomic_bound_state_contract() {
     let store = AtomicBoundStore::new();
     let state = BoundLoginState::new(
-        ServerLoginStateBytes::from_bytes(&vec![0u8; MAX_MESSAGE_BYTES]),
+        ServerLoginStateBytes::from_bytes(&vec![0u8; MAX_MESSAGE_BYTES]).unwrap(),
         b"fixture-client",
         b"fixture-server",
     )
@@ -58,7 +58,7 @@ fn external_backend_can_implement_atomic_bound_state_contract() {
 fn external_backend_take_is_atomic_under_concurrency() {
     let store = Arc::new(AtomicBoundStore::new());
     let state = BoundLoginState::new(
-        ServerLoginStateBytes::from_bytes(b"fixture-state"),
+        ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
         b"fixture-client",
         b"fixture-server",
     )

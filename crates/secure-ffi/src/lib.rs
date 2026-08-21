@@ -474,11 +474,13 @@ pub unsafe extern "C" fn secure_keypad_auth_message_new(
         // SAFETY: The caller contract guarantees the input buffer is readable
         // for exactly `length` bytes during this call.
         let bytes = unsafe { slice::from_raw_parts(bytes, length) };
+        let message = match Message::from_bytes(bytes) {
+            Ok(message) => message,
+            Err(error) => return map_auth_error(error),
+        };
         // SAFETY: Ownership transfers to the caller through the output slot.
         unsafe {
-            *output = Box::into_raw(Box::new(SecureKeypadAuthMessage {
-                core: Message::from_bytes(bytes),
-            }));
+            *output = Box::into_raw(Box::new(SecureKeypadAuthMessage { core: message }));
         }
         SecureKeypadError::Ok
     })

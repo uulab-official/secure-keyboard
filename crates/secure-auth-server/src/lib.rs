@@ -32,7 +32,7 @@ pub use rate_limit_postgres::{
 pub use rate_limit_redis::{RedisRateLimitConfigError, RedisRateLimiter};
 
 use rand::{rngs::OsRng, RngCore};
-use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_MESSAGE_BYTES};
+use secure_auth::{ServerLoginStateBytes, MAX_IDENTIFIER_BYTES, MAX_SERVER_LOGIN_STATE_BYTES};
 use std::{
     collections::HashMap,
     sync::Mutex,
@@ -45,7 +45,7 @@ const HANDLE_ATTEMPTS: usize = 4;
 /// Maximum number of pending states held by the reference store.
 pub const MAX_IN_MEMORY_ENTRIES: usize = 100_000;
 /// Maximum serialized state size accepted by the reference store.
-pub const MAX_STORED_STATE_BYTES: usize = MAX_MESSAGE_BYTES + 256;
+pub const MAX_STORED_STATE_BYTES: usize = MAX_SERVER_LOGIN_STATE_BYTES;
 
 /// A fixed-size opaque bearer handle for one pending login state.
 ///

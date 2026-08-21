@@ -188,6 +188,10 @@ export function runSecurityAudit() {
   const auth = source("crates/secure-auth/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2/, "OPAQUE suite must be pinned in the protocol contract");
   requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_JSON_BODY_BYTES: usize = 128 \* 1024/, "auth JSON body must be bounded");
+  requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_SERVER_SETUP_BYTES/, "server setup persistence must be bounded");
+  requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_CREDENTIAL_FILE_BYTES/, "credential file persistence must be bounded");
+  requireText(findings, "crates/secure-auth/src/lib.rs", auth, /MAX_SERVER_LOGIN_STATE_BYTES/, "serialized login state must be bounded before allocation");
+  requireText(findings, "crates/secure-auth/src/lib.rs", auth, /Copies a bounded, non-empty protocol message/, "transport message construction must be bounded before allocation");
   const authManifest = source("crates/secure-auth/Cargo.toml", findings);
   requireText(findings, "crates/secure-auth/Cargo.toml", authManifest, /opaque-ke\s*=\s*\{\s*version\s*=\s*"=4\.0\.1"/, "OPAQUE dependency must be exact-pinned");
   forbidText(findings, "crates/secure-auth/Cargo.toml", authManifest, /opaque-ke\s*=\s*\{\s*version\s*=\s*"4\.0\.1"/, "OPAQUE dependency must not allow semver patch drift");
@@ -283,6 +287,8 @@ export function runSecurityAudit() {
 
   const securitySpec = source("docs/SECURITY-SPEC.md", findings);
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
+  const authTransportGuide = source("docs/AUTH-TRANSPORT.md", findings);
+  requireText(findings, "docs/AUTH-TRANSPORT.md", authTransportGuide, /reject[\s\S]{0,24}empty or oversized input[\s\S]{0,24}before copying/, "auth transport documentation must describe pre-allocation bounds");
   const platformPolicy = source("docs/PLATFORM-SECURITY-POLICY.md", findings);
   requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to provide certificate[\s\S]{0,40}public-key pinning/, "platform policy must assign pinning ownership without an unsupported SDK claim");
   requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to detect or defeat rooted\/jailbroken devices/, "platform policy must document compromised-runtime limitations");

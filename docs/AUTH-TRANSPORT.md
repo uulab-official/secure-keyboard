@@ -39,6 +39,13 @@ server key ID to the account and deployment configuration. Public client,
 server, and credential identifiers are bounded to 256 bytes by the reference
 SDK.
 
+`Message::from_bytes`, `ServerSetupBytes::from_bytes`,
+`CredentialFile::from_bytes`, and `ServerLoginStateBytes::from_bytes` reject
+empty or oversized input before copying into their zeroizing containers. The
+server-login state bound includes its version/suite header; malformed but
+bounded records are still rejected when `into_state()` restores the protocol
+state.
+
 `server_login_start` returns an ephemeral server state. The state can be
 serialized through `ServerLoginState::into_bytes()` and restored with
 `ServerLoginStateBytes::into_state()`. Its container carries a separate state

@@ -5,7 +5,7 @@ use secure_auth::{
 
 #[test]
 fn versioned_envelope_round_trips_a_typed_opaque_message() {
-    let message = Message::from_bytes(b"fixture-opaque-message");
+    let message = Message::from_bytes(b"fixture-opaque-message").unwrap();
     let envelope = AuthEnvelope::new(
         AuthMessageKind::CredentialRequest,
         "server-key-2026",
@@ -25,7 +25,7 @@ fn versioned_envelope_round_trips_a_typed_opaque_message() {
 
 #[test]
 fn envelope_rejects_version_suite_kind_and_key_downgrades() {
-    let message = Message::from_bytes(b"fixture");
+    let message = Message::from_bytes(b"fixture").unwrap();
     let wrong_version = AuthEnvelope::from_parts(
         PROTOCOL_VERSION - 1,
         CIPHER_SUITE_ID,
@@ -77,19 +77,31 @@ fn envelope_rejects_version_suite_kind_and_key_downgrades() {
 
 #[test]
 fn envelope_rejects_empty_or_oversized_transport_messages() {
-    let empty = Message::from_bytes(&[]);
     assert!(matches!(
-        AuthEnvelope::new(
+        Message::from_bytes(&[]),
+        Err(AuthError::EmptyMessage)
+    ));
+
+    assert!(matches!(
+        AuthEnvelope::from_parts(
+            PROTOCOL_VERSION,
+            CIPHER_SUITE_ID,
             AuthMessageKind::CredentialRequest,
             "server-key-2026",
-            &empty
+            &[]
         ),
         Err(AuthError::EmptyMessage)
     ));
 
-    let oversized = Message::from_bytes(&vec![0u8; 16 * 1024 + 1]);
+    let oversized = vec![0u8; 16 * 1024 + 1];
     assert!(matches!(
-        AuthEnvelope::new(
+        Message::from_bytes(&oversized),
+        Err(AuthError::MessageTooLarge)
+    ));
+    assert!(matches!(
+        AuthEnvelope::from_parts(
+            PROTOCOL_VERSION,
+            CIPHER_SUITE_ID,
             AuthMessageKind::CredentialRequest,
             "server-key-2026",
             &oversized
@@ -142,7 +154,7 @@ fn json_decoder_returns_a_validated_envelope() {
     let envelope = AuthEnvelope::new(
         AuthMessageKind::CredentialRequest,
         "server-key-2026",
-        &Message::from_bytes(b"fixture"),
+        &Message::from_bytes(b"fixture").unwrap(),
     )
     .unwrap();
     let wire = serde_json::to_vec(&envelope).unwrap();
@@ -172,7 +184,7 @@ fn envelope_debug_redacts_transport_payload() {
     let envelope = AuthEnvelope::new(
         AuthMessageKind::CredentialRequest,
         "server-key-2026",
-        &Message::from_bytes(b"fixture-only-opaque-payload"),
+        &Message::from_bytes(b"fixture-only-opaque-payload").unwrap(),
     )
     .unwrap();
 

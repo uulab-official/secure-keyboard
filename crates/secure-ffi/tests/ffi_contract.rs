@@ -214,7 +214,7 @@ fn native_auth_ffi_consumes_submission_without_returning_a_session_key() {
     let (response, server_state) = server_login_start(
         &setup,
         Some(&credential_file),
-        &Message::from_bytes(&request_bytes),
+        &Message::from_bytes(&request_bytes).unwrap(),
         CLIENT_ID,
         CLIENT_ID,
         SERVER_ID,
@@ -251,7 +251,7 @@ fn native_auth_ffi_consumes_submission_without_returning_a_session_key() {
     let finalization_bytes = copy_auth_message(finalization);
     let server_key = server_login_finish(
         server_state,
-        &Message::from_bytes(&finalization_bytes),
+        &Message::from_bytes(&finalization_bytes).unwrap(),
         CLIENT_ID,
         SERVER_ID,
     )
