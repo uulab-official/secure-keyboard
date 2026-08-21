@@ -36,7 +36,9 @@ The opt-in `redis-backend` and `postgres-backend` features provide concrete
 `RedisOneTimeLoginStateStore` and `PostgresOneTimeLoginStateStore` adapters.
 Both enforce a bounded namespace, pool, capacity, and 15-minute maximum TTL;
 they serialize the bound state in a versioned, bounded record, then encrypt and
-authenticate it with AES-256-GCM before persistence. The host supplies an
+authenticate it with AES-256-GCM before persistence. The current durable
+protection format is v2 and binds the validated storage namespace into the
+associated data; legacy unbound v1 records are rejected. The host supplies an
 `OpaqueStateKey`; keep it in a secret manager or KMS-backed configuration and
 stable for the maximum configured TTL. Handles are SHA-256 hashed before
 persistence. Redis uses one `SET NX PX`/capacity Lua script and one atomic

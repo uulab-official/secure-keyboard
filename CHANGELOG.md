@@ -18,6 +18,9 @@ exact release-candidate commit by the release evidence manifest.
 - Added AES-256-GCM authenticated encryption for built-in Redis/PostgreSQL
   WebAuthn ceremony records, with host-managed `WebAuthnStateKey` and
   namespace-bound associated data.
+- Bound built-in Redis/PostgreSQL OPAQUE login-state ciphertexts to their
+  validated storage namespace with AES-GCM associated data, and advanced the
+  durable protection format to v2; legacy unbound v1 records are rejected.
 - Made the PostgreSQL ciphertext-size schema upgrade atomic and fail closed on
   malformed or tampered ceremony records.
 
