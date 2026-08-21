@@ -585,6 +585,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /candidate-only/, "candidate metadata must not claim production readiness");
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /requiredFinalGates/, "candidate metadata must enumerate final release gates");
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /currentCommit/, "candidate metadata must bind to the checked-out commit");
+  requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /validateReleaseCandidateCheckoutStatus/, "candidate metadata must reject a dirty checkout");
   requireText(findings, "package.json", rootPackage, /"test:release-candidate-metadata"/, "the workspace must expose the release candidate metadata test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");

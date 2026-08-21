@@ -65,7 +65,18 @@ export function buildReleaseCandidateMetadata(input) {
   };
 }
 
+export function validateReleaseCandidateCheckoutStatus(status) {
+  if (typeof status !== "string" || status.trim().length > 0) {
+    throw new Error("current checkout must be clean before emitting candidate metadata");
+  }
+}
+
 function currentCommit() {
+  const status = execFileSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  validateReleaseCandidateCheckoutStatus(status);
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   if (!COMMIT.test(commit)) throw new Error("current checkout commit is not an immutable SHA");
   return commit;

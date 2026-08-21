@@ -179,6 +179,8 @@ records the protected-key inputs and verifier command, but it does not mark
 external device, sanitizer, or independent-review gates as passed. Operators
 must merge the separately emitted evidence fragments and run the trusted-key
 verification before making a production claim.
+Metadata emission also fails if the checkout became dirty during the build, so
+generated or locally modified files cannot silently enter an exact-SHA bundle.
 
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license

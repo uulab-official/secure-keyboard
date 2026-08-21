@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
-import { buildReleaseCandidateMetadata } from "./release-candidate-metadata.mjs";
+import {
+  buildReleaseCandidateMetadata,
+  validateReleaseCandidateCheckoutStatus,
+} from "./release-candidate-metadata.mjs";
 
 const WORKFLOW = readFileSync(
   fileURLToPath(new URL("../.github/workflows/release-candidate.yml", import.meta.url)),
@@ -45,6 +48,14 @@ test("candidate metadata rejects mutable or invalid release identity", () => {
         createdAt: "2026-08-21T00:00:00.000Z",
       }),
     /packageVersion must be a semantic version/,
+  );
+});
+
+test("candidate metadata requires a clean checkout before bundling", () => {
+  assert.doesNotThrow(() => validateReleaseCandidateCheckoutStatus(""));
+  assert.throws(
+    () => validateReleaseCandidateCheckoutStatus(" M packages/react-native/dist/index.js\n"),
+    /current checkout must be clean before emitting candidate metadata/,
   );
 });
 
