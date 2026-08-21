@@ -35,3 +35,41 @@ test("Android secure native view fails closed without a secure Activity window",
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
+
+test("native views enforce bounded public layout and theme configuration", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /MAX_LAYOUT_ROWS\s*=\s*16/);
+    assert.match(source, /MAX_LAYOUT_KEYS_PER_ROW\s*=\s*32/);
+    assert.match(source, /MAX_LAYOUT_KEYS\s*=\s*512/);
+    assert.match(source, /MAX_ACCESSIBILITY_LABEL_LENGTH\s*=\s*80/);
+    assert.match(source, /layout\.rows\.size\s+in\s+1\.\.MAX_LAYOUT_ROWS/);
+    assert.match(source, /row\.size\s+in\s+1\.\.MAX_LAYOUT_KEYS_PER_ROW/);
+    assert.match(source, /totalKeys\s*<=\s*MAX_LAYOUT_KEYS/);
+    assert.match(source, /key\.accessibilityLabel\.length\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/);
+    assert.match(source, /validateTheme\(theme\)/);
+    assert.match(source, /theme\.keyHeightPx\s+in\s+32\.\.160/);
+    assert.match(source, /theme\.keyFontSizePx\.isFinite\(\).*theme\.keyFontSizePx\s+in\s+10f\.\.72f/);
+  }
+
+  const iosSources = [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ];
+  for (const relativePath of iosSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /1\.\.\.16\)\.contains\(layout\.rows\.count\)/);
+    assert.match(source, /1\.\.\.32\)\.contains\(row\.count\)/);
+    assert.match(source, /totalKeys\s*<=\s*512/);
+    assert.match(source, /key\.accessibilityLabel\.utf8\.count\s+<=\s+80/);
+    assert.match(source, /try validate\(theme: theme\)/);
+    assert.match(source, /theme\.keyHeight\s+>=\s+32/);
+    assert.match(source, /theme\.keyFontSize\.isFinite/);
+  }
+});

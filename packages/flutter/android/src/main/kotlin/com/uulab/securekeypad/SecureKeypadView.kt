@@ -55,6 +55,11 @@ private enum class SecureKeypadInputPolicy {
     HANGUL,
 }
 
+private const val MAX_LAYOUT_ROWS = 16
+private const val MAX_LAYOUT_KEYS_PER_ROW = 32
+private const val MAX_LAYOUT_KEYS = 512
+private const val MAX_ACCESSIBILITY_LABEL_LENGTH = 80
+
 /** Resolves an Activity through framework ContextWrappers without assuming a host type. */
 private fun Context.findActivity(): Activity? {
     var current: Context = this
@@ -257,6 +262,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
         validateLayout(layout)
+        validateTheme(theme)
         releaseSession()
         val handle = when (policy) {
             SecureKeypadInputPolicy.NUMERIC -> SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
@@ -415,16 +421,34 @@ public open class SecureKeypadView @JvmOverloads constructor(
     }
 
     private fun validateLayout(layout: SecureKeypadLayout) {
-        require(layout.rows.isNotEmpty()) { "layout must contain a row" }
+        require(layout.rows.size in 1..MAX_LAYOUT_ROWS) { "layout row count is outside the supported range" }
         val ids = HashSet<String>()
+        var totalKeys = 0
         layout.rows.forEach { row ->
-            require(row.isNotEmpty()) { "layout rows cannot be empty" }
+            require(row.size in 1..MAX_LAYOUT_KEYS_PER_ROW) { "layout row size is outside the supported range" }
+            totalKeys += row.size
+            require(totalKeys <= MAX_LAYOUT_KEYS) { "layout key count is outside the supported range" }
             row.forEach { key ->
                 require(key.id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) { "invalid public key ID" }
                 require(ids.add(key.id)) { "duplicate public key ID" }
                 require(key.label.length <= 16) { "key label is too long" }
+                require(key.accessibilityLabel.length <= MAX_ACCESSIBILITY_LABEL_LENGTH) {
+                    "accessibility label is too long"
+                }
             }
         }
+    }
+
+    private fun validateTheme(theme: SecureKeypadTheme) {
+        require(theme.keyHeightPx in 32..160) { "key height is outside the supported range" }
+        require(theme.keyGapPx in 0..48) { "key gap is outside the supported range" }
+        require(theme.keyRadiusPx.isFinite() && theme.keyRadiusPx in 0f..80f) {
+            "key radius is outside the supported range"
+        }
+        require(theme.keyFontSizePx.isFinite() && theme.keyFontSizePx in 10f..72f) {
+            "key font size is outside the supported range"
+        }
+        require(theme.contentPaddingPx in 0..80) { "content padding is outside the supported range" }
     }
 }
 

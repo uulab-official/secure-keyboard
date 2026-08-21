@@ -258,6 +258,18 @@ export function runSecurityAudit() {
     "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /MAX_LAYOUT_ROWS\s*=\s*16/, "Android native layout must bound row count");
+    requireText(findings, file, contents, /MAX_LAYOUT_KEYS_PER_ROW\s*=\s*32/, "Android native layout must bound keys per row");
+    requireText(findings, file, contents, /MAX_LAYOUT_KEYS\s*=\s*512/, "Android native layout must bound aggregate key count");
+    requireText(findings, file, contents, /MAX_ACCESSIBILITY_LABEL_LENGTH\s*=\s*80/, "Android native layout must bound accessibility labels");
+    requireText(findings, file, contents, /layout\.rows\.size\s+in\s+1\.\.MAX_LAYOUT_ROWS/, "Android native layout must reject oversized row lists");
+    requireText(findings, file, contents, /row\.size\s+in\s+1\.\.MAX_LAYOUT_KEYS_PER_ROW/, "Android native layout must reject oversized rows");
+    requireText(findings, file, contents, /totalKeys\s*<=\s*MAX_LAYOUT_KEYS/, "Android native layout must reject oversized aggregate layouts");
+    requireText(findings, file, contents, /key\.accessibilityLabel\.length\s*<=\s*MAX_ACCESSIBILITY_LABEL_LENGTH/, "Android native layout must bound accessibility text");
+    requireText(findings, file, contents, /validateTheme\(theme\)/, "Android native renderer must validate public theme values");
+    requireText(findings, file, contents, /theme\.keyHeightPx\s+in\s+32\.\.160/, "Android native theme must bound key height");
+    requireText(findings, file, contents, /theme\.keyRadiusPx\.isFinite\(\)/, "Android native theme must reject non-finite radius values");
+    requireText(findings, file, contents, /theme\.keyFontSizePx\.isFinite\(\)/, "Android native theme must reject non-finite font sizes");
     requireText(findings, file, contents, /CANCEL/, "Android native keypad must implement the explicit cancel action");
     requireText(findings, file, contents, /sessionCancel/, "Android native keypad must call the C ABI cancellation path");
     requireText(findings, file, contents, /takeNativeHandle\(\)/, "Android native submission must have an opaque transfer API");
@@ -290,6 +302,13 @@ export function runSecurityAudit() {
     "packages/flutter/ios/Classes/SecureKeypadView.swift",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /1\.\.\.16\)\.contains\(layout\.rows\.count\)/, "iOS native layout must bound row count");
+    requireText(findings, file, contents, /1\.\.\.32\)\.contains\(row\.count\)/, "iOS native layout must bound keys per row");
+    requireText(findings, file, contents, /totalKeys\s*<=\s*512/, "iOS native layout must bound aggregate key count");
+    requireText(findings, file, contents, /key\.accessibilityLabel\.utf8\.count\s*<=\s*80/, "iOS native layout must bound accessibility labels");
+    requireText(findings, file, contents, /try validate\(theme: theme\)/, "iOS native renderer must validate public theme values");
+    requireText(findings, file, contents, /theme\.keyHeight\.isFinite/, "iOS native theme must reject non-finite key heights");
+    requireText(findings, file, contents, /theme\.keyFontSize\.isFinite/, "iOS native theme must reject non-finite font sizes");
     requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
     requireText(findings, file, contents, /willResignActiveNotification[\s\S]{0,240}handleWillResignActive\(\)/, "iOS native keypad must handle application resign-active transitions");
     requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseSession\(\)/, "iOS native keypad must zeroize when the application resigns active state");
@@ -586,6 +605,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently[\s\S]{0,100}existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
   const nativePlatformsGuide = source("docs/NATIVE-PLATFORMS.md", findings);
   requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /SecureKeypadPresentation\.kt/, "native platform guide must compile the Android presentation contract source");
+  requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /16 rows, 32 keys per row, 512 total keys/, "native platform guide must document native layout bounds");
+  requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /finite and bounded theme dimensions/, "native platform guide must document native theme bounds");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",
@@ -623,6 +644,7 @@ export function runSecurityAudit() {
 
   const securitySpec = source("docs/SECURITY-SPEC.md", findings);
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
+  requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /Native renderers must revalidate all public layout and theme data/, "security specification must require native configuration revalidation");
   const authTransportGuide = source("docs/AUTH-TRANSPORT.md", findings);
   requireText(findings, "docs/AUTH-TRANSPORT.md", authTransportGuide, /reject[\s\S]{0,24}empty or oversized input[\s\S]{0,24}before copying/, "auth transport documentation must describe pre-allocation bounds");
   const platformPolicy = source("docs/PLATFORM-SECURITY-POLICY.md", findings);

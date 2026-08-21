@@ -68,6 +68,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Reassert Android `FLAG_SECURE` on every focus regain after host window-flag changes.
 - [x] Centralize bounded Android/iOS masked-display/accessibility announcements and execute standalone JVM/Swift contract tests.
 - [x] Reject out-of-contract native display-state codes before rendering or framework emission.
+- [x] Revalidate native layout cardinality, accessibility-label size, and finite theme bounds before UI/session allocation.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
 - [ ] Complete device-level accessibility review and native snapshot tests.

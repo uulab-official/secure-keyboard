@@ -12,7 +12,11 @@ and theme values, sends key IDs to the Rust C ABI, and renders only bullets and
 non-secret state. It masks presentation while the app is inactive or the
 screen is captured, and releases the native session when the app resigns
 active so pending input is zeroized rather than resumed after backgrounding.
-The submission callback is native-only.
+The submission callback is native-only. Before creating a session it
+revalidates the public configuration even when called without a framework
+adapter: layouts are limited to 16 rows, 32 keys per row, 512 total keys, and
+80-byte accessibility labels; theme dimensions and font size must be finite
+and within the same bounds as the versioned public contract.
 
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
@@ -96,7 +100,9 @@ zeroizes pending input instead of keeping it through an app/window transition.
 The JNI adapter in
 `native/android/src/main/cpp/secure_keypad_jni.c` owns only pointer handles and
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is
-excluded, and no `EditText` is created.
+excluded, and no `EditText` is created. Before allocating native rows/buttons,
+the view repeats the public bounds: 16 rows, 32 keys per row, 512 total keys,
+80-character accessibility labels, and finite and bounded theme dimensions.
 
 `native/android/.../reactnative/SecureKeypadViewManager.kt` registers the
 `SecureKeypadView` React Native component. Its `ReadableMap` conversion is

@@ -265,6 +265,7 @@ public class SecureKeypadView: UIView {
             throw SecureKeypadViewError.invalidLayout
         }
         try validate(layout: layout)
+        try validate(theme: theme)
         guard secure_keypad_abi_version() == 2 else {
             throw SecureKeypadViewError.abiMismatch
         }
@@ -501,16 +502,30 @@ public class SecureKeypadView: UIView {
     }
 
     private func validate(layout: SecureKeypadLayout) throws {
-        guard !layout.rows.isEmpty else { throw SecureKeypadViewError.invalidLayout }
+        guard (1...16).contains(layout.rows.count) else { throw SecureKeypadViewError.invalidLayout }
         var ids = Set<String>()
+        var totalKeys = 0
         for row in layout.rows {
-            guard !row.isEmpty else { throw SecureKeypadViewError.invalidLayout }
+            guard (1...32).contains(row.count) else { throw SecureKeypadViewError.invalidLayout }
+            totalKeys += row.count
+            guard totalKeys <= 512 else { throw SecureKeypadViewError.invalidLayout }
             for key in row {
                 guard (1...64).contains(key.id.utf8.count), ids.insert(key.id).inserted,
-                      key.id.unicodeScalars.allSatisfy({ $0.value < 128 }), key.label.utf8.count <= 16 else {
+                      key.id.unicodeScalars.allSatisfy({ $0.value < 128 }), key.label.utf8.count <= 16,
+                      key.accessibilityLabel.utf8.count <= 80 else {
                     throw SecureKeypadViewError.invalidLayout
                 }
             }
+        }
+    }
+
+    private func validate(theme: SecureKeypadTheme) throws {
+        guard theme.keyHeight.isFinite, theme.keyHeight >= 32, theme.keyHeight <= 160,
+              theme.keyGap.isFinite, theme.keyGap >= 0, theme.keyGap <= 48,
+              theme.keyRadius.isFinite, theme.keyRadius >= 0, theme.keyRadius <= 80,
+              theme.contentPadding.isFinite, theme.contentPadding >= 0, theme.contentPadding <= 80,
+              theme.keyFontSize.isFinite, theme.keyFontSize >= 10, theme.keyFontSize <= 72 else {
+            throw SecureKeypadViewError.invalidLayout
         }
     }
 }
