@@ -315,6 +315,8 @@ export function runSecurityAudit() {
   const releaseGates = source("docs/RELEASE-GATES.md", findings);
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
+  const thirdPartyNotices = source("docs/THIRD-PARTY-NOTICES.md", findings);
+  requireText(findings, "docs/THIRD-PARTY-NOTICES.md", thirdPartyNotices, /playwright.*verification-only/i, "browser verification dependencies must be identified as non-shipped tooling");
   const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /check-device-evidence\.mjs/, "device verification must define machine-readable evidence validation");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /sanitizedLogs: true/, "device evidence must require sanitized logs");
@@ -356,6 +358,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /runs-on:\s*ubuntu-24\.04/, "release workflow must use the repository-pinned runner image");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/sign-release\.mjs/, "release workflow must produce the detached signature through the audited signer");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /playwright install --with-deps chromium firefox webkit/, "release candidate must run the browser adapter smoke matrix");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
@@ -374,6 +378,11 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /check:release-version-parity/, "CI must enforce public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /web-browser-matrix/, "CI must include a real browser adapter smoke matrix");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /playwright install --with-deps/, "CI browser smoke must install its pinned browser runtime explicitly");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:web-browser/, "CI browser smoke must execute the checked-in runtime harness");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-browser-smoke-\$\{\{ matrix\.browser \}\}/, "CI browser smoke must retain per-browser evidence artifacts");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /if: always\(\)[\s\S]{0,240}secure-keypad-browser-smoke/, "CI browser smoke evidence must upload after failures");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
@@ -406,6 +415,13 @@ export function runSecurityAudit() {
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy=\"ascii\"/, "customization guide must cover printable-ASCII native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
   forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
+  const rootPackage = source("package.json", findings);
+  requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
+  requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
+  const browserSmoke = source("scripts/web-browser-smoke.mjs", findings);
+  requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /chromium, firefox, webkit/, "browser smoke must enumerate Chromium, Firefox, and WebKit");
+  requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /secureContext/, "browser smoke must verify secure-context behavior");
+  requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /fallback-not-acknowledged/, "browser smoke must verify explicit fallback acknowledgement");
   const migrationGuide = source("docs/MIGRATION-FROM-PASSWORD.md", findings);
   requireText(findings, "docs/MIGRATION-FROM-PASSWORD.md", migrationGuide, /does not turn an existing\s+password hash into an OPAQUE credential file/i, "migration guidance must reject password-hash-to-OPAQUE conversion claims");
   requireText(findings, "docs/MIGRATION-FROM-PASSWORD.md", migrationGuide, /fresh OPAQUE registration or passkey ceremony/i, "migration guidance must require a fresh protected ceremony");

@@ -95,6 +95,40 @@ jobs:
       - run: pnpm --dir packages/web test
       - run: pnpm --dir packages/web build
 
+  web-browser-matrix:
+    name: Web adapter runtime smoke (${{ matrix.browser }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.13.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir packages/web build
+      - name: Install the pinned Playwright browser and system dependencies
+        run: pnpm exec playwright install --with-deps "${{ matrix.browser }}"
+      - name: Run browser smoke and retain sanitized evidence
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/secure-keypad-browser-smoke"
+          pnpm test:web-browser "${{ matrix.browser }}" 2>&1 \
+            | tee "$RUNNER_TEMP/secure-keypad-browser-smoke/${{ matrix.browser }}.log"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: secure-keypad-browser-smoke-${{ matrix.browser }}
+          path: ${{ runner.temp }}/secure-keypad-browser-smoke
+          if-no-files-found: error
+
   flutter:
     name: Validate Flutter contract
     runs-on: ubuntu-24.04

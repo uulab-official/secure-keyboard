@@ -89,3 +89,16 @@ node scripts/check-device-evidence.mjs path/to/device-evidence.json
 The validator also recomputes the log and artifact digests inside the evidence
 root and rejects symlinks that resolve outside it. This still does not replace
 independent review of screenshots or the physical-device run.
+
+The repository also contains a real-browser smoke harness:
+
+```sh
+pnpm --dir packages/web build
+pnpm exec playwright install --with-deps chromium firefox webkit
+pnpm test:web-browser all
+```
+
+It is supplemental evidence for the Web adapter's secure-context, passkey
+support, fallback-acknowledgement, and binary-boundary behavior. It does not
+turn browser JavaScript into a trusted secret-memory boundary and does not
+close the deployed-origin authenticator or independent-review gates.

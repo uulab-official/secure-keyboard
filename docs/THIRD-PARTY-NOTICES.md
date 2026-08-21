@@ -15,3 +15,8 @@ The exact transitive dependency versions and checksums are recorded in
 `Cargo.lock` and the CI-generated SBOM. Release automation must preserve those
 records and include the applicable license texts from the dependency source
 distributions.
+
+`playwright` `1.62.1` is a verification-only development dependency used by
+the Chromium/Firefox/WebKit smoke gate. It is not included in the published
+SDK packages; when the verification tool runs, its exact lockfile entry and
+transitive notices remain part of the CI dependency metadata.

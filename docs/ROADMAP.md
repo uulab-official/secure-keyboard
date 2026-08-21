@@ -151,6 +151,7 @@ Status: passkey-first adapter, reference server, bounded HTTP route, compile-tes
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
 - [x] Expose a custom web keypad fallback only as an explicitly acknowledged lower-assurance mode.
 - [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
+- [x] Add a pinned Playwright Chromium/Firefox/WebKit runtime smoke gate for the Web adapter.
 - [x] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
 - [x] Add CSP, dependency integrity, and supply-chain guidance.
 

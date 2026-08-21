@@ -10,7 +10,11 @@
     "test:release-evidence": "node --test scripts/check-release-evidence.test.mjs",
     "test:sign-release": "node --test scripts/sign-release.test.mjs",
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",
+    "test:web-browser": "node scripts/web-browser-smoke.mjs",
     "security-audit": "node scripts/security-audit.mjs",
     "test:security-audit": "node --test scripts/security-audit.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

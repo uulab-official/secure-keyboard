@@ -57,6 +57,8 @@ jobs:
           pnpm -r test
           pnpm -r typecheck
           pnpm -r build
+          pnpm exec playwright install --with-deps chromium firefox webkit
+          pnpm test:web-browser all
       - name: Run Flutter release gates
         run: |
           flutter pub get

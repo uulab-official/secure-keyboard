@@ -49,6 +49,8 @@ pnpm --dir packages/web typecheck
 pnpm --dir packages/web test
 pnpm --dir packages/web build
 (cd packages/flutter && dart pub publish --dry-run)
+pnpm exec playwright install --with-deps chromium firefox webkit
+pnpm test:web-browser all
 ```
 
 The workspace deliberately does not auto-install React Native peer runtimes.
@@ -191,6 +193,15 @@ The Android host jobs additionally build the arm64 and x86_64 native FFI
 variants, and a separate API 35 x86_64 emulator job installs and launches both
 generated host APKs while retaining no-input screenshots. This is also
 supplemental runtime evidence and does not replace the physical Android matrix.
+
+The CI `web-browser-matrix` job runs the checked-in browser smoke harness against
+the exact Playwright dependency in the lockfile on Chromium, Firefox, and
+WebKit. It verifies secure-context detection, passkey support probing, strict
+fallback acknowledgement, and binary encoding boundaries in a real browser
+page. This is runtime adapter evidence only; it does not prove that a browser
+page's JavaScript memory is confidential or replace a physical authenticator
+and deployed-origin WebAuthn test. Each matrix leg retains its sanitized
+versioned smoke log as a CI artifact, including failed runs.
 
 ## Known release blockers
 
