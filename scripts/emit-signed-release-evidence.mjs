@@ -159,7 +159,13 @@ function writeEvidence(root, outputPath, record) {
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error("outputPath must resolve inside the evidence root");
   }
-  mkdirSync(path.dirname(absolutePath), { recursive: true });
+  const parent = path.dirname(absolutePath);
+  mkdirSync(parent, { recursive: true });
+  const realParent = realpathSync(parent);
+  const parentRelative = path.relative(realRoot, realParent);
+  if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {
+    throw new Error("outputPath must resolve inside the evidence root");
+  }
   try {
     lstatSync(absolutePath);
     throw new Error("outputPath must not already exist");

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -107,4 +107,16 @@ test("rejects an oversized detached signature before reading an unbounded buffer
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /signaturePath must not exceed 64 bytes/);
+});
+
+test("rejects an evidence output directory that resolves outside the root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-symlinked-release-output-"));
+  const outside = mkdtempSync(join(tmpdir(), "secure-keypad-release-output-target-"));
+  writeSignedArtifacts(root);
+  symlinkSync(outside, join(root, "evidence"), "dir");
+
+  const result = runEmitter(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /outputPath must resolve inside the evidence root/);
 });
