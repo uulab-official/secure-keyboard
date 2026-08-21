@@ -29,6 +29,26 @@ const int secureKeypadMaxRenderedLength = 4096;
 bool isSecureKeypadRenderedLengthValid(int length) =>
     length >= 0 && length <= secureKeypadMaxRenderedLength;
 
+bool _hasSecureKeypadExactKeys(
+  Map<Object?, Object?> event,
+  Set<String> expected,
+) {
+  return event.length == expected.length &&
+      event.keys.every((key) => key is String && expected.contains(key));
+}
+
+/// Rejects native event maps that contain secret-like or otherwise unsupported fields.
+bool isSecureKeypadNativeEventShapeValid(Map<Object?, Object?> event) {
+  final type = event['type'];
+  if (type == 'state') {
+    return _hasSecureKeypadExactKeys(event, <String>{'type', 'length', 'displayState'});
+  }
+  if (type == 'result') {
+    return _hasSecureKeypadExactKeys(event, <String>{'type', 'code'});
+  }
+  return false;
+}
+
 typedef MaskedStateCallback = void Function(MaskedState state);
 typedef ResultCallback = void Function(SecureKeypadResultCode result);
 
@@ -388,7 +408,8 @@ class _SecureKeypadState extends State<SecureKeypad> {
   }
 
   void _onNativeEvent(dynamic event) {
-    if (event is! Map<Object?, Object?>) {
+    if (event is! Map<Object?, Object?> ||
+        !isSecureKeypadNativeEventShapeValid(event)) {
       _emitResult(SecureKeypadResultCode.error);
       return;
     }

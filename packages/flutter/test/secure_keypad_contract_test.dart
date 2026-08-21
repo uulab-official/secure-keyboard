@@ -93,4 +93,32 @@ void main() {
     expect(isSecureKeypadRenderedLengthValid(-1), isFalse);
     expect(isSecureKeypadRenderedLengthValid(4097), isFalse);
   });
+
+  test('native events reject unexpected fields before parsing', () {
+    expect(
+      isSecureKeypadNativeEventShapeValid(<Object?, Object?>{
+        'type': 'state',
+        'length': 2,
+        'displayState': 'masked',
+      }),
+      isTrue,
+    );
+    expect(
+      isSecureKeypadNativeEventShapeValid(<Object?, Object?>{
+        'type': 'state',
+        'length': 2,
+        'displayState': 'masked',
+        'secret': 'fixture-only-secret',
+      }),
+      isFalse,
+    );
+    expect(
+      isSecureKeypadNativeEventShapeValid(<Object?, Object?>{
+        'type': 'result',
+        'code': 'success',
+        'value': 'fixture-only-secret',
+      }),
+      isFalse,
+    );
+  });
 }

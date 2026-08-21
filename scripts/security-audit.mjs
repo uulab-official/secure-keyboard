@@ -256,6 +256,7 @@ export function runSecurityAudit() {
   const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /isSecureKeypadNativeEventShapeValid/, "Flutter must reject unexpected native event fields");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_onNativeEvent\([\s\S]{0,500}isSecureKeypadRenderedLengthValid/, "Flutter must validate masked event length before invoking callbacks");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",

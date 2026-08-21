@@ -42,7 +42,7 @@ Consumers must not receive or provide:
 - a mapping callback that receives the secret value;
 - raw secret values in analytics or error events.
 
-The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. The layout contract includes a `cancel` action role, and RN/Flutter host cancellation commands carry only a monotonic public token or method name; activating either path calls native cancellation, clears the core buffer, and emits only `displayState: cancelled` plus a `cancelled` result code. State events expose only length, masked display state, validation state, and result codes. Framework adapters must revalidate state length (`0..4096`) and stable result-code shapes before invoking application callbacks; malformed metadata fails closed as a generic error and is never echoed.
+The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. The layout contract includes a `cancel` action role, and RN/Flutter host cancellation commands carry only a monotonic public token or method name; activating either path calls native cancellation, clears the core buffer, and emits only `displayState: cancelled` plus a `cancelled` result code. State events expose only length, masked display state, validation state, and result codes. Framework adapters must revalidate exact event keys, state length (`0..4096`), and stable result-code shapes before invoking application callbacks; malformed metadata fails closed as a generic error and is never echoed.
 
 The native C ABI is an opaque-handle boundary. It accepts public key IDs as
 bounded pointer/length inputs and returns only masked state or stable error

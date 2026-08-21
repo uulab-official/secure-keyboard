@@ -12,7 +12,9 @@ The package includes the registration source under `ios/Classes` and
 `android/src/main`, plus a `SecureKeypad` widget. The view type is
 `secure_keypad/native` and its event channel is `secure_keypad/events/<viewId>`.
 The native implementation keeps key events and Hangul composition outside
-Dart and emits only masked state/result codes. The `success` result means that
+Dart and emits only exact masked state/result event shapes. The Dart boundary
+rejects unexpected fields, bounds masked length to 4,096, and converts malformed
+events to a generic `error`; no event payload is echoed. The `success` result means that
 the native keypad created an opaque submission and an installed native
 submission consumer accepted ownership. Without a consumer, the plugin
 releases the submission and emits `error`; it is not a server authentication

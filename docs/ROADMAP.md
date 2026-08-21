@@ -99,6 +99,7 @@ Status: publishable contract, native PlatformView package, and parity gate compl
 - [x] Publish the Flutter-facing layout/theme/policy contract.
 - [x] Keep the secret out of `TextEditingController`, Dart strings, and Dart callbacks.
 - [x] Mirror the RN masked-state/result-code contract and add Flutter analyze/test CI gates.
+- [x] Reject unexpected native event fields and bounded masked metadata before Dart callbacks.
 - [x] Provide reference PlatformView/FFI registration that carries only public configuration and masked/result events.
 - [x] Provide a Flutter `SecureKeypad` PlatformView wrapper with public creation parameters only.
 - [x] Require an explicit native submission consumer before reporting framework success.
