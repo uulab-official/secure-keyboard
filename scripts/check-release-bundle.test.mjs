@@ -118,6 +118,17 @@ test("release staging requires the security changelog", () => {
   }
 });
 
+test("release staging rejects a changelog without release headings", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/CHANGELOG.md", "# Changelog\n\nplaceholder\n");
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("## Unreleased")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release staging rejects missing notices, malformed SBOM, package license loss, and private keys", () => {
   const root = createValidStaging();
   try {

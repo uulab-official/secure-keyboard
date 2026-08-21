@@ -144,6 +144,24 @@ function validateSpdx(root, findings) {
   }
 }
 
+function validateChangelog(root, findings) {
+  const absolutePath = regularFile(root, "source/CHANGELOG.md", findings);
+  if (!absolutePath) return;
+  let contents;
+  try {
+    contents = readFileSync(absolutePath, "utf8");
+  } catch (error) {
+    findings.push(`source/CHANGELOG.md: cannot be read (${error.message})`);
+    return;
+  }
+  if (!/^# Changelog(?:\r?\n|$)/m.test(contents)) {
+    findings.push("source/CHANGELOG.md: must contain a top-level # Changelog heading");
+  }
+  if (!/^## Unreleased(?:\r?\n|$)/m.test(contents)) {
+    findings.push("source/CHANGELOG.md: must contain a ## Unreleased release heading");
+  }
+}
+
 function archiveEntries(absolutePath, findings) {
   try {
     return execFileSync("tar", ["-tzf", absolutePath], { encoding: "utf8" })
@@ -205,6 +223,7 @@ export function checkReleaseStaging(root) {
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return ["release staging root must be a real directory"];
 
   for (const relativePath of REQUIRED_SOURCE_FILES) regularFile(root, relativePath, findings);
+  validateChangelog(root, findings);
   const metadata = readJson(root, "source/release-candidate-metadata.json", findings);
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);
