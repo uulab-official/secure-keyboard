@@ -90,11 +90,13 @@ function createValidStaging() {
     createTarball(root, `packages/${packageName}-0.1.0.tgz`, "package", {
       "package.json": JSON.stringify({ name: packageName, version: "0.1.0" }),
       LICENSE: "MIT License\n",
+      "README.md": "# Package\n",
     });
   }
   for (const crateName of RUST_CRATES) {
     createTarball(root, `packages/${crateName}-0.1.0.crate`, `${crateName}-0.1.0`, {
       "Cargo.toml": `[package]\nname = "${crateName}"\nversion = "0.1.0"\n`,
+      "README.md": "# Crate\n",
     });
   }
   return root;
@@ -152,12 +154,17 @@ test("release staging rejects missing notices, malformed SBOM, package license l
     createTarball(root, "packages/secure-keypad-web-0.1.0.tgz", "package", {
       "package.json": JSON.stringify({ name: "secure-keypad-web", version: "0.1.0" }),
     });
+    createTarball(root, "packages/secure-core-0.1.0.crate", "secure-core-0.1.0", {
+      "Cargo.toml": "[package]\nname = \"secure-core\"\nversion = \"0.1.0\"\n",
+    });
     writeFile(root, "secure-keypad-signing-key.pem", "private material\n");
 
     const findings = checkReleaseStaging(root);
     assert.ok(findings.some((finding) => finding.includes("THIRD-PARTY-NOTICES.md")));
     assert.ok(findings.some((finding) => finding.includes("SPDX")));
     assert.ok(findings.some((finding) => finding.includes("secure-keypad-web-0.1.0.tgz")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-web-0.1.0.tgz: archive must contain package/README.md")));
+    assert.ok(findings.some((finding) => finding.includes("secure-core-0.1.0.crate: crate archive must contain secure-core-0.1.0/README.md")));
     assert.ok(findings.some((finding) => finding.includes("private signing material")));
   } finally {
     rmSync(root, { recursive: true, force: true });

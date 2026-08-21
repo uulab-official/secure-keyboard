@@ -3,6 +3,7 @@ name = "secure-auth"
 version = "0.1.0"
 description = "Versioned OPAQUE authentication engine for native/server integrations"
 repository = "https://github.com/uulab-official/secure-keyboard"
+readme = "README.md"
 license = "MIT"
 edition.workspace = true
 rust-version.workspace = true

@@ -182,7 +182,7 @@ function validateNpmArchives(root, version, findings) {
     const absolutePath = regularFile(root, relativePath, findings);
     if (!absolutePath) continue;
     const entries = archiveEntries(absolutePath, findings);
-    for (const requiredEntry of ["package/package.json", "package/LICENSE"]) {
+    for (const requiredEntry of ["package/package.json", "package/LICENSE", "package/README.md"]) {
       if (!entries.includes(requiredEntry)) {
         findings.push(`${relativePath}: archive must contain ${requiredEntry}`);
       }
@@ -196,8 +196,10 @@ function validateRustArchives(root, version, findings) {
     const absolutePath = regularFile(root, relativePath, findings);
     if (!absolutePath) continue;
     const entries = archiveEntries(absolutePath, findings);
-    if (!entries.includes(`${crateName}-${version}/Cargo.toml`)) {
-      findings.push(`${relativePath}: crate archive must contain its Cargo.toml`);
+    for (const requiredEntry of [`${crateName}-${version}/Cargo.toml`, `${crateName}-${version}/README.md`]) {
+      if (!entries.includes(requiredEntry)) {
+        findings.push(`${relativePath}: crate archive must contain ${requiredEntry}`);
+      }
     }
   }
 }

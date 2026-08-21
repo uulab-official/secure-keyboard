@@ -3,6 +3,7 @@ name = "secure-ffi"
 version = "0.1.0"
 description = "C ABI boundary for the secure keypad core"
 repository = "https://github.com/uulab-official/secure-keyboard"
+readme = "README.md"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
