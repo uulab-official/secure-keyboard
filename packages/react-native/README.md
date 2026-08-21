@@ -87,9 +87,10 @@ JavaScript keypad or a `TextInput` fallback when the secure native mode is
 required.
 
 `cancelRequest` is a monotonic, non-secret command token. The first value is
-captured as the baseline; changing it calls the native cancellation path,
+captured as the baseline; a newer value calls the native cancellation path,
 zeroizes the pending session, and emits only `cancelled` plus an empty masked
-state. It never carries or derives an input value.
+state. An equal replay is ignored and a delayed lower value is rejected. It
+never carries or derives an input value.
 
 Build integration is intentionally fail-closed. Before `pod install`, copy the
 matching Rust `secure_ffi` XCFramework into the installed package directory

@@ -301,8 +301,13 @@ public open class SecureKeypadView @JvmOverloads constructor(
             return
         }
         val previous = lastCancelRequest
+        if (previous != null && requestId < previous) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
+            return
+        }
+        if (previous != null && requestId == previous) return
         lastCancelRequest = requestId
-        if (previous != null && previous != requestId) cancelSession()
+        cancelSession()
     }
 
     override fun onDetachedFromWindow() {

@@ -8,6 +8,14 @@ const SOURCE = readFileSync(
   new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt", import.meta.url),
   "utf8",
 );
+const ANDROID_VIEW_SOURCE = readFileSync(
+  new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
+  "utf8",
+);
+const IOS_VIEW_SOURCE = readFileSync(
+  new URL("../native/ios/SecureKeypadView.swift", import.meta.url),
+  "utf8",
+);
 
 test("React Native Android bridge rejects unknown keys before reading values", () => {
   assert.match(SOURCE, /value\?\.toPublicMap\(LAYOUT_KEYS\)/);
@@ -35,4 +43,11 @@ test("React Native Android bridge converts hostile public maps inside the fail-c
   assert.match(SOURCE, /setConfigurationValue\(view, "theme"\) \{ value\?\.toPublicMap\(THEME_KEYS\) \}/);
   assert.match(SOURCE, /setConfigurationValue\(view, "headlessKeyPress"\) \{ value\?\.toPublicMap\(HEADLESS_KEY_PRESS_KEYS\) \}/);
   assert.match(SOURCE, /catch \(_:\s*IllegalArgumentException\) \{[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,240}emitResult\(view, "invalid"\)/);
+});
+
+test("native RN cancel commands reject stale tokens and coalesce replays", () => {
+  assert.match(ANDROID_VIEW_SOURCE, /requestId < previous/);
+  assert.match(ANDROID_VIEW_SOURCE, /requestId == previous/);
+  assert.match(IOS_VIEW_SOURCE, /requestId < previous/);
+  assert.match(IOS_VIEW_SOURCE, /requestId == previous/);
 });

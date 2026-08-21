@@ -26,9 +26,10 @@ or creating a session, so direct native consumers cannot bypass the
 configuration contract by skipping a framework adapter.
 
 The React Native `cancelRequest` prop is a non-negative safe integer command
-token; its first value establishes a baseline and each subsequent value
-cancels the native session. Neither framework controller path transports a
-secret or opaque submission handle.
+token; its first value establishes a baseline, a greater value cancels the
+native session, an equal value is ignored, and a lower value is rejected as a
+stale command. Neither framework controller path transports a secret or
+opaque submission handle.
 
 ## Upgrade procedure
 

@@ -328,10 +328,15 @@ public class SecureKeypadView: UIView {
             return
         }
         let previous = lastCancelRequest
-        lastCancelRequest = requestId
-        if let previous, previous != requestId {
-            cancelSession()
+        if let previous {
+            guard requestId >= previous else {
+                onError?(1)
+                return
+            }
+            if requestId == previous { return }
         }
+        lastCancelRequest = requestId
+        cancelSession()
     }
 
     private func installViews() {

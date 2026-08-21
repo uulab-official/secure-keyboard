@@ -15,6 +15,9 @@ exact release-candidate commit by the release evidence manifest.
   over-budget layout/theme/command maps now release the native session and
   emit only the public `invalid` result instead of escaping as a bridge
   exception.
+- Enforced monotonic React Native cancellation tokens on iOS and Android:
+  delayed lower tokens are rejected, equal replays are coalesced, and only a
+  newer token can clear the native session.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,
   and preserved terminal result events under queue pressure.
 - Capped WebAuthn pending ceremony retention at 15 minutes across all storage
