@@ -260,6 +260,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-runs=1000000/, "CI must retain the extended fuzz stability campaign");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-rss_limit_mb=1024/, "CI fuzz campaigns must have a bounded RSS guard");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /shasum -a 256/, "CI must emit native artifact checksums");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cd \"\$RUNNER_TEMP\/secure_ffi\.xcframework\"/, "iOS checksum manifests must use artifact-relative paths");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cd \"\$RUNNER_TEMP\/secure-keypad-ffi\"/, "Android checksum manifests must use artifact-relative paths");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-xcframework-and-checksum/, "CI must retain the native artifact checksum manifest");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-arm64-flutter-host-and-checksum/, "CI must retain the Flutter Android FFI checksum manifest");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-arm64-react-native-host-and-checksum/, "CI must retain the React Native Android FFI checksum manifest");
