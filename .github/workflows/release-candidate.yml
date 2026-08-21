@@ -15,6 +15,7 @@ jobs:
   bundle:
     name: Build and sign release candidate bundle
     runs-on: ubuntu-24.04
+    environment: secure-keypad-release
     timeout-minutes: 60
     env:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release

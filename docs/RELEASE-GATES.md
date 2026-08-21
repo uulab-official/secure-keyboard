@@ -165,6 +165,11 @@ node scripts/sign-release.mjs \
   artifacts/secure-keypad-release.pub.der
 ```
 
+The checked-in release-candidate workflow runs the bundle job in the
+`secure-keypad-release` GitHub Environment. Repository administrators must
+configure that environment with required reviewers and the signing secret;
+the workflow file alone cannot establish those GitHub-side protections.
+
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
 notices, a hashed release bundle, DER public key, and `release-signature`
