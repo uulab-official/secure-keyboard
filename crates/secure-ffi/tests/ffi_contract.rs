@@ -100,6 +100,22 @@ fn ascii_constructor_accepts_bounded_policy() {
         SecureKeypadError::Ok
     );
     assert!(!session.is_null());
+    let ascii = b"ascii-41";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, ascii.as_ptr(), ascii.len()) },
+        SecureKeypadError::Ok
+    );
+    let label = b"A";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, label.as_ptr(), label.len()) },
+        SecureKeypadError::InvalidKey
+    );
+    let mut state = SecureKeypadMaskedState::default();
+    assert_eq!(
+        unsafe { secure_keypad_session_refresh(session, &mut state) },
+        SecureKeypadError::Ok
+    );
+    assert_eq!(state.length, 1);
     unsafe { secure_keypad_session_free(session) };
 }
 
