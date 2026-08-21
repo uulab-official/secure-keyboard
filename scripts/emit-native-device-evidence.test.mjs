@@ -108,6 +108,15 @@ test("rejects incomplete test cases and required physical artifact categories", 
   assert.throws(() => buildNativeDeviceEvidence({ ...completeInput(), artifacts: incomplete.artifacts }), /crash-report-review/);
 });
 
+test("rejects oversized physical evidence bytes before hashing", async () => {
+  const { MAX_NATIVE_EVIDENCE_FILE_BYTES, buildNativeDeviceEvidence } = await loadEmitter();
+  const oversized = completeInput();
+  const maxBytes = MAX_NATIVE_EVIDENCE_FILE_BYTES ?? 32 * 1024 * 1024;
+  oversized.log.bytes = Buffer.alloc(maxBytes + 1);
+
+  assert.throws(() => buildNativeDeviceEvidence(oversized), /log bytes must not exceed/);
+});
+
 test("rejects a sentinel in a referenced physical-device artifact before writing evidence", async () => {
   const { writeNativeDeviceEvidence } = await loadEmitter();
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-sentinel-"));

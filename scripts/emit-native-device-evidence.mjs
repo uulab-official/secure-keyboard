@@ -4,7 +4,11 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
+import {
+  MAX_DEVICE_EVIDENCE_FILE_BYTES,
+  validateDeviceEvidence,
+  verifyDeviceEvidenceFiles,
+} from "./check-device-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -13,6 +17,7 @@ const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const LABEL = /^[^\r\n]{1,120}$/;
 const KIND = /^[a-z0-9][a-z0-9._:-]{0,80}$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+export const MAX_NATIVE_EVIDENCE_FILE_BYTES = MAX_DEVICE_EVIDENCE_FILE_BYTES;
 const NATIVE_TEST_CASES = Object.freeze([
   "maskedStateOnly",
   "captureAndBackground",
@@ -67,6 +72,10 @@ function validateTimestamp(value) {
 function validateBytes(value, field) {
   if (!(typeof value === "string" || value instanceof Uint8Array)) {
     throw new Error(`${field} must be a string or byte array`);
+  }
+  const byteLength = typeof value === "string" ? Buffer.byteLength(value, "utf8") : value.byteLength;
+  if (byteLength > MAX_NATIVE_EVIDENCE_FILE_BYTES) {
+    throw new Error(`${field} must not exceed ${MAX_NATIVE_EVIDENCE_FILE_BYTES} bytes`);
   }
 }
 
@@ -168,6 +177,16 @@ function containedFile(root, relativePath, field) {
   return realFile;
 }
 
+function readEvidenceFile(root, relativePath, field) {
+  const filePath = containedFile(root, relativePath, field);
+  const stat = lstatSync(filePath);
+  if (!stat.isFile()) throw new Error(`${field} must resolve to a regular file`);
+  if (stat.size > MAX_NATIVE_EVIDENCE_FILE_BYTES) {
+    throw new Error(`${field} must not exceed ${MAX_NATIVE_EVIDENCE_FILE_BYTES} bytes`);
+  }
+  return readFileSync(filePath);
+}
+
 function writeJson(root, relativePath, bytes) {
   if (!isSafeRelativePath(relativePath)) throw new Error("output path must be safe and relative");
   const realRoot = realpathSync(root);
@@ -206,13 +225,13 @@ export function writeNativeDeviceEvidence(input) {
   if (evidencePath === fragmentPath) throw new Error("fragment output must not overwrite the evidence record");
   if (!Array.isArray(artifactPaths)) throw new Error("artifactPaths must be an array");
 
-  const log = { path: logPath, bytes: readFileSync(containedFile(root, logPath, "log path")) };
+  const log = { path: logPath, bytes: readEvidenceFile(root, logPath, "log path") };
   const artifacts = artifactPaths.map((artifact) => {
     if (!isRecord(artifact)) throw new Error("artifact path must be an object");
     return {
       kind: artifact.kind,
       path: artifact.path,
-      bytes: readFileSync(containedFile(root, artifact.path, `artifact ${artifact.kind} path`)),
+      bytes: readEvidenceFile(root, artifact.path, `artifact ${artifact.kind} path`),
     };
   });
   const record = buildNativeDeviceEvidence({ ...input, log, artifacts });

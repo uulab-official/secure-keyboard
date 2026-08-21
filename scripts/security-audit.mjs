@@ -821,6 +821,7 @@ export function runSecurityAudit() {
   const nativeEvidenceEmitter = source("scripts/emit-native-device-evidence.mjs", findings);
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /REQUIRED_NATIVE_ARTIFACT_KINDS/, "native evidence emitter must require all physical artifact categories");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /NATIVE_TEST_CASES/, "native evidence emitter must require the complete native test matrix");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /MAX_NATIVE_EVIDENCE_FILE_BYTES/, "native evidence emitter must bound evidence file materialization");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /verifyDeviceEvidenceFiles/, "native evidence emitter must verify referenced files before writing evidence");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /currentCommit/, "native evidence emitter must derive the checkout commit");
   const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);

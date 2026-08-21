@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,7 @@ const COMMIT = /^[a-f0-9]{40}$/;
  * literal so a test sentinel cannot accidentally be retained in an artifact.
  */
 export const SANITIZED_TEST_SENTINEL = "secure-keypad-test-sentinel-7f2c4e";
+export const MAX_DEVICE_EVIDENCE_FILE_BYTES = 32 * 1024 * 1024;
 const NATIVE_TESTS = Object.freeze([
   "maskedStateOnly",
   "captureAndBackground",
@@ -234,6 +235,10 @@ function verifyDigest(findings, root, field, relativePath, expectedHash) {
   const filePath = containedFilePath(findings, root, field, relativePath);
   if (!filePath) return;
   try {
+    if (statSync(filePath).size > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
+      add(findings, `${field}.path`, `must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
+      return;
+    }
     const actualHash = createHash("sha256").update(readFileSync(filePath)).digest("hex");
     if (actualHash !== expectedHash) add(findings, `${field}Sha256`, `does not match ${relativePath}`);
   } catch (error) {
@@ -247,6 +252,10 @@ function scanEvidenceFileContent(findings, root, field, relativePath) {
   if (!filePath) return;
   let bytes;
   try {
+    if (statSync(filePath).size > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
+      add(findings, `${field}.path`, `must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
+      return;
+    }
     bytes = readFileSync(filePath);
   } catch (error) {
     add(findings, `${field}.path`, `could not read ${relativePath}: ${error.message}`);

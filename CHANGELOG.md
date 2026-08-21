@@ -89,3 +89,5 @@ exact release-candidate commit by the release evidence manifest.
 - Added a native iOS/Android device-evidence emitter that requires the complete
   physical test matrix and artifact categories, hashes files in-place, and
   rejects the disposable sentinel before writing release fragments.
+- Bounded native device evidence files to 32 MiB before hashing or content
+  scanning to keep release verification fail-closed under oversized artifacts.

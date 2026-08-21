@@ -149,7 +149,8 @@ Physical iOS/Android operators should use
 `scripts/emit-native-device-evidence.mjs` to produce the device record and
 fragment. It requires all native test cases and categorized physical artifacts,
 hashes the exact files inside the evidence root, and rejects the canonical test
-sentinel before output is written.
+sentinel before output is written. Native evidence files are bounded to 32 MiB
+before they are materialized by the emitter or final verifier.
 
 Every `gate.evidencePath` must point to a JSON object with
 `{schemaVersion: 1, gate: <same gate name>, commit: <same gate SHA>, status: "pass"}`. CI-owned gates additionally

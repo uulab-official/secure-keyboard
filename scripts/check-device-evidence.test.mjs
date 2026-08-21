@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -158,6 +158,18 @@ test("rejects duplicate evidence paths before file verification", () => {
   const findings = validateDeviceEvidence(evidence);
 
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].path") && finding.includes("unique")));
+});
+
+test("rejects oversized evidence files before reading their contents", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-device-evidence-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  mkdirSync(join(root, "logs"), { recursive: true });
+  writeFileSync(join(root, evidence.logPath), Buffer.alloc(0));
+  truncateSync(join(root, evidence.logPath), 32 * 1024 * 1024 + 1);
+
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("must not exceed")));
 });
 
 test("requires explicit screenshot, crash-review, and protocol-downgrade checks", () => {
