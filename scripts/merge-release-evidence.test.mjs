@@ -66,6 +66,8 @@ function completeFragments() {
         signedArtifactPath: "artifacts/review.json",
         signaturePath: "artifacts/review.sig",
         publicKeySha256: SHA256,
+        reviewedCommit: context.commit,
+        reviewedPackageVersion: context.packageVersion,
       },
     },
   ];
@@ -188,6 +190,8 @@ test("CLI assembles and verifies a signed evidence root", () => {
         signedArtifactPath: "artifacts/review.json",
         signaturePath: "artifacts/review.sig",
         publicKeySha256: hash(reviewPublicKeyBytes),
+        reviewedCommit: commit,
+        reviewedPackageVersion: context.packageVersion,
       },
     },
   ];

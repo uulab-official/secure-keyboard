@@ -142,7 +142,10 @@ artifact, and DER-encoded Ed25519 public key. The command checks shape, paths,
 required statuses, recomputes SHA-256 for every referenced evidence/artifact
 file, rejects duplicate evidence paths, ensures the manifest commit/version
 match the current checkout, and verifies both the detached release signature and
-the detached `independentReview` signature over the exact review report. It does
+the detached `independentReview` signature over the exact review report. The
+`independentReview` descriptor must also carry `reviewedCommit` and
+`reviewedPackageVersion`, each matching the manifest commit and package version;
+a signed report for a different checkout cannot satisfy the gate. It does
 not establish CI provenance; trusted fingerprints, CI attestation, and reviewer
 identity must still be verified independently against the exact commit. The
 `--require-trusted-keys` mode fails closed when either protected fingerprint is

@@ -59,6 +59,8 @@ function completeEvidence() {
       signedArtifactPath: "artifacts/independent-review.json",
       signaturePath: "artifacts/independent-review.sig",
       publicKeySha256: SHA256,
+      reviewedCommit: "b".repeat(40),
+      reviewedPackageVersion: "0.1.0",
     },
   };
 }
@@ -127,6 +129,12 @@ test("binds release evidence to the exact commit and package version", () => {
 
   assert.ok(findings.some((finding) => finding.includes("commit") && finding.includes("current")));
   assert.ok(findings.some((finding) => finding.includes("packageVersion") && finding.includes("current")));
+  assert.ok(findings.some((finding) => finding.includes("reviewedCommit") && finding.includes("manifest")));
+  assert.ok(
+    findings.some(
+      (finding) => finding.includes("reviewedPackageVersion") && finding.includes("manifest"),
+    ),
+  );
 });
 
 test("binds release and reviewer signatures to trusted public-key fingerprints", () => {
@@ -141,6 +149,17 @@ test("binds release and reviewer signatures to trusted public-key fingerprints",
       (finding) => finding.includes("independentReview.publicKeySha256") && finding.includes("trusted"),
     ),
   );
+});
+
+test("requires an independent review to bind the exact commit and package version", () => {
+  const evidence = completeEvidence();
+  delete evidence.independentReview.reviewedCommit;
+  delete evidence.independentReview.reviewedPackageVersion;
+
+  const findings = validateReleaseEvidence(evidence);
+
+  assert.ok(findings.some((finding) => finding.includes("independentReview.reviewedCommit")));
+  assert.ok(findings.some((finding) => finding.includes("independentReview.reviewedPackageVersion")));
 });
 
 test("trusted-key CLI mode fails closed when protected fingerprints are absent", () => {

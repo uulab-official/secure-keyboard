@@ -231,6 +231,11 @@ export function validateReleaseEvidence(evidence, context = {}) {
       signatureKind: "independent-review-signature",
     },
     context.expectedReviewerPublicKeySha256,
+    {
+      expectedCommit: context.expectedCommit,
+      expectedPackageVersion: context.expectedPackageVersion,
+      requireReviewedRelease: true,
+    },
   );
 
   return findings;
@@ -243,6 +248,7 @@ function validateSignatureDescriptor(
   artifactsByPath,
   expectedKinds,
   trustedPublicKeySha256,
+  binding = {},
 ) {
   if (!isRecord(descriptor)) {
     add(findings, fieldName, "must contain an Ed25519 detached-signature descriptor");
@@ -257,6 +263,21 @@ function validateSignatureDescriptor(
   checkHash(findings, `${fieldName}.publicKeySha256`, descriptor.publicKeySha256);
   if (trustedPublicKeySha256 !== undefined && descriptor.publicKeySha256 !== trustedPublicKeySha256) {
     add(findings, `${fieldName}.publicKeySha256`, "must match the trusted public-key fingerprint");
+  }
+  if (binding.requireReviewedRelease) {
+    if (typeof descriptor.reviewedCommit !== "string" || !COMMIT.test(descriptor.reviewedCommit)) {
+      add(findings, `${fieldName}.reviewedCommit`, "must be the exact 40-character reviewed commit SHA");
+    } else if (binding.expectedCommit && descriptor.reviewedCommit !== binding.expectedCommit) {
+      add(findings, `${fieldName}.reviewedCommit`, "must match the manifest commit");
+    }
+    if (typeof descriptor.reviewedPackageVersion !== "string" || !VERSION.test(descriptor.reviewedPackageVersion)) {
+      add(findings, `${fieldName}.reviewedPackageVersion`, "must be the reviewed semantic package version");
+    } else if (
+      binding.expectedPackageVersion &&
+      descriptor.reviewedPackageVersion !== binding.expectedPackageVersion
+    ) {
+      add(findings, `${fieldName}.reviewedPackageVersion`, "must match the manifest package version");
+    }
   }
   const signedArtifact = artifactsByPath.get(descriptor.signedArtifactPath);
   if (signedArtifact?.kind !== expectedKinds.signedArtifactKind) {

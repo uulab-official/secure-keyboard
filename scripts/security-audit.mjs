@@ -456,6 +456,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-review-report/, "release evidence must require a hashed independent review report");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independentReview/, "release evidence must verify the independent reviewer attestation descriptor");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /reviewedCommit/, "release evidence must bind the independent review to the reviewed commit");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /reviewedPackageVersion/, "release evidence must bind the independent review to the reviewed package version");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release evidence must support a protected maintainer-key fingerprint");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release evidence must support a protected reviewer-key fingerprint");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
