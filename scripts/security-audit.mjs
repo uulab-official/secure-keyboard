@@ -615,6 +615,9 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /validate_backend_ttl\(ttl\)/, "Redis WebAuthn storage must validate ceremony TTLs before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.seal\(encoded\.as_slice\(\)\)/, "Redis WebAuthn storage must encrypt ceremony records before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.open\(encoded\)/, "Redis WebAuthn storage must authenticate ceremony records after retrieval");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /const BOUNDED_CREDENTIAL_GET_SCRIPT: &str/, "Redis credential reads must use a dedicated bounded retrieval script");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /BOUNDED_CREDENTIAL_GET_SCRIPT[\s\S]{0,240}STRLEN[\s\S]{0,240}'GET'/, "Redis credential reads must check STRLEN before GET");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /fn get_bounded_credentials[\s\S]{0,600}MAX_CREDENTIAL_RECORD_BYTES/, "Redis credential reads must enforce the application byte bound before decoding");
   const webauthnPostgres = source("crates/secure-webauthn-example/src/storage_postgres.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /pub fn from_config\([\s\S]{0,260}encryption_key: WebAuthnStateKey/, "PostgreSQL WebAuthn production construction must require a host-managed encryption key");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /validate_backend_ttl\(ttl\)/, "PostgreSQL WebAuthn storage must validate ceremony TTLs before persistence");
@@ -622,6 +625,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /protector\.open\(protected\)/, "PostgreSQL WebAuthn storage must authenticate ceremony records after retrieval");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_LOAD_SQL[\s\S]{0,400}LIMIT \$3/, "PostgreSQL credential loads must bound database rows before materialization");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_LOAD_SQL[\s\S]{0,400}octet_length\(passkey::text\) <= \$4/, "PostgreSQL credential loads must bound JSONB bytes before materialization");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL[\s\S]{0,500}FOR UPDATE/, "PostgreSQL credential updates must retain row locking while bounding materialization");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", webauthnPostgres, /POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL[\s\S]{0,500}octet_length\(passkey::text\) <= \$4/, "PostgreSQL credential updates must bound JSONB bytes before materialization");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WEBAUTHN_CEREMONY_STATE_VERSION: u16 = 1/, "WebAuthn ceremony state format must be version-pinned");
   const webauthnManifest = source("crates/secure-webauthn-example/Cargo.toml", findings);
   requireText(findings, "crates/secure-webauthn-example/Cargo.toml", webauthnManifest, /aes-gcm = "=0\.10\.3"/, "WebAuthn durable ceremony protection must pin AES-GCM");

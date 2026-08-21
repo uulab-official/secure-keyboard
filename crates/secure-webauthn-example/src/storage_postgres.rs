@@ -27,6 +27,16 @@ WHERE namespace = $1 AND user_id = $2
 ORDER BY credential_id
 LIMIT $3
 ";
+const POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL: &str = r"
+SELECT CASE
+           WHEN octet_length(passkey::text) <= $4 THEN passkey
+           ELSE NULL::jsonb
+       END AS passkey,
+       revision
+FROM secure_keypad_webauthn_credentials
+WHERE namespace = $1 AND user_id = $2 AND credential_id = $3
+FOR UPDATE
+";
 
 /// SQL schema required by [`PostgresWebAuthnStore`].
 ///
@@ -567,19 +577,26 @@ where
             .transaction()
             .map_err(|_| CredentialStoreError::Unavailable)?;
         let credential_id = result.cred_id().as_ref();
+        let max_credential_record_bytes = i64::try_from(MAX_CREDENTIAL_RECORD_BYTES)
+            .map_err(|_| CredentialStoreError::InvalidRecord)?;
         let row = transaction
             .query_opt(
-                "SELECT passkey, revision FROM secure_keypad_webauthn_credentials
-                 WHERE namespace = $1 AND user_id = $2 AND credential_id = $3 FOR UPDATE",
-                &[&self.namespace, &user_id, &credential_id],
+                POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL,
+                &[
+                    &self.namespace,
+                    &user_id,
+                    &credential_id,
+                    &max_credential_record_bytes,
+                ],
             )
             .map_err(|_| CredentialStoreError::Unavailable)?;
         let Some(row) = row else {
             return Err(CredentialStoreError::InvalidRecord);
         };
-        let encoded: serde_json::Value = row
+        let encoded: Option<serde_json::Value> = row
             .try_get(0)
             .map_err(|_| CredentialStoreError::InvalidRecord)?;
+        let encoded = encoded.ok_or(CredentialStoreError::InvalidRecord)?;
         let revision: i64 = row
             .try_get(1)
             .map_err(|_| CredentialStoreError::InvalidRecord)?;
@@ -651,12 +668,21 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresStorageConfigError>
 
 #[cfg(test)]
 mod tests {
-    use super::{POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_SCHEMA_SQL};
+    use super::{
+        POSTGRES_CREDENTIAL_LOAD_SQL, POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL, POSTGRES_SCHEMA_SQL,
+    };
 
     #[test]
     fn credential_load_query_bounds_rows_and_bytes_before_materialization() {
         assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("LIMIT $3"));
         assert!(POSTGRES_CREDENTIAL_LOAD_SQL.contains("octet_length(passkey::text) <= $4"));
+    }
+
+    #[test]
+    fn credential_update_query_bounds_bytes_before_materialization() {
+        assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("FOR UPDATE"));
+        assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("octet_length(passkey::text) <= $4"));
+        assert!(POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL.contains("ELSE NULL::jsonb"));
     }
 
     #[test]

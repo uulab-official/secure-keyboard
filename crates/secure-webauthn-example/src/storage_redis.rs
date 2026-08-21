@@ -8,11 +8,12 @@ use crate::{
     MAX_PENDING_CEREMONIES,
 };
 use r2d2::{Pool, PooledConnection};
-use redis::{Commands, Script};
+use redis::Script;
 use secure_auth_server::LoginStateHandle;
 use std::{fmt, time::Duration};
 use uuid::Uuid;
 use webauthn_rs::prelude::{AuthenticationResult, Passkey};
+use zeroize::Zeroizing;
 
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
@@ -45,6 +46,17 @@ if value then
   redis.call('ZREM', KEYS[2], KEYS[1])
 end
 return value
+";
+const BOUNDED_CREDENTIAL_GET_SCRIPT: &str = r"
+local length = redis.call('STRLEN', KEYS[1])
+if length > tonumber(ARGV[1]) then
+  return {0, false}
+end
+local value = redis.call('GET', KEYS[1])
+if not value then
+  return {1, false}
+end
+return {2, value}
 ";
 
 /// Configuration errors returned while constructing a Redis-backed store.
@@ -260,10 +272,8 @@ impl CredentialStore for RedisWebAuthnStore {
     fn load(&self, user_id: Uuid) -> Result<Vec<Passkey>, CredentialStoreError> {
         let key = self.credential_key(user_id);
         let mut connection = self.credential_connection()?;
-        let encoded: Option<Vec<u8>> = connection
-            .get(key)
-            .map_err(|_| CredentialStoreError::Unavailable)?;
-        decode_credentials(encoded.as_deref())
+        let encoded = get_bounded_credentials(&mut connection, &key)?;
+        decode_credentials(encoded.as_ref().map(|value| value.as_slice()))
     }
 
     fn insert(&self, user_id: Uuid, passkey: Passkey) -> Result<(), CredentialStoreError> {
@@ -273,10 +283,21 @@ impl CredentialStore for RedisWebAuthnStore {
             &mut *connection,
             std::slice::from_ref(&key),
             |connection, pipe| {
-                let current: Option<Vec<u8>> = connection
-                    .get(&key)
-                    .map_err(|_| redis_error(redis::ErrorKind::Io, "credential read failed"))?;
-                let mut credentials = decode_credentials(current.as_deref()).map_err(|_| {
+                let current = get_bounded_credentials(connection, &key).map_err(|error| {
+                    redis_error(
+                        match error {
+                            CredentialStoreError::InvalidRecord => {
+                                redis::ErrorKind::UnexpectedReturnType
+                            }
+                            _ => redis::ErrorKind::Io,
+                        },
+                        "credential read failed",
+                    )
+                })?;
+                let mut credentials = decode_credentials(
+                    current.as_ref().map(|value| value.as_slice()),
+                )
+                .map_err(|_| {
                     redis_error(
                         redis::ErrorKind::UnexpectedReturnType,
                         "invalid credential record",
@@ -315,10 +336,21 @@ impl CredentialStore for RedisWebAuthnStore {
             &mut *connection,
             std::slice::from_ref(&key),
             |connection, pipe| {
-                let current: Option<Vec<u8>> = connection
-                    .get(&key)
-                    .map_err(|_| redis_error(redis::ErrorKind::Io, "credential read failed"))?;
-                let mut credentials = decode_credentials(current.as_deref()).map_err(|_| {
+                let current = get_bounded_credentials(connection, &key).map_err(|error| {
+                    redis_error(
+                        match error {
+                            CredentialStoreError::InvalidRecord => {
+                                redis::ErrorKind::UnexpectedReturnType
+                            }
+                            _ => redis::ErrorKind::Io,
+                        },
+                        "credential read failed",
+                    )
+                })?;
+                let mut credentials = decode_credentials(
+                    current.as_ref().map(|value| value.as_slice()),
+                )
+                .map_err(|_| {
                     redis_error(
                         redis::ErrorKind::UnexpectedReturnType,
                         "invalid credential record",
@@ -355,6 +387,24 @@ impl CredentialStore for RedisWebAuthnStore {
             },
         )
         .map_err(|_| CredentialStoreError::Unavailable)?
+    }
+}
+
+fn get_bounded_credentials(
+    connection: &mut redis::Connection,
+    key: &str,
+) -> Result<Option<Zeroizing<Vec<u8>>>, CredentialStoreError> {
+    let (status, value): (i64, Option<Vec<u8>>) = Script::new(BOUNDED_CREDENTIAL_GET_SCRIPT)
+        .key(key)
+        .arg(MAX_CREDENTIAL_RECORD_BYTES)
+        .invoke(connection)
+        .map_err(|_| CredentialStoreError::Unavailable)?;
+    match status {
+        1 => Ok(None),
+        2 => value
+            .map(|value| Some(Zeroizing::new(value)))
+            .ok_or(CredentialStoreError::InvalidRecord),
+        _ => Err(CredentialStoreError::InvalidRecord),
     }
 }
 
@@ -408,4 +458,22 @@ fn hex_handle(handle: &LoginStateHandle) -> String {
 
 fn redis_error(kind: redis::ErrorKind, message: &'static str) -> redis::RedisError {
     redis::RedisError::from((kind, message))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BOUNDED_CREDENTIAL_GET_SCRIPT;
+
+    #[test]
+    fn bounded_credential_get_checks_length_before_get() {
+        let length_check = BOUNDED_CREDENTIAL_GET_SCRIPT
+            .find("STRLEN")
+            .expect("bounded script must check length");
+        let get = BOUNDED_CREDENTIAL_GET_SCRIPT
+            .find("'GET'")
+            .expect("bounded script must retrieve an accepted value");
+        assert!(length_check < get);
+        assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("tonumber(ARGV[1])"));
+        assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("return {0, false}"));
+    }
 }

@@ -41,6 +41,9 @@ exact release-candidate commit by the release evidence manifest.
   one row and the credential-record byte limit in SQL before materialization,
   so legacy or invalid excess rows/records cannot turn a credential read into
   an unbounded memory operation.
+- Bounded PostgreSQL credential post-authentication updates and Redis credential
+  reads before materialization; oversized legacy records now fail closed before
+  JSON decoding, and accepted Redis buffers are zeroized on drop.
 
 ### Verification
 
