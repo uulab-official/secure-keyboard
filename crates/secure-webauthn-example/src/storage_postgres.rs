@@ -49,11 +49,15 @@ CREATE INDEX IF NOT EXISTS secure_keypad_webauthn_ceremonies_expiry_idx
 -- The encrypted ceremony envelope is larger than the historical plaintext
 -- bound. Recreate this one constraint so an existing deployment is upgraded
 -- instead of leaving the old 131072-byte limit in place.
-ALTER TABLE secure_keypad_webauthn_ceremonies
-    DROP CONSTRAINT IF EXISTS secure_keypad_webauthn_ceremony_state_length;
-ALTER TABLE secure_keypad_webauthn_ceremonies
-    ADD CONSTRAINT secure_keypad_webauthn_ceremony_state_length
-    CHECK (octet_length(state) BETWEEN 1 AND 131128);
+DO $$
+BEGIN
+    ALTER TABLE secure_keypad_webauthn_ceremonies
+        DROP CONSTRAINT IF EXISTS secure_keypad_webauthn_ceremony_state_length;
+    ALTER TABLE secure_keypad_webauthn_ceremonies
+        ADD CONSTRAINT secure_keypad_webauthn_ceremony_state_length
+        CHECK (octet_length(state) BETWEEN 1 AND 131128);
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_credentials (
     namespace TEXT NOT NULL,
