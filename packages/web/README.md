@@ -9,6 +9,7 @@ WebAuthn must run in a secure context. A custom browser keypad is intentionally 
 This package is an adapter, not a WebAuthn server. The Rust reference service
 is in `crates/secure-webauthn-example`; it delegates ceremony verification to
 the pinned `webauthn-rs` engine and adds bounded JSON plus one-time state
-consumption. The embedding server must still provide TLS, durable credential
+consumption. The embedding server must pass the reference route's validated
+TLS/proxy-limit deployment context and still provide durable credential
 storage, account/session binding, CSRF protection, replay-safe distributed
 storage, and its own rate limits.

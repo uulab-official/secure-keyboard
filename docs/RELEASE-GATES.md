@@ -39,7 +39,8 @@ host bundler vulnerability.
 The compatibility matrix in `docs/COMPATIBILITY.md` is part of the release
 input. A release must publish the exact commit, lockfiles, toolchain versions,
 native static-library checksums, SBOM, and framework package manifests as one
-set.
+set. HTTP deployments must also be reviewed against
+`docs/HTTP-DEPLOYMENT.md`.
 
 ## Fuzz gate
 

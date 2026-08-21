@@ -79,11 +79,14 @@ errors, and zeroizing response buffers. Its registration finish body includes
 the public account identifier so the host repository can persist the protected
 credential file; it never returns that file.
 
-The HTTP route contract does not create TLS configuration, reverse-proxy
-limits, rate limits, account enrollment authorization, account lookup policy,
-or application session tokens. An embedding server must provide those controls;
-registration finish must not be exposed before the application's account
-creation policy has authorized it.
+The HTTP route contract requires an explicit deployment context proving TLS,
+pre-buffering body limits, and connection/read limits. Use the trusted-proxy
+variant only after the host validates the proxy source and forwarded scheme;
+the route never parses `X-Forwarded-Proto`. The route does not create
+certificate configuration, rate limits, account enrollment authorization,
+account lookup policy, or application session tokens. An embedding server must
+provide those controls; registration finish must not be exposed before the
+application's account creation policy has authorized it.
 
 Use `ServerAuthService::new_with_key_rotation` for a bounded rotation window:
 previous IDs are accepted only on inbound start messages, responses emit the
@@ -92,7 +95,10 @@ covered by a downgrade regression test.
 
 ## Required server controls
 
-- HTTPS/TLS with certificate and endpoint policy appropriate to the deployment;
+- HTTPS/TLS with certificate and endpoint policy appropriate to the deployment,
+  passed to the route as a validated deployment context;
+- reverse-proxy source allowlisting, pre-buffering body limits, and connection
+  read/time limits;
 - one-use server login state, atomic consumption, and replay detection;
 - per-account, per-IP, and deployment-wide rate limits;
 - dummy login processing for unknown accounts to reduce enumeration signals;

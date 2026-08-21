@@ -11,13 +11,15 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
 Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
+Use the [HTTP deployment baseline](docs/HTTP-DEPLOYMENT.md) when embedding the
+server routes behind TLS or a reverse proxy.
 
 ## Current packages
 
 - `secure-core`: key-ID-only input state, masking state, Hangul composition, timeout, and explicit clearing.
 - `secure-auth`: pinned OPAQUE 4.0.1 engine with Argon2 KSF, typed protocol envelopes, and native/server Rust integrations.
 - `secure-auth-server`: transport-neutral OPAQUE server service plus bounded one-time state-store reference implementation; distributed deployments must provide an atomic Redis/DB adapter.
-- `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; TLS, rate limits, account enrollment, and session issuance remain host-server responsibilities.
+- `secure-auth-http`: bounded framework-neutral HTTP/JSON route contract for OPAQUE registration/login; every call requires a validated TLS/proxy-limit deployment context, while rate limits, account enrollment, and session issuance remain host-server responsibilities.
 - `secure-webauthn-example`: Rust 1.85-compatible, `webauthn-rs 0.5.4`-pinned passkey registration/authentication reference with origin/RP-ID binding, bounded HTTP/JSON routes, host-principal binding, and atomic one-time ceremony state.
 - `secure-ffi`: C ABI with opaque session/submission handles for native iOS/Android bindings.
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.

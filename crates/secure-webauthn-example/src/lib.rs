@@ -448,6 +448,81 @@ pub const WEBAUTHN_API_PREFIX: &str = "/v1/webauthn";
 /// JSON media type emitted by the `WebAuthn` route contract.
 pub const WEBAUTHN_JSON_CONTENT_TYPE: &str = "application/json; charset=utf-8";
 
+/// Transport state established by the embedding HTTP server.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WebAuthnTransportSecurity {
+    /// The request arrived over a TLS connection terminated by this service.
+    DirectTls,
+    /// A configured, trusted reverse proxy terminated TLS before forwarding.
+    ///
+    /// The host must validate the proxy source and forwarded scheme before it
+    /// constructs this value. The route never parses `X-Forwarded-Proto`.
+    TrustedProxyTls,
+    /// Plain HTTP or an unvalidated forwarded scheme.
+    Plaintext,
+}
+
+impl WebAuthnTransportSecurity {
+    const fn is_encrypted(self) -> bool {
+        !matches!(self, Self::Plaintext)
+    }
+}
+
+/// Deployment controls that must be established before a route reads JSON.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WebAuthnDeploymentContext {
+    transport: WebAuthnTransportSecurity,
+    upstream_body_limit_bytes: usize,
+    connection_limits_enforced: bool,
+}
+
+impl WebAuthnDeploymentContext {
+    /// Creates a context from host-validated transport and proxy limits.
+    ///
+    /// `upstream_body_limit_bytes` must be no greater than
+    /// [`MAX_CLIENT_RESPONSE_BYTES`]. The host must enforce this limit before
+    /// buffering the request body, and must enforce connection/read timeouts
+    /// before calling the route.
+    #[must_use]
+    pub const fn new(
+        transport: WebAuthnTransportSecurity,
+        upstream_body_limit_bytes: usize,
+        connection_limits_enforced: bool,
+    ) -> Self {
+        Self {
+            transport,
+            upstream_body_limit_bytes,
+            connection_limits_enforced,
+        }
+    }
+
+    /// Returns the standard context for direct TLS termination.
+    #[must_use]
+    pub const fn direct_tls() -> Self {
+        Self::new(
+            WebAuthnTransportSecurity::DirectTls,
+            MAX_CLIENT_RESPONSE_BYTES,
+            true,
+        )
+    }
+
+    /// Returns the standard context for a previously validated trusted proxy.
+    #[must_use]
+    pub const fn trusted_proxy_tls() -> Self {
+        Self::new(
+            WebAuthnTransportSecurity::TrustedProxyTls,
+            MAX_CLIENT_RESPONSE_BYTES,
+            true,
+        )
+    }
+
+    const fn has_valid_limits(self) -> bool {
+        self.upstream_body_limit_bytes > 0
+            && self.upstream_body_limit_bytes <= MAX_CLIENT_RESPONSE_BYTES
+            && self.connection_limits_enforced
+    }
+}
+
 /// A borrowed HTTP request view for Axum, Actix, Go, Java, or ASP.NET
 /// adapters. `principal` is populated by the host's authenticated session and
 /// never read from the JSON body.
@@ -494,11 +569,25 @@ impl<'a> WebAuthnHttpRouter<'a> {
     }
 
     /// Handles one request without logging body, handles, credentials, or
-    /// verifier errors. TLS, connection limits, CSRF, session issuance, and
-    /// durable store implementation remain host-server responsibilities.
+    /// verifier errors.
+    ///
+    /// The context is mandatory so a framework adapter cannot accidentally
+    /// expose the route over plaintext HTTP or omit the reverse-proxy body and
+    /// connection limits. CSRF, session issuance, and durable store
+    /// implementation remain host-server responsibilities.
     #[must_use]
-    pub fn handle(&self, request: WebAuthnHttpRequest<'_>) -> WebAuthnHttpResponse {
-        if request.body.len() > MAX_CLIENT_RESPONSE_BYTES {
+    pub fn handle(
+        &self,
+        request: WebAuthnHttpRequest<'_>,
+        context: WebAuthnDeploymentContext,
+    ) -> WebAuthnHttpResponse {
+        if !context.transport.is_encrypted() {
+            return webauthn_http_error(400, "invalid_request");
+        }
+        if !context.has_valid_limits() {
+            return webauthn_http_error(503, "temporarily_unavailable");
+        }
+        if request.body.len() > context.upstream_body_limit_bytes {
             return webauthn_http_error(413, "invalid_request");
         }
         if request.method != "POST" {

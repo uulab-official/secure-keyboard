@@ -4,8 +4,8 @@ use secure_auth::{
     CredentialFile, ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES,
 };
 use secure_auth_http::{
-    CredentialRepository, HttpAuthRouter, HttpRequest, RepositoryError, AUTHENTICATED_RESPONSE,
-    REGISTRATION_STORED_RESPONSE,
+    CredentialRepository, HttpAuthRouter, HttpDeploymentContext, HttpRequest, RepositoryError,
+    TransportSecurity, AUTHENTICATED_RESPONSE, REGISTRATION_STORED_RESPONSE,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, LoginStateHandle, ServerAuthService};
 use serde::Serialize;
@@ -15,6 +15,41 @@ const CLIENT_ID: &[u8] = b"fixture-client";
 const SERVER_ID: &[u8] = b"fixture-server";
 const CREDENTIAL_ID: &[u8] = b"fixture-user";
 const PASSWORD: &[u8] = b"fixture-only-secret";
+
+#[test]
+fn route_requires_tls_and_proxy_limits_before_parsing() {
+    let (setup, credential) = registered_fixture();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let router = HttpAuthRouter::new(service, FixtureRepository::with(CREDENTIAL_ID, credential));
+    let request = HttpRequest {
+        method: "POST",
+        path: "/v1/opaque/login/start",
+        content_type: Some("application/json"),
+        body: b"not-json",
+    };
+
+    let plaintext = router.handle(
+        request,
+        HttpDeploymentContext::new(TransportSecurity::Plaintext, MAX_JSON_BODY_BYTES, true),
+    );
+    assert_eq!(plaintext.status, 400);
+    assert_eq!(plaintext.body, br#"{"error":"invalid_request"}"#);
+
+    let missing_proxy_limit = router.handle(
+        request,
+        HttpDeploymentContext::new(TransportSecurity::DirectTls, MAX_JSON_BODY_BYTES, false),
+    );
+    assert_eq!(missing_proxy_limit.status, 503);
+    assert_eq!(
+        missing_proxy_limit.body,
+        br#"{"error":"temporarily_unavailable"}"#
+    );
+}
 
 struct FixtureRepository {
     entries: Mutex<HashMap<Vec<u8>, CredentialFile>>,
@@ -104,20 +139,26 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
     .unwrap();
     let router = HttpAuthRouter::new(service, FixtureRepository::with(CREDENTIAL_ID, credential));
 
-    let content_type_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/start",
-        content_type: Some("text/plain"),
-        body: b"{}",
-    });
+    let content_type_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("text/plain"),
+            body: b"{}",
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(content_type_response.status, 415);
 
-    let oversized_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/start",
-        content_type: Some("application/json"),
-        body: &vec![b'x'; MAX_JSON_BODY_BYTES + 1],
-    });
+    let oversized_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("application/json"),
+            body: &vec![b'x'; MAX_JSON_BODY_BYTES + 1],
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(oversized_response.status, 413);
     assert_eq!(oversized_response.body, br#"{"error":"invalid_request"}"#);
 }
@@ -147,12 +188,15 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
         envelope: &envelope,
     })
     .unwrap();
-    let response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/start",
-        content_type: Some("application/json"),
-        body: &body,
-    });
+    let response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("application/json"),
+            body: &body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(response.status, 200);
     let start: LoginStartResponse = serde_json::from_slice(&response.body).unwrap();
     assert!(!start.handle.is_empty());
@@ -180,21 +224,27 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
         envelope: &finalization_envelope,
     })
     .unwrap();
-    let finish_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/finish",
-        content_type: Some("application/json"),
-        body: &finish_body,
-    });
+    let finish_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/finish",
+            content_type: Some("application/json"),
+            body: &finish_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(finish_response.status, 200);
     assert_eq!(finish_response.body, AUTHENTICATED_RESPONSE);
 
-    let replay_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/finish",
-        content_type: Some("application/json"),
-        body: &finish_body,
-    });
+    let replay_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/finish",
+            content_type: Some("application/json"),
+            body: &finish_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(replay_response.status, 401);
     assert_eq!(
         replay_response.body,
@@ -226,12 +276,15 @@ fn login_start_with_unknown_identifier_keeps_generic_wire_response() {
         envelope: &envelope,
     })
     .unwrap();
-    let response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/login/start",
-        content_type: Some("application/json"),
-        body: &body,
-    });
+    let response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("application/json"),
+            body: &body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(response.status, 200);
     assert!(!response.body.is_empty());
     assert!(!response
@@ -265,12 +318,15 @@ fn registration_start_response_is_not_a_credential_file_endpoint() {
         envelope: &envelope,
     })
     .unwrap();
-    let response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/registration/start",
-        content_type: Some("application/json; charset=utf-8"),
-        body: &body,
-    });
+    let response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/start",
+            content_type: Some("application/json; charset=utf-8"),
+            body: &body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(response.status, 200);
     assert!(!response
         .body
@@ -302,12 +358,15 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
         envelope: &request_envelope,
     })
     .unwrap();
-    let start_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/registration/start",
-        content_type: Some("application/json"),
-        body: &start_body,
-    });
+    let start_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/start",
+            content_type: Some("application/json"),
+            body: &start_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(start_response.status, 200);
     let start: RegistrationStartResponse = serde_json::from_slice(&start_response.body).unwrap();
     let response_message = start
@@ -328,12 +387,15 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
         envelope: &upload_envelope,
     })
     .unwrap();
-    let finish_response = router.handle(HttpRequest {
-        method: "POST",
-        path: "/v1/opaque/registration/finish",
-        content_type: Some("application/json"),
-        body: &finish_body,
-    });
+    let finish_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/finish",
+            content_type: Some("application/json"),
+            body: &finish_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
     assert_eq!(finish_response.status, 200);
     assert_eq!(finish_response.body, REGISTRATION_STORED_RESPONSE);
     assert!(!finish_response

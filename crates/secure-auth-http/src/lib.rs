@@ -5,9 +5,11 @@
 //!
 //! This crate intentionally stops at a framework-neutral request/response
 //! boundary. It enforces HTTP method, media type, body size, JSON schema,
-//! generic public errors, and one-time login-handle consumption. TLS,
-//! certificate policy, connection limits, reverse-proxy hardening, and
-//! session-token issuance remain responsibilities of the embedding server.
+//! generic public errors, and one-time login-handle consumption. The caller
+//! must provide a [`HttpDeploymentContext`] proving that TLS and upstream
+//! body/connection limits were established; certificate policy, proxy source
+//! allowlisting, and session-token issuance remain responsibilities of the
+//! embedding server.
 
 use secure_auth::{AuthEnvelope, CredentialFile, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES};
 use secure_auth_server::{
@@ -34,6 +36,77 @@ const REGISTRATION_FINISH_PATH: &str = "/v1/opaque/registration/finish";
 const LOGIN_START_PATH: &str = "/v1/opaque/login/start";
 const LOGIN_FINISH_PATH: &str = "/v1/opaque/login/finish";
 const HANDLE_BYTES: usize = 32;
+
+/// Transport state established by the embedding HTTP server.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransportSecurity {
+    /// The request arrived over a TLS connection terminated by this service.
+    DirectTls,
+    /// A configured, trusted reverse proxy terminated TLS before forwarding.
+    ///
+    /// The host must validate the proxy source and forwarded scheme before it
+    /// constructs this value. The route never parses `X-Forwarded-Proto`.
+    TrustedProxyTls,
+    /// Plain HTTP or an unvalidated forwarded scheme.
+    Plaintext,
+}
+
+impl TransportSecurity {
+    const fn is_encrypted(self) -> bool {
+        !matches!(self, Self::Plaintext)
+    }
+}
+
+/// Deployment controls that must be established before a route reads JSON.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HttpDeploymentContext {
+    transport: TransportSecurity,
+    upstream_body_limit_bytes: usize,
+    connection_limits_enforced: bool,
+}
+
+impl HttpDeploymentContext {
+    /// Creates a context from host-validated transport and proxy limits.
+    ///
+    /// `upstream_body_limit_bytes` must be no greater than
+    /// [`MAX_HTTP_BODY_BYTES`]. The host must enforce this limit before
+    /// buffering the request body, and must enforce connection/read timeouts
+    /// before calling the route.
+    #[must_use]
+    pub const fn new(
+        transport: TransportSecurity,
+        upstream_body_limit_bytes: usize,
+        connection_limits_enforced: bool,
+    ) -> Self {
+        Self {
+            transport,
+            upstream_body_limit_bytes,
+            connection_limits_enforced,
+        }
+    }
+
+    /// Returns the standard context for direct TLS termination.
+    #[must_use]
+    pub const fn direct_tls() -> Self {
+        Self::new(TransportSecurity::DirectTls, MAX_HTTP_BODY_BYTES, true)
+    }
+
+    /// Returns the standard context for a previously validated trusted proxy.
+    #[must_use]
+    pub const fn trusted_proxy_tls() -> Self {
+        Self::new(
+            TransportSecurity::TrustedProxyTls,
+            MAX_HTTP_BODY_BYTES,
+            true,
+        )
+    }
+
+    const fn has_valid_limits(self) -> bool {
+        self.upstream_body_limit_bytes > 0
+            && self.upstream_body_limit_bytes <= MAX_HTTP_BODY_BYTES
+            && self.connection_limits_enforced
+    }
+}
 
 /// A borrowed HTTP request view suitable for an Axum, Actix, Go, Java, or
 /// ASP.NET adapter.
@@ -121,9 +194,19 @@ where
 
     /// Handles one bounded request without logging its body, identifiers,
     /// handles, or protocol errors.
+    ///
+    /// The context is mandatory so a framework adapter cannot accidentally
+    /// expose the route over plaintext HTTP or omit the reverse-proxy body and
+    /// connection limits.
     #[must_use]
-    pub fn handle(&self, request: HttpRequest<'_>) -> HttpResponse {
-        if request.body.len() > MAX_HTTP_BODY_BYTES {
+    pub fn handle(&self, request: HttpRequest<'_>, context: HttpDeploymentContext) -> HttpResponse {
+        if !context.transport.is_encrypted() {
+            return error_response(400, PublicAuthCode::InvalidRequest);
+        }
+        if !context.has_valid_limits() {
+            return error_response(503, PublicAuthCode::TemporarilyUnavailable);
+        }
+        if request.body.len() > context.upstream_body_limit_bytes {
             return error_response(413, PublicAuthCode::InvalidRequest);
         }
         if request.method != "POST" {

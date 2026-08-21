@@ -99,7 +99,7 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: OPAQUE engine and verified HTTP/JSON route contract complete; deployment controls pending
+Status: OPAQUE engine, verified HTTP/JSON route contract, and deployment baseline complete; durable/distributed controls pending
 
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
@@ -120,7 +120,8 @@ Status: OPAQUE engine and verified HTTP/JSON route contract complete; deployment
 - [x] Add transport-neutral registration orchestration that returns protected credential files.
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
 - [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
-- [ ] Add framework-specific HTTP examples with mandatory TLS and reverse-proxy limits.
+- [x] Add a mandatory TLS/proxy-limit deployment context and Nginx/Caddy HTTP deployment baseline.
+- [ ] Add compile-tested Axum/Actix adapter examples after the host session and storage interfaces are finalized.
 - [ ] Add distributed replay-store, downgrade, rate-limit, enumeration, and key-rotation tests.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [ ] Provide migration guidance for systems that currently receive ordinary passwords.
@@ -129,7 +130,7 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: passkey-first adapter, reference server, and bounded HTTP route contract complete; HTTP deployment hardening pending
+Status: passkey-first adapter, reference server, bounded HTTP route, and deployment baseline complete; CSP/supply-chain and durable store hardening pending
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
