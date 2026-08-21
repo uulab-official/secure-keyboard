@@ -3,6 +3,7 @@ import { DEFAULT_NUMERIC_LAYOUT, DEFAULT_THEME } from "@secure-keypad/contracts"
 import {
   assertSecureKeypadProps,
   createSecureKeypadEventHandlers,
+  getSecureKeypadNativeProps,
   validateMaskedStateEvent,
   validateResultEvent,
   validateSecureKeypadProps,
@@ -108,6 +109,30 @@ describe("React Native public prop boundary", () => {
         secret: "fixture-only-secret",
       }),
     ).toThrowError(/^(?!.*fixture-only-secret)/);
+  });
+
+  it("strips callbacks and rejects unknown props before native serialization", () => {
+    const nativeProps = getSecureKeypadNativeProps({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+      cancelRequest: 0,
+    });
+    expect(nativeProps).toEqual({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+      cancelRequest: 0,
+    });
+    expect(nativeProps).not.toHaveProperty("onResult");
+
+    expect(() =>
+      getSecureKeypadNativeProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        password: "fixture-only-secret",
+      } as never),
+    ).toThrow("props contains an unsupported field");
   });
 
   it("rejects malformed native masked-state events before host callbacks", () => {

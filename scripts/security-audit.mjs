@@ -275,6 +275,8 @@ export function runSecurityAudit() {
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /validateMaskedStateEvent/, "React Native must expose masked event validation at the bridge boundary");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /createSecureKeypadEventHandlers/, "React Native must install fail-closed event handlers");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /hasExactKeys/, "React Native bridge event wrappers must reject unexpected outer fields");
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeProps/, "React Native must allowlist props before native serialization");
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /nativeProps = getSecureKeypadNativeProps\(props\);[\s\S]{0,500}return null/, "React Native must fail closed before creating a native view for invalid props");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeView/, "React Native low-level native view access must be explicitly named");
   const reactNativePackage = source("packages/react-native/package.json", findings);
   requireText(findings, "packages/react-native/package.json", reactNativePackage, /"app\.plugin"\s*:\s*"\.\/app\.plugin\.js"/, "React Native must expose its Expo config plugin");

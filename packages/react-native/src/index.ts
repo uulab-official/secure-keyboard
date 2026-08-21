@@ -39,6 +39,9 @@ export interface SecureKeypadProps {
   readonly onResult?: (event: ResultEvent) => void;
 }
 
+/** Native-facing props after validation and removal of framework callbacks. */
+export type SecureKeypadNativeProps = Omit<SecureKeypadProps, "onMaskedStateChange" | "onResult">;
+
 export interface MaskedStateEvent {
   readonly nativeEvent: MaskedState;
 }
@@ -183,6 +186,23 @@ export function assertSecureKeypadProps(value: unknown): asserts value is Secure
   if (!result.valid) throw new TypeError(result.errors.join("; "));
 }
 
+/**
+ * Validates and allowlists the props that may cross into the native view.
+ * Framework callbacks and arbitrary host props never enter the native map.
+ */
+export function getSecureKeypadNativeProps(props: SecureKeypadProps): SecureKeypadNativeProps {
+  assertSecureKeypadProps(props);
+  return {
+    layout: props.layout,
+    theme: props.theme,
+    ...(props.style === undefined ? {} : { style: props.style }),
+    ...(props.inputPolicy === undefined ? {} : { inputPolicy: props.inputPolicy }),
+    ...(props.maxTokens === undefined ? {} : { maxTokens: props.maxTokens }),
+    ...(props.timeoutMs === undefined ? {} : { timeoutMs: props.timeoutMs }),
+    ...(props.cancelRequest === undefined ? {} : { cancelRequest: props.cancelRequest }),
+  };
+}
+
 /** Lazily resolves the unwrapped native component for low-level host integration. */
 export function getSecureKeypadNativeView(): SecureKeypadNativeComponent {
   const reactNative = require("react-native") as typeof import("react-native");
@@ -204,7 +224,16 @@ export function getSecureKeypadView(): SecureKeypadNativeComponent {
     forwardRef: (render: (props: SecureKeypadProps, ref: unknown) => unknown) => SecureKeypadNativeComponent;
   };
   secureKeypadComponent = react.forwardRef((props, ref) => {
-    const { onMaskedStateChange, onResult, ...nativeProps } = props;
+    const { onMaskedStateChange, onResult } = props;
+    let nativeProps: SecureKeypadNativeProps;
+    try {
+      nativeProps = getSecureKeypadNativeProps(props);
+    } catch {
+      if (typeof onResult === "function") {
+        onResult({ nativeEvent: { type: "result", code: "error" } });
+      }
+      return null;
+    }
     const eventHandlers = createSecureKeypadEventHandlers(onMaskedStateChange, onResult);
     return react.createElement(NativeView, {
       ...nativeProps,
