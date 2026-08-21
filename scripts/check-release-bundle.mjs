@@ -30,6 +30,8 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/Cargo.lock",
   "source/pnpm-lock.yaml",
   "source/CHANGELOG.md",
+  "source/README.md",
+  "source/SECURITY.md",
   "source/LICENSE-MIT",
   "source/THIRD-PARTY-NOTICES.md",
   "source/secure-keypad.sbom.spdx.json",

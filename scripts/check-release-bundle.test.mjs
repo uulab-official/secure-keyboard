@@ -73,6 +73,8 @@ function createValidStaging() {
   writeFile(root, "source/Cargo.lock", "# cargo lock fixture\n");
   writeFile(root, "source/pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
   writeFile(root, "source/CHANGELOG.md", "# Changelog\n\n## Unreleased\n");
+  writeFile(root, "source/README.md", "# Secure Keypad SDK\n");
+  writeFile(root, "source/SECURITY.md", "# Security Policy\n");
   writeFile(root, "source/LICENSE-MIT", "MIT License\n");
   writeFile(root, "source/THIRD-PARTY-NOTICES.md", "# Third-party notices\n");
   writeFile(root, "source/secure-keypad.sbom.spdx.json", JSON.stringify({
@@ -129,6 +131,19 @@ test("release staging rejects a changelog without release headings", () => {
   }
 });
 
+test("release staging requires the public README and vulnerability policy", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/README.md"));
+    rmSync(path.join(root, "source/SECURITY.md"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/README.md")));
+    assert.ok(findings.some((finding) => finding.includes("source/SECURITY.md")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release staging rejects missing notices, malformed SBOM, package license loss, and private keys", () => {
   const root = createValidStaging();
   try {
@@ -163,4 +178,13 @@ test("release candidate workflow includes the security changelog in the signed s
     "utf8",
   );
   assert.match(workflow, /cp\s+CHANGELOG\.md\s+"\$RELEASE_DIR\/source\/CHANGELOG\.md"/);
+});
+
+test("release candidate workflow includes public security documents in the signed source bundle", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /cp\s+README\.md\s+"\$RELEASE_DIR\/source\/README\.md"/);
+  assert.match(workflow, /cp\s+SECURITY\.md\s+"\$RELEASE_DIR\/source\/SECURITY\.md"/);
 });
