@@ -117,6 +117,33 @@ class MaskedState {
   final DisplayState displayState;
 }
 
+/// Non-secret commands for a mounted native keypad.
+///
+/// The controller never carries input. Its cancel operation asks the native
+/// view to clear and zeroize the active session through a method channel.
+class SecureKeypadController {
+  Future<void> Function()? _cancelAction;
+
+  /// Cancels the active native session and clears its pending input.
+  Future<void> cancel() {
+    final action = _cancelAction;
+    if (action == null) {
+      return Future<void>.error(
+        StateError('SecureKeypadController is not attached to a native keypad'),
+      );
+    }
+    return action();
+  }
+
+  void _attach(Future<void> Function() action) {
+    _cancelAction = action;
+  }
+
+  void _detach() {
+    _cancelAction = null;
+  }
+}
+
 /// Flutter-facing configuration. It is safe to pass across a framework
 /// boundary because it contains presentation and policy only, never input.
 class SecureKeypadConfiguration {
@@ -251,10 +278,12 @@ class SecureKeypad extends StatefulWidget {
   const SecureKeypad({
     super.key,
     required this.configuration,
+    this.controller,
     this.viewType = 'secure_keypad/native',
   });
 
   final SecureKeypadConfiguration configuration;
+  final SecureKeypadController? controller;
   final String viewType;
 
   @override
@@ -263,6 +292,7 @@ class SecureKeypad extends StatefulWidget {
 
 class _SecureKeypadState extends State<SecureKeypad> {
   StreamSubscription<dynamic>? _eventSubscription;
+  MethodChannel? _controlChannel;
   bool _reportedConfigurationError = false;
 
   @override
@@ -272,13 +302,21 @@ class _SecureKeypadState extends State<SecureKeypad> {
         oldWidget.viewType != widget.viewType) {
       _eventSubscription?.cancel();
       _eventSubscription = null;
+      _controlChannel = null;
       _reportedConfigurationError = false;
+      _attachController();
+    }
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach();
+      _attachController();
     }
   }
 
   @override
   void dispose() {
     _eventSubscription?.cancel();
+    widget.controller?._detach();
+    _controlChannel = null;
     super.dispose();
   }
 
@@ -320,11 +358,25 @@ class _SecureKeypadState extends State<SecureKeypad> {
   }
 
   void _onPlatformViewCreated(int viewId) {
+    _controlChannel = MethodChannel('secure_keypad/control/$viewId');
+    _attachController();
     _eventSubscription?.cancel();
     _eventSubscription = EventChannel('secure_keypad/events/$viewId')
         .receiveBroadcastStream()
         .listen(_onNativeEvent, onError: (_, __) {
       _emitResult(SecureKeypadResultCode.error);
+    });
+  }
+
+  void _attachController() {
+    final controller = widget.controller;
+    if (controller == null) return;
+    controller._attach(() async {
+      final channel = _controlChannel;
+      if (channel == null) {
+        throw StateError('SecureKeypad native view is not ready');
+      }
+      await channel.invokeMethod<void>('cancel');
     });
   }
 

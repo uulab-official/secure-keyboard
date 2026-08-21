@@ -114,6 +114,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     private val keypad: LinearLayout
     private val rootContainer: LinearLayout
     private var currentTheme: SecureKeypadTheme = SecureKeypadTheme()
+    private var lastCancelRequest: Long? = null
 
     /** Called with a native-only submission that the host must close or authenticate natively. */
     public var onSubmit: ((SecureKeypadSubmission) -> Unit)? = null
@@ -208,6 +209,17 @@ public open class SecureKeypadView @JvmOverloads constructor(
         val status = SecureKeypadNative.sessionCancel(sessionHandle)
         if (status != 0) onError?.invoke(status)
         refreshMaskedState()
+    }
+
+    /** Applies a monotonic, non-secret host command exactly once. */
+    public fun requestCancel(requestId: Long) {
+        if (requestId < 0) {
+            onError?.invoke(1)
+            return
+        }
+        val previous = lastCancelRequest
+        lastCancelRequest = requestId
+        if (previous != null && previous != requestId) cancelSession()
     }
 
     override fun onDetachedFromWindow() {

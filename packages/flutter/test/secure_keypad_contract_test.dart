@@ -65,4 +65,13 @@ void main() {
     expect(params['inputPolicy'], 'numeric');
     expect((params['layout'] as Map<String, Object?>)['schemaVersion'], 1);
   });
+
+  test('controller exposes only a native cancel command', () async {
+    final controller = SecureKeypadController();
+
+    await expectLater(
+      controller.cancel(),
+      throwsA(isA<StateError>()),
+    );
+  });
 }

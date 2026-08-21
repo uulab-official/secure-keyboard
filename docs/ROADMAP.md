@@ -80,7 +80,7 @@ Status: publishable contract, native source packaging, and parity gate complete;
 - [x] Add a reproducible CI host-build gate that links the React Native package and Android arm64 Rust FFI library.
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the React Native package and XCFramework.
 - [x] Expose an explicit native `cancel` layout action that clears input without a framework secret channel.
-- [ ] Expose controller commands and masked state events.
+- [x] Expose masked state events and non-secret native cancel controller commands.
 - [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.
 

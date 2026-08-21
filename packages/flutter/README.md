@@ -21,6 +21,11 @@ decision. Host-native authentication must install
 `takeNativeHandle()` on Android, and consume the handle out-of-band. No handle
 is exposed to Dart.
 
+For host-driven cancellation, pass a `SecureKeypadController` to the widget
+and call `await controller.cancel()`. The controller contains no input and
+uses the per-view native method channel; native code clears and zeroizes the
+session before emitting the normal masked `cancelled` state/result events.
+
 The plugin build is fail-closed. Set `SECURE_KEYPAD_FFI_XCFRAMEWORK` to the
 matching Rust `secure_ffi` XCFramework before iOS CocoaPods integration.
 `SECURE_KEYPAD_FFI_LIB` is supported only for a single-platform host build. Set

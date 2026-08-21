@@ -22,6 +22,8 @@ export function PinEntry() {
     inputPolicy: "numeric",
     maxTokens: 8,
     timeoutMs: 60_000,
+    // Increment this public command token to cancel and zeroize natively.
+    cancelRequest: 0,
     onMaskedStateChange: ({ nativeEvent }) => {
       // nativeEvent.length and nativeEvent.displayState only
       console.log(nativeEvent.length, nativeEvent.displayState);
@@ -37,6 +39,11 @@ export function PinEntry() {
 ```
 
 This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
+
+`cancelRequest` is a monotonic, non-secret command token. The first value is
+captured as the baseline; changing it calls the native cancellation path,
+zeroizes the pending session, and emits only `cancelled` plus an empty masked
+state. It never carries or derives an input value.
 
 Build integration is intentionally fail-closed. Before `pod install`, set
 `SECURE_KEYPAD_FFI_XCFRAMEWORK` to a matching Rust `secure_ffi` XCFramework.

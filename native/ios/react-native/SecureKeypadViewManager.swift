@@ -8,6 +8,7 @@ final class SecureKeypadReactView: SecureKeypadView {
     @objc var inputPolicy: NSString = "numeric" { didSet { configureIfReady() } }
     @objc var maxTokens: NSNumber = 8 { didSet { configureIfReady() } }
     @objc var timeoutMs: NSNumber = 60_000 { didSet { configureIfReady() } }
+    @objc var cancelRequest: NSNumber? { didSet { requestCancelIfValid() } }
     @objc var onMaskedStateChange: RCTBubblingEventBlock?
     @objc var onResult: RCTBubblingEventBlock?
 
@@ -44,6 +45,16 @@ final class SecureKeypadReactView: SecureKeypadView {
                 self?.onResult?(["type": "result", "code": "error"])
             }
         }
+    }
+
+    private func requestCancelIfValid() {
+        guard let cancelRequest else { return }
+        let value = cancelRequest.int64Value
+        guard value >= 0, NSNumber(value: value) == cancelRequest else {
+            onResult?(["type": "result", "code": "invalid"])
+            return
+        }
+        requestCancel(value)
     }
 
     private func configureIfReady() {

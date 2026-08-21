@@ -38,6 +38,7 @@ private final class SecureKeypadFlutterPlatformViewFactory: NSObject, FlutterPla
 private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformView, FlutterStreamHandler {
     private let keypad: SecureKeypadView
     private let eventChannel: FlutterEventChannel
+    private let controlChannel: FlutterMethodChannel
     private var eventSink: FlutterEventSink?
     private var pendingEvent: [String: Any]?
 
@@ -47,8 +48,21 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             name: "\(SecureKeypadFlutterRegistration.eventChannelPrefix)\(viewId)",
             binaryMessenger: messenger
         )
+        controlChannel = FlutterMethodChannel(
+            name: "secure_keypad/control/\(viewId)",
+            binaryMessenger: messenger
+        )
         super.init()
         eventChannel.setStreamHandler(self)
+        controlChannel.setMethodCallHandler { [weak self] call, result in
+            switch call.method {
+            case "cancel":
+                self?.keypad.cancelSession()
+                result(nil)
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
 
         keypad.onMaskedStateChanged = { [weak self] length, displayState in
             self?.emit([
@@ -126,6 +140,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
 
     deinit {
         eventChannel.setStreamHandler(nil)
+        controlChannel.setMethodCallHandler(nil)
         keypad.releaseSession()
     }
 }

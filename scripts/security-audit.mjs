@@ -45,9 +45,10 @@ export function runSecurityAudit() {
     findings,
     "packages/react-native/src/index.ts",
     rnProps,
-    /layout|theme|inputPolicy|maxTokens|timeoutMs|onMaskedStateChange|onResult/g,
+    /layout|theme|inputPolicy|maxTokens|timeoutMs|cancelRequest|onMaskedStateChange|onResult/g,
     "RN public props must be explicitly enumerated",
   );
+  requireText(findings, "packages/react-native/src/index.ts", rnProps, /cancelRequest/, "RN must expose only a non-secret cancel command token");
   forbidText(
     findings,
     "packages/react-native/src/index.ts",
@@ -59,6 +60,8 @@ export function runSecurityAudit() {
 
   const flutter = source("packages/flutter/lib/secure_keypad.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypad extends StatefulWidget/, "Flutter must expose a native PlatformView widget");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypadController/, "Flutter must expose a non-secret native controller");
+  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /invokeMethod<void>\('cancel'\)/, "Flutter controller must use a native cancel method");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /toPlatformCreationParams/, "Flutter must have an explicit public creation map");
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /TextEditingController/, "Flutter must not use a text editing controller");
   forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
@@ -89,6 +92,28 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission\)/, "framework bridge must require an installed native submission consumer");
     requireText(findings, file, contents, /submission\.close\(\)/, "framework bridge must release an unconsumed submission");
     forbidText(findings, file, contents, /submission\.close\(\)[\s\S]{0,100}(?:code.*success|success.*code)/, "framework bridge must not report success after unconditional release");
+  }
+
+  for (const file of [
+    "native/ios/react-native/SecureKeypadViewManager.swift",
+    "packages/react-native/ios/SecureKeypadViewManager.swift",
+    "native/ios/react-native/SecureKeypadViewManager.m",
+    "packages/react-native/ios/SecureKeypadViewManager.m",
+    "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /cancelRequest/, "RN native manager must expose the non-secret cancel command");
+  }
+  for (const file of [
+    "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+    "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /controlChannel/, "Flutter native plugin must expose a per-view control channel");
+    requireText(findings, file, contents, /cancel/, "Flutter native plugin must implement the cancel command");
   }
 
   for (const file of [

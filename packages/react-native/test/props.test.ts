@@ -10,6 +10,7 @@ describe("React Native public prop boundary", () => {
       inputPolicy: "numeric",
       maxTokens: 8,
       timeoutMs: 60_000,
+      cancelRequest: 0,
     });
     expect(result.valid).toBe(true);
   });
@@ -38,6 +39,30 @@ describe("React Native public prop boundary", () => {
     expect(result.errors).toContain("props.maxTokens is invalid");
     expect(result.errors).toContain("props.timeoutMs is invalid");
     expect(result.errors.join(" ")).not.toContain("never-crosses-the-boundary");
+  });
+
+  it("accepts a monotonic cancel command without adding a secret channel", () => {
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        cancelRequest: 1,
+      }),
+    ).toMatchObject({ valid: true });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        cancelRequest: 1.5,
+      }),
+    ).toMatchObject({ valid: false });
+    expect(
+      validateSecureKeypadProps({
+        layout: DEFAULT_NUMERIC_LAYOUT,
+        theme: DEFAULT_THEME,
+        cancelRequest: -1,
+      }),
+    ).toMatchObject({ valid: false });
   });
 
   it("asserts invalid props using only generic, non-secret-bearing diagnostics", () => {

@@ -8,6 +8,7 @@ import com.uulab.securekeypad.SecureKeypadView
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
@@ -45,11 +46,21 @@ private class SecureKeypadFlutterPlatformView(
 ) : PlatformView, EventChannel.StreamHandler {
     private val keypad = SecureKeypadView(context)
     private val eventChannel = EventChannel(messenger, "secure_keypad/events/$viewId")
+    private val controlChannel = MethodChannel(messenger, "secure_keypad/control/$viewId")
     private var eventSink: EventChannel.EventSink? = null
     private var pendingEvent: Map<String, Any?>? = null
 
     init {
         eventChannel.setStreamHandler(this)
+        controlChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "cancel" -> {
+                    keypad.cancelSession()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
         keypad.onMaskedStateChanged = { length, displayState ->
             emit(
                 mapOf(
@@ -97,6 +108,7 @@ private class SecureKeypadFlutterPlatformView(
 
     override fun dispose() {
         eventChannel.setStreamHandler(null)
+        controlChannel.setMethodCallHandler(null)
         keypad.releaseSession()
         eventSink = null
     }

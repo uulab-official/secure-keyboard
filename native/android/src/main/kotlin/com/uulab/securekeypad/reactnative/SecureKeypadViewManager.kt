@@ -14,6 +14,7 @@ import com.facebook.react.module.annotations.ReactModule
 import com.uulab.securekeypad.SecureKeypadBridgeConfigParser
 import com.uulab.securekeypad.SecureKeypadNativeSubmissionRouter
 import com.uulab.securekeypad.SecureKeypadView
+import kotlin.math.floor
 import java.util.WeakHashMap
 
 /** React Native manager that transports public configuration and masked events only. */
@@ -66,6 +67,15 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     @ReactProp(name = "timeoutMs", defaultInt = 60_000)
     public fun setTimeoutMs(view: SecureKeypadView, value: Int) {
         setConfigurationValue(view, "timeoutMs", value)
+    }
+
+    @ReactProp(name = "cancelRequest", defaultDouble = 0.0)
+    public fun setCancelRequest(view: SecureKeypadView, value: Double) {
+        if (!value.isFinite() || value < 0.0 || value > 9_007_199_254_740_991.0 || floor(value) != value) {
+            emitResult(view, "invalid")
+            return
+        }
+        view.requestCancel(value.toLong())
     }
 
     override fun onDropViewInstance(view: SecureKeypadView) {

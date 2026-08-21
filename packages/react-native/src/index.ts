@@ -25,6 +25,8 @@ export interface SecureKeypadProps {
   readonly maxTokens?: number;
   /** Inactivity timeout in milliseconds. */
   readonly timeoutMs?: number;
+  /** Monotonic, non-secret command token; changing it cancels the native session. */
+  readonly cancelRequest?: number;
   /** Receives masked length/state only. */
   readonly onMaskedStateChange?: (event: MaskedStateEvent) => void;
   /** Receives a result code only; no submitted value is surfaced to JavaScript. */
@@ -47,6 +49,7 @@ const ALLOWED_PROP_NAMES = [
   "inputPolicy",
   "maxTokens",
   "timeoutMs",
+  "cancelRequest",
   "onMaskedStateChange",
   "onResult",
 ] as const;
@@ -95,6 +98,14 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
   if (value.timeoutMs !== undefined && !isBoundedInteger(value.timeoutMs, 1, 86_400_000)) {
     errors.push("props.timeoutMs is invalid");
   }
+  if (
+    value.cancelRequest !== undefined &&
+    (typeof value.cancelRequest !== "number" ||
+      !Number.isSafeInteger(value.cancelRequest) ||
+      value.cancelRequest < 0)
+  ) {
+    errors.push("props.cancelRequest is invalid");
+  }
   if (value.onMaskedStateChange !== undefined && typeof value.onMaskedStateChange !== "function") {
     errors.push("props.onMaskedStateChange is invalid");
   }
@@ -120,4 +131,3 @@ export function getSecureKeypadView(): SecureKeypadNativeComponent {
   const reactNative = require("react-native") as typeof import("react-native");
   return reactNative.requireNativeComponent<SecureKeypadProps>(SECURE_KEYPAD_NATIVE_VIEW_NAME);
 }
-

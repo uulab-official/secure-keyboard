@@ -147,6 +147,7 @@ public class SecureKeypadView: UIView {
     private var protectedPresentation = false
     private var notificationTokens: [NSObjectProtocol] = []
     private var contentPaddingConstraints: [NSLayoutConstraint] = []
+    private var lastCancelRequest: Int64?
 
     /// Called with a native-only submission that the host must close or authenticate natively.
     public var onSubmit: ((SecureKeypadSubmission) -> Void)?
@@ -257,6 +258,19 @@ public class SecureKeypadView: UIView {
             onError?(status)
         }
         refreshMaskedState()
+    }
+
+    /// Applies a monotonic, non-secret host command exactly once.
+    public func requestCancel(_ requestId: Int64) {
+        guard requestId >= 0 else {
+            onError?(1)
+            return
+        }
+        let previous = lastCancelRequest
+        lastCancelRequest = requestId
+        if let previous, previous != requestId {
+            cancelSession()
+        }
     }
 
     private func installViews() {
