@@ -43,15 +43,26 @@ export interface MaskedStateEvent {
   readonly nativeEvent: MaskedState;
 }
 
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const keys = Object.keys(value);
+  return keys.length === expected.length && keys.every((key) => expected.includes(key));
+}
+
 /** Validates the native event payload before an application invokes its callback. */
 export function validateMaskedStateEvent(value: unknown): ValidationResult {
   if (!isRecord(value)) return { valid: false, errors: ["masked state event must be an object"] };
+  if (!hasExactKeys(value, ["nativeEvent"])) {
+    return { valid: false, errors: ["masked state event contains an unsupported field"] };
+  }
   return validateMaskedState(value.nativeEvent);
 }
 
 /** Validates the native result event before an application invokes its callback. */
 export function validateResultEvent(value: unknown): ValidationResult {
   if (!isRecord(value)) return { valid: false, errors: ["result event must be an object"] };
+  if (!hasExactKeys(value, ["nativeEvent"])) {
+    return { valid: false, errors: ["result event contains an unsupported field"] };
+  }
   return validateContractResultEvent(value.nativeEvent);
 }
 

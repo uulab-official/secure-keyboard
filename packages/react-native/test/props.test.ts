@@ -112,6 +112,7 @@ describe("React Native public prop boundary", () => {
 
   it("rejects malformed native masked-state events before host callbacks", () => {
     expect(validateMaskedStateEvent({ nativeEvent: { length: 0, displayState: "empty" } })).toMatchObject({ valid: true });
+    expect(validateMaskedStateEvent({ nativeEvent: { length: 0, displayState: "empty" }, secret: "fixture-only-secret" })).toMatchObject({ valid: false });
     expect(validateMaskedStateEvent({ nativeEvent: { length: 4_096, displayState: "masked" } })).toMatchObject({ valid: true });
     expect(validateMaskedStateEvent({ nativeEvent: { length: 4_097, displayState: "masked" } })).toMatchObject({ valid: false });
     expect(validateMaskedStateEvent({ nativeEvent: { length: -1, displayState: "masked" } })).toMatchObject({ valid: false });
@@ -121,6 +122,7 @@ describe("React Native public prop boundary", () => {
 
   it("accepts only the bounded result event shape", () => {
     expect(validateResultEvent({ nativeEvent: { type: "result", code: "success" } })).toMatchObject({ valid: true });
+    expect(validateResultEvent({ nativeEvent: { type: "result", code: "success" }, rawInput: "fixture-only-secret" })).toMatchObject({ valid: false });
     expect(validateResultEvent({ nativeEvent: { type: "result", code: "error", secret: "fixture-only-secret" } }).valid)
       .toBe(false);
     expect(validateResultEvent({ nativeEvent: { type: "result", code: "fixture-only-secret" } }).errors.join(" "))
@@ -139,13 +141,23 @@ describe("React Native public prop boundary", () => {
     });
     handlers.onMaskedStateChange?.({
       nativeEvent: { length: 2, displayState: "masked" },
+      rawInput: "fixture-only-secret",
+    } as never);
+    handlers.onMaskedStateChange?.({
+      nativeEvent: { length: 2, displayState: "masked" },
     });
+    handlers.onResult?.({
+      nativeEvent: { type: "result", code: "success" },
+      rawInput: "fixture-only-secret",
+    } as never);
     handlers.onResult?.({
       nativeEvent: { type: "result", code: "success", secret: "fixture-only-secret" },
     } as never);
 
     expect(maskedStates).toHaveLength(1);
     expect(results).toEqual([
+      { nativeEvent: { type: "result", code: "error" } },
+      { nativeEvent: { type: "result", code: "error" } },
       { nativeEvent: { type: "result", code: "error" } },
       { nativeEvent: { type: "result", code: "error" } },
     ]);
