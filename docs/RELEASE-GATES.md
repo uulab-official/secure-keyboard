@@ -294,8 +294,11 @@ must run the feature-gated `RateLimiter` adapters and verify fixed-window
 allowed/limited decisions. Durable adapters also bound pending ceremony count
 per namespace, active rate-limit keys, and credential-record size. Built-in
 WebAuthn ceremony adapters must encrypt/authenticate records with a
-host-managed `WebAuthnStateKey`; OPAQUE one-time-state adapters must use a
-host-managed `OpaqueStateKey`. Release evidence must show key provisioning,
+host-managed `WebAuthnStateKey` and perform a pre-`GET` byte check in Redis;
+oversized legacy values must be removed atomically before client materialization.
+Redis rate-limit counters must likewise be bounded before `GET`. OPAQUE
+one-time-state adapters must use a host-managed `OpaqueStateKey` and enforce
+the encrypted-record bound before Redis materialization. Release evidence must show key provisioning,
 same-key multi-instance consume, and retention through the maximum state TTL.
 Plaintext Redis/`NoTls` constructors are allowed only in that isolated test
 job, never in a production configuration.

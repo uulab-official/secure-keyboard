@@ -39,12 +39,14 @@ operation must:
 6. never log keys, handles, state bytes, credential IDs, or client responses.
 
 `RedisOneTimeLoginStateStore` uses a small server-side Lua transaction with
-`GETDEL`-equivalent read-and-delete semantics; do not issue a separate `GET`
-followed by `DEL`. PostgreSQL-style stores should use `DELETE ... WHERE key =
-$1 AND expires_at > now() RETURNING value` inside a single atomic operation.
-The built-in PostgreSQL adapter does this and also uses an advisory lock for
-insert capacity. Both built-in adapters reconstruct `BoundLoginState` with
-bounded identifiers before returning it to `ServerAuthService`.
+`STRLEN`-before-`GET` and `GETDEL`-equivalent read-and-delete semantics; do not
+issue a separate `GET` followed by `DEL`. An oversized legacy value is deleted
+from both the state key and pending index without being returned to the client.
+PostgreSQL-style stores should use `DELETE ... WHERE key = $1 AND expires_at >
+now() RETURNING value` inside a single atomic operation. The built-in
+PostgreSQL adapter does this and also uses an advisory lock for insert
+capacity. Both built-in adapters reconstruct `BoundLoginState` with bounded
+identifiers before returning it to `ServerAuthService`.
 
 ## Atomic rate limiting
 
@@ -61,7 +63,9 @@ The reference crate includes feature-gated implementations:
 - `RedisRateLimiter` uses a single Lua script, a server-side fixed-window TTL,
   a bounded active-key sorted set, and SHA-256 key hashing. The production
   constructor requires `rediss://`; plaintext is available only through the
-  explicitly named local-test constructor.
+  explicitly named local-test constructor. The counter path checks a fixed
+  32-byte representation bound before `GET`; an oversized or malformed legacy
+  counter is removed from the counter and active-key index and fails closed.
 - `PostgresRateLimiter` uses a namespace advisory transaction lock, deletes
   expired rows before counting, and updates/inserts the hashed key in the same
   transaction. Its migration is exported as

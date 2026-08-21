@@ -61,14 +61,16 @@ The backend must:
 5. bind and verify the account principal before response parsing; and
 6. map malformed, expired, or unavailable records to generic server errors.
 
-The Redis adapter uses a server-side atomic `GET` + `DEL` script and an
-atomic `SET NX PX`/pending-index capacity script. The pending sorted set is
-cleaned by expiry score and the consumed key is removed from the index. For
-PostgreSQL, the adapter serializes namespace inserts, deletes expired rows,
-enforces the pending-row bound, and uses a single `DELETE ... WHERE namespace
-= $1 AND handle = $2 AND kind = $3 AND expires_at > now() RETURNING user_id,
-state`. Do not replace either consume operation with a separate read followed
-by delete.
+The Redis adapter uses a server-side atomic `STRLEN`-before-`GET`/delete
+consume script and an atomic `SET NX PX`/pending-index capacity script. The
+pending sorted set is cleaned by expiry score and the consumed key is removed
+from the index. A legacy or corrupted ceremony value larger than
+`MAX_PROTECTED_CEREMONY_RECORD_BYTES` is deleted from both locations without
+being materialized in the client. For PostgreSQL, the adapter serializes
+namespace inserts, deletes expired rows, enforces the pending-row bound, and
+uses a single `DELETE ... WHERE namespace = $1 AND handle = $2 AND kind = $3
+AND expires_at > now() RETURNING user_id, state`. Do not replace either
+consume operation with a separate read followed by delete.
 
 ## Credential records
 
@@ -88,6 +90,14 @@ The PostgreSQL adapter bounds credential reads with `MAX_CREDENTIALS_PER_USER +
 are materialized. The extra row lets the adapter distinguish a valid limit from
 an already-over-limit account without loading an unbounded legacy or corrupted
 record set; an over-size value is returned as a sentinel and rejected.
+
+The Redis adapter performs `STRLEN` before every credential `GET`, including
+the transactional insert and post-authentication update paths. Values over
+`MAX_CREDENTIAL_RECORD_BYTES` fail closed before JSON decoding; accepted byte
+buffers are zeroized when dropped. Deployments must treat an oversized legacy
+record as a migration/integrity incident and investigate the Redis ACL,
+namespace isolation, and backup source even though the adapter removes it to
+restore bounded operation.
 
 The `danger-allow-state-serialisation` feature is enabled only because the
 server-side ceremony contract needs it. It must never be used to serialize
