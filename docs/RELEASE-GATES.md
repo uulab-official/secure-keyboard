@@ -77,8 +77,9 @@ node scripts/check-release-evidence.mjs path/to/release-evidence.json
 
 The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
-notices, a Linux LeakSanitizer result, physical iOS/Android and Web browser
-matrix results, an independent security review, and signed-release evidence.
+notices, a hashed `release-signature` artifact, a Linux LeakSanitizer result,
+physical iOS/Android and Web browser matrix results, an independent security
+review, and signed-release evidence.
 The command checks shape, paths, required statuses, and recomputes SHA-256 for
 every referenced evidence/artifact file. It does not verify CI provenance,
 signatures, or reviewer identity; those references must still be verified

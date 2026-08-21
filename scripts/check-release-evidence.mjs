@@ -169,7 +169,7 @@ export function validateReleaseEvidence(evidence) {
       checkHash(findings, `${field}.sha256`, artifact.sha256);
     });
   }
-  for (const requiredArtifact of ["native-checksum", "sbom", "license-notices"]) {
+  for (const requiredArtifact of ["native-checksum", "sbom", "license-notices", "release-signature"]) {
     if (!artifactKinds.has(requiredArtifact)) {
       add(findings, "artifacts", `missing required artifact ${requiredArtifact}`);
     }

@@ -36,6 +36,7 @@ function completeEvidence() {
       { kind: "native-checksum", path: "artifacts/native.sha256", sha256: SHA256 },
       { kind: "sbom", path: "artifacts/secure-keypad.sbom.spdx.json", sha256: SHA256 },
       { kind: "license-notices", path: "artifacts/THIRD-PARTY-NOTICES.md", sha256: SHA256 },
+      { kind: "release-signature", path: "artifacts/secure-keypad.release.sigstore.json", sha256: SHA256 },
     ],
   };
 }
@@ -49,13 +50,16 @@ test("rejects missing production gates and release artifacts", () => {
   evidence.gates = evidence.gates.filter(
     (gate) => gate.name !== "linux-leak-sanitizer" && gate.name !== "independent-security-review",
   );
-  evidence.artifacts = evidence.artifacts.filter((artifact) => artifact.kind !== "sbom");
+  evidence.artifacts = evidence.artifacts.filter(
+    (artifact) => artifact.kind !== "sbom" && artifact.kind !== "release-signature",
+  );
 
   const findings = validateReleaseEvidence(evidence);
 
   assert.ok(findings.some((finding) => finding.includes("linux-leak-sanitizer")));
   assert.ok(findings.some((finding) => finding.includes("independent-security-review")));
   assert.ok(findings.some((finding) => finding.includes("sbom")));
+  assert.ok(findings.some((finding) => finding.includes("release-signature")));
 });
 
 test("rejects unsafe paths, bad hashes, failed statuses, and secret-bearing fields", () => {
