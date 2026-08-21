@@ -58,6 +58,7 @@ pnpm test:release-bundle
 pnpm test:release-candidate-metadata
 pnpm test:expo-development-build
 pnpm test:sign-release
+pnpm test:emit-signed-release-evidence
 pnpm test:device-evidence
 pnpm test:security-audit
 pnpm security-audit

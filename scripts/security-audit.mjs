@@ -874,6 +874,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-signed-release-evidence/, "release candidate must test signed-release evidence emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/release-candidate-metadata\.mjs/, "release candidate must embed immutable candidate metadata in the signed bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /release-candidate-metadata\.json/, "release candidate must retain the candidate metadata record");

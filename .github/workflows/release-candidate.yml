@@ -101,6 +101,7 @@ jobs:
           pnpm test:emit-web-browser-evidence
           pnpm test:merge-release-evidence
           pnpm test:sign-release
+          pnpm test:emit-signed-release-evidence
           pnpm test:device-evidence
           pnpm test:fuzz-corpus
           pnpm test:security-audit
