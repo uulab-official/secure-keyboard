@@ -159,6 +159,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
               dictionary.count == 2,
               Set(dictionary.allKeys.compactMap { $0 as? String }) == ["token", "keyId"],
               let rawToken = dictionary["token"] as? NSNumber,
+              String(cString: rawToken.objCType) != "c",
               let keyId = dictionary["keyId"] as? String else {
             result(FlutterError(code: "invalid", message: nil, details: nil))
             return

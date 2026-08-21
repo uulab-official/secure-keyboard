@@ -232,12 +232,14 @@ public struct SecureKeypadBridgeConfiguration {
 
     private static func number(_ value: Any?) -> Double? {
         guard let number = value as? NSNumber else { return nil }
+        guard !isBooleanNumber(number) else { return nil }
         let result = number.doubleValue
         return result.isFinite ? result : nil
     }
 
     private static func boundedInteger(_ value: Any?, minimum: Double, maximum: Double) -> Int? {
         guard !(value is Bool), let number = value as? NSNumber else { return nil }
+        guard !isBooleanNumber(number) else { return nil }
         let result = number.doubleValue
         guard result.isFinite, result.rounded(.towardZero) == result, result >= minimum, result <= maximum else {
             return nil
@@ -265,12 +267,17 @@ public struct SecureKeypadBridgeConfiguration {
         guard let value else { return defaultValue }
         guard !(value is Bool) else { return nil }
         guard let number = value as? NSNumber else { return nil }
+        guard !isBooleanNumber(number) else { return nil }
         let result = number.doubleValue
         guard result.isFinite,
               result.rounded(.towardZero) == result,
               result >= Double(range.lowerBound),
               result <= Double(range.upperBound) else { return nil }
         return Int(result)
+    }
+
+    private static func isBooleanNumber(_ value: NSNumber) -> Bool {
+        String(cString: value.objCType) == "c"
     }
 
     private static func color(_ value: Any?) -> UIColor? {

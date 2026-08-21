@@ -351,6 +351,14 @@ export function runSecurityAudit() {
     "packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift",
   ]) {
     const contents = source(file, findings);
+    requireText(findings, file, contents, /isBooleanNumber/, "iOS bridge parser must not coerce Boolean bridge values into integer configuration");
+  }
+  for (const file of [
+    "native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/react-native/ios/SecureKeypadBridgeConfig.swift",
+    "packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift",
+  ]) {
+    const contents = source(file, findings);
     requireText(findings, file, contents, /private static func boundedInteger\(/, "iOS bridge parser must reject fractional numeric configuration values");
     requireText(findings, file, contents, /private static func optionalMap\(/, "iOS bridge parser must reject unknown nested configuration fields");
   }
