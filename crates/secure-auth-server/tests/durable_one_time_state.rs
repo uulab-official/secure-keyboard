@@ -92,6 +92,20 @@ fn redis_state_is_consumed_atomically_once() {
         .query(&mut raw_connection)
         .unwrap();
     assert_eq!(raw_value.get(..4), Some(b"SKPE".as_slice()));
+    let second_store = RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
+        &url,
+        &namespace,
+        2,
+        8,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let cross_instance_handle = store.insert_bound(fixture_state()).unwrap();
+    assert!(second_store
+        .take_bound(&cross_instance_handle)
+        .unwrap()
+        .is_some());
     thread::scope(|scope| {
         let attempts = (0..8)
             .map(|_| {
@@ -156,6 +170,21 @@ fn postgres_state_is_consumed_atomically_once() {
         .unwrap()
         .get(0);
     assert_eq!(raw_value.get(..4), Some(b"SKPE".as_slice()));
+    let second_config: postgres::Config = url.parse().unwrap();
+    let second_store = PostgresOneTimeLoginStateStore::from_config_for_local_testing(
+        second_config,
+        &format!("opaque_test_{}", std::process::id()),
+        2,
+        8,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let cross_instance_handle = store.insert_bound(fixture_state()).unwrap();
+    assert!(second_store
+        .take_bound(&cross_instance_handle)
+        .unwrap()
+        .is_some());
     thread::scope(|scope| {
         let attempts = (0..8)
             .map(|_| {
