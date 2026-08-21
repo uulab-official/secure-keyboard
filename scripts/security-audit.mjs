@@ -204,6 +204,11 @@ export function runSecurityAudit() {
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
   const releaseGates = source("docs/RELEASE-GATES.md", findings);
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
+  const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /Physical devices are required/, "device verification must require physical-device coverage");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /FLAG_SECURE/, "device verification must cover Android screenshot protection");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /VoiceOver and TalkBack/, "device verification must cover accessibility surfaces");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /replay, expired-state,[\s\S]*rate-limit/i, "device verification must cover server replay and rate-limit behavior");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");

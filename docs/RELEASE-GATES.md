@@ -94,6 +94,11 @@ The local macOS arm64 runner cannot execute that sanitizer because the target
 does not support it; therefore a green Linux CI result is required before the
 memory/leak gate can be closed.
 
+Device execution follows `docs/DEVICE-VERIFICATION.md`. Host compilation alone
+does not close screenshot, background, autofill, clipboard, accessibility, or
+native opaque-handoff gates; physical-device evidence and an independent
+reviewer sign-off are required.
+
 ## Artifact and platform gates
 
 CI also builds the iOS `secure_ffi` device/simulator libraries into an
