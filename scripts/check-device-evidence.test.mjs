@@ -1,7 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -10,6 +12,8 @@ import {
   validateDeviceEvidence,
   verifyDeviceEvidenceFiles,
 } from "./check-device-evidence.mjs";
+
+const CHECK_SCRIPT = fileURLToPath(new URL("./check-device-evidence.mjs", import.meta.url));
 
 const VALID_NATIVE = {
   schemaVersion: 1,
@@ -41,6 +45,26 @@ const VALID_NATIVE = {
 
 test("accepts a complete sanitized native evidence record", () => {
   assert.deepEqual(validateDeviceEvidence(VALID_NATIVE), []);
+});
+
+test("CLI verifies an evidence root outside the repository when explicitly provided", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-cli-root-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  const log = Buffer.from("sanitized device log", "utf8");
+  const artifact = Buffer.from("native checksum", "utf8");
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, evidence.logPath), log);
+  writeFileSync(join(root, evidence.artifacts[0].path), artifact);
+  evidence.logSha256 = createHash("sha256").update(log).digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256").update(artifact).digest("hex");
+  writeFileSync(join(root, "evidence.json"), `${JSON.stringify(evidence)}\n`);
+
+  const result = spawnSync(process.execPath, [CHECK_SCRIPT, "--root", root, "evidence.json"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("can require a physical device for a native release gate", () => {

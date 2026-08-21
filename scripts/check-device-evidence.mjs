@@ -309,7 +309,7 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
   return findings;
 }
 
-function checkFile(filePath, options) {
+function checkFile(filePath, options, evidenceRoot = ROOT) {
   let evidence;
   try {
     evidence = JSON.parse(readFileSync(filePath, "utf8"));
@@ -317,7 +317,7 @@ function checkFile(filePath, options) {
     process.stderr.write(`device evidence could not be read: ${error.message}\n`);
     return 1;
   }
-  const findings = [...validateDeviceEvidence(evidence, options), ...verifyDeviceEvidenceFiles(evidence, ROOT)];
+  const findings = [...validateDeviceEvidence(evidence, options), ...verifyDeviceEvidenceFiles(evidence, evidenceRoot)];
   for (const finding of findings) process.stderr.write(`device evidence: ${finding}\n`);
   return findings.length === 0 ? 0 : 1;
 }
@@ -326,6 +326,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const positional = [];
   let requirePhysicalDevice = false;
   let expectedCommit;
+  let evidenceRoot = ROOT;
   const argumentsList = process.argv.slice(2);
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
@@ -334,17 +335,25 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     } else if (argument === "--expected-commit") {
       expectedCommit = argumentsList[index + 1];
       index += 1;
+    } else if (argument === "--root" && typeof argumentsList[index + 1] === "string") {
+      evidenceRoot = path.resolve(argumentsList[index + 1]);
+      index += 1;
     } else {
       positional.push(argument);
     }
   }
   const filePath = positional[0];
-  if (!filePath || positional.length !== 1 || expectedCommit === undefined && argumentsList.includes("--expected-commit")) {
+  if (
+    !filePath ||
+    positional.length !== 1 ||
+    !isSafeRelativePath(filePath) ||
+    expectedCommit === undefined && argumentsList.includes("--expected-commit")
+  ) {
     process.stderr.write(
-      "usage: node scripts/check-device-evidence.mjs [--require-physical] [--expected-commit <sha>] <relative-json-file>\n",
+      "usage: node scripts/check-device-evidence.mjs [--root <evidence-root>] [--require-physical] [--expected-commit <sha>] <relative-json-file>\n",
     );
     process.exitCode = 2;
   } else {
-    process.exitCode = checkFile(path.resolve(ROOT, filePath), { requirePhysicalDevice, expectedCommit });
+    process.exitCode = checkFile(path.resolve(evidenceRoot, filePath), { requirePhysicalDevice, expectedCommit }, evidenceRoot);
   }
 }

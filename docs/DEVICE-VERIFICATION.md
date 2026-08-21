@@ -98,6 +98,10 @@ node scripts/check-device-evidence.mjs path/to/device-evidence.json
 # Use this form for the required iOS/Android physical-device release gate:
 node scripts/check-device-evidence.mjs --require-physical \
   --expected-commit "$(git rev-parse HEAD)" path/to/device-evidence.json
+# For an evidence root outside the repository, keep all referenced files
+# relative to that root:
+node scripts/check-device-evidence.mjs --root "$RUNNER_TEMP/release-evidence" \
+  --expected-commit "$(git rev-parse HEAD)" evidence/ios-rn.json
 ```
 
 The validator also recomputes the log and artifact digests inside the evidence
