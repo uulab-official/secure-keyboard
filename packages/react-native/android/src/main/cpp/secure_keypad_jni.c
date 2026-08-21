@@ -12,6 +12,14 @@ static secure_keypad_submission_t *submission_from_handle(jlong handle) {
     return (secure_keypad_submission_t *)(uintptr_t)handle;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_uulab_securekeypad_SecureKeypadNative_nativeAbiVersion(
+    JNIEnv *env, jobject object) {
+    (void)env;
+    (void)object;
+    return (jint)secure_keypad_abi_version();
+}
+
 JNIEXPORT jlong JNICALL
 Java_com_uulab_securekeypad_SecureKeypadNative_nativeSessionNewNumeric(
     JNIEnv *env, jobject object, jint max_tokens, jlong timeout_ms) {

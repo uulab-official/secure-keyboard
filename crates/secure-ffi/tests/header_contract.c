@@ -3,8 +3,10 @@
 _Static_assert(sizeof(secure_keypad_error_t) == sizeof(uint32_t), "error ABI must be u32");
 _Static_assert(sizeof(secure_keypad_display_state_t) == sizeof(uint32_t), "state ABI must be u32");
 _Static_assert(sizeof(secure_keypad_masked_state_t) == sizeof(uint32_t) * 2, "masked state ABI changed");
+_Static_assert(SECURE_KEYPAD_ABI_VERSION == UINT32_C(2), "ABI version changed without a contract update");
 
 int main(void) {
+    (void)secure_keypad_abi_version();
     secure_keypad_session_t *session = 0;
     secure_keypad_submission_t *submission = 0;
     secure_keypad_auth_message_t *message = 0;

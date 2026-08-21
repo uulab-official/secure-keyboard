@@ -5,7 +5,7 @@ use secure_auth::{
     server_registration_finish, server_registration_start, Message, ServerSetupBytes,
 };
 use secure_ffi::{
-    secure_keypad_auth_message_copy, secure_keypad_auth_message_free,
+    secure_keypad_abi_version, secure_keypad_auth_message_copy, secure_keypad_auth_message_free,
     secure_keypad_auth_message_new, secure_keypad_auth_message_size,
     secure_keypad_client_login_finish, secure_keypad_client_login_free,
     secure_keypad_client_login_start, secure_keypad_client_registration_finish,
@@ -18,6 +18,11 @@ use secure_ffi::{
     SecureKeypadDisplayState, SecureKeypadError, SecureKeypadMaskedState, SecureKeypadSession,
     SecureKeypadSubmission,
 };
+
+#[test]
+fn ffi_reports_the_compiled_abi_version_before_session_creation() {
+    assert_eq!(secure_keypad_abi_version(), 2);
+}
 
 #[test]
 fn numeric_ffi_exposes_only_masked_state_and_opaque_submission() {

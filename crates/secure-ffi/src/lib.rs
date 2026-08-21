@@ -22,6 +22,19 @@ const MAX_PUBLIC_ID_BYTES: usize = 256;
 const MAX_TOKENS: u32 = secure_core::MAX_INPUT_TOKENS as u32;
 const MAX_TIMEOUT_MS: u64 = 86_400_000;
 
+/// ABI version implemented by this linked native library.
+pub const SECURE_KEYPAD_ABI_VERSION: u32 = 2;
+
+/// Returns the ABI version implemented by the linked native library.
+///
+/// Native hosts must compare this value with the header's
+/// `SECURE_KEYPAD_ABI_VERSION` before creating a session and fail closed when
+/// the values differ.
+#[no_mangle]
+pub extern "C" fn secure_keypad_abi_version() -> u32 {
+    SECURE_KEYPAD_ABI_VERSION
+}
+
 /// Stable result codes returned by the C ABI.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

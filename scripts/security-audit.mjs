@@ -178,6 +178,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
+    requireText(findings, file, contents, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
@@ -213,11 +214,15 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "iOS native keypad must reject invalid display-state codes");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
+    requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
+  const ffiImplementation = source("crates/secure-ffi/src/lib.rs", findings);
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /secure_keypad_abi_version/, "FFI must report the linked library ABI version");
+  requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_abi_version/, "C ABI header must expose the linked library ABI query");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_new_ascii/, "C ABI must expose the bounded printable-ASCII policy");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_submission_free/, "C ABI must expose submission ownership release");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_session_cancel/, "C ABI must expose explicit cancellation and zeroization");
@@ -231,8 +236,19 @@ export function runSecurityAudit() {
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
   const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
+
+  for (const file of [
+    "native/android/src/main/cpp/secure_keypad_jni.c",
+    "packages/react-native/android/src/main/cpp/secure_keypad_jni.c",
+    "packages/flutter/android/src/main/cpp/secure_keypad_jni.c",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /nativeAbiVersion/, "Android JNI must expose the linked FFI ABI version before session creation");
+    requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "Android JNI ABI query must call the native FFI implementation");
+  }
 
   for (const file of [
     "native/ios/react-native/SecureKeypadViewManager.m",

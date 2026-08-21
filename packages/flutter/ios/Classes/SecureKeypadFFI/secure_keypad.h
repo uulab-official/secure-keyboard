@@ -10,6 +10,11 @@ extern "C" {
 
 #define SECURE_KEYPAD_ABI_VERSION UINT32_C(2)
 
+/* Returns the ABI version implemented by the linked native library. Hosts
+ * must compare this value with SECURE_KEYPAD_ABI_VERSION before creating a
+ * session and fail closed on a mismatch. */
+uint32_t secure_keypad_abi_version(void);
+
 typedef struct secure_keypad_session secure_keypad_session_t;
 typedef struct secure_keypad_submission secure_keypad_submission_t;
 typedef struct secure_keypad_auth_message secure_keypad_auth_message_t;

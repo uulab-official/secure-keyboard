@@ -130,6 +130,7 @@ public enum SecureKeypadNativeSubmissionRouter {
 /// Non-secret native renderer errors.
 public enum SecureKeypadViewError: Error {
     case invalidLayout
+    case abiMismatch
     case nativeFailure(UInt32)
 }
 
@@ -264,6 +265,9 @@ public class SecureKeypadView: UIView {
             throw SecureKeypadViewError.invalidLayout
         }
         try validate(layout: layout)
+        guard secure_keypad_abi_version() == 2 else {
+            throw SecureKeypadViewError.abiMismatch
+        }
 
         if let session {
             secure_keypad_session_free(session)

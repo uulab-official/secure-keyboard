@@ -140,6 +140,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     public var onError: ((code: Int) -> Unit)? = null
 
     init {
+        check(SecureKeypadNative.isAbiCompatible()) { "secure keypad native ABI mismatch" }
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         isSaveEnabled = false
         requireSecureWindow()
@@ -428,6 +429,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
 }
 
 private object SecureKeypadNative {
+    private const val EXPECTED_ABI_VERSION = 2
     private var loaded: Boolean = false
 
     private fun ensureLoaded() {
@@ -435,6 +437,11 @@ private object SecureKeypadNative {
             System.loadLibrary("secure_keypad_jni")
             loaded = true
         }
+    }
+
+    fun isAbiCompatible(): Boolean {
+        ensureLoaded()
+        return nativeAbiVersion() == EXPECTED_ABI_VERSION
     }
 
     fun sessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long? {
@@ -492,6 +499,7 @@ private object SecureKeypadNative {
         nativeSubmissionFree(handle)
     }
 
+    private external fun nativeAbiVersion(): Int
     private external fun nativeSessionNewNumeric(maxTokens: Int, timeoutMs: Long): Long
     private external fun nativeSessionNewAscii(maxTokens: Int, timeoutMs: Long): Long
     private external fun nativeSessionNewHangul(maxTokens: Int, timeoutMs: Long): Long
