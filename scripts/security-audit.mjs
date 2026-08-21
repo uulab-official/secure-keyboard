@@ -28,6 +28,13 @@ function forbidText(findings, relativePath, contents, pattern, detail) {
   }
 }
 
+export function findMutableCiActionLines(ciWorkflow) {
+  return ciWorkflow
+    .split("\n")
+    .filter((line) => /\buses:\s*/.test(line))
+    .filter((line) => !/^\s*(?:-\s+)?uses:\s*[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?\s*$/.test(line));
+}
+
 /**
  * Runs a dependency-free, read-only release audit independent from framework
  * runtimes. It checks source-level invariants that unit tests cannot prove
@@ -302,15 +309,12 @@ export function runSecurityAudit() {
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@stable/, "CI must not float on the stable Rust channel");
-  const ciActionLines = ciWorkflow.split("\n").filter((line) => /\buses:\s*/.test(line));
-  for (const line of ciActionLines) {
-    if (!/^\s*(?:-\s+)?uses:\s*[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?\s*$/.test(line)) {
-      findings.push({
-        rule: "ci-action-immutability",
-        file: ".github/workflows/ci.yml",
-        detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
-      });
-    }
+  for (const line of findMutableCiActionLines(ciWorkflow)) {
+    findings.push({
+      rule: "ci-action-immutability",
+      file: ".github/workflows/ci.yml",
+      detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
+    });
   }
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:\s*22(?:\s|$)/, "CI must not float on an unpinned Node major version");
