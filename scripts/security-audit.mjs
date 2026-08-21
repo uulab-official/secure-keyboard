@@ -284,6 +284,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /POSTGRES_RATE_LIMIT_SCHEMA_SQL/, "PostgreSQL rate limiting must ship an explicit migration");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /pg_advisory_xact_lock/, "PostgreSQL rate limiting must serialize capacity/check updates");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /MakeTlsConnect/, "PostgreSQL rate limiting must accept an explicit TLS connector");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /secure_keypad_rate_limit_key_hash_length/, "PostgreSQL rate limiting must persist the key-hash bound during upgrades");
+  requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /secure_keypad_rate_limit_attempts_range/, "PostgreSQL rate limiting must persist the attempt-count bound during upgrades");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /SslMode::Require/, "PostgreSQL rate limiting must reject configurations that can downgrade TLS");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL rate-limit schema must enforce bounded namespaces");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_postgres.rs", postgresRateLimit, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL rate-limit schema must enforce safe namespaces");
@@ -292,12 +294,28 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /SslMode::Require/, "PostgreSQL WebAuthn storage must reject configurations that can downgrade TLS");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(octet_length\(namespace\) BETWEEN 1 AND 64\)/, "PostgreSQL WebAuthn schema must enforce bounded namespaces");
   requireText(findings, "crates/secure-webauthn-example/src/storage_postgres.rs", postgresStorage, /CHECK \(namespace ~ '\^\[A-Za-z0-9._-\]\+\$'\)/, "PostgreSQL WebAuthn schema must enforce safe namespaces");
+  for (const constraint of [
+    "secure_keypad_webauthn_ceremony_handle_length",
+    "secure_keypad_webauthn_ceremony_kind",
+    "secure_keypad_webauthn_ceremony_state_length",
+    "secure_keypad_webauthn_credential_id_length",
+    "secure_keypad_webauthn_credential_passkey_length",
+    "secure_keypad_webauthn_credential_revision_nonnegative",
+  ]) {
+    requireText(
+      findings,
+      "crates/secure-webauthn-example/src/storage_postgres.rs",
+      postgresStorage,
+      new RegExp(constraint),
+      `PostgreSQL WebAuthn schema must persist ${constraint} during upgrades`,
+    );
+  }
   const webauthnStorageGuide = source("docs/WEBAUTHN-STORAGE.md", findings);
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /danger-allow-state-serialisation/, "WebAuthn storage guide must prohibit client-side ceremony state serialization");
   requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /blocking adapters/, "WebAuthn storage guide must declare blocking adapter execution requirements");
-  requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /idempotently upgrades existing ceremony and credential tables/, "WebAuthn storage guide must document durable schema upgrades");
+  requireText(findings, "docs/WEBAUTHN-STORAGE.md", webauthnStorageGuide, /idempotently[\s\S]{0,100}existing ceremony and credential tables/, "WebAuthn storage guide must document durable schema upgrades");
   const distributedBackendGuide = source("docs/DISTRIBUTED-BACKENDS.md", findings);
-  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently adds those constraints to an existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
+  requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedBackendGuide, /idempotently[\s\S]{0,100}existing table/, "distributed backend guide must document durable rate-limit schema upgrades");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",

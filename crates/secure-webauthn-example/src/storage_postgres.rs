@@ -35,9 +35,12 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_ceremonies (
         CHECK (octet_length(namespace) BETWEEN 1 AND 64),
     CONSTRAINT secure_keypad_webauthn_ceremony_namespace_chars
         CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
-    CHECK (octet_length(handle) = 32),
-    CHECK (kind IN (1, 2)),
-    CHECK (octet_length(state) BETWEEN 1 AND 131072)
+    CONSTRAINT secure_keypad_webauthn_ceremony_handle_length
+        CHECK (octet_length(handle) = 32),
+    CONSTRAINT secure_keypad_webauthn_ceremony_kind
+        CHECK (kind IN (1, 2)),
+    CONSTRAINT secure_keypad_webauthn_ceremony_state_length
+        CHECK (octet_length(state) BETWEEN 1 AND 131072)
 );
 CREATE INDEX IF NOT EXISTS secure_keypad_webauthn_ceremonies_expiry_idx
     ON secure_keypad_webauthn_ceremonies (expires_at);
@@ -53,8 +56,12 @@ CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_credentials (
         CHECK (octet_length(namespace) BETWEEN 1 AND 64),
     CONSTRAINT secure_keypad_webauthn_credential_namespace_chars
         CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
-    CHECK (octet_length(credential_id) BETWEEN 1 AND 1024),
-    CHECK (octet_length(passkey::text) BETWEEN 2 AND 262144)
+    CONSTRAINT secure_keypad_webauthn_credential_id_length
+        CHECK (octet_length(credential_id) BETWEEN 1 AND 1024),
+    CONSTRAINT secure_keypad_webauthn_credential_passkey_length
+        CHECK (octet_length(passkey::text) BETWEEN 2 AND 262144),
+    CONSTRAINT secure_keypad_webauthn_credential_revision_nonnegative
+        CHECK (revision >= 0)
 );
 
 DO $$
@@ -94,6 +101,60 @@ BEGIN
         ALTER TABLE secure_keypad_webauthn_credentials
             ADD CONSTRAINT secure_keypad_webauthn_credential_namespace_chars
             CHECK (namespace ~ '^[A-Za-z0-9._-]+$');
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_ceremonies'::regclass
+          AND conname = 'secure_keypad_webauthn_ceremony_handle_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_ceremonies
+            ADD CONSTRAINT secure_keypad_webauthn_ceremony_handle_length
+            CHECK (octet_length(handle) = 32);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_ceremonies'::regclass
+          AND conname = 'secure_keypad_webauthn_ceremony_kind'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_ceremonies
+            ADD CONSTRAINT secure_keypad_webauthn_ceremony_kind
+            CHECK (kind IN (1, 2));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_ceremonies'::regclass
+          AND conname = 'secure_keypad_webauthn_ceremony_state_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_ceremonies
+            ADD CONSTRAINT secure_keypad_webauthn_ceremony_state_length
+            CHECK (octet_length(state) BETWEEN 1 AND 131072);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_credentials'::regclass
+          AND conname = 'secure_keypad_webauthn_credential_id_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_credentials
+            ADD CONSTRAINT secure_keypad_webauthn_credential_id_length
+            CHECK (octet_length(credential_id) BETWEEN 1 AND 1024);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_credentials'::regclass
+          AND conname = 'secure_keypad_webauthn_credential_passkey_length'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_credentials
+            ADD CONSTRAINT secure_keypad_webauthn_credential_passkey_length
+            CHECK (octet_length(passkey::text) BETWEEN 2 AND 262144);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_webauthn_credentials'::regclass
+          AND conname = 'secure_keypad_webauthn_credential_revision_nonnegative'
+    ) THEN
+        ALTER TABLE secure_keypad_webauthn_credentials
+            ADD CONSTRAINT secure_keypad_webauthn_credential_revision_nonnegative
+            CHECK (revision >= 0);
     END IF;
 END
 $$;
@@ -545,5 +606,31 @@ mod tests {
         assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_ceremonies"));
         assert!(POSTGRES_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_webauthn_credentials"));
         assert!(POSTGRES_SCHEMA_SQL.contains("FROM pg_constraint"));
+    }
+
+    #[test]
+    fn schema_upgrade_reapplies_all_ceremony_and_credential_bounds() {
+        for constraint in [
+            "secure_keypad_webauthn_ceremony_handle_length",
+            "secure_keypad_webauthn_ceremony_kind",
+            "secure_keypad_webauthn_ceremony_state_length",
+            "secure_keypad_webauthn_credential_id_length",
+            "secure_keypad_webauthn_credential_passkey_length",
+            "secure_keypad_webauthn_credential_revision_nonnegative",
+        ] {
+            assert!(POSTGRES_SCHEMA_SQL.contains(constraint));
+        }
+        assert!(
+            POSTGRES_SCHEMA_SQL
+                .matches("ALTER TABLE secure_keypad_webauthn_ceremonies")
+                .count()
+                >= 5
+        );
+        assert!(
+            POSTGRES_SCHEMA_SQL
+                .matches("ALTER TABLE secure_keypad_webauthn_credentials")
+                .count()
+                >= 5
+        );
     }
 }

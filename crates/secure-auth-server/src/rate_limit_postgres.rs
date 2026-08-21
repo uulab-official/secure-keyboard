@@ -22,8 +22,10 @@ CREATE TABLE IF NOT EXISTS secure_keypad_rate_limit_windows (
         CHECK (octet_length(namespace) BETWEEN 1 AND 64),
     CONSTRAINT secure_keypad_rate_limit_namespace_chars
         CHECK (namespace ~ '^[A-Za-z0-9._-]+$'),
-    CHECK (octet_length(key_hash) = 32),
-    CHECK (attempts BETWEEN 1 AND 4294967295)
+    CONSTRAINT secure_keypad_rate_limit_key_hash_length
+        CHECK (octet_length(key_hash) = 32),
+    CONSTRAINT secure_keypad_rate_limit_attempts_range
+        CHECK (attempts BETWEEN 1 AND 4294967295)
 );
 CREATE INDEX IF NOT EXISTS secure_keypad_rate_limit_windows_expiry_idx
     ON secure_keypad_rate_limit_windows (expires_at);
@@ -47,6 +49,24 @@ BEGIN
         ALTER TABLE secure_keypad_rate_limit_windows
             ADD CONSTRAINT secure_keypad_rate_limit_namespace_chars
             CHECK (namespace ~ '^[A-Za-z0-9._-]+$');
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_rate_limit_windows'::regclass
+          AND conname = 'secure_keypad_rate_limit_key_hash_length'
+    ) THEN
+        ALTER TABLE secure_keypad_rate_limit_windows
+            ADD CONSTRAINT secure_keypad_rate_limit_key_hash_length
+            CHECK (octet_length(key_hash) = 32);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'secure_keypad_rate_limit_windows'::regclass
+          AND conname = 'secure_keypad_rate_limit_attempts_range'
+    ) THEN
+        ALTER TABLE secure_keypad_rate_limit_windows
+            ADD CONSTRAINT secure_keypad_rate_limit_attempts_range
+            CHECK (attempts BETWEEN 1 AND 4294967295);
     END IF;
 END
 $$;
@@ -351,5 +371,21 @@ mod tests {
             POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains("ALTER TABLE secure_keypad_rate_limit_windows")
         );
         assert!(POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains("FROM pg_constraint"));
+    }
+
+    #[test]
+    fn schema_upgrade_reapplies_all_rate_limit_bounds_to_existing_tables() {
+        for constraint in [
+            "secure_keypad_rate_limit_key_hash_length",
+            "secure_keypad_rate_limit_attempts_range",
+        ] {
+            assert!(POSTGRES_RATE_LIMIT_SCHEMA_SQL.contains(constraint));
+        }
+        assert!(
+            POSTGRES_RATE_LIMIT_SCHEMA_SQL
+                .matches("ALTER TABLE secure_keypad_rate_limit_windows")
+                .count()
+                >= 4
+        );
     }
 }
