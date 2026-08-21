@@ -89,6 +89,7 @@ jobs:
           pnpm check:release-version-parity
           pnpm test:release-evidence
           pnpm test:release-candidate-metadata
+          pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence
           pnpm test:merge-release-evidence
           pnpm test:sign-release

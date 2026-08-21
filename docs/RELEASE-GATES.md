@@ -42,6 +42,7 @@ pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence
 pnpm test:release-candidate-metadata
+pnpm test:expo-development-build
 pnpm test:sign-release
 pnpm test:device-evidence
 pnpm test:security-audit

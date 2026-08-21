@@ -274,6 +274,15 @@ export function runSecurityAudit() {
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /validateMaskedStateEvent/, "React Native must expose masked event validation at the bridge boundary");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /createSecureKeypadEventHandlers/, "React Native must install fail-closed event handlers");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeView/, "React Native low-level native view access must be explicitly named");
+  const reactNativePackage = source("packages/react-native/package.json", findings);
+  requireText(findings, "packages/react-native/package.json", reactNativePackage, /"app\.plugin"\s*:\s*"\.\/app\.plugin\.js"/, "React Native must expose its Expo config plugin");
+  const expoPlugin = source("packages/react-native/app.plugin.js", findings);
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /withDangerousMod/, "Expo integration must stage native artifacts during prebuild");
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "Expo iOS builds must require an explicit FFI XCFramework");
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_LIB_DIR/, "Expo Android builds must require an explicit FFI library directory");
+  const reactNativeGuide = source("packages/react-native/README.md", findings);
+  requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Development Build/, "React Native must document Expo Development Build support");
+  requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Go/, "React Native must document the Expo Go limitation");
   const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
   requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
@@ -538,6 +547,7 @@ export function runSecurityAudit() {
   const rootPackage = source("package.json", findings);
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
+  requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
   const browserSmoke = source("scripts/web-browser-smoke.mjs", findings);
   requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /chromium, firefox, webkit/, "browser smoke must enumerate Chromium, Firefox, and WebKit");
   requireText(findings, "scripts/web-browser-smoke.mjs", browserSmoke, /secureContext/, "browser smoke must verify secure-context behavior");

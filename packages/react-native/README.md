@@ -49,6 +49,26 @@ on the web.
 
 This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. `getSecureKeypadView()` installs a fail-closed event wrapper: masked lengths are limited to 4,096 and result payloads are restricted to stable codes before host callbacks run. `getSecureKeypadNativeView()` is a low-level unwrapped escape hatch for native host integration; applications should use the wrapped API. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
 
+## Expo Development Build
+
+Expo Development Builds are supported because Expo prebuild can autolink this
+package's native view manager. The included config plugin stages the iOS
+XCFramework and fails closed when the Android FFI directory is not configured:
+
+```sh
+export SECURE_KEYPAD_FFI_XCFRAMEWORK="$PWD/native-artifacts/secure_ffi.xcframework"
+export SECURE_KEYPAD_FFI_LIB_DIR="$PWD/native-artifacts/android"
+npx expo prebuild
+npx expo run:ios   # or: npx expo run:android
+```
+
+The Android directory must contain `arm64-v8a/libsecure_ffi.a` and every other
+ABI selected by the host. Build the FFI artifacts from the same source commit
+as the package. Expo Go is intentionally unsupported: it cannot load the
+custom native security boundary. Do not replace this native view with a
+JavaScript keypad or a `TextInput` fallback when the secure native mode is
+required.
+
 `cancelRequest` is a monotonic, non-secret command token. The first value is
 captured as the baseline; changing it calls the native cancellation path,
 zeroizes the pending session, and emits only `cancelled` plus an empty masked

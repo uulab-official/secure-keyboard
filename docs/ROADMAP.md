@@ -76,7 +76,7 @@ Exit criteria: Secure Native Mode works without a secret crossing the framework 
 
 ### Phase 4 — React Native adapter
 
-Status: publishable contract, native source packaging, and parity gate complete; host-app build and device verification pending
+Status: publishable contract, native source packaging, parity gate, and Expo Development Build support complete; physical-device verification pending
 
 - [x] Provide reference iOS/Android native view-manager registration.
 - [x] Include iOS/Android native source, FFI module map, and fail-closed package build manifests.
@@ -88,7 +88,7 @@ Status: publishable contract, native source packaging, and parity gate complete;
 - [x] Expose an explicit native `cancel` layout action that clears input without a framework secret channel.
 - [x] Expose masked state events and non-secret native cancel controller commands.
 - [x] Revalidate RN/Flutter bridge masked-state bounds and stable result-code shapes before host callbacks.
-- [ ] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
+- [x] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [ ] Add an opt-in lower-assurance Headless Host Mode with prominent documentation.
 
 Exit criteria: RN users can customize the entire supported visual contract while Secure Native Mode remains the default.
