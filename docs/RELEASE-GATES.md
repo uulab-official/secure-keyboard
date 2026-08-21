@@ -249,7 +249,10 @@ environment with `--ignored`; they verify one-time consume, namespace/kind
 isolation, replay rejection, and expired-state cleanup. The same service job
 must run the feature-gated `RateLimiter` adapters and verify fixed-window
 allowed/limited decisions. Durable adapters also bound pending ceremony count
-per namespace, active rate-limit keys, and credential-record size.
+per namespace, active rate-limit keys, and credential-record size. OPAQUE
+one-time-state adapters must encrypt/authenticate records with a host-managed
+`OpaqueStateKey`; release evidence must show key provisioning, same-key
+multi-instance consume, and retention through the maximum state TTL.
 Plaintext Redis/`NoTls` constructors are allowed only in that isolated test
 job, never in a production configuration.
 

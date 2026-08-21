@@ -24,6 +24,7 @@ mod opaque_state_redis;
 #[cfg(feature = "postgres-backend")]
 mod opaque_state_postgres;
 
+pub use opaque_state_codec::OpaqueStateKey;
 pub use rate_limit::{
     InMemoryRateLimiter, RateLimitDecision, RateLimitError, RateLimitPolicy, RateLimiter,
     MAX_DISTRIBUTED_RATE_LIMIT_WINDOW, MAX_IN_MEMORY_RATE_KEYS, MAX_RATE_LIMIT_KEY_BYTES,

@@ -1,13 +1,118 @@
 use crate::{BoundLoginState, StoreError, MAX_STORED_STATE_BYTES};
+use aes_gcm::{
+    aead::{AeadInPlace, KeyInit},
+    Aes256Gcm, Nonce,
+};
+use rand::{rngs::OsRng, RngCore};
 use secure_auth::ServerLoginStateBytes;
+use std::sync::Arc;
 use zeroize::{Zeroize, Zeroizing};
 
 const RECORD_MAGIC: &[u8; 4] = b"SKBS";
 const RECORD_VERSION: u16 = 1;
 const RECORD_HEADER_BYTES: usize = 4 + 2 + 4 + 2 + 2;
+const PROTECTED_MAGIC: &[u8; 4] = b"SKPE";
+const PROTECTED_VERSION: u16 = 1;
+const PROTECTED_HEADER_BYTES: usize = 4 + 2 + 12;
+const PROTECTED_TAG_BYTES: usize = 16;
+const PROTECTED_AAD: &[u8] = b"secure-keypad:opaque-login-state:v1";
 
 /// Maximum encoded durable record accepted by distributed one-time stores.
 pub const MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES: usize = 32 * 1024;
+/// Maximum encrypted durable record size, including the protection header and tag.
+pub const MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES: usize =
+    PROTECTED_HEADER_BYTES + PROTECTED_TAG_BYTES + MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES;
+const MAX_PROTECTED_RECORD_BYTES: usize = MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES;
+
+/// A 32-byte at-rest encryption key for distributed OPAQUE login state.
+///
+/// Keep this value in a secret manager or KMS-backed configuration. It has no
+/// byte getter or `Debug` implementation so it cannot be accidentally logged.
+pub struct OpaqueStateKey([u8; 32]);
+
+impl OpaqueStateKey {
+    /// Restores a key only when the representation is exactly 32 bytes.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        Some(Self(bytes.try_into().ok()?))
+    }
+
+    /// Generates a key with the operating-system CSPRNG.
+    #[must_use]
+    pub fn generate() -> Self {
+        let mut bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut bytes);
+        Self(bytes)
+    }
+}
+
+impl Drop for OpaqueStateKey {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct StateProtector {
+    cipher: Arc<Aes256Gcm>,
+}
+
+impl StateProtector {
+    pub(crate) fn new(key: OpaqueStateKey) -> Self {
+        let Ok(cipher) = Aes256Gcm::new_from_slice(&key.0) else {
+            unreachable!("a fixed 32-byte key always initializes AES-256-GCM");
+        };
+        drop(key);
+        Self {
+            cipher: Arc::new(cipher),
+        }
+    }
+
+    pub(crate) fn seal(&self, plaintext: &[u8]) -> Result<Zeroizing<Vec<u8>>, StoreError> {
+        if plaintext.is_empty() || plaintext.len() > MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES {
+            return Err(StoreError::StateTooLarge);
+        }
+        let mut nonce = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce);
+        let mut ciphertext = Zeroizing::new(plaintext.to_vec());
+        self.cipher
+            .encrypt_in_place(Nonce::from_slice(&nonce), PROTECTED_AAD, &mut *ciphertext)
+            .map_err(|_| StoreError::Unavailable)?;
+        let total = PROTECTED_HEADER_BYTES
+            .checked_add(ciphertext.len())
+            .ok_or(StoreError::StateTooLarge)?;
+        if total > MAX_PROTECTED_RECORD_BYTES {
+            return Err(StoreError::StateTooLarge);
+        }
+        let mut protected = Vec::with_capacity(total);
+        protected.extend_from_slice(PROTECTED_MAGIC);
+        protected.extend_from_slice(&PROTECTED_VERSION.to_le_bytes());
+        protected.extend_from_slice(&nonce);
+        protected.extend_from_slice(&ciphertext);
+        Ok(Zeroizing::new(protected))
+    }
+
+    pub(crate) fn open(&self, protected: Vec<u8>) -> Result<Zeroizing<Vec<u8>>, StoreError> {
+        let protected = Zeroizing::new(protected);
+        if protected.len() < PROTECTED_HEADER_BYTES + PROTECTED_TAG_BYTES
+            || protected.len() > MAX_PROTECTED_RECORD_BYTES
+            || &protected[..4] != PROTECTED_MAGIC
+            || u16::from_le_bytes(
+                protected[4..6]
+                    .try_into()
+                    .map_err(|_| StoreError::Unavailable)?,
+            ) != PROTECTED_VERSION
+        {
+            return Err(StoreError::Unavailable);
+        }
+        let nonce = Nonce::from_slice(&protected[6..PROTECTED_HEADER_BYTES]);
+        let mut ciphertext = Zeroizing::new(protected[PROTECTED_HEADER_BYTES..].to_vec());
+        self.cipher
+            .decrypt_in_place(nonce, PROTECTED_AAD, &mut *ciphertext)
+            .map_err(|_| StoreError::Unavailable)?;
+        Ok(Zeroizing::new(core::mem::take(&mut *ciphertext)))
+    }
+}
 
 pub(crate) fn encode_bound_state(state: BoundLoginState) -> Result<Zeroizing<Vec<u8>>, StoreError> {
     let (state, client_identifier, server_identifier) = state.into_parts();
@@ -97,7 +202,7 @@ fn decode_bound_state_inner(encoded: &[u8]) -> Result<BoundLoginState, StoreErro
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_bound_state, encode_bound_state};
+    use super::{decode_bound_state, encode_bound_state, OpaqueStateKey, StateProtector};
     use crate::BoundLoginState;
     use secure_auth::ServerLoginStateBytes;
 
@@ -132,5 +237,67 @@ mod tests {
         let mut trailing = encoded.to_vec();
         trailing.push(0);
         assert!(decode_bound_state(trailing).is_err());
+    }
+
+    #[test]
+    fn durable_record_is_authenticated_and_encrypted_before_storage() {
+        let state = BoundLoginState::new(
+            ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
+            b"fixture-client",
+            b"fixture-server",
+        )
+        .unwrap();
+        let encoded = encode_bound_state(state).unwrap();
+        let key = OpaqueStateKey::from_bytes(&[7u8; 32]).unwrap();
+        let protector = StateProtector::new(key);
+        let protected = protector.seal(encoded.as_slice()).unwrap();
+
+        assert_ne!(protected.as_slice(), encoded.as_slice());
+        let opened = protector.open(protected.to_vec()).unwrap();
+        let decoded = decode_bound_state(opened.to_vec()).unwrap();
+        assert_eq!(decoded.into_parts().0.as_bytes(), b"fixture-state");
+    }
+
+    #[test]
+    fn durable_record_rejects_authenticated_ciphertext_tampering() {
+        let state = BoundLoginState::new(
+            ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
+            b"fixture-client",
+            b"fixture-server",
+        )
+        .unwrap();
+        let encoded = encode_bound_state(state).unwrap();
+        let key = OpaqueStateKey::from_bytes(&[9u8; 32]).unwrap();
+        let protector = StateProtector::new(key);
+        let mut protected = protector.seal(encoded.as_slice()).unwrap().to_vec();
+        let last = protected.last_mut().unwrap();
+        *last ^= 0x01;
+
+        assert!(protector.open(protected).is_err());
+    }
+
+    #[test]
+    fn opaque_state_key_requires_exactly_32_bytes() {
+        assert!(OpaqueStateKey::from_bytes(&[0u8; 31]).is_none());
+        assert!(OpaqueStateKey::from_bytes(&[0u8; 33]).is_none());
+        assert!(OpaqueStateKey::from_bytes(&[0u8; 32]).is_some());
+    }
+
+    #[test]
+    fn durable_record_requires_the_same_key_to_open() {
+        let encoded = encode_bound_state(
+            BoundLoginState::new(
+                ServerLoginStateBytes::from_bytes(b"fixture-state").unwrap(),
+                b"fixture-client",
+                b"fixture-server",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let protector = StateProtector::new(OpaqueStateKey::from_bytes(&[1u8; 32]).unwrap());
+        let wrong_protector = StateProtector::new(OpaqueStateKey::from_bytes(&[2u8; 32]).unwrap());
+        let protected = protector.seal(encoded.as_slice()).unwrap();
+
+        assert!(wrong_protector.open(protected.to_vec()).is_err());
     }
 }

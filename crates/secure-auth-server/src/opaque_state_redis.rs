@@ -1,8 +1,9 @@
 use crate::opaque_state_codec::{
-    decode_bound_state, encode_bound_state, MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES,
+    decode_bound_state, encode_bound_state, StateProtector,
+    MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES,
 };
 use crate::{
-    BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, StoreError,
+    BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, OpaqueStateKey, StoreError,
     MAX_DISTRIBUTED_LOGIN_STATE_TTL, MAX_IN_MEMORY_ENTRIES,
 };
 use r2d2::{Pool, PooledConnection};
@@ -90,10 +91,15 @@ pub struct RedisOneTimeLoginStateStore {
     namespace: String,
     ttl_millis: u64,
     max_entries: usize,
+    protector: StateProtector,
 }
 
 impl RedisOneTimeLoginStateStore {
     /// Creates a TLS-protected Redis one-time state store.
+    ///
+    /// The supplied 32-byte key encrypts and authenticates each durable OPAQUE
+    /// state record before it enters Redis. Keep it stable for at least the
+    /// configured TTL and load it from a secret manager or KMS-backed config.
     ///
     /// # Errors
     ///
@@ -105,11 +111,21 @@ impl RedisOneTimeLoginStateStore {
         pool_size: u32,
         max_entries: usize,
         ttl: Duration,
+        encryption_key: OpaqueStateKey,
     ) -> Result<Self, RedisOneTimeStateConfigError> {
-        Self::build(url, namespace, pool_size, max_entries, ttl, true)
+        Self::build(
+            url,
+            namespace,
+            pool_size,
+            max_entries,
+            ttl,
+            encryption_key,
+            true,
+        )
     }
 
-    /// Creates a plaintext store only for an isolated local test instance.
+    /// Creates a plaintext-connection store only for an isolated local test
+    /// instance. State records remain encrypted and authenticated at rest.
     ///
     /// # Errors
     ///
@@ -121,8 +137,17 @@ impl RedisOneTimeLoginStateStore {
         pool_size: u32,
         max_entries: usize,
         ttl: Duration,
+        encryption_key: OpaqueStateKey,
     ) -> Result<Self, RedisOneTimeStateConfigError> {
-        Self::build(url, namespace, pool_size, max_entries, ttl, false)
+        Self::build(
+            url,
+            namespace,
+            pool_size,
+            max_entries,
+            ttl,
+            encryption_key,
+            false,
+        )
     }
 
     fn build(
@@ -131,6 +156,7 @@ impl RedisOneTimeLoginStateStore {
         pool_size: u32,
         max_entries: usize,
         ttl: Duration,
+        encryption_key: OpaqueStateKey,
         require_tls: bool,
     ) -> Result<Self, RedisOneTimeStateConfigError> {
         validate_namespace(namespace)?;
@@ -156,6 +182,7 @@ impl RedisOneTimeLoginStateStore {
             namespace: namespace.to_owned(),
             ttl_millis,
             max_entries,
+            protector: StateProtector::new(encryption_key),
         })
     }
 
@@ -178,6 +205,7 @@ impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
         if encoded.len() > MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES {
             return Err(StoreError::StateTooLarge);
         }
+        let protected = self.protector.seal(encoded.as_slice())?;
         let mut connection = self.connection()?;
         for _ in 0..HANDLE_ATTEMPTS {
             let handle = LoginStateHandle::generate();
@@ -185,7 +213,7 @@ impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
             let inserted: i64 = Script::new(INSERT_SCRIPT)
                 .key(self.state_key(&handle_hash))
                 .key(self.pending_index_key())
-                .arg(encoded.as_slice())
+                .arg(protected.as_slice())
                 .arg(self.ttl_millis)
                 .arg(self.max_entries)
                 .arg(&handle_hash)
@@ -204,13 +232,17 @@ impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
     fn take_bound(&self, handle: &LoginStateHandle) -> Result<Option<BoundLoginState>, StoreError> {
         let handle_hash = hash_handle(handle);
         let mut connection = self.connection()?;
-        let encoded: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
+        let protected: Option<Vec<u8>> = Script::new(CONSUME_SCRIPT)
             .key(self.state_key(&handle_hash))
             .key(self.pending_index_key())
             .arg(&handle_hash)
             .invoke(&mut *connection)
             .map_err(|_| StoreError::Unavailable)?;
-        encoded.map(decode_bound_state).transpose()
+        let Some(protected) = protected else {
+            return Ok(None);
+        };
+        let encoded = self.protector.open(protected)?;
+        Ok(Some(decode_bound_state(encoded.to_vec())?))
     }
 }
 

@@ -35,13 +35,16 @@ development, but must not sit behind a load balancer.
 The opt-in `redis-backend` and `postgres-backend` features provide concrete
 `RedisOneTimeLoginStateStore` and `PostgresOneTimeLoginStateStore` adapters.
 Both enforce a bounded namespace, pool, capacity, and 15-minute maximum TTL;
-they serialize the bound state in a versioned, bounded record and hash handles
-before persistence. Redis uses one `SET NX PX`/capacity Lua script and one
-atomic consume script. PostgreSQL uses a namespace advisory transaction lock
-for capacity and one `DELETE ... RETURNING` consume operation. Production
-constructors require TLS; plaintext constructors are explicitly named for
-isolated local tests. Both adapters are blocking and must run on a blocking
-worker in an async host.
+they serialize the bound state in a versioned, bounded record, then encrypt and
+authenticate it with AES-256-GCM before persistence. The host supplies an
+`OpaqueStateKey`; keep it in a secret manager or KMS-backed configuration and
+stable for the maximum configured TTL. Handles are SHA-256 hashed before
+persistence. Redis uses one `SET NX PX`/capacity Lua script and one atomic
+consume script. PostgreSQL uses a namespace advisory transaction lock for
+capacity and one `DELETE ... RETURNING` consume operation. Production
+constructors require TLS; plaintext connection constructors are explicitly
+named for isolated local tests. Both adapters are blocking and must run on a
+blocking worker in an async host.
 
 The `BoundOneTimeLoginStateStore` trait remains the interoperability contract
 for another backend: `insert_bound` must use conditional insert semantics and

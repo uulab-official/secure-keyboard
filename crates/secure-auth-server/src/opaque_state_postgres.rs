@@ -1,8 +1,9 @@
 use crate::opaque_state_codec::{
-    decode_bound_state, encode_bound_state, MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES,
+    decode_bound_state, encode_bound_state, StateProtector,
+    MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES, MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES,
 };
 use crate::{
-    BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, StoreError,
+    BoundLoginState, BoundOneTimeLoginStateStore, LoginStateHandle, OpaqueStateKey, StoreError,
     MAX_DISTRIBUTED_LOGIN_STATE_TTL, MAX_IN_MEMORY_ENTRIES,
 };
 use postgres::{config::SslMode, tls::MakeTlsConnect, Config, Socket};
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS secure_keypad_opaque_login_states (
     CONSTRAINT secure_keypad_opaque_state_handle_hash_length
         CHECK (octet_length(handle_hash) = 32),
     CONSTRAINT secure_keypad_opaque_state_length
-        CHECK (octet_length(state) BETWEEN 1 AND 32768)
+        CHECK (octet_length(state) BETWEEN 1 AND 32802)
 );
 CREATE INDEX IF NOT EXISTS secure_keypad_opaque_login_states_expiry_idx
     ON secure_keypad_opaque_login_states (expires_at);
@@ -70,7 +71,7 @@ BEGIN
     ) THEN
         ALTER TABLE secure_keypad_opaque_login_states
             ADD CONSTRAINT secure_keypad_opaque_state_length
-            CHECK (octet_length(state) BETWEEN 1 AND 32768);
+            CHECK (octet_length(state) BETWEEN 1 AND 32802);
     END IF;
 END
 $$;
@@ -123,6 +124,16 @@ where
     namespace: String,
     ttl_millis: i64,
     max_entries: usize,
+    protector: StateProtector,
+}
+
+struct StoreOptions<'a> {
+    namespace: &'a str,
+    pool_size: u32,
+    max_entries: usize,
+    ttl: Duration,
+    encryption_key: OpaqueStateKey,
+    require_tls: bool,
 }
 
 impl<T> PostgresOneTimeLoginStateStore<T>
@@ -133,6 +144,10 @@ where
     <T::TlsConnect as postgres::tls::TlsConnect<Socket>>::Future: Send,
 {
     /// Creates a store with an explicit `PostgreSQL` TLS connector.
+    ///
+    /// The supplied 32-byte key encrypts and authenticates each durable OPAQUE
+    /// state record before it enters `PostgreSQL`. Keep it stable for at least
+    /// the configured TTL and load it from a secret manager or KMS-backed config.
     ///
     /// # Errors
     ///
@@ -145,19 +160,35 @@ where
         pool_size: u32,
         max_entries: usize,
         ttl: Duration,
+        encryption_key: OpaqueStateKey,
     ) -> Result<Self, PostgresOneTimeStateConfigError> {
-        Self::build(config, tls, namespace, pool_size, max_entries, ttl, true)
+        Self::build(
+            config,
+            tls,
+            StoreOptions {
+                namespace,
+                pool_size,
+                max_entries,
+                ttl,
+                encryption_key,
+                require_tls: true,
+            },
+        )
     }
 
     fn build(
         config: Config,
         tls: T,
-        namespace: &str,
-        pool_size: u32,
-        max_entries: usize,
-        ttl: Duration,
-        require_tls: bool,
+        options: StoreOptions<'_>,
     ) -> Result<Self, PostgresOneTimeStateConfigError> {
+        let StoreOptions {
+            namespace,
+            pool_size,
+            max_entries,
+            ttl,
+            encryption_key,
+            require_tls,
+        } = options;
         if require_tls && config.get_ssl_mode() != SslMode::Require {
             return Err(PostgresOneTimeStateConfigError::InsecureConfig);
         }
@@ -180,6 +211,7 @@ where
             namespace: namespace.to_owned(),
             ttl_millis,
             max_entries,
+            protector: StateProtector::new(encryption_key),
         })
     }
 
@@ -189,7 +221,8 @@ where
 }
 
 impl PostgresOneTimeLoginStateStore<NoTls> {
-    /// Creates a plaintext store only for an isolated local test instance.
+    /// Creates a plaintext-connection store only for an isolated local test
+    /// instance. State records remain encrypted and authenticated at rest.
     ///
     /// # Errors
     ///
@@ -201,8 +234,20 @@ impl PostgresOneTimeLoginStateStore<NoTls> {
         pool_size: u32,
         max_entries: usize,
         ttl: Duration,
+        encryption_key: OpaqueStateKey,
     ) -> Result<Self, PostgresOneTimeStateConfigError> {
-        Self::build(config, NoTls, namespace, pool_size, max_entries, ttl, false)
+        Self::build(
+            config,
+            NoTls,
+            StoreOptions {
+                namespace,
+                pool_size,
+                max_entries,
+                ttl,
+                encryption_key,
+                require_tls: false,
+            },
+        )
     }
 }
 
@@ -216,6 +261,10 @@ where
     fn insert_bound(&self, state: BoundLoginState) -> Result<LoginStateHandle, StoreError> {
         let encoded = encode_bound_state(state)?;
         if encoded.len() > MAX_DISTRIBUTED_LOGIN_STATE_RECORD_BYTES {
+            return Err(StoreError::StateTooLarge);
+        }
+        let protected = self.protector.seal(encoded.as_slice())?;
+        if protected.len() > MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES {
             return Err(StoreError::StateTooLarge);
         }
         let mut client = self.connection()?;
@@ -258,7 +307,7 @@ where
                     &[
                         &self.namespace,
                         &&handle_hash[..],
-                        &encoded.as_slice(),
+                        &protected.as_slice(),
                         &self.ttl_millis,
                     ],
                 )
@@ -285,8 +334,9 @@ where
         let Some(row) = row else {
             return Ok(None);
         };
-        let encoded: Vec<u8> = row.get(0);
-        decode_bound_state(encoded).map(Some)
+        let protected: Vec<u8> = row.get(0);
+        let encoded = self.protector.open(protected)?;
+        Ok(Some(decode_bound_state(encoded.to_vec())?))
     }
 }
 

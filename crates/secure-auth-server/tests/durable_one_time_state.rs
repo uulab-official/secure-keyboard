@@ -1,5 +1,5 @@
 use secure_auth::ServerLoginStateBytes;
-use secure_auth_server::BoundLoginState;
+use secure_auth_server::{BoundLoginState, OpaqueStateKey};
 use std::time::Duration;
 
 fn fixture_state() -> BoundLoginState {
@@ -9,6 +9,10 @@ fn fixture_state() -> BoundLoginState {
         b"fixture-server",
     )
     .unwrap()
+}
+
+fn fixture_key() -> OpaqueStateKey {
+    OpaqueStateKey::from_bytes(&[0x42u8; 32]).unwrap()
 }
 
 #[cfg(feature = "redis-backend")]
@@ -21,6 +25,7 @@ fn redis_configuration_rejects_plaintext_in_production_constructor() {
             1,
             8,
             Duration::from_secs(30),
+            fixture_key(),
         ),
         Err(secure_auth_server::RedisOneTimeStateConfigError::InsecureUrl)
     ));
@@ -38,6 +43,7 @@ fn postgres_configuration_rejects_non_tls_production_config() {
             1,
             8,
             Duration::from_secs(30),
+            fixture_key(),
         ),
         Err(secure_auth_server::PostgresOneTimeStateConfigError::InsecureConfig)
     ));
@@ -59,6 +65,7 @@ fn redis_state_is_consumed_atomically_once() {
             4,
             8,
             Duration::from_secs(30),
+            fixture_key(),
         )
         .unwrap(),
     );
@@ -105,6 +112,7 @@ fn postgres_state_is_consumed_atomically_once() {
             4,
             8,
             Duration::from_secs(30),
+            fixture_key(),
         )
         .unwrap(),
     );

@@ -67,6 +67,7 @@ The `secure-auth-server` crate includes `InMemoryOneTimeLoginStore` as a
 bounded reference implementation with 32-byte handles, TTL, capacity, and
 state-size limits. Its feature-gated `RedisOneTimeLoginStateStore` and
 `PostgresOneTimeLoginStateStore` adapters use bounded versioned records,
+AES-256-GCM authenticated encryption with a host-supplied `OpaqueStateKey`,
 hashed handles, TLS-first constructors, and atomic consume/delete. A custom
 multi-instance backend must preserve the same
 `BoundOneTimeLoginStateStore` `insert_bound`/`take_bound` semantics. Adapters

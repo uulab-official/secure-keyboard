@@ -14,6 +14,7 @@ redis-backend = ["dep:r2d2", "dep:redis", "dep:sha2"]
 postgres-backend = ["dep:postgres", "dep:r2d2", "dep:r2d2_postgres", "dep:sha2"]
 
 [dependencies]
+aes-gcm = "=0.10.3"
 postgres = { version = "=0.19.14", optional = true }
 rand = "0.8.7"
 redis = { version = "=1.2.2", default-features = false, features = ["r2d2", "script", "tls-rustls", "tls-rustls-webpki-roots"], optional = true }
