@@ -127,7 +127,7 @@ jobs:
           pnpm --dir packages/contracts pack --pack-destination "$RELEASE_DIR/packages"
           pnpm --dir packages/react-native pack --pack-destination "$RELEASE_DIR/packages"
           pnpm --dir packages/web pack --pack-destination "$RELEASE_DIR/packages"
-          cargo package --locked --workspace --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
+          cargo package --locked --workspace --all-features --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
           cp "$RUNNER_TEMP/secure-keypad-cargo-target/package/"*.crate "$RELEASE_DIR/packages/"
           cp Cargo.lock pnpm-lock.yaml LICENSE-MIT "$RELEASE_DIR/source/"
           cp "$RELEASE_DIR/secure-keypad.sbom.spdx.json" "$RELEASE_DIR/source/secure-keypad.sbom.spdx.json"
