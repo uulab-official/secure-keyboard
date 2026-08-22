@@ -595,6 +595,30 @@ test("rejects a physical native checksum that is not the candidate checksum arti
   );
 });
 
+test("rejects a physical native host mode whose framework version differs from the manifest", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-host-version-binding-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const iosGate = evidence.gates.find(({ name }) => name === "ios-device-matrix");
+  const iosRecordPath = join(root, iosGate.evidencePath);
+  const iosRecord = JSON.parse(readFileSync(iosRecordPath, "utf8"));
+  iosRecord.hostModes.find(({ framework }) => framework === "react-native").frameworkVersion = "0.86.0";
+  const iosRecordBytes = Buffer.from(`${JSON.stringify(iosRecord)}\n`, "utf8");
+  writeFileSync(iosRecordPath, iosRecordBytes);
+  iosGate.sha256 = createHash("sha256").update(iosRecordBytes).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(
+    findings.some(
+      (finding) =>
+        finding.includes("gates[8]") &&
+        finding.includes("hostModes") &&
+        finding.includes("frameworkVersion") &&
+        finding.includes("manifest"),
+    ),
+  );
+});
+
 test("rejects symlinked evidence artifacts even when the target stays inside the evidence root", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-symlinked-release-artifact-"));
   const evidence = writeCompleteEvidenceFixture(root);

@@ -81,6 +81,8 @@ Each platform release run should produce one JSON record containing:
 - for physical native records, `hostModes` with exactly one passing record for
   both `react-native` and `flutter`, including the version used for each host;
   a record for only one framework cannot satisfy the native release gate;
+  the recorded host versions must match the release manifest's pinned React
+  Native and Flutter toolchains;
 - device/browser model, OS version/build, and `secureContext: true` for Web;
 - every applicable test case with the exact status `pass`;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,

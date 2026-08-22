@@ -507,7 +507,7 @@ function verifyNativeChecksumBinding(findings, field, gate, record, artifacts) {
   }
 }
 
-function verifyGateEvidenceRecord(findings, root, field, gate, artifacts) {
+function verifyGateEvidenceRecord(findings, root, field, gate, artifacts, toolchains) {
   if (!isSafeRelativePath(gate.evidencePath) || !COMMIT.test(String(gate.commit))) return;
   const absolutePath = containedFilePath(findings, root, field, gate.evidencePath);
   if (!absolutePath) return;
@@ -589,6 +589,9 @@ function verifyGateEvidenceRecord(findings, root, field, gate, artifacts) {
     expectedGate: gate.name,
     requireNativeHostModes: true,
     requirePhysicalDevice: devicePolicy.requirePhysicalDevice,
+    expectedHostModeVersions: isRecord(toolchains)
+      ? { "react-native": toolchains.reactNative, flutter: toolchains.flutter }
+      : undefined,
   })) {
     add(findings, `${field}.device`, finding);
   }
@@ -810,7 +813,7 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
       gate.sha256,
       MAX_GATE_EVIDENCE_BYTES,
     );
-    verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate, evidence.artifacts);
+    verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate, evidence.artifacts, evidence.toolchains);
   }
   for (const [index, artifact] of evidence.artifacts.entries()) {
     if (!isRecord(artifact)) continue;

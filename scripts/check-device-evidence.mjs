@@ -100,7 +100,7 @@ function validateTests(testCases, required, findings) {
   }
 }
 
-function validateNativeHostModes(hostModes, findings, required) {
+function validateNativeHostModes(hostModes, findings, required, expectedVersions) {
   if (!Array.isArray(hostModes) || hostModes.length === 0 || hostModes.length > 3) {
     add(findings, "hostModes", "must contain one to three host-mode records");
     return;
@@ -126,6 +126,12 @@ function validateNativeHostModes(hostModes, findings, required) {
     }
     if (!nonEmptyString(hostMode.frameworkVersion)) {
       add(findings, `${field}.frameworkVersion`, "must be non-empty");
+    } else if (
+      isRecord(expectedVersions) &&
+      typeof expectedVersions[hostMode.framework] === "string" &&
+      hostMode.frameworkVersion !== expectedVersions[hostMode.framework]
+    ) {
+      add(findings, `${field}.frameworkVersion`, "must match the manifest toolchain version");
     }
     if (hostMode.status !== "pass") add(findings, `${field}.status`, "must be exactly 'pass'");
   }
@@ -145,7 +151,7 @@ function validateNativeHostModes(hostModes, findings, required) {
  * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
- * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string, expectedGate?: string}} [options]
+ * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string, expectedGate?: string, expectedHostModeVersions?: Record<string, string>}} [options]
  * @returns {string[]}
  */
 export function validateDeviceEvidence(evidence, options = {}) {
@@ -178,7 +184,12 @@ export function validateDeviceEvidence(evidence, options = {}) {
   if (!nonEmptyString(evidence.frameworkVersion)) add(findings, "frameworkVersion", "must be non-empty");
   const isNativePlatform = evidence.platform === "ios" || evidence.platform === "android";
   if (isNativePlatform && evidence.hostModes !== undefined) {
-    validateNativeHostModes(evidence.hostModes, findings, options.requireNativeHostModes === true);
+    validateNativeHostModes(
+      evidence.hostModes,
+      findings,
+      options.requireNativeHostModes === true,
+      options.expectedHostModeVersions,
+    );
   } else if (isNativePlatform && options.requireNativeHostModes === true) {
     add(findings, "hostModes", "must contain both react-native and flutter host modes");
   }

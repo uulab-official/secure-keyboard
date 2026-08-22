@@ -1203,6 +1203,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /validateDeviceEvidence/, "release tooling must revalidate embedded device evidence records");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyDeviceEvidenceFiles/, "release tooling must verify nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyNativeChecksumBinding/, "release tooling must bind physical native checksums to candidate artifacts");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /expectedHostModeVersions/, "release tooling must bind physical host modes to manifest toolchain versions");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence commit/, "release tooling must reject stale embedded gate evidence commits");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence gate/, "release tooling must reject cross-gate evidence reuse");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /gate: <same gate name>/, "release gates must require machine-readable gate-bound records");
