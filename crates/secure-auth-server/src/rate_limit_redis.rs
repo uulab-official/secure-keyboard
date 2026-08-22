@@ -22,7 +22,11 @@ end
 local current = redis.call('GET', KEYS[1])
 if current then
   local attempts = tonumber(current)
-  if not attempts or attempts < 1 or attempts ~= math.floor(attempts) then
+  if not string.match(current, '^[0-9]+$')
+      or not attempts
+      or attempts < 1
+      or attempts ~= math.floor(attempts)
+      or tostring(attempts) ~= current then
     redis.call('DEL', KEYS[1])
     redis.call('ZREM', KEYS[2], ARGV[4])
     return {-2, 0, 0}

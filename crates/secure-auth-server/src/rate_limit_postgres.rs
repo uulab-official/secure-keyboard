@@ -265,12 +265,13 @@ where
                 return Ok(RateLimitDecision::Limited { retry_after });
             }
             let next_attempts = attempts.checked_add(1).ok_or(RateLimitError::Unavailable)?;
+            let next_attempts_i64 = i64::from(next_attempts);
             transaction
                 .execute(
                     "UPDATE secure_keypad_rate_limit_windows
                      SET attempts = $3
                      WHERE namespace = $1 AND key_hash = $2",
-                    &[&self.namespace, &&key_hash[..], &next_attempts],
+                    &[&self.namespace, &&key_hash[..], &next_attempts_i64],
                 )
                 .map_err(|_| RateLimitError::Unavailable)?;
             transaction
@@ -302,7 +303,7 @@ where
                 "INSERT INTO secure_keypad_rate_limit_windows
                  (namespace, key_hash, attempts, expires_at)
                  VALUES ($1, $2, $3,
-                         now() + ($4::double precision * interval '1 millisecond'))",
+                         now() + ($4::bigint * interval '1 millisecond'))",
                 &[
                     &self.namespace,
                     &&key_hash[..],

@@ -23,14 +23,14 @@ WITH removed AS (
 )
 SELECT CASE
            WHEN expires_at > now()
-            AND expires_at <= now() + ($4::double precision * interval '1 millisecond')
-            AND octet_length(state) <= $3
+            AND expires_at <= now() + ($4::bigint * interval '1 millisecond')
+            AND octet_length(state) <= $3::bigint
            THEN state
            ELSE NULL::bytea
        END AS state,
        expires_at > now() AS not_expired,
-       expires_at <= now() + ($4::double precision * interval '1 millisecond') AS within_ttl,
-       octet_length(state) <= $3 AS within_size
+       expires_at <= now() + ($4::bigint * interval '1 millisecond') AS within_ttl,
+       octet_length(state) <= $3::bigint AS within_size
 FROM removed
 ";
 /// SQL schema required by [`PostgresOneTimeLoginStateStore`].
@@ -323,7 +323,7 @@ where
                     "INSERT INTO secure_keypad_opaque_login_states
                      (namespace, handle_hash, state, expires_at)
                      VALUES ($1, $2, $3,
-                             now() + ($4::double precision * interval '1 millisecond'))
+                             now() + ($4::bigint * interval '1 millisecond'))
                      ON CONFLICT (namespace, handle_hash) DO NOTHING",
                     &[
                         &self.namespace,
@@ -407,7 +407,7 @@ mod tests {
         assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("WITH removed AS"));
         assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL
             .contains("DELETE FROM secure_keypad_opaque_login_states"));
-        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("$4::double precision"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("$4::bigint"));
         assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("not_expired"));
         assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("within_ttl"));
     }

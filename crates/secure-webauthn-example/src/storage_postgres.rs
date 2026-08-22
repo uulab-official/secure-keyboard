@@ -20,7 +20,7 @@ const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
 const POSTGRES_CREDENTIAL_LOAD_SQL: &str = r"
 SELECT CASE
-           WHEN octet_length(passkey::text) <= $4 THEN passkey
+           WHEN octet_length(passkey::text) <= $4::bigint THEN passkey
            ELSE NULL::jsonb
        END AS passkey
 FROM secure_keypad_webauthn_credentials
@@ -30,7 +30,7 @@ LIMIT $3
 ";
 const POSTGRES_CREDENTIAL_UPDATE_LOAD_SQL: &str = r"
 SELECT CASE
-           WHEN octet_length(passkey::text) <= $4 THEN passkey
+           WHEN octet_length(passkey::text) <= $4::bigint THEN passkey
            ELSE NULL::jsonb
        END AS passkey,
        revision
@@ -43,7 +43,7 @@ DELETE FROM secure_keypad_webauthn_ceremonies
 WHERE namespace = $1 AND handle = $2 AND kind = $3 AND expires_at > now()
 RETURNING kind, user_id,
           CASE
-              WHEN octet_length(state) <= $4 THEN state
+              WHEN octet_length(state) <= $4::bigint THEN state
               ELSE NULL::bytea
           END AS state
 ";
@@ -408,7 +408,7 @@ where
                 .execute(
                     "INSERT INTO secure_keypad_webauthn_ceremonies
                      (namespace, handle, kind, user_id, state, expires_at)
-                     VALUES ($1, $2, $3, $4, $5, now() + ($6::double precision * interval '1 millisecond'))
+                     VALUES ($1, $2, $3, $4, $5, now() + ($6::bigint * interval '1 millisecond'))
                      ON CONFLICT (namespace, handle, kind) DO NOTHING",
                     &[
                         &self.namespace,
@@ -418,7 +418,7 @@ where
                         &protected.as_slice(),
                         &ttl_millis,
                     ],
-            )
+                )
                 .map_err(|_| CeremonyStoreError::Unavailable)?;
             if rows == 1 {
                 transaction

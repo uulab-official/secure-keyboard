@@ -42,13 +42,17 @@ local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 local ttl = redis.call('PTTL', KEYS[1])
-if ttl < 1 or ttl > tonumber(ARGV[3]) then
+if ttl == -2 then
+  redis.call('ZREM', KEYS[2], KEYS[1])
+  return {0, false}
+end
+if ttl < 1 or ttl > tonumber(ARGV[2]) then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], KEYS[1])
   return {-2, false}
 end
 local length = redis.call('STRLEN', KEYS[1])
-if length > tonumber(ARGV[2]) then
+if length > tonumber(ARGV[1]) then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], KEYS[1])
   return {-2, false}
@@ -506,6 +510,7 @@ mod tests {
             .find("'GET'")
             .expect("ceremony consume must retrieve an accepted value");
         assert!(length_check < get);
+        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[1])"));
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
         assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
     }
@@ -519,7 +524,8 @@ mod tests {
             .find("STRLEN")
             .expect("ceremony consume must check length");
         assert!(ttl_check < length_check);
+        assert!(CONSUME_SCRIPT.contains("ttl == -2"));
         assert!(CONSUME_SCRIPT.contains("ttl < 1"));
-        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[3])"));
+        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
     }
 }
