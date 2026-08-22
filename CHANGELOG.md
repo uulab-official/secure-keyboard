@@ -54,6 +54,9 @@ exact release-candidate commit by the release evidence manifest.
   getters instead of propagating their exception text.
 - iOS native bridge configuration now rejects fractional schema versions before
   layout or theme materialization across the central and publishable copies.
+- Android bridge theme numbers are now range-validated as `Double` before the
+  native renderer narrows them to `Float`, closing a precision-rounding edge
+  at public configuration bounds across all Android adapters.
 - Normalized browser WebAuthn API rejections and hostile credential-object
   exceptions to stable generic error codes without propagating original
   messages.

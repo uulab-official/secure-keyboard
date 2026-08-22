@@ -221,9 +221,13 @@ internal object SecureKeypadBridgeConfigParser {
         number(value[key] ?: invalid(), minimum, maximum)
 
     private fun number(value: Any, minimum: Float, maximum: Float): Float {
-        val result = (value as? Number)?.toFloat() ?: invalid()
-        require(result.isFinite() && result in minimum..maximum)
-        return result
+        val result = (value as? Number)?.toDouble() ?: invalid()
+        require(
+            result.isFinite() &&
+                result >= minimum.toDouble() &&
+                result <= maximum.toDouble(),
+        )
+        return result.toFloat()
     }
 
     private fun integer(value: Any?, default: Long): Long {

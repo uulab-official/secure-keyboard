@@ -634,6 +634,8 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /SecureKeyRole\.CANCEL/, "Android bridge parser must accept the explicit cancel role");
     requireText(findings, file, contents, /private fun integer\(/, "Android bridge parser must reject fractional numeric configuration values");
+    requireText(findings, file, contents, /val result = \(value as\? Number\)\?\.toDouble\(\)/, "Android bridge parser must validate numeric precision before narrowing to Float");
+    requireText(findings, file, contents, /result >= minimum\.toDouble\(\)[\s\S]*result <= maximum\.toDouble\(\)/, "Android bridge parser must compare theme bounds before narrowing to Float");
     requireText(findings, file, contents, /private fun optionalMap\(/, "Android bridge parser must reject unknown nested configuration fields");
   }
   for (const file of [

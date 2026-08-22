@@ -200,6 +200,20 @@ test("all public adapters apply the same UTF-8 byte bounds to labels", () => {
   assert.match(contractsSource, /function utf8ByteLength/);
 });
 
+test("Android bridge validates theme numbers before narrowing to Float", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /val result = \(value as\? Number\)\?\.toDouble\(\)/);
+    assert.match(source, /result >= minimum\.toDouble\(\)[\s\S]*result <= maximum\.toDouble\(\)/);
+    assert.match(source, /return result\.toFloat\(\)/);
+  }
+});
+
 test("Flutter native event bridges retain a bounded backlog without overwriting terminal results", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
