@@ -4,6 +4,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSy
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
 import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -141,6 +142,65 @@ export function buildSignedReleaseEvidence(input) {
     signatureSha256: sha256(signature),
     publicKeyPath,
     publicKeySha256: sha256(publicKeyDer),
+  };
+}
+
+/**
+ * Wraps a verified signed-release record as the complete fragment required by
+ * the final release manifest. The record bytes remain the hashed gate
+ * evidence; the detached signature descriptor and three public artifact
+ * descriptors are added without accepting caller-supplied hashes.
+ *
+ * @param {{record: Record<string, unknown>, evidencePath: string, evidenceBytes: Uint8Array|string}} input
+ * @returns {Record<string, unknown>}
+ */
+export function buildSignedReleaseFragment(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("signed-release fragment input must be an object");
+  }
+  const { record, evidencePath, evidenceBytes } = input;
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    throw new Error("signed-release record must be an object");
+  }
+  if (record.gate !== "signed-release" || record.status !== "pass" || record.evidenceKind !== "signed-release") {
+    throw new Error("signed-release record must be a passing signed-release evidence record");
+  }
+  if (typeof record.algorithm !== "string" || record.algorithm !== "ed25519") {
+    throw new Error("signed-release record algorithm must be ed25519");
+  }
+
+  const descriptors = [
+    { kind: "release-bundle", path: record.bundlePath, sha256: record.bundleSha256 },
+    { kind: "release-public-key", path: record.publicKeyPath, sha256: record.publicKeySha256 },
+    { kind: "release-signature", path: record.signaturePath, sha256: record.signatureSha256 },
+  ];
+  for (const descriptor of descriptors) {
+    if (!isSafeRelativePath(descriptor.path)) {
+      throw new Error(`${descriptor.kind} path must be safe and relative`);
+    }
+    if (!SHA256.test(String(descriptor.sha256))) {
+      throw new Error(`${descriptor.kind} sha256 must be a lowercase SHA-256 digest`);
+    }
+  }
+  if (!isSafeRelativePath(evidencePath)) throw new Error("signed-release evidencePath must be safe and relative");
+
+  const gateFragment = buildReleaseGateFragment({
+    commit: record.commit,
+    packageVersion: record.packageVersion,
+    gateName: "signed-release",
+    evidencePath,
+    evidenceBytes,
+  });
+  return {
+    ...gateFragment,
+    artifacts: descriptors,
+    signature: {
+      algorithm: "ed25519",
+      publicKeyPath: record.publicKeyPath,
+      signedArtifactPath: record.bundlePath,
+      signaturePath: record.signaturePath,
+      publicKeySha256: record.publicKeySha256,
+    },
   };
 }
 

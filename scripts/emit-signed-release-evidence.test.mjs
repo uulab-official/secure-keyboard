@@ -7,8 +7,14 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
+import {
+  buildSignedReleaseEvidence,
+  buildSignedReleaseFragment,
+} from "./emit-signed-release-evidence.mjs";
+
 const REPOSITORY_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const EMIT_SCRIPT = fileURLToPath(new URL("./emit-signed-release-evidence.mjs", import.meta.url));
+const FRAGMENT_SCRIPT = fileURLToPath(new URL("./emit-signed-release-fragment.mjs", import.meta.url));
 
 function writeSignedArtifacts(root) {
   const bundle = Buffer.from("deterministic release bundle bytes\n", "utf8");
@@ -40,6 +46,14 @@ function runEmitter(root) {
   );
 }
 
+function runFragmentEmitter(root) {
+  return spawnSync(
+    process.execPath,
+    [FRAGMENT_SCRIPT, root, "fragments/signed-release.json", "evidence/signed-release.json"],
+    { cwd: REPOSITORY_ROOT, encoding: "utf8" },
+  );
+}
+
 test("emits a commit-bound signed-release evidence record with verified artifact hashes", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-signed-release-"));
   const { bundle, signature, publicKeyDer } = writeSignedArtifacts(root);
@@ -58,6 +72,57 @@ test("emits a commit-bound signed-release evidence record with verified artifact
   assert.equal(record.bundleSha256, createHash("sha256").update(bundle).digest("hex"));
   assert.equal(record.signatureSha256, createHash("sha256").update(signature).digest("hex"));
   assert.equal(record.publicKeySha256, createHash("sha256").update(publicKeyDer).digest("hex"));
+});
+
+test("wraps the signed-release record as a complete gate and signature fragment", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-signed-release-fragment-"));
+  const { bundle, signature, publicKeyDer } = writeSignedArtifacts(root);
+  const record = buildSignedReleaseEvidence({
+    root,
+    commit: "a".repeat(40),
+    packageVersion: "0.1.0",
+    bundlePath: "artifacts/release.tar.gz",
+    signaturePath: "artifacts/release.sig",
+    publicKeyPath: "artifacts/release.pub.der",
+    recordedAt: "2026-08-22T00:00:00.000Z",
+  });
+  const evidenceBytes = Buffer.from(`${JSON.stringify(record, null, 2)}\n`, "utf8");
+  const fragment = buildSignedReleaseFragment({
+    record,
+    evidencePath: "evidence/signed-release.json",
+    evidenceBytes,
+  });
+
+  assert.equal(fragment.gates[0].name, "signed-release");
+  assert.deepEqual(
+    fragment.artifacts.map(({ kind, path: artifactPath, sha256 }) => ({ kind, path: artifactPath, sha256 })),
+    [
+      { kind: "release-bundle", path: "artifacts/release.tar.gz", sha256: createHash("sha256").update(bundle).digest("hex") },
+      { kind: "release-public-key", path: "artifacts/release.pub.der", sha256: createHash("sha256").update(publicKeyDer).digest("hex") },
+      { kind: "release-signature", path: "artifacts/release.sig", sha256: createHash("sha256").update(signature).digest("hex") },
+    ],
+  );
+  assert.deepEqual(fragment.signature, {
+    algorithm: "ed25519",
+    publicKeyPath: "artifacts/release.pub.der",
+    signedArtifactPath: "artifacts/release.tar.gz",
+    signaturePath: "artifacts/release.sig",
+    publicKeySha256: record.publicKeySha256,
+  });
+});
+
+test("converts the emitted signed-release record into a mergeable fragment", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-signed-release-fragment-cli-"));
+  writeSignedArtifacts(root);
+  const evidenceResult = runEmitter(root);
+  assert.equal(evidenceResult.status, 0, evidenceResult.stderr);
+
+  const fragmentResult = runFragmentEmitter(root);
+  assert.equal(fragmentResult.status, 0, fragmentResult.stderr);
+  const fragment = JSON.parse(readFileSync(join(root, "fragments/signed-release.json"), "utf8"));
+  assert.equal(fragment.gates[0].name, "signed-release");
+  assert.equal(fragment.artifacts.length, 3);
+  assert.equal(fragment.signature.algorithm, "ed25519");
 });
 
 test("rejects a signed-release evidence record when the detached signature is tampered", () => {

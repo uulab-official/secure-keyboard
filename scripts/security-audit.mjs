@@ -963,6 +963,33 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
+  const releaseFinalizeWorkflow = source(".github/workflows/release-finalize.yml", findings);
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /workflow_dispatch:/, "release finalization must be manually invoked with explicit evidence run IDs");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /candidate-run-id:/, "release finalization must identify the immutable candidate artifact run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /ci-run-id:/, "release finalization must identify the CI evidence run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /external-evidence-run-id:/, "release finalization must identify the external evidence run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions:\s*read/, "release finalization must use read-only artifact permissions");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /contents:\s*read/, "release finalization must use read-only repository permissions");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release finalization must download immutable artifacts through a pinned action");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/, "release finalization must bind the candidate download to its requested run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/, "release finalization must bind CI evidence to its requested run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/, "release finalization must bind external evidence to its requested run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the audited copier");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete fragment");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/merge-release-evidence\.mjs/, "release finalization must merge all evidence fragments before verification");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-evidence\.mjs --require-trusted-keys/, "release finalization must require protected maintainer and reviewer fingerprints");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release finalization must provide the protected maintainer fingerprint");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release finalization must provide the protected reviewer fingerprint");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /name: secure-keypad-production-release-evidence/, "release finalization must retain the verified production evidence artifact");
+  for (const line of findMutableCiActionLines(releaseFinalizeWorkflow)) {
+    findings.push({
+      rule: "ci-action-immutability",
+      file: ".github/workflows/release-finalize.yml",
+      detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
+    });
+  }
+  forbidText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /contents:\s*write/, "release finalization must not publish or mutate repository contents");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked -p secure-auth-actix/, "CI must run the Actix adapter contract tests");
@@ -1147,6 +1174,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
+  requireText(findings, "package.json", rootPackage, /"test:stage-release-evidence"/, "the workspace must expose the release evidence staging test");
   const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /"status",\s*"--porcelain/, "release evidence emitter must require a clean checkout");
@@ -1172,6 +1200,18 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /bundleSha256|signatureSha256|publicKeySha256/, "signed-release evidence must hash every signed artifact");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /currentCommit/, "signed-release evidence must bind to the current checkout commit");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /pathHasSymlinkComponent/, "signed-release evidence must reject symlink traversal");
+  const signedReleaseFragment = source("scripts/emit-signed-release-fragment.mjs", findings);
+  requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /buildSignedReleaseFragment/, "signed-release finalization must preserve gate, artifact, and detached-signature descriptors");
+  requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /MAX_GATE_EVIDENCE_BYTES/, "signed-release fragment conversion must bound record materialization");
+  requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /pathHasSymlinkComponent/, "signed-release fragment conversion must reject symlink traversal");
+  requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /flag:\s*["']wx["']/, "signed-release fragment conversion must create outputs exclusively");
+  const stagedReleaseEvidence = source("scripts/stage-release-evidence.mjs", findings);
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /pathHasSymlinkComponent/, "release evidence staging must reject symlink traversal");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /COPYFILE_EXCL/, "release evidence staging must avoid overwriting downloaded inputs");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /duplicate release evidence path/, "release evidence staging must reject duplicate paths");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /only regular files are allowed/, "release evidence staging must reject special files");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /PRIVATE_MATERIAL_PATH/, "release evidence staging must reject private or secret file inputs");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /candidate signed-release evidence is missing/, "release evidence staging must require the candidate signing record");
 
   return findings;
 }

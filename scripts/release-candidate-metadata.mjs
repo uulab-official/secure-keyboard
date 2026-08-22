@@ -55,6 +55,7 @@ export function buildReleaseCandidateMetadata(input) {
     finalVerifier: {
       command:
         "node scripts/check-release-evidence.mjs --require-trusted-keys release-evidence/release-evidence.json",
+      workflow: ".github/workflows/release-finalize.yml",
       requiredProtectedInputs: [
         "SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256",
         "SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256",

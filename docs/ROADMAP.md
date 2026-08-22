@@ -211,6 +211,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Bind release signing to a named protected GitHub Environment; administrator reviewer configuration remains external evidence.
 - [x] Embed immutable candidate-only release metadata and final evidence-verifier instructions inside the signed bundle.
 - [x] Build, commit-bind, and checksum-verify publishable iOS FFI artifacts, include them in the mobile package archives, and keep npm/crate archives inside the detached-signature tarball scope.
+- [x] Add a read-only finalization workflow that stages candidate/CI/external artifacts, converts the signed-release record into a complete manifest fragment, and runs trusted-key verification before retaining production evidence.
 - [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.

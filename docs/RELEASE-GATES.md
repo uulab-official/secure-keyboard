@@ -254,6 +254,25 @@ and merge its `fragments/*.json` with the separately collected physical-device,
 independent-review, and signed-release fragments; the resulting manifest is
 still expected to fail until every required external gate is present.
 
+The checked-in `release-finalize.yml` workflow automates that last assembly as
+a read-only, manually approved operation. Dispatch it with the exact commit
+SHA, the run IDs for the release-candidate bundle and CI evidence, and an
+external evidence artifact run containing the physical iOS/Android records,
+the independent-review fragment, and every referenced log, screenshot/report,
+review key, and review signature. The external artifact must use the same
+relative evidence-root layout (`fragments/`, `evidence/`, and `artifacts/`).
+The workflow validates the candidate staging contract, proves its metadata
+commit equals the requested SHA, rejects symlinked/duplicate/special input
+files, converts `evidence/signed-release.json` into the complete
+`signed-release` gate/artifact/signature fragment, and then runs the merger and
+`--require-trusted-keys` verifier. It retains the result as
+`secure-keypad-production-release-evidence`; a missing or stale external
+fragment fails the job and cannot become a production claim. The
+`secure-keypad-release` environment must hold the protected
+`SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256` and
+`SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256` values and require its configured
+reviewers.
+
 For a browser-only evidence root, the checked-in web emitter accepts the three
 sanitized Playwright logs and creates the validator-compatible matrix record:
 

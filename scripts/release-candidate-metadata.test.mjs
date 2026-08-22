@@ -27,6 +27,7 @@ test("candidate metadata binds the exact checkout and final evidence contract", 
   assert.equal(metadata.packageVersion, "0.1.0");
   assert.deepEqual(metadata.requiredFinalGates, REQUIRED_RELEASE_GATES);
   assert.equal(metadata.claim, "candidate-only");
+  assert.equal(metadata.finalVerifier.workflow, ".github/workflows/release-finalize.yml");
   assert.equal(metadata.finalVerifier.command, "node scripts/check-release-evidence.mjs --require-trusted-keys release-evidence/release-evidence.json");
 });
 

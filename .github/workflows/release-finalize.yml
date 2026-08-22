@@ -1,0 +1,122 @@
+name: Finalize production release evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Exact 40-character commit SHA represented by all evidence"
+        required: true
+        type: string
+      candidate-run-id:
+        description: "Run ID of the immutable release-candidate bundle workflow"
+        required: true
+        type: string
+      ci-run-id:
+        description: "Run ID of the successful CI workflow that produced release evidence"
+        required: true
+        type: string
+      external-evidence-run-id:
+        description: "Run ID containing physical-device and independent-review evidence"
+        required: true
+        type: string
+      external-evidence-artifact:
+        description: "Artifact name containing external fragments and referenced files"
+        required: true
+        default: secure-keypad-external-release-evidence
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  finalize:
+    name: Verify complete production evidence
+    runs-on: ubuntu-24.04
+    environment: secure-keypad-release
+    timeout-minutes: 30
+    env:
+      RELEASE_REF: ${{ inputs.ref }}
+      CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
+      CI_RUN_ID: ${{ inputs.ci-run-id }}
+      EXTERNAL_EVIDENCE_RUN_ID: ${{ inputs.external-evidence-run-id }}
+      CANDIDATE_DIR: ${{ runner.temp }}/secure-keypad-candidate
+      CI_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-ci-evidence
+      EXTERNAL_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-external-evidence
+      EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-final-evidence
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Require immutable release identity
+        run: |
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          for run_id in "$CANDIDATE_RUN_ID" "$CI_RUN_ID" "$EXTERNAL_EVIDENCE_RUN_ID"; do
+            if ! [[ "$run_id" =~ ^[0-9]+$ ]]; then
+              echo "artifact run IDs must be decimal integers"
+              exit 1
+            fi
+          done
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.13.0"
+      - name: Download the signed candidate bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-release-candidate
+          run-id: ${{ inputs.candidate-run-id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.CANDIDATE_DIR }}
+      - name: Download CI release evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-ci-release-evidence
+          run-id: ${{ inputs.ci-run-id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.CI_EVIDENCE_DIR }}
+      - name: Download physical-device and independent-review evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ${{ inputs.external-evidence-artifact }}
+          run-id: ${{ inputs.external-evidence-run-id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.EXTERNAL_EVIDENCE_DIR }}
+      - name: Validate and stage all release evidence inputs
+        run: |
+          node scripts/check-release-bundle.mjs "$CANDIDATE_DIR"
+          CANDIDATE_COMMIT="$(node -e 'const fs = require("node:fs"); const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(metadata.commit);' "$CANDIDATE_DIR/source/release-candidate-metadata.json")"
+          test "$CANDIDATE_COMMIT" = "$RELEASE_REF"
+          node scripts/stage-release-evidence.mjs \
+            "$EVIDENCE_DIR" "$CANDIDATE_DIR" "$CI_EVIDENCE_DIR" "$EXTERNAL_EVIDENCE_DIR"
+      - name: Convert signed-release record into the final manifest fragment
+        run: |
+          node scripts/emit-signed-release-fragment.mjs \
+            "$EVIDENCE_DIR" \
+            "fragments/signed-release.json" \
+            "evidence/signed-release.json"
+      - name: Merge and verify every required release gate
+        env:
+          SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256: ${{ secrets.SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256 }}
+          SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256: ${{ secrets.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256 }}
+        run: |
+          FRAGMENT_PATHS=()
+          while IFS= read -r -d '' fragment; do
+            FRAGMENT_PATHS+=("${fragment:${#EVIDENCE_DIR}+1}")
+          done < <(find "$EVIDENCE_DIR/fragments" -type f -name '*.json' -print0 | sort -z)
+          test "${#FRAGMENT_PATHS[@]}" -ge 13
+          node scripts/merge-release-evidence.mjs \
+            "$EVIDENCE_DIR" \
+            "release-evidence/release-evidence.json" \
+            "${FRAGMENT_PATHS[@]}"
+          node scripts/check-release-evidence.mjs --require-trusted-keys \
+            "$EVIDENCE_DIR/release-evidence/release-evidence.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-production-release-evidence
+          path: ${{ env.EVIDENCE_DIR }}
+          if-no-files-found: error

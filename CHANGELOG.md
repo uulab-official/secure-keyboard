@@ -53,6 +53,14 @@ exact release-candidate commit by the release evidence manifest.
   types, including hard links and special filesystem nodes.
 - Signed archive inspection now rejects duplicate normalized paths instead of
   silently collapsing them during required-entry validation.
+- Added a read-only `release-finalize` workflow that downloads the exact
+  candidate/CI/external artifact runs, stages them without symlink or
+  overwrite ambiguity, converts the signed-release record into a complete
+  manifest fragment, and requires protected maintainer/reviewer fingerprints
+  before publishing final evidence.
+- Added an exclusive, regular-file-only release-evidence staging helper and a
+  signed-release fragment converter so missing physical-device, sanitizer, or
+  independent-review evidence fails closed.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.
