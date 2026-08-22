@@ -22,6 +22,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- Fixed the bounded in-memory one-time login store so a bound/unbound contract
+  mismatch returns an error without consuming the pending state; only expiry
+  or a successful type-matched take removes it.
 - Numeric core input now accepts only canonical single-digit key IDs, rejecting
   aliases such as `digit-01` and `digit-+1` at the native boundary.
 - Shared contracts and every native framework adapter now enforce the selected

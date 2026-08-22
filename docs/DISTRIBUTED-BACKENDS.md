@@ -61,6 +61,13 @@ bound before materialization. Both built-in adapters reconstruct
 `BoundLoginState` with bounded identifiers before returning it to
 `ServerAuthService`.
 
+The process-local reference store exposes both bound and unbound contracts for
+testability. If a caller uses the wrong contract, it returns
+`StateTypeMismatch` without deleting the pending record; a matching successful
+`take` or expiry is the only consuming path. Implementations that expose
+multiple record kinds must preserve the same non-consuming type-mismatch
+behavior while keeping the actual consume operation atomic.
+
 ## Atomic rate limiting
 
 Implement `RateLimiter::check` as one atomic check-and-count operation. Use
