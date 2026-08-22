@@ -11,6 +11,11 @@ service/native bridge. It receives only the bounded protocol body and must
 return generic JSON response bytes. Do not log or persist the request body,
 identifiers, protocol errors, or delegate response details.
 
+The adapter clears the bounded request `Uint8Array` immediately after the
+delegate returns (and clears already-read chunks on size/read failure). This
+reduces residual exposure but cannot erase copies made by the Fetch runtime or
+delegate; JavaScript remains outside the strongest native secret boundary.
+
 `transport: "trusted-proxy-tls"` is valid only after the host has independently
 validated the proxy source and forwarded scheme. The adapter never trusts or
 parses `X-Forwarded-*` headers. JavaScript memory is not a secure-memory

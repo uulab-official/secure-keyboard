@@ -123,7 +123,7 @@ describe("Node OPAQUE HTTP adapter", () => {
       deploymentContext: secureContext,
       csrfValidated: () => true,
       delegate: (value) => {
-        received = value;
+        received = { ...value, body: value.body.slice() };
         return { status: 200, body: new TextEncoder().encode('{"authenticated":true}') };
       },
     });
@@ -143,6 +143,53 @@ describe("Node OPAQUE HTTP adapter", () => {
       csrfValidated: true,
     });
     expect(new TextDecoder().decode(received?.body)).toBe('{"protocolVersion":1}');
+  });
+
+  it("zeroizes the bounded request buffer after the delegate returns", async () => {
+    let receivedBody: Uint8Array | undefined;
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate: ({ body }) => {
+        receivedBody = body;
+        expect(new TextDecoder().decode(body)).toBe('{"protocolVersion":1}');
+        return { status: 200, body: new TextEncoder().encode('{"ok":true}') };
+      },
+    });
+
+    const response = await handler(request('{"protocolVersion":1}'));
+
+    expect(response.status).toBe(200);
+    expect(receivedBody).toBeDefined();
+    expect(receivedBody?.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it("clears stream chunks after copying the bounded request body", async () => {
+    const chunk = new TextEncoder().encode('{"protocolVersion":1}');
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate: ({ body }) => {
+        expect(new TextDecoder().decode(body)).toBe('{"protocolVersion":1}');
+        return { status: 200, body: new TextEncoder().encode('{"ok":true}') };
+      },
+    });
+    const incoming = new Request("https://auth.example.test/v1/opaque/login/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(chunk);
+          controller.close();
+        },
+      }),
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(200);
+    expect(chunk.every((byte) => byte === 0)).toBe(true);
   });
 
   it("does not trust forwarded headers and rejects delegate failures generically", async () => {

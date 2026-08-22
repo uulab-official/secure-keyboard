@@ -135,6 +135,9 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
+  const clearChunks = (): void => {
+    for (const chunk of chunks) chunk.fill(0);
+  };
   try {
     while (true) {
       const result = await reader.read();
@@ -148,10 +151,14 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
         } catch {
           // The size violation remains authoritative even if transport cleanup fails.
         }
+        clearChunks();
         throw new BodyTooLargeError();
       }
       chunks.push(bytes);
     }
+  } catch (error) {
+    clearChunks();
+    throw error;
   } finally {
     reader.releaseLock();
   }
@@ -162,6 +169,7 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
     output.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  clearChunks();
   return output;
 }
 
@@ -181,7 +189,9 @@ function responseFromDelegate(value: NodeHttpResponse): Response {
  * The handler validates deployment, route, media type, CSRF, and the byte
  * bound before reading the body. It does not inspect forwarded headers or
  * parse authentication JSON; the delegate remains the version-pinned
- * cryptographic boundary.
+ * cryptographic boundary. The bounded request buffer is cleared immediately
+ * after delegation, but copies made by the host runtime or delegate cannot be
+ * controlled by this adapter.
  */
 export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (request: Request) => Promise<Response> {
   return async (request) => {
@@ -230,6 +240,8 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
       return responseFromDelegate(response);
     } catch {
       return genericResponse(503, "temporarily_unavailable");
+    } finally {
+      body.fill(0);
     }
   };
 }
