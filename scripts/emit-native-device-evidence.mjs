@@ -233,6 +233,12 @@ function attachHostModeLogs(root, hostModes, hostModeLogPaths) {
     }
     pathsByFramework.set(hostLog.framework, hostLog.path);
   }
+  const declaredFrameworks = new Set(hostModes.map((hostMode) => hostMode.framework));
+  for (const framework of pathsByFramework.keys()) {
+    if (!declaredFrameworks.has(framework)) {
+      throw new Error(`host mode log for ${framework} is not declared`);
+    }
+  }
   return hostModes.map((hostMode) => {
     if (!pathsByFramework.has(hostMode.framework)) {
       throw new Error(`missing host mode log for ${hostMode.framework}`);

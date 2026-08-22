@@ -160,6 +160,36 @@ test("binds separate React Native and Flutter host logs without embedding their 
   assert.deepEqual(verifyDeviceEvidenceFiles(result.record, root), []);
 });
 
+test("rejects a host log for a framework not declared in the native record", async () => {
+  const { writeNativeDeviceEvidence } = await loadEmitter();
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-unknown-host-log-"));
+  const input = completeInput();
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, input.log.path), input.log.bytes);
+  writeHostModeLogs(root);
+  for (const artifact of input.artifacts) writeFileSync(join(root, artifact.path), artifact.bytes);
+
+  assert.throws(
+    () =>
+      writeNativeDeviceEvidence({
+        root,
+        packageVersion: "0.1.0",
+        evidencePath: "device/ios-rn.json",
+        fragmentPath: "fragments/ios-rn.json",
+        ...input,
+        logPath: input.log.path,
+        artifactPaths: input.artifacts.map(({ kind, path }) => ({ kind, path })),
+        hostModeLogPaths: [
+          { framework: "react-native", path: "logs/react-native-host.txt" },
+          { framework: "flutter", path: "logs/flutter-host.txt" },
+          { framework: "unknown", path: "logs/unknown-host.txt" },
+        ],
+      }),
+    /not declared/,
+  );
+});
+
 test("rejects native evidence outputs reached through an in-root symlinked parent", async () => {
   const { writeNativeDeviceEvidence } = await loadEmitter();
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-output-symlink-"));
