@@ -32,6 +32,9 @@ export const RESPONSE_SECURITY_HEADERS = Object.freeze([
 
 export type NodeTransportSecurity = "direct-tls" | "trusted-proxy-tls" | "plaintext";
 
+/** Host-side admission result returned before the request body is read. */
+export type NodeRateLimitDecision = "allowed" | "rate-limited" | "unavailable";
+
 /** Deployment facts validated by the host before request-body buffering. */
 export interface NodeDeploymentContext {
   readonly transport: NodeTransportSecurity;
@@ -73,15 +76,23 @@ export interface CreateOpaqueHandlerOptions {
   readonly deploymentContext: NodeDeploymentContext;
   /** Host session/origin validation; it runs before `Request.body` is read. */
   readonly csrfValidated: (request: Request) => boolean | Promise<boolean>;
+  /**
+   * Host account/IP/deployment rate-limit admission; it runs before
+   * `Request.body` is read. Omitting this callback fails closed with a generic
+   * temporary-unavailability response.
+   */
+  readonly rateLimitDecision?: (
+    request: Request,
+  ) => NodeRateLimitDecision | Promise<NodeRateLimitDecision>;
   readonly delegate: OpaqueRouteDelegate;
 }
 
-const STATUS_CODES = new Set([200, 400, 401, 403, 404, 405, 413, 415, 503]);
+const STATUS_CODES = new Set([200, 400, 401, 403, 404, 405, 413, 415, 429, 503]);
 const encoder = new TextEncoder();
 
 class BodyTooLargeError extends Error {}
 
-function errorBody(code: "invalid_request" | "temporarily_unavailable"): Uint8Array {
+function errorBody(code: "invalid_request" | "rate_limited" | "temporarily_unavailable"): Uint8Array {
   return encoder.encode(JSON.stringify({ error: code }));
 }
 
@@ -116,7 +127,10 @@ function zeroizeChunk(value: unknown): void {
   }
 }
 
-function genericResponse(status: number, code: "invalid_request" | "temporarily_unavailable"): Response {
+function genericResponse(
+  status: number,
+  code: "invalid_request" | "rate_limited" | "temporarily_unavailable",
+): Response {
   return new Response(responseBody(errorBody(code)), { status, headers: responseHeaders() });
 }
 
@@ -228,12 +242,12 @@ function responseFromDelegate(value: NodeHttpResponse): Response {
  * Creates a Web Fetch-compatible Node server handler for the reference
  * OPAQUE HTTP contract.
  *
- * The handler validates deployment, route, media type, CSRF, and the byte
- * bound before reading the body. It does not inspect forwarded headers or
- * parse authentication JSON; the delegate remains the version-pinned
- * cryptographic boundary. The bounded request buffer is cleared immediately
- * after delegation, but copies made by the host runtime or delegate cannot be
- * controlled by this adapter.
+ * The handler validates deployment, route, media type, CSRF, rate-limit
+ * admission, and the byte bound before reading the body. It does not inspect
+ * forwarded headers or parse authentication JSON; the delegate remains the
+ * version-pinned cryptographic boundary. The bounded request buffer is cleared
+ * immediately after delegation, but copies made by the host runtime or
+ * delegate cannot be controlled by this adapter.
  */
 export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (request: Request) => Promise<Response> {
   return async (request) => {
@@ -253,6 +267,18 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
       return genericResponse(503, "temporarily_unavailable");
     }
     if (!csrfPassed) return genericResponse(403, "invalid_request");
+
+    if (options.rateLimitDecision === undefined) {
+      return genericResponse(503, "temporarily_unavailable");
+    }
+    let rateLimitDecision: NodeRateLimitDecision;
+    try {
+      rateLimitDecision = await options.rateLimitDecision(request);
+    } catch {
+      return genericResponse(503, "temporarily_unavailable");
+    }
+    if (rateLimitDecision === "rate-limited") return genericResponse(429, "rate_limited");
+    if (rateLimitDecision !== "allowed") return genericResponse(503, "temporarily_unavailable");
 
     const declaredLength = declaredBodyLength(request);
     if (declaredLength === "invalid") return genericResponse(400, "invalid_request");

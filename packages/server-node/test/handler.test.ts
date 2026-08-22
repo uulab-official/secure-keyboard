@@ -23,11 +23,83 @@ function request(body: BodyInit | null = null, headers: HeadersInit = {}, url = 
 }
 
 describe("Node OPAQUE HTTP adapter", () => {
+  it("rejects a rate-limited request before reading the body", async () => {
+    const delegate = vi.fn();
+    const rateLimitDecision = vi.fn(() => "rate-limited");
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision,
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(429);
+    expect(await response.text()).toBe('{"error":"rate_limited"}');
+    expect(rateLimitDecision).toHaveBeenCalledWith(incoming);
+    expect(incoming.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when rate-limit admission is unavailable or missing", async () => {
+    const delegate = vi.fn();
+    const unavailable = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "unavailable",
+      delegate,
+    });
+    const missing = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate,
+    });
+
+    const unavailableResponse = await unavailable(request("{}"));
+    const missingResponse = await missing(request("{}"));
+
+    expect(unavailableResponse.status).toBe(503);
+    expect(missingResponse.status).toBe(503);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("normalizes rate-limit callback failures and invalid decisions before body access", async () => {
+    const delegate = vi.fn();
+    const callbackFailure = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => {
+        throw new Error("secret-bearing limiter failure");
+      },
+      delegate,
+    });
+    const invalidDecision = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "unexpected" as never,
+      delegate,
+    });
+    const callbackRequest = request("{}");
+    const invalidRequest = request("{}");
+
+    const callbackResponse = await callbackFailure(callbackRequest);
+    const invalidResponse = await invalidDecision(invalidRequest);
+
+    expect(callbackResponse.status).toBe(503);
+    expect(invalidResponse.status).toBe(503);
+    expect(callbackRequest.bodyUsed).toBe(false);
+    expect(invalidRequest.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
   it("fails closed before reading a body when transport is not ready", async () => {
     const delegate = vi.fn();
     const handler = createOpaqueHandler({
       deploymentContext: { ...secureContext, transport: "plaintext" },
       csrfValidated: vi.fn(() => true),
+      rateLimitDecision: () => "allowed",
       delegate,
     });
 
@@ -42,7 +114,12 @@ describe("Node OPAQUE HTTP adapter", () => {
   it("evaluates host CSRF validation before buffering the request body", async () => {
     const delegate = vi.fn();
     const csrfValidated = vi.fn(() => false);
-    const handler = createOpaqueHandler({ deploymentContext: secureContext, csrfValidated, delegate });
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
     const incoming = request('{"envelope":{}}');
 
     const response = await handler(incoming);
@@ -55,7 +132,12 @@ describe("Node OPAQUE HTTP adapter", () => {
 
   it("rejects a content-length over the limit without buffering it", async () => {
     const delegate = vi.fn();
-    const handler = createOpaqueHandler({ deploymentContext: secureContext, csrfValidated: () => true, delegate });
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
     const incoming = request("{}", { "content-length": String(MAX_HTTP_BODY_BYTES + 1) });
 
     const response = await handler(incoming);
@@ -67,7 +149,12 @@ describe("Node OPAQUE HTTP adapter", () => {
 
   it("bounds chunked bodies before calling the cryptographic delegate", async () => {
     const delegate = vi.fn();
-    const handler = createOpaqueHandler({ deploymentContext: secureContext, csrfValidated: () => true, delegate });
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
     let cancelled = false;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -98,6 +185,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate,
     });
     const incoming = {
@@ -121,7 +209,12 @@ describe("Node OPAQUE HTTP adapter", () => {
 
   it("keeps the oversized result deterministic when stream cancellation fails", async () => {
     const delegate = vi.fn();
-    const handler = createOpaqueHandler({ deploymentContext: secureContext, csrfValidated: () => true, delegate });
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(MAX_HTTP_BODY_BYTES));
@@ -149,6 +242,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: (value) => {
         received = { ...value, body: value.body.slice() };
         return { status: 200, body: new TextEncoder().encode('{"authenticated":true}') };
@@ -177,6 +271,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: ({ body }) => {
         receivedBody = body;
         expect(new TextDecoder().decode(body)).toBe('{"protocolVersion":1}');
@@ -196,6 +291,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: () => {
         responseBody = new TextEncoder().encode('{"opaque":"sensitive-transport"}');
         return { status: 200, body: responseBody };
@@ -215,6 +311,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: () => ({
         status: 200,
         body: responseWords as unknown as Uint8Array,
@@ -232,6 +329,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: ({ body }) => {
         expect(new TextDecoder().decode(body)).toBe('{"protocolVersion":1}');
         return { status: 200, body: new TextEncoder().encode('{"ok":true}') };
@@ -260,6 +358,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate: ({ body }) => {
         receivedBody = body;
         throw new Error("delegate failure");
@@ -279,6 +378,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     const handler = createOpaqueHandler({
       deploymentContext: { ...secureContext, transport: "plaintext" },
       csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
       delegate,
     });
     const incoming = request("{}", { "x-forwarded-proto": "https" });

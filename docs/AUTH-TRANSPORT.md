@@ -114,8 +114,10 @@ The framework-neutral HTTP request contract also requires a host-validated
 `csrf_validated` result. The value must be derived from request metadata and
 the host session/origin policy, never from JSON. The Axum and Actix adapters
 accept this as a request-parts callback and reject a failed check before
-buffering the body; framework adapters that cannot provide the same
-pre-buffering check must not be treated as production-equivalent.
+buffering the body. The same adapters require a `RequestAdmission` callback
+for account/IP/deployment rate-limit admission before buffering; denied or
+unavailable decisions fail closed. Framework adapters that cannot provide both
+pre-buffering checks must not be treated as production-equivalent.
 
 `ServerAuthService` provides the reference registration and
 request/finalization orchestration: it validates the expected envelope kind and
@@ -161,6 +163,8 @@ covered by a downgrade regression test.
   read/time limits;
 - one-use server login state, atomic consumption, and replay detection;
 - per-account, per-IP, and deployment-wide rate limits;
+- pre-buffering rate-limit admission with fail-closed behavior on limiter
+  outage;
 - dummy login processing for unknown accounts to reduce enumeration signals;
 - constant-time proof checks and generic external authentication errors;
 - key rotation with an explicit supported-version window and downgrade tests;

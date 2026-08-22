@@ -120,7 +120,9 @@ The framework-neutral HTTP/JSON contracts require the host to provide an
 explicit `csrf_validated` result derived from request metadata and the host
 session/origin policy. Axum and Actix adapters require a request-parts CSRF
 callback and reject a failed result before buffering JSON; no adapter may
-infer CSRF state from a request body.
+infer CSRF state from a request body. OPAQUE adapters also require a
+pre-buffering `RequestAdmission` result for account/IP/deployment rate-limit
+admission and fail closed on a denied or unavailable decision.
 
 The publishable `@secure-keypad/server-node` adapter applies the same boundary
 to Web Fetch requests: it requires an explicit TLS/proxy deployment context,

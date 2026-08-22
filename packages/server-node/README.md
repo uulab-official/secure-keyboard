@@ -41,7 +41,12 @@ streaming reader enforces the same 128 KiB bound.
 
 `transport: "trusted-proxy-tls"` is valid only after the host has independently
 validated the proxy source and forwarded scheme. The adapter never trusts or
-parses `X-Forwarded-*` headers. JavaScript memory is not a secure-memory
+parses `X-Forwarded-*` headers. The `rateLimitDecision` callback is also a
+required production admission boundary: it must apply account/IP/deployment
+limits from request metadata without reading the body. It returns
+`"allowed"`, `"rate-limited"`, or `"unavailable"`; a rate-limited request gets
+the generic 429 response, and an unavailable or omitted callback fails closed
+with 503 before the body is read. JavaScript memory is not a secure-memory
 boundary; applications requiring the strongest secret handling should keep the
 OPAQUE engine in the Rust/native process.
 

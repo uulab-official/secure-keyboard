@@ -16,16 +16,18 @@ use axum::{
     Router,
 };
 use secure_auth_http::{
-    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
-    HttpDeploymentContext, HttpRequest, HttpResponse, JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    request_admission_response, validate_content_length, ContentLengthError, CredentialRepository,
+    HttpAuthRouter, HttpDeploymentContext, HttpRequest, HttpResponse, RequestAdmission,
+    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
 
-struct AppState<S, R, P> {
+struct AppState<S, R, P, Q> {
     router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: Arc<P>,
+    rate_limit: Arc<Q>,
 }
 
 /// Builds an Axum router that delegates the authentication contract to
@@ -36,35 +38,41 @@ struct AppState<S, R, P> {
 /// details. The returned router has no application session or TLS behavior;
 /// those remain host responsibilities. `csrf` must validate the host's
 /// same-origin/CSRF policy from request parts without reading the body; the
-/// route fails closed before buffering JSON when it returns `false`.
-pub fn router<S, R, P>(
+/// route fails closed before buffering JSON when either callback rejects the
+/// request. `rate_limit` must perform the host's account/IP/deployment
+/// admission check without reading the body.
+pub fn router<S, R, P, Q>(
     auth_router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: P,
+    rate_limit: Q,
 ) -> Router
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&Parts) -> bool + Send + Sync + 'static,
+    Q: Fn(&Parts) -> RequestAdmission + Send + Sync + 'static,
 {
     let state = Arc::new(AppState {
         router: auth_router,
         context,
         csrf: Arc::new(csrf),
+        rate_limit: Arc::new(rate_limit),
     });
     Router::new()
-        .fallback(handle_request::<S, R, P>)
+        .fallback(handle_request::<S, R, P, Q>)
         .with_state(state)
 }
 
-async fn handle_request<S, R, P>(
-    State(state): State<Arc<AppState<S, R, P>>>,
+async fn handle_request<S, R, P, Q>(
+    State(state): State<Arc<AppState<S, R, P, Q>>>,
     request: Request<Body>,
 ) -> Response
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&Parts) -> bool + Send + Sync + 'static,
+    Q: Fn(&Parts) -> RequestAdmission + Send + Sync + 'static,
 {
     if !state.context.is_ready() {
         return deployment_unavailable_response();
@@ -74,6 +82,9 @@ where
     let (parts, body) = request.into_parts();
     if !(state.csrf)(&parts) {
         return invalid_request_response(403);
+    }
+    if let Some(response) = request_admission_response((state.rate_limit)(&parts)) {
+        return response_from(response);
     }
     let method = parts.method.as_str().to_owned();
     let path = parts.uri.path().to_owned();
@@ -106,6 +117,7 @@ where
             path: &path,
             content_type: content_type.as_deref(),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         state.context,

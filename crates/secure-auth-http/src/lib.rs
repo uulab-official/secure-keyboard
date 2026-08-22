@@ -9,8 +9,8 @@
 //! must provide a [`HttpDeploymentContext`] proving that TLS and upstream
 //! body/connection limits were established; certificate policy, proxy source
 //! allowlisting, and session-token issuance remain responsibilities of the
-//! embedding server. Each request must also carry an explicit host-validated
-//! CSRF result.
+//! embedding server. Each request must also carry explicit host-validated CSRF
+//! and rate-limit admission results.
 
 use secure_auth::{AuthEnvelope, CredentialFile, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES};
 use secure_auth_server::{
@@ -37,6 +37,8 @@ pub const AUTHENTICATED_RESPONSE: &[u8] = br#"{"authenticated":true}"#;
 /// Stable successful registration-storage response. The credential file is
 /// persisted by the repository and is never returned to the HTTP caller.
 pub const REGISTRATION_STORED_RESPONSE: &[u8] = br#"{"credentialStored":true}"#;
+/// Stable generic response for a host rate-limit denial.
+pub const RATE_LIMITED_RESPONSE: &[u8] = br#"{"error":"rate_limited"}"#;
 
 /// A static response header that a framework adapter can copy verbatim.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,6 +143,17 @@ impl TransportSecurity {
     }
 }
 
+/// Host-side request admission result established before body buffering.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RequestAdmission {
+    /// The account/IP/deployment rate-limit checks allowed this request.
+    Allowed,
+    /// A configured rate-limit policy denied this request.
+    RateLimited,
+    /// The admission backend could not make a safe decision.
+    Unavailable,
+}
+
 /// Deployment controls that must be established before a route reads JSON.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HttpDeploymentContext {
@@ -218,6 +231,8 @@ pub struct HttpRequest<'a> {
     /// Whether the embedding server validated its CSRF/origin policy for this
     /// request. The route never derives this value from the JSON body.
     pub csrf_validated: bool,
+    /// The host's pre-buffering account/IP/deployment admission decision.
+    pub admission: RequestAdmission,
     /// Raw request body. It is bounded before JSON deserialization.
     pub body: &'a [u8],
 }
@@ -233,6 +248,18 @@ pub struct HttpResponse {
     pub headers: &'static [HttpHeader],
     /// JSON body bytes, zeroized on drop.
     pub body: Vec<u8>,
+}
+
+/// Builds the generic response for a pre-buffering admission decision.
+#[must_use]
+pub fn request_admission_response(admission: RequestAdmission) -> Option<HttpResponse> {
+    match admission {
+        RequestAdmission::Allowed => None,
+        RequestAdmission::RateLimited => Some(static_response(429, RATE_LIMITED_RESPONSE)),
+        RequestAdmission::Unavailable => {
+            Some(error_response(503, PublicAuthCode::TemporarilyUnavailable))
+        }
+    }
 }
 
 impl Drop for HttpResponse {
@@ -337,6 +364,9 @@ where
         }
         if !request.csrf_validated {
             return error_response(403, PublicAuthCode::InvalidRequest);
+        }
+        if let Some(response) = request_admission_response(request.admission) {
+            return response;
         }
         if request.body.len() > context.upstream_body_limit_bytes {
             return error_response(413, PublicAuthCode::InvalidRequest);

@@ -10,11 +10,13 @@ not optional. The host must apply these controls before calling a route:
    `X-Forwarded-*` headers;
 5. validate the request's same-origin/CSRF policy from headers, origin, and
    the host session before buffering or dispatching JSON;
-6. bind registration and login routes to the application's authenticated
+6. run account/IP/deployment rate-limit admission before buffering or
+   dispatching JSON; a limiter outage must fail closed;
+7. bind registration and login routes to the application's authenticated
    session/account policy;
-7. make credential enrollment create-only at the repository boundary; do not
+8. make credential enrollment create-only at the repository boundary; do not
    allow registration finish to replace an existing credential;
-8. use a distributed atomic ceremony store and rate limiter when more than one
+9. use a distributed atomic ceremony store and rate limiter when more than one
    application instance can receive a request.
 
 After these checks, pass `HttpDeploymentContext::direct_tls()` or
@@ -23,8 +25,11 @@ corresponding `WebAuthnDeploymentContext` to the passkey router. The trusted
 proxy variant is an assertion made by the host after validation; it is not a
 header parser or a TLS implementation. The framework-neutral request contract
 also requires `csrf_validated: true` only after the host has completed its
-same-origin/CSRF check. The Axum and Actix adapters require request-parts
-callbacks and reject an unvalidated request before body buffering.
+same-origin/CSRF check. The OPAQUE route also requires
+`RequestAdmission::Allowed` after the host has completed its account/IP/
+deployment rate-limit check. The Node, Axum, and Actix adapters require
+request-metadata callbacks and reject a denied or unavailable admission before
+body buffering.
 
 ## Reverse-proxy baseline
 

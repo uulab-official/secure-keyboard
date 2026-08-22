@@ -13,6 +13,10 @@ exact release-candidate commit by the release evidence manifest.
   OPAQUE routes, JSON media type, and bounded streaming bodies before calling
   the pinned Rust/native delegate. It never implements OPAQUE or exposes a
   password API in JavaScript.
+- Added fail-closed pre-buffering rate-limit admission to the Node, framework-
+  neutral Rust, Axum, and Actix OPAQUE routes. Rate-limited requests receive a
+  generic 429 response; omitted, unavailable, or malformed admission decisions
+  cannot reach JSON parsing or the cryptographic delegate.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,

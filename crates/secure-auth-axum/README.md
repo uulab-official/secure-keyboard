@@ -9,6 +9,7 @@ let app = secure_auth_axum::router(
     secure_auth_http::HttpAuthRouter::new(service, credential_repository),
     secure_auth_http::HttpDeploymentContext::trusted_proxy_tls(),
     |parts| host_csrf_is_valid(parts),
+    |parts| host_rate_limit_admission(parts),
 );
 ```
 
@@ -37,4 +38,8 @@ the callback result is never inferred from JSON. TLS termination, request
 authentication, rate limits, account-enrollment policy, session issuance, and
 durable/distributed stores remain application responsibilities.
 
-The crate is an adapter contract and is not a complete server binary.
+The rate-limit callback runs from request parts before Axum buffers the body;
+it must return `RequestAdmission::Allowed` only after the host's
+account/IP/deployment limiter allows the request. Denied and unavailable
+decisions fail closed. The crate is an adapter contract and is not a complete
+server binary.

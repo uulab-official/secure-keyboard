@@ -160,6 +160,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, N
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
 - [x] Add a compile-tested Actix Web adapter after matching the body-limit, TLS-context, CSRF-ordering, generic-error, and response-header contract.
 - [x] Add a Node/TypeScript Fetch-compatible adapter with the same bounded body, TLS-context, CSRF-ordering, generic-error, and response-header contract; keep OPAQUE in the pinned Rust/native delegate.
+- [x] Require fail-closed pre-buffering rate-limit admission in the Node, Axum, Actix, and framework-neutral OPAQUE HTTP contracts.
 - [x] Add a machine-checked HTTP contract-version parity gate between the canonical Rust route and the Node/TypeScript transport bridge.
 - [x] Promote HTTP contract-version parity to a first-class commit-bound release evidence gate.
 - [x] Bind Node server metadata to the exact Rust OPAQUE protocol version and cipher-suite identifier without implementing cryptography in JavaScript.

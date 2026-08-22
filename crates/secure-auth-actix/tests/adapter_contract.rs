@@ -3,7 +3,7 @@ use secure_auth::{ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES};
 use secure_auth_actix::router;
 use secure_auth_http::{
     CredentialRepository, HttpDeploymentContext, HttpResponse as ContractResponse, RepositoryError,
-    TransportSecurity,
+    RequestAdmission, TransportSecurity,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthService};
 use std::time::Duration;
@@ -42,6 +42,22 @@ fn app_with_csrf(context: HttpDeploymentContext, csrf_valid: bool) -> Scope {
         secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
         context,
         move |_request| csrf_valid,
+        |_request| RequestAdmission::Allowed,
+    )
+}
+
+fn app_with_rate_limit(context: HttpDeploymentContext, decision: RequestAdmission) -> Scope {
+    let service = ServerAuthService::new(
+        ServerSetupBytes::generate().unwrap(),
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    router(
+        secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
+        context,
+        |_request| true,
+        move |_request| decision,
     )
 }
 
@@ -88,6 +104,28 @@ async fn adapter_rejects_unvalidated_csrf_before_body_processing() {
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
     let body = to_bytes(response.into_body()).await.unwrap();
     assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
+}
+
+#[actix_web::test]
+async fn adapter_rejects_rate_limited_admission_before_body_processing() {
+    let app = actix_test::init_service(App::new().service(app_with_rate_limit(
+        HttpDeploymentContext::direct_tls(),
+        RequestAdmission::RateLimited,
+    )))
+    .await;
+    let response = actix_test::call_service(
+        &app,
+        actix_test::TestRequest::post()
+            .uri("/v1/opaque/login/start")
+            .insert_header(("content-type", "application/json"))
+            .set_payload(vec![b'x'; MAX_JSON_BODY_BYTES + 1])
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    let body = to_bytes(response.into_body()).await.unwrap();
+    assert_eq!(&body[..], br#"{"error":"rate_limited"}"#);
 }
 
 #[actix_web::test]

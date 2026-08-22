@@ -5,8 +5,8 @@ use secure_auth::{
 };
 use secure_auth_http::{
     validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
-    HttpDeploymentContext, HttpRequest, RepositoryError, TransportSecurity, AUTHENTICATED_RESPONSE,
-    REGISTRATION_STORED_RESPONSE,
+    HttpDeploymentContext, HttpRequest, RepositoryError, RequestAdmission, TransportSecurity,
+    AUTHENTICATED_RESPONSE, REGISTRATION_STORED_RESPONSE,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, LoginStateHandle, ServerAuthService};
 use serde::Serialize;
@@ -49,6 +49,7 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
         path: "/v1/opaque/login/start",
         content_type: Some("application/json"),
         csrf_validated: true,
+        admission: RequestAdmission::Allowed,
         body: b"not-json",
     };
 
@@ -81,6 +82,32 @@ fn route_requires_tls_and_proxy_limits_before_parsing() {
 }
 
 #[test]
+fn route_rejects_rate_limited_admission_before_protocol_dispatch() {
+    let (setup, credential) = registered_fixture();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let router = HttpAuthRouter::new(service, FixtureRepository::with(CREDENTIAL_ID, credential));
+    let response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            admission: RequestAdmission::RateLimited,
+            body: b"not-json",
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+
+    assert_eq!(response.status, 429);
+    assert_eq!(response.body, br#"{"error":"rate_limited"}"#);
+}
+
+#[test]
 fn auth_responses_are_non_cacheable_and_non_sniffable() {
     let (setup, credential) = registered_fixture();
     let service = ServerAuthService::new(
@@ -96,6 +123,7 @@ fn auth_responses_are_non_cacheable_and_non_sniffable() {
             path: "/v1/opaque/login/start",
             content_type: None,
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &[],
         },
         HttpDeploymentContext::direct_tls(),
@@ -217,6 +245,7 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
             path: "/v1/opaque/login/start",
             content_type: Some("text/plain"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: b"{}",
         },
         HttpDeploymentContext::direct_tls(),
@@ -229,6 +258,7 @@ fn route_rejects_non_json_and_oversized_bodies_before_deserialization() {
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &vec![b'x'; MAX_JSON_BODY_BYTES + 1],
         },
         HttpDeploymentContext::direct_tls(),
@@ -270,6 +300,7 @@ fn route_rejects_unknown_secret_bearing_request_fields() {
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -310,6 +341,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -347,6 +379,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             path: "/v1/opaque/login/finish",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -360,6 +393,7 @@ fn login_routes_complete_opaque_flow_and_consume_handle_once() {
             path: "/v1/opaque/login/finish",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -401,6 +435,7 @@ fn login_start_with_unknown_identifier_keeps_generic_wire_response() {
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -444,6 +479,7 @@ fn registration_start_response_is_not_a_credential_file_endpoint() {
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json; charset=utf-8"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -485,6 +521,7 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &start_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -515,6 +552,7 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
             path: "/v1/opaque/registration/finish",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -548,6 +586,7 @@ fn registration_finish_never_overwrites_an_existing_credential() {
             path: "/v1/opaque/registration/finish",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -583,6 +622,7 @@ fn registration_upload_body(
             path: "/v1/opaque/registration/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &start_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -633,6 +673,7 @@ fn assert_login_with_password(
             path: "/v1/opaque/login/start",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &login_start_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -669,6 +710,7 @@ fn assert_login_with_password(
             path: "/v1/opaque/login/finish",
             content_type: Some("application/json"),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &login_finish_body,
         },
         HttpDeploymentContext::direct_tls(),
@@ -714,6 +756,7 @@ fn registration_finish_rejects_invalid_identifier_before_opaque_processing() {
                 path: "/v1/opaque/registration/finish",
                 content_type: Some("application/json"),
                 csrf_validated: true,
+                admission: RequestAdmission::Allowed,
                 body: &body,
             },
             HttpDeploymentContext::direct_tls(),

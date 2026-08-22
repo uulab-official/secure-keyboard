@@ -239,6 +239,8 @@ export function runSecurityAudit() {
   const httpContract = source("crates/secure-auth-http/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub const HTTP_CONTRACT_VERSION:\s*u16\s*=\s*1/, "framework-neutral HTTP routes must declare the pinned contract version");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /csrf_validated:\s*bool/, "framework-neutral OPAQUE requests must carry an explicit CSRF verdict");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub enum RequestAdmission/, "framework-neutral OPAQUE requests must carry an explicit rate-limit admission verdict");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /admission:\s*RequestAdmission/, "framework-neutral OPAQUE requests must carry the admission verdict");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub fn validate_content_length/, "HTTP adapters must share the strict Content-Length validator");
   const httpContractParity = source("scripts/check-http-contract-version-parity.mjs", findings);
   requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /HTTP_CONTRACT_VERSION_SOURCES/, "HTTP contract parity tooling must enumerate every version declaration");
@@ -262,10 +264,14 @@ export function runSecurityAudit() {
   }
   const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /rate_limit:\s*Arc</, "Axum adapters must retain a host rate-limit admission callback");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /request_admission_response[\s\S]{0,500}state\.rate_limit/, "Axum adapters must reject denied admission before body buffering");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /validate_content_length/, "Axum adapters must reject malformed Content-Length before body buffering");
   const actixAdapter = source("crates/secure-auth-actix/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /csrf:\s*Arc</, "Actix adapters must retain a host CSRF callback");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /rate_limit:\s*Arc</, "Actix adapters must retain a host rate-limit admission callback");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /request_admission_response[\s\S]{0,500}state\.rate_limit/, "Actix adapters must reject denied admission before body buffering");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /if !\(state\.csrf\)\(&request\)/, "Actix adapters must reject failed CSRF validation before body buffering");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /validate_content_length/, "Actix adapters must reject malformed Content-Length before body buffering");
   const actixManifest = source("crates/secure-auth-actix/Cargo.toml", findings);
@@ -694,7 +700,10 @@ export function runSecurityAudit() {
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /MAX_HTTP_BODY_BYTES\s*=\s*128 \* 1024/, "Node server adapter must bound raw request bodies");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /async function readBoundedBody/, "Node server adapter must stream and bound request bodies");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await reader\.cancel()/, "Node server adapter must cancel an oversized request stream");
-  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.csrfValidated\(request\)[\s\S]{0,1000}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.csrfValidated\(request\)[\s\S]{0,1800}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /rateLimitDecision\?:/, "Node server adapter must expose a pre-buffering rate-limit admission callback");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /options\.rateLimitDecision === undefined/, "Node server adapter must fail closed when rate-limit admission is not configured");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.rateLimitDecision\(request\)[\s\S]{0,700}readBoundedBody/, "Node server adapter must resolve rate-limit admission before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /transport === \"direct-tls\" \|\| context\.transport === \"trusted-proxy-tls\"/, "Node server adapter must require explicit TLS deployment facts");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /STATUS_CODES = new Set/, "Node server adapter must constrain delegate status codes");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function byteView[\s\S]{0,700}function zeroizeChunk/, "Node server adapter must preserve byte-view ownership and zeroize malformed chunks");

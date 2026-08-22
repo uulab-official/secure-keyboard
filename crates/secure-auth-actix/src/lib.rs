@@ -17,9 +17,10 @@ use actix_web::{
     HttpRequest, HttpResponse, Scope,
 };
 use secure_auth_http::{
-    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
-    HttpDeploymentContext, HttpRequest as ContractRequest, HttpResponse as ContractResponse,
-    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    request_admission_response, validate_content_length, ContentLengthError, CredentialRepository,
+    HttpAuthRouter, HttpDeploymentContext, HttpRequest as ContractRequest,
+    HttpResponse as ContractResponse, RequestAdmission, JSON_CONTENT_TYPE,
+    RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
@@ -33,10 +34,11 @@ use secure_webauthn_example::{
 #[cfg(feature = "webauthn")]
 use uuid::Uuid;
 
-struct AppState<S, R, P> {
+struct AppState<S, R, P, Q> {
     router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: Arc<P>,
+    rate_limit: Arc<Q>,
 }
 
 /// Builds an Actix [`Scope`] for the Secure Keypad OPAQUE routes.
@@ -48,31 +50,35 @@ struct AppState<S, R, P> {
 ///
 /// `csrf` must validate the host's same-origin/CSRF policy using request parts
 /// only. It is called before the request payload is buffered. TLS termination,
-/// reverse-proxy source validation, connection/read timeouts, rate limiting,
-/// credential persistence, and session issuance remain application
-/// responsibilities.
-pub fn router<S, R, P>(
+/// reverse-proxy source validation, connection/read timeouts, credential
+/// persistence, and session issuance remain application responsibilities.
+/// `rate_limit` must perform account/IP/deployment admission from request
+/// metadata before the payload is buffered.
+pub fn router<S, R, P, Q>(
     auth_router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: P,
+    rate_limit: Q,
 ) -> Scope
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&HttpRequest) -> bool + Send + Sync + 'static,
+    Q: Fn(&HttpRequest) -> RequestAdmission + Send + Sync + 'static,
 {
     let state = Data::new(AppState {
         router: auth_router,
         context,
         csrf: Arc::new(csrf),
+        rate_limit: Arc::new(rate_limit),
     });
     web::scope("")
         .app_data(state)
-        .default_service(web::to(handle_request::<S, R, P>))
+        .default_service(web::to(handle_request::<S, R, P, Q>))
 }
 
-async fn handle_request<S, R, P>(
-    state: Data<AppState<S, R, P>>,
+async fn handle_request<S, R, P, Q>(
+    state: Data<AppState<S, R, P, Q>>,
     request: HttpRequest,
     payload: Payload,
 ) -> HttpResponse
@@ -80,6 +86,7 @@ where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&HttpRequest) -> bool + Send + Sync + 'static,
+    Q: Fn(&HttpRequest) -> RequestAdmission + Send + Sync + 'static,
 {
     if !state.context.is_ready() {
         return deployment_unavailable_response();
@@ -87,6 +94,9 @@ where
 
     if !(state.csrf)(&request) {
         return invalid_request_response(403);
+    }
+    if let Some(response) = request_admission_response((state.rate_limit)(&request)) {
+        return response_from(response);
     }
 
     let body_limit = state.context.body_limit_bytes();
@@ -111,6 +121,7 @@ where
             path: &path,
             content_type: content_type.as_deref(),
             csrf_validated: true,
+            admission: RequestAdmission::Allowed,
             body: &body,
         },
         state.context,

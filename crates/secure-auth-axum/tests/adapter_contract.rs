@@ -3,7 +3,8 @@ use http_body_util::BodyExt;
 use secure_auth::{ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES};
 use secure_auth_axum::router;
 use secure_auth_http::{
-    CredentialRepository, HttpDeploymentContext, HttpResponse, RepositoryError, TransportSecurity,
+    CredentialRepository, HttpDeploymentContext, HttpResponse, RepositoryError, RequestAdmission,
+    TransportSecurity,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthService};
 use std::time::Duration;
@@ -48,6 +49,22 @@ fn app_with_csrf(context: HttpDeploymentContext, csrf_valid: bool) -> axum::Rout
         secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
         context,
         move |_parts| csrf_valid,
+        |_parts| RequestAdmission::Allowed,
+    )
+}
+
+fn app_with_rate_limit(context: HttpDeploymentContext, decision: RequestAdmission) -> axum::Router {
+    let service = ServerAuthService::new(
+        ServerSetupBytes::generate().unwrap(),
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    router(
+        secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
+        context,
+        |_parts| true,
+        move |_parts| decision,
     )
 }
 
@@ -87,6 +104,27 @@ async fn adapter_rejects_unvalidated_csrf_before_body_processing() {
     assert_eq!(response.status(), 403);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
+}
+
+#[tokio::test]
+async fn adapter_rejects_rate_limited_admission_before_body_processing() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v1/opaque/login/start")
+        .header("content-type", "application/json")
+        .body(Body::from(vec![b'x'; MAX_JSON_BODY_BYTES + 1]))
+        .unwrap();
+    let response = app_with_rate_limit(
+        HttpDeploymentContext::direct_tls(),
+        RequestAdmission::RateLimited,
+    )
+    .oneshot(request)
+    .await
+    .unwrap();
+
+    assert_eq!(response.status(), 429);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(&body[..], br#"{"error":"rate_limited"}"#);
 }
 
 #[tokio::test]

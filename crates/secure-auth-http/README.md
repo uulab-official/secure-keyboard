@@ -45,10 +45,15 @@ body limit no larger than 128 KiB and enforced connection/read limits.
 Every `HttpRequest` must set `csrf_validated` only after the host has checked
 its same-origin/CSRF policy from request metadata. The route rejects `false`
 with a generic 403 response before JSON dispatch; it never treats a body field
-as a CSRF token.
+as a CSRF token. It must also carry `RequestAdmission::Allowed` after the host
+has atomically applied account/IP/deployment rate limits. `RateLimited` maps to
+a generic 429 response and `Unavailable` maps to generic 503; neither path
+reads or parses the body.
 
 The embedding server still owns certificate policy, proxy source allowlisting,
-request authentication, account creation authorization, rate limiting, and
+request authentication, account creation authorization, and the actual
+rate-limit backend/key policy; the route enforces the pre-buffering admission
+verdict but does not invent keys or policies. It also owns
 application session tokens. Registration finish in particular must be
 protected by the application's account-enrollment policy. Its
 `CredentialRepository::create` implementation must also be an atomic
