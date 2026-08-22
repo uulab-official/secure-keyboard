@@ -480,6 +480,8 @@ jobs:
     name: Fuzz parser, core, and native boundaries
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      FUZZ_CORPUS_ROOT: ${{ runner.temp }}/secure-keypad-fuzz-corpus
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -491,43 +493,45 @@ jobs:
         run: cargo +nightly-2026-08-19 install cargo-fuzz --locked
       - name: Prepare fuzz evidence log directory
         run: mkdir -p "$RUNNER_TEMP/secure-keypad-fuzz-logs"
+      - name: Stage fuzz corpus outside the clean checkout
+        run: scripts/stage-fuzz-corpus.sh "$FUZZ_CORPUS_ROOT"
       - name: Build fuzz target
         run: cargo +nightly-2026-08-19 fuzz check auth_envelope
       - name: Run bounded fuzz smoke test
-        run: cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=2000
+        run: cargo +nightly-2026-08-19 fuzz run auth_envelope "$FUZZ_CORPUS_ROOT/auth_envelope" -- -runs=2000
       - name: Build native/core fuzz target
         run: cargo +nightly-2026-08-19 fuzz check core_sequence
       - name: Run bounded native/core fuzz smoke test
-        run: cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=2000
+        run: cargo +nightly-2026-08-19 fuzz run core_sequence "$FUZZ_CORPUS_ROOT/core_sequence" -- -runs=2000
       - name: Build native FFI boundary fuzz target
         run: cargo +nightly-2026-08-19 fuzz check ffi_sequence
       - name: Run bounded native FFI boundary fuzz smoke test
-        run: cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=2000 -max_len=4096
+        run: cargo +nightly-2026-08-19 fuzz run ffi_sequence "$FUZZ_CORPUS_ROOT/ffi_sequence" -- -runs=2000 -max_len=4096
       - name: Build WebAuthn state fuzz target
         run: cargo +nightly-2026-08-19 fuzz check webauthn_state
       - name: Run bounded WebAuthn state fuzz smoke test
-        run: cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=2000 -max_len=131073
+        run: cargo +nightly-2026-08-19 fuzz run webauthn_state "$FUZZ_CORPUS_ROOT/webauthn_state" -- -runs=2000 -max_len=131073
       - name: Run extended parser and native-boundary stability campaigns
         run: |
           set -euo pipefail
-          cargo +nightly-2026-08-19 fuzz run auth_envelope -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+          cargo +nightly-2026-08-19 fuzz run auth_envelope "$FUZZ_CORPUS_ROOT/auth_envelope" -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-1m.log"
-          cargo +nightly-2026-08-19 fuzz run core_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+          cargo +nightly-2026-08-19 fuzz run core_sequence "$FUZZ_CORPUS_ROOT/core_sequence" -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-1m.log"
-          cargo +nightly-2026-08-19 fuzz run ffi_sequence -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence "$FUZZ_CORPUS_ROOT/ffi_sequence" -- -runs=1000000 -max_len=4096 -rss_limit_mb=1024 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-1m.log"
-          cargo +nightly-2026-08-19 fuzz run webauthn_state -- -runs=1000000 -max_len=131073 -rss_limit_mb=1024 \
+          cargo +nightly-2026-08-19 fuzz run webauthn_state "$FUZZ_CORPUS_ROOT/webauthn_state" -- -runs=1000000 -max_len=131073 -rss_limit_mb=1024 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-1m.log"
       - name: Run Linux leak-sanitizer fuzz smoke campaigns
         run: |
           set -euo pipefail
-          cargo +nightly-2026-08-19 fuzz run auth_envelope --sanitizer=leak -- -runs=10000 \
+          cargo +nightly-2026-08-19 fuzz run auth_envelope "$FUZZ_CORPUS_ROOT/auth_envelope" --sanitizer=leak -- -runs=10000 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-lsan.log"
-          cargo +nightly-2026-08-19 fuzz run core_sequence --sanitizer=leak -- -runs=10000 \
+          cargo +nightly-2026-08-19 fuzz run core_sequence "$FUZZ_CORPUS_ROOT/core_sequence" --sanitizer=leak -- -runs=10000 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-lsan.log"
-          cargo +nightly-2026-08-19 fuzz run ffi_sequence --sanitizer=leak -- -runs=10000 -max_len=4096 \
+          cargo +nightly-2026-08-19 fuzz run ffi_sequence "$FUZZ_CORPUS_ROOT/ffi_sequence" --sanitizer=leak -- -runs=10000 -max_len=4096 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-lsan.log"
-          cargo +nightly-2026-08-19 fuzz run webauthn_state --sanitizer=leak -- -runs=10000 -max_len=131073 \
+          cargo +nightly-2026-08-19 fuzz run webauthn_state "$FUZZ_CORPUS_ROOT/webauthn_state" --sanitizer=leak -- -runs=10000 -max_len=131073 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-lsan.log"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()

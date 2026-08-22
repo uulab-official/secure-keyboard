@@ -114,3 +114,13 @@ test("CI fuzz and LeakSanitizer log pipelines fail closed on a failed campaign",
     /name: Run Linux leak-sanitizer fuzz smoke campaigns[\s\S]*?run: \|\n\s+set -euo pipefail[\s\S]*?tee \"\$RUNNER_TEMP\/secure-keypad-fuzz-logs\/webauthn_state-lsan\.log\"/,
   );
 });
+
+test("CI fuzz campaigns use a corpus staged outside the clean checkout", () => {
+  const fuzzJob = CI_WORKFLOW.slice(CI_WORKFLOW.indexOf("  fuzz:\n"), CI_WORKFLOW.indexOf("  sbom:\n"));
+  assert.match(fuzzJob, /FUZZ_CORPUS_ROOT: \$\{\{ runner\.temp \}\}\/secure-keypad-fuzz-corpus/);
+  assert.match(fuzzJob, /scripts\/stage-fuzz-corpus\.sh "\$FUZZ_CORPUS_ROOT"/);
+
+  for (const target of ["auth_envelope", "core_sequence", "ffi_sequence", "webauthn_state"]) {
+    assert.match(fuzzJob, new RegExp(`fuzz run ${target} "\\$FUZZ_CORPUS_ROOT/${target}" --`));
+  }
+});

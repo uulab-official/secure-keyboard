@@ -34,6 +34,11 @@ building the bundle. Those services are test infrastructure only; production
 deployments still require TLS-first configuration and an operator-reviewed
 schema migration.
 
+The fuzz job copies the checked-in seed corpus to the runner's temporary
+directory before every smoke, extended, and LeakSanitizer campaign. This keeps
+libFuzzer's automatically discovered corpus entries out of the checkout so
+the subsequent commit-bound evidence emitter can enforce a clean tree.
+
 ## Reproducible local gates
 
 ```sh
