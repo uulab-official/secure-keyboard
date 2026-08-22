@@ -209,9 +209,12 @@ function bytesOf(value: ArrayBuffer | ArrayBufferView): Uint8Array {
   return new Uint8Array(value.buffer as ArrayBuffer, value.byteOffset, value.byteLength);
 }
 
-/** Encodes WebAuthn binary data for JSON without padding. */
+/** Encodes bounded WebAuthn binary data for JSON without padding. */
 export function encodeBase64Url(value: ArrayBuffer | ArrayBufferView): string {
   const bytes = bytesOf(value);
+  if (bytes.byteLength > MAX_WEBAUTHN_BINARY_BYTES) {
+    throw new WebAuthnClientError("invalid-credential", "WebAuthn binary data is too large");
+  }
   let encoded = "";
 
   for (let index = 0; index < bytes.length; index += 3) {
