@@ -28,6 +28,14 @@ candidate-controlled scripts. The workflow file and environment configuration
 require branch-protection and administrator review before a self-hosted runner
 is permitted to access reviewer secrets.
 
+The protected `secure-keypad-release` environment applies the same separation
+to `.github/workflows/release-candidate.yml` and
+`.github/workflows/release-finalize.yml`: candidate source is checked out for
+building or data inspection, while signing, provenance, staging, merging, and
+trusted-key verification run only from the verifier checkout at
+`SECURE_KEYPAD_TRUSTED_VERIFIER_REF`. The maintainer signing key and
+`GITHUB_TOKEN` must never be passed to candidate-controlled scripts.
+
 Before the source tree is archived, the workflow runs
 `node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
 requires the candidate-only metadata, lockfiles, threat-model and deployment

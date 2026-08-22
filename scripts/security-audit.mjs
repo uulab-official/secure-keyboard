@@ -1170,8 +1170,18 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/flutter\/android\/secure_ffi\/x86_64/, "release bundle must stage the verified Flutter Android x86_64 FFI library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:[\s\S]{0,260}environment:\s*secure-keypad-release/, "release signing must run behind the protected release environment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/, "release signing must pin its verifier through protected environment configuration");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /git -C verifier rev-parse HEAD\)\"\s*=\s*\"\$TRUSTED_VERIFIER_REF/, "release signing must prove the trusted verifier checkout identity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /trap\s+'rm -f "\$KEY_FILE"'\s+EXIT/, "release workflow must remove the temporary signing key on every exit path");
-  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/sign-release\.mjs/, "release workflow must produce the detached signature through the audited signer");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/sign-release\.mjs/, "release workflow must produce the detached signature through the trusted signer");
+  forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /node scripts\/sign-release\.mjs/, "release workflow must not pass the maintainer signing key to candidate code");
+  if ((releaseWorkflow.match(/persist-credentials:\s*false/g) ?? []).length !== 4) {
+    findings.push({
+      rule: "release-candidate-checkout-credentials",
+      file: ".github/workflows/release-candidate.yml",
+      detail: "all release candidate and verifier checkouts must not persist GitHub credentials",
+    });
+  }
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /playwright install --with-deps chromium firefox webkit/, "release candidate must run the browser adapter smoke matrix");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
@@ -1213,18 +1223,28 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/, "release finalization must bind the candidate download to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/, "release finalization must bind CI evidence to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/, "release finalization must bind external evidence to its requested run");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/verify-github-run-provenance\.mjs/, "release finalization must verify GitHub run status, commit, repository, and workflow provenance");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/, "release finalization must pin its verifier through protected environment configuration");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /git -C verifier rev-parse HEAD\)\"\s*=\s*\"\$TRUSTED_VERIFIER_REF/, "release finalization must prove the trusted verifier checkout identity");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/verify-github-run-provenance\.mjs/, "release finalization must verify GitHub run status, commit, repository, and workflow provenance with the trusted verifier");
+  forbidText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /node scripts\/(?:verify-github-run-provenance|check-release-bundle|check-release-archive|stage-release-evidence|emit-signed-release-fragment|check-release-fragment-set|merge-release-evidence|check-release-evidence)\.mjs/, "release finalization must not execute verifier code from the candidate checkout");
+  if ((releaseFinalizeWorkflow.match(/persist-credentials:\s*false/g) ?? []).length !== 2) {
+    findings.push({
+      rule: "release-finalize-checkout-credentials",
+      file: ".github/workflows/release-finalize.yml",
+      detail: "candidate and trusted verifier checkouts must not persist GitHub credentials",
+    });
+  }
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /GITHUB_TOKEN:\s*\$\{\{ github\.token \}\}/, "release finalization must provide a read-only GitHub API token to the run provenance verifier");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-archive\.mjs/, "release finalization must inspect the downloaded signed archive contract");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract with the trusted verifier");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/check-release-archive\.mjs/, "release finalization must inspect the downloaded signed archive contract with the trusted verifier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /sha256sum -c secure-keypad-release\.sha256/, "release finalization must verify the candidate artifact checksum manifest");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /source\/secure-keypad-android-ffi\.commit/, "release finalization must compare the Android FFI commit binding inside the signed archive");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /tar --extract --to-stdout/, "release finalization must compare signed source inputs to staged evidence files");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the audited copier");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete fragment");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-fragment-set\.mjs/, "release finalization must preflight every canonical release gate fragment");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/merge-release-evidence\.mjs/, "release finalization must merge all evidence fragments before verification");
-  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-evidence\.mjs --require-trusted-keys/, "release finalization must require protected maintainer and reviewer fingerprints");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the trusted audited copier");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete trusted fragment");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/check-release-fragment-set\.mjs/, "release finalization must preflight every canonical release gate fragment with the trusted verifier");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/merge-release-evidence\.mjs/, "release finalization must merge all evidence fragments before verification");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /verifier\/scripts\/check-release-evidence\.mjs\" --require-trusted-keys/, "release finalization must require protected maintainer and reviewer fingerprints with the trusted verifier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release finalization must provide the protected maintainer fingerprint");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release finalization must provide the protected reviewer fingerprint");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /name: secure-keypad-production-release-evidence/, "release finalization must retain the verified production evidence artifact");

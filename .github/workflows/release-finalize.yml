@@ -48,11 +48,19 @@ jobs:
       CI_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-ci-evidence
       EXTERNAL_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-external-evidence
       EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-final-evidence
+      TRUSTED_VERIFIER_REF: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: verifier
+          ref: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
+          fetch-depth: 1
+          persist-credentials: false
       - name: Require immutable release identity
         run: |
           if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
@@ -66,6 +74,12 @@ jobs:
             fi
           done
           test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+          test -n "$TRUSTED_VERIFIER_REF"
+          if ! [[ "$TRUSTED_VERIFIER_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "trusted verifier ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git -C verifier rev-parse HEAD)" = "$TRUSTED_VERIFIER_REF"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.13.0"
@@ -76,7 +90,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           EXTERNAL_EVIDENCE_WORKFLOW: ${{ inputs.external-evidence-workflow }}
         run: |
-          node scripts/verify-github-run-provenance.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/verify-github-run-provenance.mjs" \
             "$GITHUB_REPOSITORY" "$RELEASE_REF" \
             "$CANDIDATE_RUN_ID" ".github/workflows/release-candidate.yml" \
             "$CI_RUN_ID" ".github/workflows/ci.yml" \
@@ -104,8 +118,8 @@ jobs:
           path: ${{ env.EXTERNAL_EVIDENCE_DIR }}
       - name: Validate and stage all release evidence inputs
         run: |
-          node scripts/check-release-bundle.mjs "$CANDIDATE_DIR"
-          node scripts/check-release-archive.mjs "$CANDIDATE_DIR/secure-keypad-release.tar.gz"
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-bundle.mjs" "$CANDIDATE_DIR"
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-archive.mjs" "$CANDIDATE_DIR/secure-keypad-release.tar.gz"
           (
             cd "$CANDIDATE_DIR"
             sha256sum -c secure-keypad-release.sha256
@@ -121,11 +135,11 @@ jobs:
             tar --extract --to-stdout --file "$CANDIDATE_DIR/secure-keypad-release.tar.gz" "$signed_source" \
               | cmp -s - "$CANDIDATE_DIR/$signed_source"
           done
-          node scripts/stage-release-evidence.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/stage-release-evidence.mjs" \
             "$EVIDENCE_DIR" "$CANDIDATE_DIR" "$CI_EVIDENCE_DIR" "$EXTERNAL_EVIDENCE_DIR"
       - name: Convert signed-release record into the final manifest fragment
         run: |
-          node scripts/emit-signed-release-fragment.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/emit-signed-release-fragment.mjs" \
             "$EVIDENCE_DIR" \
             "fragments/signed-release.json" \
             "evidence/signed-release.json"
@@ -138,14 +152,14 @@ jobs:
           while IFS= read -r -d '' fragment; do
             FRAGMENT_PATHS+=("${fragment:${#EVIDENCE_DIR}+1}")
           done < <(find "$EVIDENCE_DIR/fragments" -type f -name '*.json' -print0 | sort -z)
-          node scripts/check-release-fragment-set.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-fragment-set.mjs" \
             "$EVIDENCE_DIR" \
             "${FRAGMENT_PATHS[@]}"
-          node scripts/merge-release-evidence.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/merge-release-evidence.mjs" \
             "$EVIDENCE_DIR" \
             "release-evidence/release-evidence.json" \
             "${FRAGMENT_PATHS[@]}"
-          node scripts/check-release-evidence.mjs --require-trusted-keys \
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-evidence.mjs" --require-trusted-keys \
             "$EVIDENCE_DIR/release-evidence/release-evidence.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

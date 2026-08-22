@@ -482,6 +482,11 @@ test("release candidate signs staged package archives and publishable native FFI
   assert.match(workflow, /needs:\s*\[native-ios-artifacts,\s*native-android-artifacts\]/);
   assert.match(workflow, /name: secure-keypad-release-ios-ffi/);
   assert.match(workflow, /actions\/download-artifact@[0-9a-f]{40}[\s\S]*?secure-keypad-release-ios-ffi/);
+  assert.match(workflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/);
+  assert.match(workflow, /path:\s*verifier/);
+  assert.match(workflow, /git -C verifier rev-parse HEAD/);
+  assert.match(workflow, /verifier\/scripts\/sign-release\.mjs/);
+  assert.doesNotMatch(workflow, /node scripts\/sign-release\.mjs/);
   assert.match(workflow, /shasum -a 256 -c/);
   assert.match(workflow, /secure-keypad-ios-ffi\.commit/);
   assert.match(workflow, /find \. -type f ! -name secure-keypad-ios-ffi\.sha256/);

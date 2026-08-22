@@ -24,6 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Require immutable release commit
         run: |
           test -n "$RELEASE_REF"
@@ -83,6 +84,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Require immutable release commit
         run: |
           test -n "$RELEASE_REF"
@@ -148,6 +150,7 @@ jobs:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
       IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
       ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+      TRUSTED_VERIFIER_REF: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
     services:
       redis:
         image: redis:7.2-alpine
@@ -174,6 +177,13 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: verifier
+          ref: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
+          fetch-depth: 1
+          persist-credentials: false
       - name: Require immutable release commit
         env:
           RELEASE_REF: ${{ inputs.ref }}
@@ -184,6 +194,12 @@ jobs:
             exit 1
           fi
           test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+          test -n "$TRUSTED_VERIFIER_REF"
+          if ! [[ "$TRUSTED_VERIFIER_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "trusted verifier ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git -C verifier rev-parse HEAD)" = "$TRUSTED_VERIFIER_REF"
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
         with:
           components: rustfmt, clippy
@@ -371,7 +387,7 @@ jobs:
           KEY_FILE="$RUNNER_TEMP/secure-keypad-release-signing-key.pem"
           trap 'rm -f "$KEY_FILE"' EXIT
           printf '%s' "$RELEASE_SIGNING_KEY_PEM" > "$KEY_FILE"
-          node scripts/sign-release.mjs \
+          node "$GITHUB_WORKSPACE/verifier/scripts/sign-release.mjs" \
             "$RELEASE_DIR/secure-keypad-release.tar.gz" \
             "$KEY_FILE" \
             "$RELEASE_DIR/secure-keypad-release.sig" \

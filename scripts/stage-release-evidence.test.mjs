@@ -166,6 +166,14 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/);
+  assert.match(workflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/);
+  assert.match(workflow, /path:\s*verifier/);
+  assert.match(workflow, /git -C verifier rev-parse HEAD/);
+  assert.equal((workflow.match(/verifier\/scripts\//g) ?? []).length, 8);
+  assert.doesNotMatch(
+    workflow,
+    /node scripts\/(?:verify-github-run-provenance|check-release-bundle|check-release-archive|stage-release-evidence|emit-signed-release-fragment|check-release-fragment-set|merge-release-evidence|check-release-evidence)\.mjs/,
+  );
   assert.match(workflow, /scripts\/verify-github-run-provenance\.mjs/);
   assert.match(workflow, /"\$CANDIDATE_RUN_ID" "\.github\/workflows\/release-candidate\.yml"/);
   assert.match(workflow, /"\$CI_RUN_ID" "\.github\/workflows\/ci\.yml"/);
@@ -181,7 +189,7 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /scripts\/check-release-fragment-set\.mjs[\s\S]*FRAGMENT_PATHS/);
   assert.doesNotMatch(workflow, /test "\$\{#FRAGMENT_PATHS\[@\]\}" -ge 13/);
   assert.match(workflow, /scripts\/merge-release-evidence\.mjs/);
-  assert.match(workflow, /scripts\/check-release-evidence\.mjs --require-trusted-keys/);
+  assert.match(workflow, /verifier\/scripts\/check-release-evidence\.mjs" --require-trusted-keys/);
   assert.match(workflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/);
   assert.match(workflow, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/);
   assert.match(workflow, /name: secure-keypad-production-release-evidence/);
