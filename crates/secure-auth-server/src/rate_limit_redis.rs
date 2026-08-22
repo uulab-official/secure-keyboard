@@ -13,6 +13,12 @@ const RATE_LIMIT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local key_type = redis.call('TYPE', KEYS[1]).ok
+if key_type ~= 'none' and key_type ~= 'string' then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[4])
+  return {-2, 0, 0}
+end
 local current_length = redis.call('STRLEN', KEYS[1])
 if current_length > tonumber(ARGV[5]) then
   redis.call('DEL', KEYS[1])
@@ -336,5 +342,19 @@ mod tests {
         assert!(RATE_LIMIT_SCRIPT.contains("ttl > tonumber(ARGV[3])"));
         assert!(RATE_LIMIT_SCRIPT.contains("redis.call('ZADD', KEYS[2], now_ms + ttl, ARGV[4])"));
         assert!(RATE_LIMIT_SCRIPT.contains("redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[3]))"));
+    }
+
+    #[test]
+    fn rate_limit_script_cleans_wrong_type_counters_before_string_operations() {
+        let type_check = RATE_LIMIT_SCRIPT
+            .find("redis.call('TYPE', KEYS[1])")
+            .expect("rate-limit script must inspect the counter Redis type");
+        let length_check = RATE_LIMIT_SCRIPT
+            .find("redis.call('STRLEN', KEYS[1])")
+            .expect("rate-limit script must check counter length");
+        assert!(type_check < length_check);
+        assert!(RATE_LIMIT_SCRIPT.contains("key_type ~= 'none' and key_type ~= 'string'"));
+        assert!(RATE_LIMIT_SCRIPT.contains("redis.call('DEL', KEYS[1])"));
+        assert!(RATE_LIMIT_SCRIPT.contains("redis.call('ZREM', KEYS[2], ARGV[4])"));
     }
 }

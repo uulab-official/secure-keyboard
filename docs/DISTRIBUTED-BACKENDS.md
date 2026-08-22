@@ -86,9 +86,11 @@ The reference crate includes feature-gated implementations:
 - `RedisRateLimiter` uses a single Lua script, a server-side fixed-window TTL,
   a bounded active-key sorted set, and SHA-256 key hashing. The production
   constructor requires `rediss://`; plaintext is available only through the
-  explicitly named local-test constructor. The counter path checks a fixed
-  32-byte representation bound before `GET`; an oversized or malformed legacy
-  counter is removed from the counter and active-key index and fails closed.
+  explicitly named local-test constructor. The counter path checks that the
+  Redis key is a string before any string command, then checks a fixed 32-byte
+  representation bound before `GET`; a wrong-type, oversized, or malformed
+  legacy counter is removed from the counter and active-key index and fails
+  closed.
   Existing counters reject missing, zero, or longer-than-window TTLs and
   repair their active-index member when a prior Redis eviction removed the
   index key. This is recovery on access, not a substitute for Redis capacity

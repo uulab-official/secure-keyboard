@@ -20,6 +20,9 @@ exact release-candidate commit by the release evidence manifest.
 - The local durable-backend runner now removes its ephemeral Compose volumes on
   exit, preventing interrupted Redis/PostgreSQL campaigns from carrying replay,
   rate-limit, or migration state into a later run.
+- Security: Redis rate-limit scripts now reject and remove wrong-type counter
+  keys before any string operation, releasing their active-key index member so
+  backend key poisoning cannot strand capacity.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session
