@@ -63,6 +63,10 @@ malformed public key IDs, key labels over 16 UTF-8 bytes, accessibility labels
 over 80 UTF-8 bytes, and non-finite or out-of-range theme dimensions before
 creating UI objects or a secure session.
 
+The core exposes `MAX_KEY_ID_BYTES = 64` and a fallible `KeyId::try_new` for
+untrusted public configuration. Policy resolution repeats the byte bound so a
+direct core consumer cannot bypass the native adapter limit.
+
 The public controller is limited to operations such as `beginSession`, `pressKey(keyId)`, `backspace`, `clear`, `submit`, and `cancel`. The layout contract includes a `cancel` action role, and RN/Flutter host cancellation commands carry only a monotonic public token or method name; activating either path calls native cancellation, clears the core buffer, and emits only `displayState: cancelled` plus a `cancelled` result code. In acknowledged Headless Host Mode, `pressKey(keyId)` carries only a bounded monotonic token and public key ID; it is unavailable in Secure Native Mode. State events expose only length, masked display state, validation state, and result codes. Framework adapters must revalidate exact event keys, state length (`0..4096`), and stable result-code shapes before invoking application callbacks; malformed metadata fails closed as a generic error and is never echoed.
 
 The native C ABI is an opaque-handle boundary. It accepts public key IDs as

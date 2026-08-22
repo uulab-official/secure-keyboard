@@ -21,7 +21,7 @@ use secure_auth::{
 };
 use secure_core::{DisplayState, InputPolicy, MaskedState, SecureSession, SessionError};
 
-const MAX_KEY_ID_BYTES: usize = 64;
+const MAX_KEY_ID_BYTES: usize = secure_core::MAX_KEY_ID_BYTES;
 const MAX_PUBLIC_ID_BYTES: usize = 256;
 const MAX_TOKENS: u32 = secure_core::MAX_INPUT_TOKENS as u32;
 const MAX_TIMEOUT_MS: u64 = 86_400_000;

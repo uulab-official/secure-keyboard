@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Security: bound direct `secure-core` public key-ID construction and policy
+  resolution to the same 64-byte contract enforced by native adapters.
+
 All notable changes to the Secure Keypad SDK are recorded here. Until the
 first stable release, entries remain under `Unreleased` and are tied to the
 exact release-candidate commit by the release evidence manifest.

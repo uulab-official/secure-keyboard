@@ -23,6 +23,24 @@ impl KeyId {
         Self(value.into())
     }
 
+    /// Creates a bounded key ID from untrusted public configuration.
+    ///
+    /// Use this constructor when the value originates outside a trusted,
+    /// already-validated native layout boundary. The byte bound matches the
+    /// native FFI and framework adapter contracts.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InputError::InvalidKey`] when the identifier is empty or
+    /// exceeds [`crate::MAX_KEY_ID_BYTES`] bytes.
+    pub fn try_new(value: impl AsRef<str>) -> Result<Self, InputError> {
+        let value = value.as_ref();
+        if value.is_empty() || value.len() > crate::MAX_KEY_ID_BYTES {
+            return Err(InputError::InvalidKey);
+        }
+        Ok(Self(value.to_owned()))
+    }
+
     pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
@@ -106,6 +124,9 @@ impl InputPolicy {
     /// this policy.
     pub fn resolve(&self, key_id: &KeyId) -> Result<ResolvedKey, InputError> {
         let key = key_id.as_str();
+        if key.len() > crate::MAX_KEY_ID_BYTES {
+            return Err(InputError::InvalidKey);
+        }
         match self {
             Self::Numeric { .. } => {
                 // Numeric IDs are deliberately canonical: aliases such as

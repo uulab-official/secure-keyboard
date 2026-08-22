@@ -1,4 +1,4 @@
-use secure_core::{DisplayState, InputPolicy, KeyId, SecretBuffer, SecureSession};
+use secure_core::{DisplayState, InputError, InputPolicy, KeyId, SecretBuffer, SecureSession};
 use std::time::Duration;
 
 #[test]
@@ -8,6 +8,13 @@ fn key_events_accept_ids_and_state_is_masked() {
     session.press_key(&KeyId::new("digit-2")).unwrap();
     assert_eq!(session.masked_state().length, 2);
     assert_eq!(session.masked_state().display_state, DisplayState::Masked);
+}
+
+#[test]
+fn untrusted_key_id_constructor_rejects_oversized_public_ids() {
+    let oversized = KeyId::try_new("0".repeat(65));
+
+    assert_eq!(oversized, Err(InputError::InvalidKey));
 }
 
 #[test]

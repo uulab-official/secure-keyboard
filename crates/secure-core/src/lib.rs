@@ -16,6 +16,9 @@ pub use secret_buffer::SecretBuffer;
 /// Public contract version for the initial foundation.
 pub const CONTRACT_VERSION: u32 = 1;
 
+/// Maximum UTF-8 byte length of one public key identifier.
+pub const MAX_KEY_ID_BYTES: usize = 64;
+
 /// Maximum number of secret input tokens held by one session.
 pub const MAX_INPUT_TOKENS: usize = 4_096;
 
