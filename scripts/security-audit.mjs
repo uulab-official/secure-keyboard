@@ -552,6 +552,16 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /encodedCredentialBinary/, "WebAuthn browser credential output must be bounded before serialization");
   requireText(findings, "packages/web/src/index.ts", web, /typeof container\.create === "function"[\s\S]{0,100}typeof container\.get === "function"/, "WebAuthn default environment must verify both browser credential methods");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
+  const nodeServer = source("packages/server-node/src/index.ts", findings);
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /NODE_SERVER_CONTRACT_VERSION\s*=\s*1/, "Node server adapter must expose a pinned contract version");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /MAX_HTTP_BODY_BYTES\s*=\s*128 \* 1024/, "Node server adapter must bound raw request bodies");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /async function readBoundedBody/, "Node server adapter must stream and bound request bodies");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await reader\.cancel()/, "Node server adapter must cancel an oversized request stream");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.csrfValidated\(request\)[\s\S]{0,1000}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /transport === \"direct-tls\" \|\| context\.transport === \"trusted-proxy-tls\"/, "Node server adapter must require explicit TLS deployment facts");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /STATUS_CODES = new Set/, "Node server adapter must constrain delegate status codes");
+  forbidText(findings, "packages/server-node/src/index.ts", nodeServer, /X-Forwarded-Proto|x-forwarded-proto/i, "Node server adapter must not parse forwarded transport headers");
+  forbidText(findings, "packages/server-node/src/index.ts", nodeServer, /\b(?:password|pin|rawInput|input(?:Value|Text|Bytes))\s*[:(]/i, "Node server adapter must not expose a secret-bearing application API");
   const contracts = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"ascii"/, "public contracts must enumerate the native printable-ASCII policy");
   requireText(findings, "packages/contracts/src/index.ts", contracts, /"cancel"/, "public layout contract must expose an explicit cancel role");
@@ -930,12 +940,15 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_rate_limit/, "release candidate must execute distributed rate-limit interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_one_time_state/, "release candidate must execute distributed OPAQUE one-time-state interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo test --locked -p secure-auth-actix/, "release candidate must run the Actix adapter contract tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm --dir packages\/server-node pack --pack-destination/, "release candidate must package the Node server adapter");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo package --locked --workspace --all-features/, "release candidate must verify all feature-gated crates from the packaged workspace");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked -p secure-auth-actix/, "CI must run the Actix adapter contract tests");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/server-node typecheck/, "CI must typecheck the Node server adapter");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/server-node test/, "CI must run the Node server adapter contract tests");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo clippy --locked --workspace/, "CI Rust lint must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo install cargo-audit --locked --version 0\.22\.2/, "CI must install the pinned RustSec audit tool");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo audit/, "CI must run the RustSec dependency audit");
@@ -1000,6 +1013,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-ffi-android-react-native-host-and-checksum/, "CI must retain the React Native Android FFI checksum manifest");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/contracts pack --dry-run/, "CI must inspect the publishable contracts npm tarball");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/web pack --dry-run/, "CI must inspect the publishable Web npm tarball");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm --dir packages\/server-node pack --dry-run/, "CI must inspect the publishable Node server npm tarball");
   const reactNativeAndroidBuild = source("packages/react-native/android/build.gradle", findings);
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAndroidBuild, /externalNativeBuild/, "React Native package must retain its native Android build boundary");
   const customizationGuide = source("docs/CUSTOMIZATION-EXAMPLES.md", findings);
@@ -1012,11 +1026,11 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
   requireText(findings, "package.json", rootPackage, /"test:release-bundle"/, "the workspace must expose the release staging inspector test");
-  for (const file of ["packages/contracts/package.json", "packages/web/package.json"]) {
+  for (const file of ["packages/contracts/package.json", "packages/web/package.json", "packages/server-node/package.json"]) {
     const packageManifest = source(file, findings);
     requireText(findings, file, packageManifest, /"files"\s*:\s*\[[^\]]*"LICENSE"/, "publishable npm packages must include their license file");
   }
-  for (const file of ["packages/contracts/LICENSE", "packages/web/LICENSE"]) {
+  for (const file of ["packages/contracts/LICENSE", "packages/web/LICENSE", "packages/server-node/LICENSE"]) {
     const license = source(file, findings);
     requireText(findings, file, license, /^MIT License\s/m, "publishable npm packages must ship the MIT license text");
   }

@@ -135,6 +135,10 @@ jobs:
       - run: pnpm --dir packages/web typecheck
       - run: pnpm --dir packages/web test
       - run: pnpm --dir packages/web build
+      - run: pnpm --dir packages/server-node typecheck
+      - run: pnpm --dir packages/server-node test
+      - run: pnpm --dir packages/server-node build
+      - run: pnpm --dir packages/server-node pack --dry-run
       - run: pnpm --dir packages/contracts pack --dry-run
       - run: pnpm --dir packages/web pack --dry-run
 

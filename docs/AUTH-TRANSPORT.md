@@ -133,6 +133,9 @@ covered by a downgrade regression test.
 - short TTL and atomic consume/delete for serialized server login state;
 
 The envelope is deliberately transport-framework-neutral so a backend can use
-Axum, Actix, Spring, ASP.NET, Go, or another server stack without changing the
-cryptographic contract. It is not a complete HTTP server SDK until those
-deployment controls are implemented and independently tested.
+Axum, Actix, Node/TypeScript, Spring, ASP.NET, Go, or another server stack
+without changing the cryptographic contract. `@secure-keypad/server-node`
+provides the Node Fetch-compatible boundary, but delegates cryptography to the
+pinned Rust/native reference service; it is not an OPAQUE implementation in
+JavaScript. These adapters are not a complete HTTP server deployment until
+they are configured with the required host controls and independently tested.

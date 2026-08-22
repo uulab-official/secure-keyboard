@@ -13,6 +13,7 @@ export const RELEASE_ARTIFACTS = Object.freeze([
   Object.freeze({ path: "packages/contracts/package.json", format: "json" }),
   Object.freeze({ path: "packages/react-native/package.json", format: "json" }),
   Object.freeze({ path: "packages/web/package.json", format: "json" }),
+  Object.freeze({ path: "packages/server-node/package.json", format: "json" }),
   Object.freeze({ path: "packages/flutter/pubspec.yaml", format: "pubspec" }),
   Object.freeze({ path: "packages/react-native/SecureKeypadReactNative.podspec", format: "podspec" }),
   Object.freeze({ path: "packages/flutter/ios/secure_keypad_flutter.podspec", format: "podspec" }),

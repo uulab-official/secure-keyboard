@@ -16,6 +16,7 @@ const NPM_PACKAGES = Object.freeze([
   "secure-keypad-contracts",
   "secure-keypad-react-native",
   "secure-keypad-web",
+  "secure-keypad-server-node",
 ]);
 const RUST_CRATES = Object.freeze([
   "secure-auth",

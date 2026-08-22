@@ -18,6 +18,7 @@ const NPM_PACKAGES = [
   "secure-keypad-contracts",
   "secure-keypad-react-native",
   "secure-keypad-web",
+  "secure-keypad-server-node",
 ];
 const RUST_CRATES = [
   "secure-auth",

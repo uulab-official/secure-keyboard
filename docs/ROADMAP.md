@@ -152,8 +152,9 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, i
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
 - [x] Add a compile-tested Actix Web adapter after matching the body-limit, TLS-context, CSRF-ordering, generic-error, and response-header contract.
+- [x] Add a Node/TypeScript Fetch-compatible adapter with the same bounded body, TLS-context, CSRF-ordering, generic-error, and response-header contract; keep OPAQUE in the pinned Rust/native delegate.
 - [x] Add bounded replay-store, downgrade, enumeration, and key-rotation tests; wire isolated durable interoperability checks into CI.
-- [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
+- [ ] Add a first non-Rust backend-language cryptographic implementation only after the reference implementation is interoperable; the Node/TypeScript transport bridge is complete, but it deliberately delegates OPAQUE to Rust/native.
 - [x] Provide migration guidance for systems that currently receive ordinary passwords.
 
 Exit criteria: the server never needs a plaintext password or replayable client-side hash.

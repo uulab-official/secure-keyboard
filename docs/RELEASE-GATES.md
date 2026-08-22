@@ -82,6 +82,10 @@ pnpm --dir packages/react-native pack --dry-run
 pnpm --dir packages/web typecheck
 pnpm --dir packages/web test
 pnpm --dir packages/web build
+pnpm --dir packages/server-node typecheck
+pnpm --dir packages/server-node test
+pnpm --dir packages/server-node build
+pnpm --dir packages/server-node pack --dry-run
 (cd packages/flutter && dart pub publish --dry-run)
 pnpm exec playwright install --with-deps chromium firefox webkit
 pnpm test:web-browser all
@@ -106,7 +110,8 @@ native static-library checksums, SBOM, and framework package manifests as one
 set. HTTP deployments must also be reviewed against
 `docs/HTTP-DEPLOYMENT.md`.
 The Contracts package is the canonical UI/SDK release version; the version
-parity gate rejects drift across public Cargo, npm, Flutter, and Podspec
+parity gate rejects drift across public Cargo, npm (including the Node server
+adapter), Flutter, and Podspec
 artifacts. Authentication protocol and C ABI versions remain independent.
 Password migrations must also follow `docs/MIGRATION-FROM-PASSWORD.md` and
 must not introduce a client-side replayable hash.

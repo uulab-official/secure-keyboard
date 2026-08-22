@@ -34,6 +34,7 @@ Systems migrating from ordinary password endpoints should follow the
 - `@secure-keypad/contracts`: publishable layout, theme, masked-state, and result-event contracts.
 - `@secure-keypad/react-native`: publishable React Native prop/event boundary for the native view manager; it rejects secret-bearing props and exposes only masked state/result codes plus non-secret native cancellation/headless key-ID commands. Secure Native is the default.
 - `@secure-keypad/web`: passkey-first WebAuthn adapter; it converts server JSON options and serializes ceremony results without exposing password/PIN APIs. Its custom browser-keypad fallback requires explicit lower-assurance acknowledgement.
+- `@secure-keypad/server-node`: Node/TypeScript Fetch-compatible adapter for the pinned OPAQUE HTTP boundary; it validates deployment, CSRF, content type, and bounded streaming bodies before delegating to the Rust/native reference service. It does not implement OPAQUE in JavaScript.
 - `secure_keypad_flutter`: publishable Flutter-facing layout/theme/policy contract; it exposes only masked state/result callbacks and native-only `SecureKeypadController.cancel()` plus an explicitly acknowledged headless `pressKey(keyId)`, with no `TextEditingController` or secret callback.
 
 The contracts package exports `DEFAULT_NUMERIC_LAYOUT`,
@@ -62,6 +63,7 @@ pnpm test:release-version-parity
 pnpm --dir packages/contracts test
 pnpm --dir packages/react-native test
 pnpm --dir packages/web test
+pnpm --dir packages/server-node test
 cd packages/flutter && flutter test
 ```
 
