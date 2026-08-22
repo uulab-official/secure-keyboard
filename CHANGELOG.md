@@ -81,6 +81,9 @@ exact release-candidate commit by the release evidence manifest.
   and SHA-256 digests for the React Native and Flutter host modes; the final
   verifier recomputes those nested digests and rejects shared or tampered host
   evidence.
+- Final release evidence verification now checks the DER public-key type at the
+  verifier boundary and rejects a signature descriptor backed by anything
+  other than an Ed25519 key, even if its metadata claims `ed25519`.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

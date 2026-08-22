@@ -1229,6 +1229,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /gate: <same gate name>/, "release gates must require machine-readable gate-bound records");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /nested log and artifact digests/, "release gates must revalidate nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /createPublicKey/, "release tooling must verify the detached public-key signature");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /publicKey\.asymmetricKeyType !== \"ed25519\"/, "release tooling must reject non-Ed25519 detached-signature keys");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /currentCommit/, "release evidence must bind to the current checkout commit");
   const releaseCandidateMetadata = source("scripts/release-candidate-metadata.mjs", findings);
   requireText(findings, "scripts/release-candidate-metadata.mjs", releaseCandidateMetadata, /candidate-only/, "candidate metadata must not claim production readiness");

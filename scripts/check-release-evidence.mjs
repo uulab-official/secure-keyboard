@@ -658,6 +658,10 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
       return;
     }
     const publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
+    if (publicKey.asymmetricKeyType !== "ed25519") {
+      add(findings, `${fieldName}.publicKeyPath`, "signature public key must be Ed25519");
+      return;
+    }
     const valid = verify(null, signedArtifactBytes, publicKey, signatureBytes);
     if (!valid) {
       add(findings, fieldName, "detached Ed25519 signature verification failed");

@@ -833,6 +833,24 @@ test("rejects a tampered detached release signature", () => {
   assert.ok(findings.some((finding) => finding.includes("signature")));
 });
 
+test("rejects a detached signature backed by a non-Ed25519 public key", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-key-type-"));
+  const evidence = completeEvidence();
+  const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+  const releasePayload = Buffer.from("signed-release-fixture", "utf8");
+  const signature = Buffer.alloc(64, 0);
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, evidence.signature.publicKeyPath), publicKeyDer);
+  writeFileSync(join(root, evidence.signature.signedArtifactPath), releasePayload);
+  writeFileSync(join(root, evidence.signature.signaturePath), signature);
+  evidence.signature.publicKeySha256 = createHash("sha256").update(publicKeyDer).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("signature public key must be Ed25519")));
+});
+
 test("rejects a tampered independent-review attestation", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-review-signature-"));
   const evidence = completeEvidence();
