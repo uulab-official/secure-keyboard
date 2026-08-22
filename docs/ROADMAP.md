@@ -134,7 +134,7 @@ Exit criteria: Flutter consumers have parity with the RN secure/native contract.
 
 ### Phase 6 — Server SDK and authentication
 
-Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, Node/TypeScript transport bridge, injectable WebAuthn storage contracts, and durable/distributed control implementations complete; isolated service execution and deployment evidence pending
+Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, Node/TypeScript transport bridge, injectable WebAuthn storage contracts, and durable/distributed control implementations complete; local isolated service execution is verified, while CI/deployment evidence remains pending
 
 - [x] Define the versioned OPAQUE registration and login message contract.
 - [x] Implement a reference Rust OPAQUE engine with a pinned protocol suite, Argon2 KSF, and key IDs.
@@ -165,6 +165,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, N
 - [x] Add a compile-tested Axum adapter after finalizing the host session and storage interfaces.
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
+- [x] Verify Redis/PostgreSQL credential `insert`/`load`/duplicate rejection/post-authentication update lifecycles against isolated live services, including fail-closed invalid-record propagation.
 - [x] Add a compile-tested Actix Web adapter after matching the body-limit, TLS-context, CSRF-ordering, generic-error, and response-header contract.
 - [x] Add a Node/TypeScript Fetch-compatible adapter with the same bounded body, TLS-context, CSRF-ordering, generic-error, and response-header contract; keep OPAQUE in the pinned Rust/native delegate.
 - [x] Require fail-closed pre-buffering rate-limit admission in the Node, Axum, Actix, and framework-neutral OPAQUE HTTP contracts.
@@ -211,6 +212,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add a native C ABI sequence fuzz target covering opaque handle ownership and cancellation.
 - [x] Add a bounded WebAuthn versioned-ceremony-state fuzz target and CI smoke gate.
 - [x] Add feature-gated Redis/PostgreSQL storage adapters with bounded pools, atomic consume, credential uniqueness, and post-authentication CAS updates.
+- [x] Serialize concurrent PostgreSQL startup migrations with a transaction advisory lock and regression-test the durable credential lifecycle after migration.
 - [x] Encrypt and authenticate built-in WebAuthn ceremony records with a host-managed namespace-bound key and bounded ciphertext schema.
 - [x] Bound durable credential record bytes and per-namespace pending ceremonies; clean expired durable ceremony rows/index entries during atomic writes/consumes.
 - [x] Make PostgreSQL durable namespace and record-bound constraints idempotently upgrade existing rate-limit, ceremony, and credential tables.

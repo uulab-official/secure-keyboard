@@ -640,7 +640,13 @@ The feature-gated Redis and PostgreSQL adapters must compile under
 `cargo test --workspace --all-features`. The ignored interoperability tests
 must run against isolated Redis and PostgreSQL services in CI or a release
 environment with `--ignored`; they verify one-time consume, namespace/kind
-isolation, replay rejection, and expired-state cleanup. The same service job
+isolation, replay rejection, expired-state cleanup, and the credential
+`insert`/`load`/duplicate/post-authentication-update lifecycle. Corrupted
+Redis credential records must preserve the typed `InvalidRecord` failure rather
+than being reported as a transient availability error. PostgreSQL schema
+startup is serialized with a transaction advisory lock so concurrent
+application instances cannot deadlock while applying idempotent upgrades. The
+same service job
 must run the feature-gated `RateLimiter` adapters and verify fixed-window
 allowed/limited decisions. Durable adapters also bound pending ceremony count
 per namespace, active rate-limit keys, and credential-record size. Built-in
