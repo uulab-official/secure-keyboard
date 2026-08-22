@@ -294,10 +294,10 @@ fragment fails the job and cannot become a production claim. The
 reviewers.
 
 Before staging, it independently checks the candidate tar entry contract,
-verifies the candidate checksum manifest, and compares the native checksum,
-SBOM, and notices files byte-for-byte with the copies inside the signed
-tarball. This prevents a separately downloaded evidence file from silently
-replacing the signed source input.
+verifies the candidate checksum manifest, and compares both native checksum
+manifests, the SBOM, and the notices file byte-for-byte with the copies inside
+the signed tarball. This prevents a separately downloaded evidence file from
+silently replacing the signed source input.
 
 The release-candidate artifact also contains
 `fragments/candidate-artifacts.json`. It hashes the native iOS and Android FFI
