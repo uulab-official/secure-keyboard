@@ -23,8 +23,8 @@ Before the source tree is archived, the workflow runs
 requires the candidate-only metadata, lockfiles, threat-model and deployment
 policy documents, public README and security policy, security changelog, SPDX SBOM, third-party notices, all publishable npm
 tarballs (including their license files), and every workspace crate archive.
-It also rejects malformed archives, symlinks, non-regular filesystem entries,
-and private signing material in
+It also rejects malformed archives, duplicate paths, symlinks, non-regular
+filesystem entries, and private signing material in
 the staging directory. This proves the input to the deterministic archive is
 complete; it does not replace the protected signing step or external release
 evidence.

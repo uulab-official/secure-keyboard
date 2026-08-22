@@ -55,6 +55,9 @@ export function validateReleaseArchiveEntries(entries) {
   for (const rawEntry of entries) {
     const entry = normalizeEntry(rawEntry);
     if (entry.length === 0) continue;
+    if (normalized.has(entry)) {
+      findings.push(`${entry}: archive entry must be unique`);
+    }
     normalized.add(entry);
     if (entry.startsWith("/") || entry.split("/").includes("..")) {
       findings.push(`${entry}: archive path must be relative and non-parent`);

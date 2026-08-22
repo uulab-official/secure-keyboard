@@ -114,3 +114,12 @@ test("signed release archive rejects mixed versions and unexpected top-level pat
   assert.ok(findings.some((finding) => finding.includes("same package version")));
   assert.ok(findings.some((finding) => finding.includes("outside source/ or packages/")));
 });
+
+test("signed release archive rejects duplicate paths", () => {
+  const findings = validateReleaseArchiveEntries([
+    ...REQUIRED_ENTRIES,
+    REQUIRED_ENTRIES[0],
+  ]);
+
+  assert.ok(findings.some((finding) => finding.includes("archive entry must be unique")));
+});

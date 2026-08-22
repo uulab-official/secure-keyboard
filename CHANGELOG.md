@@ -48,6 +48,8 @@ exact release-candidate commit by the release evidence manifest.
   filesystem entries instead of silently omitting them from the scan.
 - Signed archive inspection now independently rejects non-regular tar entry
   types, including hard links and special filesystem nodes.
+- Signed archive inspection now rejects duplicate normalized paths instead of
+  silently collapsing them during required-entry validation.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

@@ -1128,6 +1128,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /only regular files and directories/, "signed archive validation must reject non-regular entries");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-react-native/, "signed archive validation must cover the publishable React Native package");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure_ffi\.xcframework/, "signed archive validation must cover publishable native FFI contents");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /archive entry must be unique/, "signed archive validation must reject duplicate paths");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-bundle/, "CI must execute the release staging inspector contract test");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-archive/, "CI must execute the signed archive contract test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
