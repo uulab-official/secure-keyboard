@@ -29,7 +29,8 @@ exact release-candidate commit by the release evidence manifest.
   Android `arm64-v8a` and `x86_64` FFI libraries alongside the iOS artifacts;
   the final Android checksum manifest is a required release-evidence artifact,
   and the verified libraries are included in the publishable React Native npm
-  and Flutter package paths.
+  and Flutter package paths, with staging-time byte comparison against the
+  signed native source.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.

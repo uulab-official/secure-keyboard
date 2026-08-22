@@ -294,6 +294,27 @@ test("release staging requires the packaged Flutter Android FFI libraries", () =
   }
 });
 
+test("release staging rejects packaged Android FFI bytes that differ from signed source", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a", "tampered flutter fixture\n");
+    createTarball(root, "packages/secure-keypad-react-native-0.1.0.tgz", "package", {
+      "package.json": JSON.stringify({ name: "secure-keypad-react-native", version: "0.1.0" }),
+      LICENSE: "MIT License\n",
+      "README.md": "# Package\n",
+      "secure_ffi.xcframework/Info.plist": "<plist/>\n",
+      "libsecure_ffi.a": "arm64 fixture\n",
+      "android/secure_ffi/arm64-v8a/libsecure_ffi.a": "tampered rn fixture\n",
+      "android/secure_ffi/x86_64/libsecure_ffi.a": "x86_64 fixture\n",
+    });
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("Flutter Android FFI") && finding.includes("do not match")));
+    assert.ok(findings.some((finding) => finding.includes("React Native Android FFI") && finding.includes("do not match")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),

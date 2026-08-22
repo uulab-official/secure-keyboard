@@ -1217,6 +1217,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release staging must require the verified Android x86_64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /packages\/flutter\/android\/secure_ffi\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the packaged Flutter Android arm64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /package\/android\/secure_ffi\/x86_64\/libsecure_ffi\.a/, "release staging must require the packaged React Native Android x86_64 FFI library");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validatePackagedAndroidFfi/, "release staging must compare packaged Android FFI bytes with signed source");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /packaged bytes do not match signed source/, "release staging must reject tampered packaged Android FFI bytes");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /only regular files are allowed in release staging/, "release staging must reject non-regular filesystem entries");

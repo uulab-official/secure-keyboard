@@ -58,6 +58,21 @@ const ANDROID_FFI_CHECKSUM_ENTRIES = Object.freeze([
   "native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "native-artifacts/android/x86_64/libsecure_ffi.a",
 ]);
+const ANDROID_PACKAGE_FFI_ENTRIES = Object.freeze([
+  {
+    abi: "arm64-v8a",
+    flutterPath: "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+    reactNativeArchivePath: "package/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+    sourcePath: "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
+  },
+  {
+    abi: "x86_64",
+    flutterPath: "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a",
+    reactNativeArchivePath: "package/android/secure_ffi/x86_64/libsecure_ffi.a",
+    sourcePath: "source/native-artifacts/android/x86_64/libsecure_ffi.a",
+  },
+]);
+const MAX_PACKAGED_FFI_BYTES = 64 * 1024 * 1024;
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -275,6 +290,43 @@ function archiveEntries(absolutePath, findings) {
   }
 }
 
+function archiveEntryBytes(absolutePath, entry, findings) {
+  try {
+    return execFileSync("tar", ["-xOzf", absolutePath, "--", entry], {
+      encoding: null,
+      maxBuffer: MAX_PACKAGED_FFI_BYTES,
+    });
+  } catch (error) {
+    findings.push(`${path.basename(absolutePath)}: cannot read ${entry} (${error.message})`);
+    return undefined;
+  }
+}
+
+function sha256Bytes(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function validatePackagedAndroidFfi(root, version, findings) {
+  const reactNativeArchiveRelativePath = `packages/secure-keypad-react-native-${version}.tgz`;
+  const reactNativeArchivePath = regularFile(root, reactNativeArchiveRelativePath, findings);
+  for (const entry of ANDROID_PACKAGE_FFI_ENTRIES) {
+    const sourcePath = regularFile(root, entry.sourcePath, findings);
+    if (!sourcePath) continue;
+    const expectedHash = sha256Bytes(readFileSync(sourcePath));
+
+    const flutterPath = regularFile(root, entry.flutterPath, findings);
+    if (flutterPath && sha256Bytes(readFileSync(flutterPath)) !== expectedHash) {
+      findings.push(`Flutter Android FFI ${entry.abi}: packaged bytes do not match signed source ${entry.sourcePath}`);
+    }
+
+    if (!reactNativeArchivePath) continue;
+    const archiveBytes = archiveEntryBytes(reactNativeArchivePath, entry.reactNativeArchivePath, findings);
+    if (archiveBytes && sha256Bytes(archiveBytes) !== expectedHash) {
+      findings.push(`React Native Android FFI ${entry.abi}: packaged bytes do not match signed source ${entry.sourcePath}`);
+    }
+  }
+}
+
 function validateNpmArchives(root, version, findings) {
   for (const packageName of NPM_PACKAGES) {
     const relativePath = `packages/${packageName}-${version}.tgz`;
@@ -343,6 +395,7 @@ export function checkReleaseStaging(root) {
   validateAndroidFfiChecksum(root, findings);
   if (validatedMetadata?.packageVersion) {
     validateNpmArchives(root, validatedMetadata.packageVersion, findings);
+    validatePackagedAndroidFfi(root, validatedMetadata.packageVersion, findings);
     validateRustArchives(root, validatedMetadata.packageVersion, findings);
   }
 
