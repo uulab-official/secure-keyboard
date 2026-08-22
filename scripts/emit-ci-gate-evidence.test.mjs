@@ -120,6 +120,10 @@ test("CI fuzz campaigns use a corpus staged outside the clean checkout", () => {
   assert.match(fuzzJob, /FUZZ_CORPUS_ROOT: \$\{\{ runner\.temp \}\}\/secure-keypad-fuzz-corpus/);
   assert.match(fuzzJob, /scripts\/stage-fuzz-corpus\.sh "\$FUZZ_CORPUS_ROOT"/);
 
+  const timeout = fuzzJob.match(/timeout-minutes:\s*(\d+)/);
+  assert.ok(timeout, "the fuzz job must declare a timeout");
+  assert.ok(Number(timeout[1]) >= 60, "the full fuzz and LSAN campaigns need a 60-minute CI budget");
+
   for (const target of ["auth_envelope", "core_sequence", "ffi_sequence", "webauthn_state"]) {
     assert.match(fuzzJob, new RegExp(`fuzz run ${target} "\\$FUZZ_CORPUS_ROOT/${target}" --`));
   }

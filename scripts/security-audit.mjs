@@ -1023,6 +1023,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo build --locked --release -p secure-ffi/, "native host gates must use the locked Rust dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-runs=1000000/, "CI must retain the extended fuzz stability campaign");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-rss_limit_mb=1024/, "CI fuzz campaigns must have a bounded RSS guard");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /fuzz:\n[\s\S]{0,220}timeout-minutes:\s*60/, "CI fuzz and LeakSanitizer campaigns must have a 60-minute job budget");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ffi_sequence/, "CI must fuzz the exported native FFI boundary");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-fuzz-logs/, "CI must retain fuzz campaign logs as a release artifact");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /if: always\(\)/, "CI must upload fuzz evidence even when a sanitizer campaign fails");

@@ -41,6 +41,9 @@ exact release-candidate commit by the release evidence manifest.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.
+- Increased the CI fuzz job budget to 60 minutes so the four extended
+  campaigns and four Linux LeakSanitizer campaigns are not cut off by the
+  workflow timeout.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

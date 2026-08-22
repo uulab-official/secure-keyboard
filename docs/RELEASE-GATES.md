@@ -352,7 +352,8 @@ C ABI and all three policy constructors, and
 `fuzz/webauthn_state` exercises bounded versioned server-state deserialization.
 CI builds all four with `cargo-fuzz` on pinned `nightly-2026-08-19` and runs a bounded
 2,000-iteration smoke campaign plus a 1,000,000-iteration stability campaign
-with a 1 GiB libFuzzer RSS guard. A fresh local arm64 verification completed
+with a 1 GiB libFuzzer RSS guard. The fuzz job has a 60-minute timeout covering
+the extended and Linux LeakSanitizer campaigns. A fresh local arm64 verification completed
 1,000,000 iterations for all four targets without a crash artifact; the
 WebAuthn run used `-max_len=131073` to exercise the 128 KiB rejection boundary.
 Every target has at least one bounded, checked-in seed corpus under
