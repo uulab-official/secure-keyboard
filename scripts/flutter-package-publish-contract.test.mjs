@@ -21,3 +21,10 @@ test("Flutter package excludes generated build state from publication", () => {
   assert.match(contents, /^\.dart_tool\/$/m);
   assert.match(contents, /^pubspec\.lock$/m);
 });
+
+test("Flutter layout randomization survives the Dart-to-native creation boundary", () => {
+  const source = readFileSync(`${PACKAGE_ROOT}/lib/secure_keypad_flutter.dart`, "utf8");
+  assert.match(source, /final bool randomizeInputKeys;/);
+  assert.match(source, /'randomizeInputKeys': layout\.randomizeInputKeys/);
+  assert.match(source, /layout\.randomizeInputKeys != true && layout\.randomizeInputKeys != false/);
+});
