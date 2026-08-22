@@ -10,6 +10,52 @@ use secure_webauthn_example::PostgresStorageConfigError;
 #[cfg(feature = "redis-backend")]
 use secure_webauthn_example::RedisStorageConfigError;
 
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+fn test_passkey() -> webauthn_rs::prelude::Passkey {
+    serde_json::from_value(serde_json::json!({
+        "cred": {
+            "cred_id": "AQID",
+            "cred": {
+                "type_": "ES256",
+                "key": {
+                    "EC_EC2": {
+                        "curve": "SECP256R1",
+                        "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "y": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    }
+                }
+            },
+            "counter": 0,
+            "transports": null,
+            "user_verified": true,
+            "backup_eligible": false,
+            "backup_state": false,
+            "registration_policy": "required",
+            "extensions": {},
+            "attestation": {
+                "data": "None",
+                "metadata": "None"
+            },
+            "attestation_format": "none"
+        }
+    }))
+    .expect("test passkey fixture should deserialize")
+}
+
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
+fn test_authentication_result() -> webauthn_rs::prelude::AuthenticationResult {
+    serde_json::from_value(serde_json::json!({
+        "cred_id": "AQID",
+        "needs_update": true,
+        "user_verified": true,
+        "backup_state": false,
+        "backup_eligible": false,
+        "counter": 1,
+        "extensions": {}
+    }))
+    .expect("test authentication result fixture should deserialize")
+}
+
 #[cfg(feature = "redis-backend")]
 #[test]
 fn redis_configuration_fails_closed_by_default() {
@@ -343,6 +389,97 @@ fn redis_oversized_credential_value_fails_closed_before_json_decode() {
         .expect("Redis oversized credential cleanup should succeed");
 }
 
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_credential_insert_preserves_invalid_record_error() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = if url.starts_with("rediss://") {
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            2,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
+    } else {
+        secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+            &url, &namespace, 2,
+        )
+    }
+    .expect("Redis store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let key = format!("{namespace}:webauthn:v1:credentials:{user_id}");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SET")
+        .arg(&key)
+        .arg(b"not-json".as_slice())
+        .query::<()>(&mut inspection)
+        .expect("Redis invalid credential should be writable for the migration test");
+
+    assert!(matches!(
+        secure_webauthn_example::CredentialStore::insert(&store, user_id, test_passkey()),
+        Err(secure_webauthn_example::CredentialStoreError::InvalidRecord)
+    ));
+
+    redis::cmd("DEL")
+        .arg(&key)
+        .query::<()>(&mut inspection)
+        .expect("Redis invalid credential cleanup should succeed");
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_credential_lifecycle_is_atomic_and_bounded() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = if url.starts_with("rediss://") {
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            2,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
+    } else {
+        secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+            &url, &namespace, 2,
+        )
+    }
+    .expect("Redis store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let passkey = test_passkey();
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    let key = format!("{namespace}:webauthn:v1:credentials:{user_id}");
+
+    secure_webauthn_example::CredentialStore::insert(&store, user_id, passkey.clone())
+        .expect("Redis credential insert should succeed");
+    let loaded = secure_webauthn_example::CredentialStore::load(&store, user_id)
+        .expect("Redis credential load should succeed");
+    assert_eq!(loaded, vec![passkey.clone()]);
+    assert!(matches!(
+        secure_webauthn_example::CredentialStore::insert(&store, user_id, passkey),
+        Err(secure_webauthn_example::CredentialStoreError::Duplicate)
+    ));
+    assert!(secure_webauthn_example::CredentialStore::update_after_auth(
+        &store,
+        user_id,
+        &test_authentication_result()
+    )
+    .expect("Redis post-auth update should succeed"));
+
+    redis::cmd("DEL")
+        .arg(&key)
+        .query::<()>(&mut inspection)
+        .expect("Redis credential cleanup should succeed");
+}
+
 #[cfg(feature = "postgres-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_POSTGRES_URL and an isolated PostgreSQL service"]
@@ -407,4 +544,49 @@ fn postgres_ceremony_state_is_atomic_and_one_time() {
         .take(CeremonyKind::Registration, &handle)
         .expect("PostgreSQL replay lookup should succeed")
         .is_none());
+}
+
+#[cfg(feature = "postgres-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_POSTGRES_URL and an isolated PostgreSQL service"]
+fn postgres_credential_lifecycle_is_atomic_and_bounded() {
+    let url = std::env::var("SECURE_KEYPAD_POSTGRES_URL").expect("PostgreSQL URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let mut migration = postgres::Client::connect(&url, postgres::NoTls)
+        .expect("PostgreSQL should accept the test connection");
+    migration
+        .batch_execute(secure_webauthn_example::POSTGRES_SCHEMA_SQL)
+        .expect("PostgreSQL schema should apply");
+    let config = url.parse().expect("PostgreSQL config should parse");
+    let store = secure_webauthn_example::PostgresWebAuthnStore::from_config_for_local_testing(
+        config, &namespace, 4,
+    )
+    .expect("PostgreSQL store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let passkey = test_passkey();
+
+    secure_webauthn_example::CredentialStore::insert(&store, user_id, passkey.clone())
+        .expect("PostgreSQL credential insert should succeed");
+    let loaded = secure_webauthn_example::CredentialStore::load(&store, user_id)
+        .expect("PostgreSQL credential load should succeed");
+    assert_eq!(loaded, vec![passkey.clone()]);
+    assert!(matches!(
+        secure_webauthn_example::CredentialStore::insert(&store, user_id, passkey),
+        Err(secure_webauthn_example::CredentialStoreError::Duplicate)
+    ));
+    assert!(secure_webauthn_example::CredentialStore::update_after_auth(
+        &store,
+        user_id,
+        &test_authentication_result()
+    )
+    .expect("PostgreSQL post-auth update should succeed"));
+
+    let mut cleanup = postgres::Client::connect(&url, postgres::NoTls)
+        .expect("PostgreSQL cleanup connection should succeed");
+    cleanup
+        .execute(
+            "DELETE FROM secure_keypad_webauthn_credentials WHERE namespace = $1 AND user_id = $2",
+            &[&namespace, &user_id],
+        )
+        .expect("PostgreSQL credential cleanup should succeed");
 }

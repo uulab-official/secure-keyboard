@@ -307,26 +307,15 @@ impl CredentialStore for RedisWebAuthnStore {
             &mut *connection,
             std::slice::from_ref(&key),
             |connection, pipe| {
-                let current = get_bounded_credentials(connection, &key).map_err(|error| {
-                    redis_error(
-                        match error {
-                            CredentialStoreError::InvalidRecord => {
-                                redis::ErrorKind::UnexpectedReturnType
-                            }
-                            _ => redis::ErrorKind::Io,
-                        },
-                        "credential read failed",
-                    )
-                })?;
-                let mut credentials = decode_credentials(
-                    current.as_ref().map(|value| value.as_slice()),
-                )
-                .map_err(|_| {
-                    redis_error(
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "invalid credential record",
-                    )
-                })?;
+                let current = match get_bounded_credentials(connection, &key) {
+                    Ok(current) => current,
+                    Err(error) => return Ok(Some(Err(error))),
+                };
+                let mut credentials =
+                    match decode_credentials(current.as_ref().map(|value| value.as_slice())) {
+                        Ok(credentials) => credentials,
+                        Err(error) => return Ok(Some(Err(error))),
+                    };
                 if credentials.iter().any(|existing| existing == &passkey) {
                     return Ok(Some(Err(CredentialStoreError::Duplicate)));
                 }
@@ -334,12 +323,10 @@ impl CredentialStore for RedisWebAuthnStore {
                     return Ok(Some(Err(CredentialStoreError::CapacityReached)));
                 }
                 credentials.push(passkey.clone());
-                let encoded = encode_credentials(&credentials).map_err(|_| {
-                    redis_error(
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "credential encode failed",
-                    )
-                })?;
+                let encoded = match encode_credentials(&credentials) {
+                    Ok(encoded) => encoded,
+                    Err(error) => return Ok(Some(Err(error))),
+                };
                 pipe.set(&key, encoded.as_slice())
                     .ignore()
                     .query(connection)
@@ -360,50 +347,34 @@ impl CredentialStore for RedisWebAuthnStore {
             &mut *connection,
             std::slice::from_ref(&key),
             |connection, pipe| {
-                let current = get_bounded_credentials(connection, &key).map_err(|error| {
-                    redis_error(
-                        match error {
-                            CredentialStoreError::InvalidRecord => {
-                                redis::ErrorKind::UnexpectedReturnType
-                            }
-                            _ => redis::ErrorKind::Io,
-                        },
-                        "credential read failed",
-                    )
-                })?;
-                let mut credentials = decode_credentials(
-                    current.as_ref().map(|value| value.as_slice()),
-                )
-                .map_err(|_| {
-                    redis_error(
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "invalid credential record",
-                    )
-                })?;
+                let current = match get_bounded_credentials(connection, &key) {
+                    Ok(current) => current,
+                    Err(error) => return Ok(Some(Err(error))),
+                };
+                let mut credentials =
+                    match decode_credentials(current.as_ref().map(|value| value.as_slice())) {
+                        Ok(credentials) => credentials,
+                        Err(error) => return Ok(Some(Err(error))),
+                    };
                 let Some(credential) = credentials
                     .iter_mut()
                     .find(|credential| credential.cred_id() == result.cred_id())
                 else {
                     return Ok(Some(Err(CredentialStoreError::InvalidRecord)));
                 };
-                let changed = credential.update_credential(result).ok_or_else(|| {
-                    redis_error(
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "credential update mismatch",
-                    )
-                })?;
+                let Some(changed) = credential.update_credential(result) else {
+                    return Ok(Some(Err(CredentialStoreError::InvalidRecord)));
+                };
                 if result.needs_update() && !changed {
                     return Ok(Some(Err(CredentialStoreError::InvalidRecord)));
                 }
                 if !changed {
                     return Ok(Some(Ok(false)));
                 }
-                let encoded = encode_credentials(&credentials).map_err(|_| {
-                    redis_error(
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "credential encode failed",
-                    )
-                })?;
+                let encoded = match encode_credentials(&credentials) {
+                    Ok(encoded) => encoded,
+                    Err(error) => return Ok(Some(Err(error))),
+                };
                 pipe.set(&key, encoded.as_slice())
                     .ignore()
                     .query(connection)
@@ -478,10 +449,6 @@ fn hex_handle(handle: &LoginStateHandle) -> String {
         encoded.push(HEX[(byte & 0x0f) as usize] as char);
     }
     encoded
-}
-
-fn redis_error(kind: redis::ErrorKind, message: &'static str) -> redis::RedisError {
-    redis::RedisError::from((kind, message))
 }
 
 #[cfg(test)]

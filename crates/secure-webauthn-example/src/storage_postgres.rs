@@ -54,6 +54,9 @@ RETURNING kind, user_id,
 /// row revision is used by the post-authentication compare-and-swap update;
 /// the per-account advisory lock serializes registration count checks.
 pub const POSTGRES_SCHEMA_SQL: &str = r"
+-- Serialize concurrent startup migrations across application instances.
+SELECT pg_advisory_xact_lock(hashtextextended('secure-keypad-webauthn-schema-v1', 0));
+
 CREATE TABLE IF NOT EXISTS secure_keypad_webauthn_ceremonies (
     namespace TEXT NOT NULL,
     handle BYTEA NOT NULL,
