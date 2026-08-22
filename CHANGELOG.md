@@ -14,6 +14,9 @@ exact release-candidate commit by the release evidence manifest.
   `build`, and `pubspec.lock` state outside the checkout before clean candidate
   metadata and source-bundle checks, preventing generated dependency/build
   state from invalidating or disguising release provenance.
+- Security: external independent-review evidence now uses the same structured
+  finding validator as the final trusted release verifier, rejecting malformed
+  signed findings before an evidence artifact can be uploaded.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session

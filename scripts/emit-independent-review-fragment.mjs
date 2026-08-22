@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MAX_GATE_EVIDENCE_BYTES, buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
+import { validateIndependentReviewReport } from "./check-release-evidence.mjs";
 import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -14,17 +15,6 @@ const PRIVATE_MATERIAL_PATH = /(?:private|signing[-_]?key|password|secret|\.pem$
 const MAX_REVIEW_REPORT_BYTES = MAX_GATE_EVIDENCE_BYTES;
 const MAX_PUBLIC_KEY_BYTES = 1_024;
 const SIGNATURE_BYTES = 64;
-const REVIEW_SCOPE = Object.freeze([
-  "native-input-boundary",
-  "opaque-authentication",
-  "http-json-transport",
-  "replay-rate-limit-backends",
-  "framework-adapters",
-  "device-runtime-evidence",
-  "release-process",
-]);
-const REVIEW_DECISIONS = new Set(["approved", "approved-with-residual-risk"]);
-const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)|^value$/i;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -49,18 +39,6 @@ function validateIdentity(commit, packageVersion) {
   }
 }
 
-function rejectSecretKeys(value, field = "report") {
-  if (Array.isArray(value)) {
-    value.forEach((child, index) => rejectSecretKeys(child, `${field}[${index}]`));
-    return;
-  }
-  if (!isRecord(value)) return;
-  for (const [key, child] of Object.entries(value)) {
-    if (SECRET_KEY.test(key)) throw new Error(`${field}.${key}: secret-bearing review fields are forbidden`);
-    rejectSecretKeys(child, `${field}.${key}`);
-  }
-}
-
 function parseReviewReport(reportBytes, commit, packageVersion, publicKeySha256) {
   let report;
   try {
@@ -69,32 +47,12 @@ function parseReviewReport(reportBytes, commit, packageVersion, publicKeySha256)
     throw new Error(`review report must be valid JSON: ${error.message}`);
   }
   if (!isRecord(report)) throw new Error("review report must be a JSON object");
-  rejectSecretKeys(report);
-  if (report.schemaVersion !== 1) throw new Error("review report schemaVersion must equal 1");
-  if (report.reportType !== "independent-security-review") {
-    throw new Error("review report reportType must equal independent-security-review");
-  }
-  if (report.reviewedCommit !== commit) throw new Error("review report reviewedCommit must match the checkout commit");
-  if (report.reviewedPackageVersion !== packageVersion) {
-    throw new Error("review report reviewedPackageVersion must match the package version");
-  }
-  if (report.reviewerPublicKeySha256 !== publicKeySha256) {
-    throw new Error("review report reviewerPublicKeySha256 must match the public key");
-  }
-  if (
-    !Array.isArray(report.scope) ||
-    report.scope.length !== REVIEW_SCOPE.length ||
-    new Set(report.scope).size !== REVIEW_SCOPE.length ||
-    REVIEW_SCOPE.some((scope) => !report.scope.includes(scope))
-  ) {
-    throw new Error("review report scope must contain the complete independent-review scope");
-  }
-  if (!Array.isArray(report.findings) || report.findings.length > 256) {
-    throw new Error("review report findings must be an array with at most 256 entries");
-  }
-  if (!REVIEW_DECISIONS.has(report.decision)) {
-    throw new Error("review report decision must approve the reviewed release");
-  }
+  const findings = validateIndependentReviewReport(report, {
+    expectedCommit: commit,
+    expectedPackageVersion: packageVersion,
+    expectedReviewerPublicKeySha256: publicKeySha256,
+  });
+  if (findings.length > 0) throw new Error(`review report is invalid: ${findings.join("; ")}`);
   return report;
 }
 

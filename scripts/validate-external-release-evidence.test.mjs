@@ -125,7 +125,7 @@ function writeNativeGate(root, platform) {
   );
 }
 
-function writeReviewGate(root) {
+function writeReviewGate(root, overrides = {}) {
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   const publicKeyBytes = publicKey.export({ format: "der", type: "spki" });
   const report = {
@@ -143,7 +143,7 @@ function writeReviewGate(root) {
       "device-runtime-evidence",
       "release-process",
     ],
-    findings: [],
+    findings: overrides.findings ?? [],
     decision: "approved-with-residual-risk",
   };
   const reportBytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -153,17 +153,61 @@ function writeReviewGate(root) {
   writeFileSync(join(root, "artifacts/independent-review.sig"), signatureBytes);
   writeFileSync(join(root, "artifacts/independent-review.pub.der"), publicKeyBytes);
 
-  const fragment = buildIndependentReviewFragment({
-    commit: COMMIT,
-    packageVersion: PACKAGE_VERSION,
-    reportPath: "artifacts/independent-review.json",
-    reportBytes,
-    signaturePath: "artifacts/independent-review.sig",
-    signatureBytes,
-    publicKeyPath: "artifacts/independent-review.pub.der",
-    publicKeyBytes,
-    evidencePath: "evidence/independent-security-review.json",
-  });
+  const fragment = overrides.skipBuilder
+    ? (() => {
+        const evidence = {
+          schemaVersion: 1,
+          gate: "independent-security-review",
+          status: "pass",
+          evidenceKind: "independent-security-review",
+          commit: COMMIT,
+          packageVersion: PACKAGE_VERSION,
+          reviewedCommit: COMMIT,
+          reviewedPackageVersion: PACKAGE_VERSION,
+          reviewerPublicKeySha256: hash(publicKeyBytes),
+          reportPath: "artifacts/independent-review.json",
+          reportSha256: hash(reportBytes),
+          signaturePath: "artifacts/independent-review.sig",
+          signatureSha256: hash(signatureBytes),
+          publicKeyPath: "artifacts/independent-review.pub.der",
+        };
+        const evidenceBytes = Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+        return {
+          ...buildReleaseGateFragment({
+            commit: COMMIT,
+            packageVersion: PACKAGE_VERSION,
+            gateName: "independent-security-review",
+            evidencePath: "evidence/independent-security-review.json",
+            evidenceBytes,
+          }),
+          evidence,
+          artifacts: [
+            { kind: "independent-review-report", path: "artifacts/independent-review.json", sha256: hash(reportBytes) },
+            { kind: "independent-review-public-key", path: "artifacts/independent-review.pub.der", sha256: hash(publicKeyBytes) },
+            { kind: "independent-review-signature", path: "artifacts/independent-review.sig", sha256: hash(signatureBytes) },
+          ],
+          independentReview: {
+            algorithm: "ed25519",
+            publicKeyPath: "artifacts/independent-review.pub.der",
+            signedArtifactPath: "artifacts/independent-review.json",
+            signaturePath: "artifacts/independent-review.sig",
+            publicKeySha256: hash(publicKeyBytes),
+            reviewedCommit: COMMIT,
+            reviewedPackageVersion: PACKAGE_VERSION,
+          },
+        };
+      })()
+    : buildIndependentReviewFragment({
+        commit: COMMIT,
+        packageVersion: PACKAGE_VERSION,
+        reportPath: "artifacts/independent-review.json",
+        reportBytes,
+        signaturePath: "artifacts/independent-review.sig",
+        signatureBytes,
+        publicKeyPath: "artifacts/independent-review.pub.der",
+        publicKeyBytes,
+        evidencePath: "evidence/independent-security-review.json",
+      });
   writeFileSync(join(root, "evidence/independent-security-review.json"), `${JSON.stringify(fragment.evidence, null, 2)}\n`);
   writeFileSync(join(root, "fragments/independent-security-review.json"), `${JSON.stringify(fragment, null, 2)}\n`);
 }
@@ -240,6 +284,22 @@ test("rejects symlinked external evidence before artifact upload", async () => {
     assert.throws(
       () => validateExternalReleaseEvidence(root, { expectedCommit: COMMIT, expectedPackageVersion: PACKAGE_VERSION }),
       /symbolic link|symlink/i,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a signed independent review with a malformed finding before artifact upload", async () => {
+  const { validateExternalReleaseEvidence } = await loadValidator();
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-malformed-review-"));
+  writeNativeGate(root, "ios");
+  writeNativeGate(root, "android");
+  writeReviewGate(root, { findings: [{}], skipBuilder: true });
+  try {
+    assert.throws(
+      () => validateExternalReleaseEvidence(root, { expectedCommit: COMMIT, expectedPackageVersion: PACKAGE_VERSION }),
+      /finding|severity|status|affectedScope/i,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

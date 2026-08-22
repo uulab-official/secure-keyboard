@@ -692,19 +692,21 @@ function verifyDetachedSignature(findings, evidence, root, fieldName) {
   }
 }
 
-function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
+/**
+ * Validates one signed independent-review report without reading its detached
+ * signature. Both the external evidence gate and the final release verifier
+ * use this function so malformed findings cannot pass one boundary and fail
+ * only after upload.
+ *
+ * @param {unknown} report
+ * @param {{expectedCommit?: string, expectedPackageVersion?: string, expectedReviewerPublicKeySha256?: string}} [context]
+ * @returns {string[]}
+ */
+export function validateIndependentReviewReport(report, context = {}) {
   const field = "independentReview.report";
-  let report;
-  try {
-    report = JSON.parse(Buffer.from(bytes).toString("utf8"));
-  } catch (error) {
-    add(findings, field, `must be a structured JSON report: ${error.message}`);
-    return;
-  }
-  if (!isRecord(report)) {
-    add(findings, field, "must be a JSON object");
-    return;
-  }
+  const findings = [];
+  if (!isRecord(report)) return [`${field}: must be a JSON object`];
+
   checkSecretKeys(findings, report, field);
   const allowedKeys = new Set([
     "schemaVersion",
@@ -725,17 +727,23 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
   }
   if (typeof report.reviewedCommit !== "string" || !COMMIT.test(report.reviewedCommit)) {
     add(findings, `${field}.reviewedCommit`, "must be the exact 40-character reviewed commit SHA");
-  } else if (report.reviewedCommit !== evidence.commit) {
-    add(findings, `${field}.reviewedCommit`, "must match the manifest commit");
+  } else if (context.expectedCommit && report.reviewedCommit !== context.expectedCommit) {
+    add(findings, `${field}.reviewedCommit`, "must match the expected release commit");
   }
   if (typeof report.reviewedPackageVersion !== "string" || !VERSION.test(report.reviewedPackageVersion)) {
     add(findings, `${field}.reviewedPackageVersion`, "must be the reviewed semantic package version");
-  } else if (report.reviewedPackageVersion !== evidence.packageVersion) {
-    add(findings, `${field}.reviewedPackageVersion`, "must match the manifest package version");
+  } else if (
+    context.expectedPackageVersion &&
+    report.reviewedPackageVersion !== context.expectedPackageVersion
+  ) {
+    add(findings, `${field}.reviewedPackageVersion`, "must match the expected release package version");
   }
   if (!SHA256.test(String(report.reviewerPublicKeySha256))) {
     add(findings, `${field}.reviewerPublicKeySha256`, "must be a lowercase SHA-256 digest");
-  } else if (report.reviewerPublicKeySha256 !== descriptor.publicKeySha256) {
+  } else if (
+    context.expectedReviewerPublicKeySha256 &&
+    report.reviewerPublicKeySha256 !== context.expectedReviewerPublicKeySha256
+  ) {
     add(findings, `${field}.reviewerPublicKeySha256`, "must match the signed-report public-key fingerprint");
   }
   if (!Array.isArray(report.scope) || report.scope.length === 0 || report.scope.length > REVIEW_SCOPE.length) {
@@ -759,7 +767,18 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
         return;
       }
       for (const key of Object.keys(finding)) {
-        if (!["id", "severity", "status", "summary", "affectedScope", "reproduction", "remediationOwner", "retestEvidence"].includes(key)) {
+        if (
+          ![
+            "id",
+            "severity",
+            "status",
+            "summary",
+            "affectedScope",
+            "reproduction",
+            "remediationOwner",
+            "retestEvidence",
+          ].includes(key)
+        ) {
           add(findings, `${findingField}.${key}`, "unsupported finding field");
         }
       }
@@ -821,6 +840,29 @@ function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
   } else if (report.decision === "not-approved") {
     add(findings, `${field}.decision`, "must approve the reviewed release");
   }
+  return findings;
+}
+
+function verifyIndependentReviewReport(findings, bytes, descriptor, evidence) {
+  const field = "independentReview.report";
+  let report;
+  try {
+    report = JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch (error) {
+    add(findings, field, `must be a structured JSON report: ${error.message}`);
+    return;
+  }
+  if (!isRecord(report)) {
+    add(findings, field, "must be a JSON object");
+    return;
+  }
+  findings.push(
+    ...validateIndependentReviewReport(report, {
+      expectedCommit: evidence.commit,
+      expectedPackageVersion: evidence.packageVersion,
+      expectedReviewerPublicKeySha256: descriptor.publicKeySha256,
+    }),
+  );
 }
 
 /**
