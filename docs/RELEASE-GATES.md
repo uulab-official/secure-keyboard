@@ -517,6 +517,14 @@ page's JavaScript memory is confidential or replace a physical authenticator
 and deployed-origin WebAuthn test. Each matrix leg retains its sanitized
 versioned smoke log as a CI artifact, including failed runs.
 
+The CI evidence aggregate also retains the Android emulator and iOS Simulator
+runtime screenshots, the complete fuzz/LeakSanitizer campaign logs, and the
+dependency metadata artifact under `retained/`. These files are copied into
+the final production evidence artifact by the read-only finalizer. They remain
+supporting evidence rather than untrusted JSON claims: gate records contain
+only bounded, sanitized metadata and the final verifier still requires the
+actual Linux LSAN, physical-device, and independent-review gates.
+
 ## Known release blockers
 
 - Native RN view-manager and Flutter PlatformView/FFI registration reference

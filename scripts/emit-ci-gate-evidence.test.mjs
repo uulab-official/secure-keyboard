@@ -150,3 +150,16 @@ test("CI fuzz campaigns use a corpus staged outside the clean checkout", () => {
     assert.match(fuzzJob, new RegExp(`fuzz run ${target} "\\$FUZZ_CORPUS_ROOT/${target}" --`));
   }
 });
+
+test("CI aggregate retains runtime screenshots, fuzz logs, and dependency evidence", () => {
+  const aggregate = CI_WORKFLOW.slice(CI_WORKFLOW.indexOf("  ci-release-evidence:\n"));
+  for (const artifact of [
+    "secure-keypad-android-emulator-runtime",
+    "secure-keypad-ios-simulator-runtime",
+    "secure-keypad-fuzz-logs",
+    "secure-keypad-dependency-metadata",
+  ]) {
+    assert.match(aggregate, new RegExp(`name: ${artifact}`));
+  }
+  assert.match(aggregate, /path: \$\{\{ runner\.temp \}\}\/secure-keypad-ci-release-evidence\/retained/);
+});

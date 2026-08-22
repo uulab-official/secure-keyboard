@@ -1229,6 +1229,26 @@ jobs:
           pattern: secure-keypad-browser-smoke-*
           path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/browser
           merge-multiple: true
+      - name: Retain Android emulator runtime evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-android-emulator-runtime
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/android-emulator-runtime
+      - name: Retain iOS simulator runtime evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-ios-simulator-runtime
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/ios-simulator-runtime
+      - name: Retain fuzz and LeakSanitizer campaign logs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-fuzz-logs
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/fuzz-logs
+      - name: Retain dependency metadata
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-dependency-metadata
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/dependency-metadata
       - name: Emit source and service CI release evidence fragments
         run: |
           EVIDENCE_ROOT="$RUNNER_TEMP/secure-keypad-ci-release-evidence"

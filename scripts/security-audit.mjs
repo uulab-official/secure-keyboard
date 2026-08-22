@@ -1048,6 +1048,10 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:web-browser/, "CI browser smoke must execute the checked-in runtime harness");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-browser-smoke-\$\{\{ matrix\.browser \}\}/, "CI browser smoke must retain per-browser evidence artifacts");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /if: always\(\)[\s\S]{0,240}secure-keypad-browser-smoke/, "CI browser smoke evidence must upload after failures");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain Android emulator runtime evidence[\s\S]{0,400}secure-keypad-android-emulator-runtime[\s\S]{0,240}retained\/android-emulator-runtime/, "CI aggregate must retain Android emulator runtime evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain iOS simulator runtime evidence[\s\S]{0,400}secure-keypad-ios-simulator-runtime[\s\S]{0,240}retained\/ios-simulator-runtime/, "CI aggregate must retain iOS Simulator runtime evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain fuzz and LeakSanitizer campaign logs[\s\S]{0,400}secure-keypad-fuzz-logs[\s\S]{0,240}retained\/fuzz-logs/, "CI aggregate must retain fuzz and LeakSanitizer logs");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain dependency metadata[\s\S]{0,400}secure-keypad-dependency-metadata[\s\S]{0,240}retained\/dependency-metadata/, "CI aggregate must retain dependency metadata");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
