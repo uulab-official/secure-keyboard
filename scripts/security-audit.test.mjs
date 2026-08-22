@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import {
   findOpaqueSecretOutputMismatches,
   findMutableCiActionLines,
+  findNativeClipboardMismatches,
   findNativeAbiVersionMismatches,
   runSecurityAudit,
 } from "./security-audit.mjs";
@@ -179,6 +180,17 @@ test("native keypad views do not include editable text controls", () => {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.doesNotMatch(source, /\b(?:UITextField|UITextView|UISearchBar|UITextInput)\b/);
   }
+});
+
+test("native keypad sources reject clipboard APIs as a secret channel", () => {
+  assert.deepEqual(findNativeClipboardMismatches("import UIKit\nlet board = UIPasteboard.general", "ios"), [
+    { detail: "iOS native keypad must not use clipboard APIs" },
+  ]);
+  assert.deepEqual(findNativeClipboardMismatches("val manager = getSystemService(ClipboardManager::class.java)", "android"), [
+    { detail: "Android native keypad must not use clipboard APIs" },
+  ]);
+  assert.deepEqual(findNativeClipboardMismatches("final class SecureKeypadView {}", "ios"), []);
+  assert.deepEqual(findNativeClipboardMismatches("class SecureKeypadView", "android"), []);
 });
 
 test("native views reject noncanonical input IDs for the selected policy", () => {

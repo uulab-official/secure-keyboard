@@ -6,6 +6,19 @@ import { findNativePackageParityMismatches } from "./check-native-package-parity
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SECRET_FIELD_PATTERN = /\b(?:password|secret|onChangeText)\b\s*(?:\??\s*[:(]|=)/i;
+const NATIVE_INPUT_BOUNDARY_SOURCES = Object.freeze([
+  ["native/ios/SecureKeypadView.swift", "ios"],
+  ["packages/react-native/ios/SecureKeypadView.swift", "ios"],
+  ["packages/flutter/ios/Classes/SecureKeypadView.swift", "ios"],
+  ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "android"],
+  ["packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "android"],
+  ["packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "android"],
+]);
+
+const NATIVE_CLIPBOARD_PATTERNS = Object.freeze({
+  ios: /\b(?:UIPasteboard|pasteboard)\b/i,
+  android: /\b(?:ClipboardManager|setPrimaryClip|getPrimaryClip|clearPrimaryClip|hasPrimaryClip)\b/,
+});
 
 function source(relativePath, findings) {
   const absolutePath = path.join(ROOT, relativePath);
@@ -26,6 +39,27 @@ function forbidText(findings, relativePath, contents, pattern, detail) {
   if (pattern.test(contents)) {
     findings.push({ rule: "forbidden-secret-channel", file: relativePath, detail });
   }
+}
+
+/**
+ * Checks that a native keypad view does not acquire a system clipboard API.
+ * The input boundary owns the secret, so clipboard integration is forbidden
+ * even when a host framework would normally make it convenient.
+ *
+ * @param {string} contents native view source
+ * @param {"ios"|"android"} platform native platform
+ * @returns {Array<{detail: string}>}
+ */
+export function findNativeClipboardMismatches(contents, platform) {
+  const pattern = NATIVE_CLIPBOARD_PATTERNS[platform];
+  if (pattern === undefined) {
+    throw new Error(`unsupported native clipboard platform: ${platform}`);
+  }
+  if (!pattern.test(contents)) return [];
+
+  return [{
+    detail: `${platform === "ios" ? "iOS" : "Android"} native keypad must not use clipboard APIs`,
+  }];
 }
 
 const NATIVE_ABI_HOST_FILES = Object.freeze([
@@ -403,6 +437,16 @@ export function runSecurityAudit() {
       /\b(?:EditText|TextInputEditText|AutoCompleteTextView)\b/,
       "Android native keypad must not use an editable text widget",
     );
+  }
+  for (const [file, platform] of NATIVE_INPUT_BOUNDARY_SOURCES) {
+    const contents = source(file, findings);
+    for (const mismatch of findNativeClipboardMismatches(contents, platform)) {
+      findings.push({
+        rule: "forbidden-secret-channel",
+        file,
+        detail: mismatch.detail,
+      });
+    }
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",

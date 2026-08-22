@@ -223,7 +223,9 @@ The source-level security audit rejects editable text controls in every native
 keypad implementation (`EditText`-family Android widgets and
 `UITextField`/`UITextView`-family iOS controls). Native keypad input must remain
 key-ID based and native-owned; adding an ordinary text control is a release
-failure even if the framework bridge still emits only masked events.
+failure even if the framework bridge still emits only masked events. The same
+audit rejects iOS pasteboard and Android clipboard APIs in every publishable
+native keypad view; clipboard integration is not an allowed secret channel.
 
 The final verifier bounds the top-level manifest and every referenced file
 before parsing or hashing it: the manifest, gate records, and independent-
