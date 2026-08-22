@@ -2,9 +2,10 @@
 
 The web adapter is passkey-first. It converts server-generated WebAuthn
 options and returns browser ceremony results; it never accepts a password, PIN,
-or keypad secret as an API value. The custom browser keypad is an explicitly
-acknowledged lower-assurance fallback because page JavaScript can observe page
-input and memory.
+or keypad secret as an API value. The SDK does not ship a browser DOM keypad.
+If a product builds a custom browser UI around the explicit fallback contract,
+that UI is lower assurance because page JavaScript can observe page input and
+memory.
 
 Server-supplied WebAuthn extension objects and browser extension results are
 defensively copied with bounded depth, node count, key count, and string size.

@@ -175,7 +175,7 @@ Status: passkey-first adapter, reference server, bounded HTTP route, compile-tes
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
-- [x] Expose a custom web keypad fallback only as an explicitly acknowledged lower-assurance mode.
+- [x] Expose an explicit lower-assurance acknowledgement contract for a product-owned custom web UI fallback; the SDK does not ship a browser DOM keypad.
 - [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
 - [x] Add a pinned Playwright Chromium/Firefox/WebKit runtime smoke gate for the Web adapter.
 - [x] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
@@ -248,7 +248,7 @@ Exit criteria: a reproducible, documented release with no unsupported security c
 | Secure Native Mode | Theme/layout/slots/native animation | Highest available on supported mobile platforms | Yes |
 | Headless RN/Flutter Mode | Arbitrary host-rendered UI | Host runtime can observe input events | No |
 | WebAuthn | Custom surrounding UX, platform credential UI | Preferred web authentication | Yes on web |
-| Web custom keypad | Full web rendering | Browser/page-script limitations | Fallback only |
+| Product-owned web custom UI | Product-controlled web rendering around the fallback contract | Browser/page-script limitations | Fallback only |
 
 ## Release policy
 
