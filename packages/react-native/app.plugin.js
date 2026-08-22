@@ -30,8 +30,31 @@ function requireDirectory(environmentName) {
   return realPath;
 }
 
+function requireBundledDirectory(projectRoot, relativePath) {
+  const bundledPath = path.join(resolvePackageRoot(projectRoot), relativePath);
+  let realPath;
+  try {
+    realPath = fs.realpathSync(bundledPath);
+  } catch (error) {
+    throw new Error(`bundled ${relativePath} must be present in the published package: ${error.message}`);
+  }
+  if (!fs.statSync(realPath).isDirectory()) {
+    throw new Error(`bundled ${relativePath} must be a directory`);
+  }
+  return realPath;
+}
+
+function requireConfiguredOrBundledDirectory(projectRoot, environmentName, relativePath) {
+  if (process.env[environmentName]) return requireDirectory(environmentName);
+  return requireBundledDirectory(projectRoot, relativePath);
+}
+
 function stageIosFramework(projectRoot) {
-  const sourcePath = requireDirectory(IOS_FFI_ENV);
+  const sourcePath = requireConfiguredOrBundledDirectory(
+    projectRoot,
+    IOS_FFI_ENV,
+    "secure_ffi.xcframework",
+  );
   const targetPath = path.join(resolvePackageRoot(projectRoot), "secure_ffi.xcframework");
   if (fs.existsSync(targetPath) && fs.realpathSync(targetPath) === sourcePath) return;
   fs.cpSync(sourcePath, targetPath, { recursive: true, force: true, errorOnExist: false });
@@ -51,7 +74,11 @@ function withSecureKeypad(config) {
     return config;
   }]);
   return withDangerousMod(config, ["android", async (config) => {
-    requireDirectory(ANDROID_FFI_ENV);
+    requireConfiguredOrBundledDirectory(
+      config.modRequest.projectRoot,
+      ANDROID_FFI_ENV,
+      "android/secure_ffi",
+    );
     return config;
   }]);
 }

@@ -15,6 +15,7 @@ test("React Native package exposes an Expo development-build plugin", () => {
   assert.match(PLUGIN, /SECURE_KEYPAD_FFI_XCFRAMEWORK/);
   assert.match(PLUGIN, /secure_ffi\.xcframework/);
   assert.match(PLUGIN, /SECURE_KEYPAD_FFI_LIB_DIR/);
+  assert.match(PLUGIN, /android[\\/]secure_ffi/);
 });
 
 test("Expo documentation keeps the secure native and Expo Go boundary explicit", () => {

@@ -100,6 +100,8 @@ function createValidStaging() {
   writeFile(root, "source/packages/flutter/pubspec.yaml", "name: secure_keypad_flutter\nversion: 0.1.0\n");
   writeFile(root, "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n");
   writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
+  writeFile(root, "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a", "arm64 fixture\n");
+  writeFile(root, "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a", "x86_64 fixture\n");
   for (const document of ["SECURITY-SPEC.md", "PLATFORM-SECURITY-POLICY.md", "RELEASE-GATES.md", "ROADMAP.md"]) {
     writeFile(root, `source/docs/${document}`, `# ${document}\n`);
   }
@@ -113,6 +115,8 @@ function createValidStaging() {
     if (packageName === "secure-keypad-react-native") {
       contents["secure_ffi.xcframework/Info.plist"] = "<plist/>\n";
       contents["libsecure_ffi.a"] = "arm64 fixture\n";
+      contents["android/secure_ffi/arm64-v8a/libsecure_ffi.a"] = "arm64 fixture\n";
+      contents["android/secure_ffi/x86_64/libsecure_ffi.a"] = "x86_64 fixture\n";
     }
     createTarball(root, `packages/${packageName}-0.1.0.tgz`, "package", contents);
   }
@@ -220,6 +224,8 @@ test("release staging rejects publishable packages without native FFI artifacts"
     assert.ok(findings.some((finding) => finding.includes("source/packages/flutter/ios/libsecure_ffi.a")));
     assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/secure_ffi.xcframework/Info.plist")));
     assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/libsecure_ffi.a")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/android/secure_ffi/arm64-v8a/libsecure_ffi.a")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/android/secure_ffi/x86_64/libsecure_ffi.a")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -277,6 +283,17 @@ test("release staging verifies the Android FFI checksum against signed-source pa
   }
 });
 
+test("release staging requires the packaged Flutter Android FFI libraries", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
@@ -322,6 +339,10 @@ test("release candidate signs staged package archives and publishable native FFI
   assert.match(workflow, /name: secure-keypad-release-android-ffi/);
   assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
   assert.match(workflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/);
+  assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/react-native\/android\/secure_ffi\/arm64-v8a/);
+  assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/x86_64" packages\/react-native\/android\/secure_ffi\/x86_64/);
+  assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/flutter\/android\/secure_ffi\/arm64-v8a/);
+  assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/x86_64" packages\/flutter\/android\/secure_ffi\/x86_64/);
   assert.match(workflow, /emit-release-artifact-fragment\.mjs/);
   assert.match(workflow, /scripts\/check-release-archive\.mjs/);
   assert.match(workflow, /-C "\$RELEASE_DIR" source packages/);

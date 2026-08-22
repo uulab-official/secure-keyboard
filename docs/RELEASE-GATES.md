@@ -35,9 +35,14 @@ The release job builds the iOS FFI XCFramework and device static library on the
 pinned macOS runner, and builds the Android `arm64-v8a` and `x86_64` static
 libraries on the pinned Ubuntu runner. Each native artifact set is published
 through a checksum-verified workflow artifact bound to the requested commit.
-The iOS artifacts are staged into both publishable mobile packages; the
-verified Android libraries are retained under the signed source bundle for
-reproducible host integration.
+The iOS artifacts are staged into both publishable mobile packages, and the
+verified Android libraries are copied into the publishable React Native npm
+archive and signed Flutter source package under their ABI-specific
+`android/secure_ffi` paths. The same libraries are also retained under the
+signed source bundle for reproducible host integration. `check-release-bundle`
+and `check-release-archive` require these package paths, so a package that
+silently falls back to an unverified external library cannot pass the release
+contract.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
 contains the staged Flutter iOS artifacts, every version-matched npm/crate

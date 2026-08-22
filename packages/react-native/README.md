@@ -69,8 +69,11 @@ This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, 
 ## Expo Development Build
 
 Expo Development Builds are supported because Expo prebuild can autolink this
-package's native view manager. The included config plugin stages the iOS
-XCFramework and fails closed when the Android FFI directory is not configured:
+package's native view manager. The included config plugin uses the verified
+native artifacts bundled in a published package. For a source checkout or a
+custom artifact, provide the explicit paths below; otherwise the plugin
+resolves the package's `secure_ffi.xcframework` and `android/secure_ffi`
+directories and fails closed if either is missing:
 
 ```sh
 export SECURE_KEYPAD_FFI_XCFRAMEWORK="$PWD/native-artifacts/secure_ffi.xcframework"
@@ -79,10 +82,11 @@ npx expo prebuild
 npx expo run:ios   # or: npx expo run:android
 ```
 
-The verified release Android matrix is `arm64-v8a` and `x86_64`; the package
+The verified release Android matrix is `arm64-v8a` and `x86_64`; release npm
+archives contain both `android/secure_ffi/<abi>/libsecure_ffi.a` files and the
 build defaults to those two ABIs. A host selecting another ABI must provide a
-matching `libsecure_ffi.a` and set `reactNativeArchitectures` explicitly. Build
-the FFI artifacts from the same source commit as the package. Expo Go is
+matching `libsecure_ffi.a` and set `reactNativeArchitectures` explicitly. Any
+custom FFI artifacts must come from the same source commit as the package. Expo Go is
 intentionally unsupported: it cannot load the
 custom native security boundary. Do not replace this native view with a
 JavaScript keypad or a `TextInput` fallback when the secure native mode is
@@ -94,17 +98,13 @@ zeroizes the pending session, and emits only `cancelled` plus an empty masked
 state. An equal replay is ignored and a delayed lower value is rejected. It
 never carries or derives an input value.
 
-Build integration is intentionally fail-closed. Before `pod install`, copy the
-matching Rust `secure_ffi` XCFramework into the installed package directory
-as `secure_ffi.xcframework` (or stage `libsecure_ffi.a` there for a
-single-platform fallback), then set `SECURE_KEYPAD_FFI_XCFRAMEWORK` or
-`SECURE_KEYPAD_FFI_LIB` to the source artifact path. CocoaPods receives only
-the staged relative path inside the package; an arbitrary absolute vendored
-path is rejected.
-Before the Android external-native build, set
-`SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
-`<abi>/libsecure_ffi.a` for every ABI shipped by the app. The library must be
-built from the same source revision and release profile as the native view.
+Build integration is intentionally fail-closed. For source checkouts or custom
+native builds, set `SECURE_KEYPAD_FFI_XCFRAMEWORK`/`SECURE_KEYPAD_FFI_LIB` and
+`SECURE_KEYPAD_FFI_LIB_DIR` to validated artifacts from the same source
+revision and release profile. Published release packages already contain the
+verified iOS XCFramework and Android `arm64-v8a`/`x86_64` libraries, so no
+absolute path is required. CocoaPods still receives only the staged relative
+path inside the package; an arbitrary absolute vendored path is rejected.
 
 The `success` result means that the native keypad created an opaque submission
 and an installed native submission consumer accepted ownership. Without a

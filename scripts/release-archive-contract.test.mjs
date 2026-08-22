@@ -19,6 +19,8 @@ const REQUIRED_ENTRIES = [
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
   "source/packages/flutter/ios/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a",
   "packages/secure-keypad-contracts-0.1.0.tgz",
   "packages/secure-keypad-react-native-0.1.0.tgz",
   "packages/secure-keypad-web-0.1.0.tgz",
@@ -125,4 +127,13 @@ test("signed release archive rejects duplicate paths", () => {
   ]);
 
   assert.ok(findings.some((finding) => finding.includes("archive entry must be unique")));
+});
+
+test("signed release archive requires the packaged Android FFI libraries", () => {
+  const entries = REQUIRED_ENTRIES.filter(
+    (entry) => !entry.includes("source/packages/flutter/android/secure_ffi/"),
+  );
+  const findings = validateReleaseArchiveEntries(entries);
+  assert.ok(findings.some((finding) => finding.includes("source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a")));
+  assert.ok(findings.some((finding) => finding.includes("source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a")));
 });

@@ -46,15 +46,14 @@ For a fully custom host-rendered keypad, set
 This lower-assurance path lets the host observe public key IDs; it never sends
 labels, derived values, or accumulated input. Secure Native is the default.
 
-The plugin build is fail-closed. Before iOS CocoaPods integration, copy the
-matching Rust `secure_ffi` XCFramework into the plugin's `ios/` directory as
-`ios/secure_ffi.xcframework` (or stage `ios/libsecure_ffi.a` for a
-single-platform fallback), then set `SECURE_KEYPAD_FFI_XCFRAMEWORK` or
-`SECURE_KEYPAD_FFI_LIB` to the source artifact path. CocoaPods receives only
-the staged relative path inside the plugin package. Set
-`SECURE_KEYPAD_FFI_LIB_DIR` to a directory containing
-`<abi>/libsecure_ffi.a` before the Android external-native build. Build the
-library from the same source revision and release profile as the plugin.
+The plugin build is fail-closed. Published release packages contain the
+verified iOS `ios/secure_ffi.xcframework` and Android
+`android/secure_ffi/{arm64-v8a,x86_64}/libsecure_ffi.a` artifacts, so the
+default build does not need absolute paths. For a source checkout or custom
+native build, set `SECURE_KEYPAD_FFI_XCFRAMEWORK`/`SECURE_KEYPAD_FFI_LIB` and
+`SECURE_KEYPAD_FFI_LIB_DIR` to artifacts built from the same source revision
+and release profile. CocoaPods receives only the staged relative path inside
+the plugin package.
 
 Host-app compilation against the selected Flutter toolchain, example apps,
 and device accessibility/security verification remain release gates.

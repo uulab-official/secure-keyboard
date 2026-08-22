@@ -53,6 +53,7 @@ test("framework manifests publish native source and fail-closed build inputs", (
     const cmakeFile = buildFile.replace(/build\.gradle$/, "CMakeLists.txt");
     const cmake = readFileSync(path.join(root, cmakeFile), "utf8");
     assert.match(cmake, /SECURE_KEYPAD_FFI_LIB_DIR/);
+    assert.match(cmake, /CMAKE_CURRENT_LIST_DIR}\/secure_ffi/);
     assert.match(cmake, /EXISTS\s+"\$\{SECURE_KEYPAD_FFI_LIB_DIR\}\/\$\{ANDROID_ABI\}\/libsecure_ffi\.a"/);
   }
 

@@ -28,6 +28,8 @@ const REQUIRED_SOURCE_ENTRIES = Object.freeze([
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
   "source/packages/flutter/ios/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a",
 ]);
 
 function requiredPackageEntries(version) {

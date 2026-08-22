@@ -27,7 +27,9 @@ exact release-candidate commit by the release evidence manifest.
   enrollment race, and conflicts use the generic invalid-request response.
 - Release candidates now build, commit-bind, checksum-verify, and sign the
   Android `arm64-v8a` and `x86_64` FFI libraries alongside the iOS artifacts;
-  the final Android checksum manifest is a required release-evidence artifact.
+  the final Android checksum manifest is a required release-evidence artifact,
+  and the verified libraries are included in the publishable React Native npm
+  and Flutter package paths.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.

@@ -608,8 +608,9 @@ export function runSecurityAudit() {
   requireText(findings, "packages/react-native/package.json", reactNativePackage, /"app\.plugin"\s*:\s*"\.\/app\.plugin\.js"/, "React Native must expose its Expo config plugin");
   const expoPlugin = source("packages/react-native/app.plugin.js", findings);
   requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /withDangerousMod/, "Expo integration must stage native artifacts during prebuild");
-  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "Expo iOS builds must require an explicit FFI XCFramework");
-  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_LIB_DIR/, "Expo Android builds must require an explicit FFI library directory");
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "Expo iOS builds must validate an explicit or bundled FFI XCFramework");
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /SECURE_KEYPAD_FFI_LIB_DIR/, "Expo Android builds must validate an explicit or bundled FFI library directory");
+  requireText(findings, "packages/react-native/app.plugin.js", expoPlugin, /android[\\/]secure_ffi/, "Expo Android builds must resolve the package-bundled FFI directory");
   const reactNativeGuide = source("packages/react-native/README.md", findings);
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Development Build/, "React Native must document Expo Development Build support");
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Go/, "React Native must document the Expo Go limitation");
@@ -834,7 +835,8 @@ export function runSecurityAudit() {
     "packages/flutter/android/CMakeLists.txt",
   ]) {
     const contents = source(file, findings);
-    requireText(findings, file, contents, /SECURE_KEYPAD_FFI_LIB_DIR/, "Android package must require an ABI library directory");
+    requireText(findings, file, contents, /SECURE_KEYPAD_FFI_LIB_DIR/, "Android package must support an explicit or bundled ABI library directory");
+    requireText(findings, file, contents, /CMAKE_CURRENT_LIST_DIR.*secure_ffi/, "Android package must resolve its bundled FFI directory");
     requireText(findings, file, contents, /message\(FATAL_ERROR/, "Android package must fail closed without the FFI library");
   }
 
@@ -980,6 +982,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-android-ffi\.commit/, "release bundle must bind the downloaded Android FFI artifact to the requested commit");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/, "release bundle must stage the verified Android arm64 FFI library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release bundle must stage the verified Android x86_64 FFI library");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/react-native\/android\/secure_ffi\/arm64-v8a/, "release bundle must stage the verified React Native Android arm64 FFI library");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/flutter\/android\/secure_ffi\/x86_64/, "release bundle must stage the verified Flutter Android x86_64 FFI library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:[\s\S]{0,260}environment:\s*secure-keypad-release/, "release signing must run behind the protected release environment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /trap\s+'rm -f "\$KEY_FILE"'\s+EXIT/, "release workflow must remove the temporary signing key on every exit path");
@@ -1211,6 +1215,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checksum does not match/, "release staging must reject Android FFI checksum mismatches");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the verified Android arm64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release staging must require the verified Android x86_64 FFI library");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /packages\/flutter\/android\/secure_ffi\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the packaged Flutter Android arm64 FFI library");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /package\/android\/secure_ffi\/x86_64\/libsecure_ffi\.a/, "release staging must require the packaged React Native Android x86_64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /only regular files are allowed in release staging/, "release staging must reject non-regular filesystem entries");

@@ -46,6 +46,8 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
   "source/packages/flutter/ios/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+  "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a",
   "source/docs/SECURITY-SPEC.md",
   "source/docs/PLATFORM-SECURITY-POLICY.md",
   "source/docs/RELEASE-GATES.md",
@@ -284,6 +286,8 @@ function validateNpmArchives(root, version, findings) {
       requiredEntries.push(
         "package/secure_ffi.xcframework/Info.plist",
         "package/libsecure_ffi.a",
+        "package/android/secure_ffi/arm64-v8a/libsecure_ffi.a",
+        "package/android/secure_ffi/x86_64/libsecure_ffi.a",
       );
     }
     for (const requiredEntry of requiredEntries) {
