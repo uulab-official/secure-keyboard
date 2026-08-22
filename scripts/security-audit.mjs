@@ -24,6 +24,20 @@ const RELEASE_WORKFLOW_TOOLCHAIN_CHECKS = Object.freeze([
   Object.freeze({
     workflow: "ci",
     file: ".github/workflows/ci.yml",
+    toolchain: "pnpm",
+    expected: "11.19.0",
+    pattern: /pnpm\/action-setup@[0-9a-f]{40}[\s\S]{0,160}version:\s*11\.19\.0/,
+  }),
+  Object.freeze({
+    workflow: "release",
+    file: ".github/workflows/release-candidate.yml",
+    toolchain: "pnpm",
+    expected: "11.19.0",
+    pattern: /pnpm\/action-setup@[0-9a-f]{40}[\s\S]{0,160}version:\s*11\.19\.0/,
+  }),
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
     toolchain: "rust",
     expected: "1.97.1",
     pattern: /dtolnay\/rust-toolchain@[0-9a-f]{40}\s+# Rust 1\.97\.1/,

@@ -35,6 +35,24 @@ test("release workflows pin every production host toolchain consistently", () =>
   ]);
 });
 
+test("release workflows pin the package manager consistently", () => {
+  const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const releaseWorkflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+
+  const brokenReleaseWorkflow = releaseWorkflow.replaceAll("version: 11.19.0", "version: 11.19.1");
+  assert.deepEqual(findReleaseWorkflowToolchainMismatches(ciWorkflow, brokenReleaseWorkflow), [
+    {
+      file: ".github/workflows/release-candidate.yml",
+      toolchain: "pnpm",
+      expected: "11.19.0",
+      detail: "release candidate workflow must pin pnpm to 11.19.0",
+    },
+  ]);
+});
+
 test("release evidence and signing outputs use exclusive creation", () => {
   const sourcePaths = [
     "../scripts/emit-release-gate-evidence.mjs",
