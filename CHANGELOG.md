@@ -37,7 +37,8 @@ exact release-candidate commit by the release evidence manifest.
   mismatched native inputs still fail closed. Release staging also compares the
   published React Native iOS and Android FFI bytes against signed source
   package artifacts and verifies the iOS checksum manifest against the exact
-  package bytes and release commit.
+  package bytes and release commit; both native checksum manifests are bounded
+  to 1 MiB before parsing.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.
