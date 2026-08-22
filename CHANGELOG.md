@@ -8,6 +8,11 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Server adapters
 
+- Added publishable `@secure-keypad/server-node`. Its Fetch-compatible handler
+  validates explicit TLS/proxy deployment facts, host CSRF/origin state, exact
+  OPAQUE routes, JSON media type, and bounded streaming bodies before calling
+  the pinned Rust/native delegate. It never implements OPAQUE or exposes a
+  password API in JavaScript.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
