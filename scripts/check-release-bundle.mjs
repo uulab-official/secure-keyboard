@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
+import { validatePlatformSupportPolicy } from "./platform-support.mjs";
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -51,6 +52,7 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a",
   "source/docs/SECURITY-SPEC.md",
   "source/docs/PLATFORM-SECURITY-POLICY.md",
+  "source/docs/PLATFORM-SUPPORT.json",
   "source/docs/RELEASE-GATES.md",
   "source/docs/ROADMAP.md",
 ]);
@@ -225,6 +227,14 @@ function readJson(root, relativePath, findings) {
   } catch (error) {
     findings.push(`${relativePath}: invalid JSON (${error.message})`);
     return undefined;
+  }
+}
+
+function validatePlatformSupportDocument(root, findings) {
+  const policy = readJson(root, "source/docs/PLATFORM-SUPPORT.json", findings);
+  if (policy === undefined) return;
+  for (const finding of validatePlatformSupportPolicy(policy)) {
+    findings.push(`source/docs/PLATFORM-SUPPORT.json: ${finding}`);
   }
 }
 
@@ -576,6 +586,7 @@ export function checkReleaseStaging(root) {
   for (const relativePath of REQUIRED_SOURCE_FILES) regularFile(root, relativePath, findings);
   validateChangelog(root, findings);
   validatePublicDocuments(root, findings);
+  validatePlatformSupportDocument(root, findings);
   const metadata = readJson(root, "source/release-candidate-metadata.json", findings);
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);

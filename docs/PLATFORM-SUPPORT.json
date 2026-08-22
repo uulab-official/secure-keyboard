@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "policyId": "secure-keypad-platform-support-v1",
+  "effectiveDate": "2026-08-22",
+  "platforms": {
+    "ios": {
+      "minimumOsVersion": "15.1",
+      "securityPatchFormat": "dot-version",
+      "minimumSecurityPatchLevel": "15.1"
+    },
+    "android": {
+      "minimumApiLevel": 24,
+      "securityPatchFormat": "iso-date",
+      "minimumSecurityPatchLevel": "2026-01-01"
+    }
+  },
+  "verifiedCiTargets": {
+    "iosSimulatorOsVersion": "26.5",
+    "androidApiLevel": 35
+  }
+}

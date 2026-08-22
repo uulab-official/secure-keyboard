@@ -602,6 +602,7 @@ function verifyGateEvidenceRecord(findings, root, field, gate, artifacts, toolch
     expectedGate: gate.name,
     requireNativeHostModes: true,
     requirePhysicalDevice: devicePolicy.requirePhysicalDevice,
+    requirePlatformSupport: devicePolicy.requirePhysicalDevice,
     expectedHostModeVersions: isRecord(toolchains)
       ? { "react-native": toolchains.reactNative, flutter: toolchains.flutter }
       : undefined,

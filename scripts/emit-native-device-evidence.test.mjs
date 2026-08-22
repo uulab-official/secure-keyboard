@@ -25,6 +25,7 @@ const ARTIFACT_KINDS = [
   "accessibility-report",
   "autofill-clipboard-report",
   "crash-report-review",
+  "platform-security-patch",
   "native-checksum",
 ];
 
@@ -65,6 +66,7 @@ function completeInput() {
     model: "iPhone 17 Pro",
     osVersion: "26.5",
     osBuild: "23A000",
+    securityPatchLevel: "26.5",
     recordedAt: "2026-08-22T00:00:00.000Z",
     log: { path: "logs/ios-rn.txt", bytes: Buffer.from("sanitized physical-device log\n") },
     testCases: Object.fromEntries(TEST_CASES.map((name) => [name, "pass"])),

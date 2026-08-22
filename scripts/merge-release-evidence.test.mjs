@@ -36,6 +36,7 @@ const PHYSICAL_ARTIFACT_KINDS = [
   "accessibility-report",
   "autofill-clipboard-report",
   "crash-report-review",
+  "platform-security-patch",
   "native-checksum",
 ];
 const NATIVE_CHECKSUM_BYTES = Object.freeze({
@@ -110,7 +111,15 @@ function writeDeviceGateEvidence(
     physicalDevice: !isWeb,
     device: isWeb
       ? { browser: "Chromium", browserVersion: "140.0.0", osVersion: "macOS 15", secureContext: true }
-      : { model: platform === "ios" ? "iPhone 16" : "Pixel 9", osVersion: "15", osBuild: "release" },
+      : platform === "ios"
+        ? { model: "iPhone 16", osVersion: "26.5", osBuild: "release", securityPatchLevel: "26.5" }
+        : {
+            model: "Pixel 9",
+            osVersion: "15",
+            osBuild: "release",
+            apiLevel: 35,
+            securityPatchLevel: "2026-01-01",
+          },
     testCases: Object.fromEntries((isWeb ? WEB_TEST_CASES : NATIVE_TEST_CASES).map((name) => [name, "pass"])),
     sanitizedLogs: true,
     logPath,

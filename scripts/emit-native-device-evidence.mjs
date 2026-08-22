@@ -36,6 +36,7 @@ const REQUIRED_NATIVE_ARTIFACT_KINDS = Object.freeze([
   "accessibility-report",
   "autofill-clipboard-report",
   "crash-report-review",
+  "platform-security-patch",
   "native-checksum",
 ]);
 const FRAMEWORKS = Object.freeze({
@@ -146,12 +147,24 @@ function validateArtifactInputs(artifacts) {
  * artifact bytes are accepted only long enough to hash them and are never
  * copied into the returned JSON record.
  *
- * @param {{commit: string, platform: "ios"|"android", framework: string, frameworkVersion: string, model: string, osVersion: string, osBuild: string, recordedAt: string, log: {path: string, bytes: Uint8Array|string}, testCases: Record<string, string>, artifacts: Array<{kind: string, path: string, bytes: Uint8Array|string}>}} input
+ * @param {{commit: string, platform: "ios"|"android", framework: string, frameworkVersion: string, model: string, osVersion: string, osBuild: string, securityPatchLevel: string, apiLevel?: number, recordedAt: string, log: {path: string, bytes: Uint8Array|string}, testCases: Record<string, string>, artifacts: Array<{kind: string, path: string, bytes: Uint8Array|string}>}} input
  * @returns {Record<string, unknown>}
  */
 export function buildNativeDeviceEvidence(input) {
   if (!isRecord(input)) throw new Error("native evidence input must be an object");
-  const { commit, platform, framework, frameworkVersion, model, osVersion, osBuild, recordedAt, log } = input;
+  const {
+    commit,
+    platform,
+    framework,
+    frameworkVersion,
+    model,
+    osVersion,
+    osBuild,
+    securityPatchLevel,
+    apiLevel,
+    recordedAt,
+    log,
+  } = input;
   if (typeof commit !== "string" || !COMMIT.test(commit)) {
     throw new Error("commit must be a 40-character lowercase commit SHA");
   }
@@ -161,6 +174,10 @@ export function buildNativeDeviceEvidence(input) {
   validateLabel(model, "model");
   validateLabel(osVersion, "osVersion");
   validateLabel(osBuild, "osBuild");
+  validateLabel(securityPatchLevel, "securityPatchLevel");
+  if (platform === "android" && !Number.isSafeInteger(apiLevel)) {
+    throw new Error("apiLevel must be a safe integer for Android evidence");
+  }
   validateTimestamp(recordedAt);
   const hostModes = normalizeHostModes(input.hostModes);
   if (!isRecord(log)) throw new Error("log must be an object");
@@ -178,7 +195,13 @@ export function buildNativeDeviceEvidence(input) {
     hostModes,
     recordedAt,
     physicalDevice: true,
-    device: { model, osVersion, osBuild },
+    device: {
+      model,
+      osVersion,
+      osBuild,
+      securityPatchLevel,
+      ...(platform === "android" ? { apiLevel } : {}),
+    },
     testCases: normalizeTestCases(input.testCases),
     sanitizedLogs: true,
     logPath: log.path,
@@ -187,6 +210,7 @@ export function buildNativeDeviceEvidence(input) {
   };
   const findings = validateDeviceEvidence(record, {
     requirePhysicalDevice: true,
+    requirePlatformSupport: true,
     requireNativeHostModes: true,
     expectedCommit: commit,
   });
@@ -285,7 +309,7 @@ function writeJson(root, relativePath, bytes) {
  * Reads physical-device files from an evidence root, rejects leaked sentinel
  * content, then writes the device record and its commit-bound release fragment.
  *
- * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, hostModes: Array<{framework: string, frameworkVersion: string, status: string}>, hostModeLogPaths?: Array<{framework: string, path: string}>, model: string, osVersion: string, osBuild: string, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
+ * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, hostModes: Array<{framework: string, frameworkVersion: string, status: string}>, hostModeLogPaths?: Array<{framework: string, path: string}>, model: string, osVersion: string, osBuild: string, securityPatchLevel: string, apiLevel?: number, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
  * @returns {{record: Record<string, unknown>, fragment: Record<string, unknown>}}
  */
 export function writeNativeDeviceEvidence(input) {
@@ -350,7 +374,7 @@ function parseOptions(argumentsList) {
     const option = argumentsList[index];
     const value = argumentsList[index + 1];
     if (
-      ["--platform", "--framework", "--framework-version", "--model", "--os-version", "--os-build", "--log"].includes(
+      ["--platform", "--framework", "--framework-version", "--model", "--os-version", "--os-build", "--security-patch-level", "--api-level", "--log"].includes(
         option,
       ) &&
       typeof value === "string"
@@ -362,9 +386,11 @@ function parseOptions(argumentsList) {
         "--model": "model",
         "--os-version": "osVersion",
         "--os-build": "osBuild",
+        "--security-patch-level": "securityPatchLevel",
+        "--api-level": "apiLevel",
         "--log": "logPath",
       }[option];
-      values[field] = value;
+      values[field] = option === "--api-level" ? Number(value) : value;
       index += 1;
       continue;
     }
@@ -403,7 +429,7 @@ function parseOptions(argumentsList) {
       continue;
     }
     throw new Error(
-      "options must use --platform, --framework, --framework-version, --host-mode, --host-log, --model, --os-version, --os-build, --log, --artifact, and --test-case",
+      "options must use --platform, --framework, --framework-version, --host-mode, --host-log, --model, --os-version, --os-build, --security-patch-level, --api-level, --log, --artifact, and --test-case",
     );
   }
   return values;
@@ -413,7 +439,7 @@ function main() {
   const [rootArgument, evidencePath, fragmentPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !evidencePath || !fragmentPath) {
     console.error(
-      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --host-log <react-native|flutter>=<relative/path> --model <label> --os-version <label> --os-build <label> --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
+      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --host-log <react-native|flutter>=<relative/path> --model <label> --os-version <label> --os-build <label> --security-patch-level <version|YYYY-MM-DD> [--api-level <number>] --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
     );
     process.exitCode = 64;
     return;

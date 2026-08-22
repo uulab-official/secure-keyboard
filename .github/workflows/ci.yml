@@ -127,6 +127,7 @@ jobs:
       - run: pnpm test:emit-signed-release-evidence
       - run: pnpm test:emit-independent-review-fragment
       - run: pnpm test:device-evidence
+      - run: pnpm test:platform-support
       - run: pnpm test:fuzz-corpus
       - run: pnpm test:security-audit
       - run: pnpm security-audit

@@ -26,6 +26,7 @@
     "test:verify-github-run-provenance": "node --test scripts/verify-github-run-provenance.test.mjs",
     "test:verify-lsan-evidence": "node --test scripts/verify-lsan-evidence.test.mjs",
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",
+    "test:platform-support": "node --test scripts/platform-support.test.mjs",
     "test:ios-host-build-contract": "node --test scripts/ios-host-build-contract.test.mjs",
     "test:flutter-package-publish-contract": "node --test scripts/flutter-package-publish-contract.test.mjs",
     "test:fuzz-corpus": "node --test scripts/fuzz-corpus.test.mjs",

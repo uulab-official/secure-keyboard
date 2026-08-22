@@ -21,9 +21,10 @@ independent-review gates below.
 Before the source tree is archived, the workflow runs
 `node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
 requires the candidate-only metadata, lockfiles, threat-model and deployment
-policy documents, public README and security policy, security changelog, SPDX SBOM, third-party notices, all publishable npm
+policy documents, machine-readable platform support policy, public README and security policy, security changelog, SPDX SBOM, third-party notices, all publishable npm
 tarballs (including their license files), and every workspace crate archive.
-It also rejects malformed archives, duplicate paths, symlinks, non-regular
+It parses and validates the staged platform support policy before archiving, and
+rejects malformed archives, duplicate paths, symlinks, non-regular
 filesystem entries, and private signing material in
 the staging directory. This proves the input to the deterministic archive is
 complete; it does not replace the protected signing step or external release
@@ -61,6 +62,13 @@ services and runs both durable `--ignored` interoperability suites before
 building the bundle. Those services are test infrastructure only; production
 deployments still require TLS-first configuration and an operator-reviewed
 schema migration.
+
+The final verifier applies the checked-in platform support policy to every
+physical iOS/Android record. It requires the minimum OS/API level, a
+policy-compliant `securityPatchLevel`, and a distinct hashed
+`platform-security-patch` artifact. This is a fail-closed evidence contract;
+the artifact still requires independent human review against the device's
+vendor security settings or bulletin.
 
 The fuzz job copies the checked-in seed corpus to the runner's temporary
 directory before every smoke, extended, and LeakSanitizer campaign. This keeps

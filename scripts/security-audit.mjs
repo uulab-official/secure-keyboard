@@ -871,6 +871,13 @@ export function runSecurityAudit() {
   requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to provide certificate[\s\S]{0,40}public-key pinning/, "platform policy must assign pinning ownership without an unsupported SDK claim");
   requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /does not claim to detect or defeat rooted\/jailbroken devices/, "platform policy must document compromised-runtime limitations");
   requireText(findings, "docs/PLATFORM-SECURITY-POLICY.md", platformPolicy, /fail closed on a pin[\s\S]{0,20}mismatch/, "platform policy must require fail-closed host pinning when selected");
+  const platformSupportPolicy = source("docs/PLATFORM-SUPPORT.json", findings);
+  requireText(findings, "docs/PLATFORM-SUPPORT.json", platformSupportPolicy, /minimumOsVersion/, "platform support policy must define an iOS minimum OS version");
+  requireText(findings, "docs/PLATFORM-SUPPORT.json", platformSupportPolicy, /minimumApiLevel/, "platform support policy must define an Android API minimum");
+  requireText(findings, "docs/PLATFORM-SUPPORT.json", platformSupportPolicy, /minimumSecurityPatchLevel/, "platform support policy must define security patch floors");
+  const platformSupport = source("scripts/platform-support.mjs", findings);
+  requireText(findings, "scripts/platform-support.mjs", platformSupport, /validatePlatformSupportPolicy/, "platform support policy must fail closed when malformed");
+  requireText(findings, "scripts/platform-support.mjs", platformSupport, /validatePlatformSupportDevice/, "platform support policy must validate physical device metadata");
   const releaseGates = source("docs/RELEASE-GATES.md", findings);
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent[\s\S]{0,40}security review/i, "release gates must require independent review");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
@@ -894,6 +901,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /host-mode react-native=[\s\S]{0,80}host-mode flutter=/, "device verification must document both host-mode emitter inputs");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /replay, expired-state,[\s\S]*rate-limit/i, "device verification must cover server replay and rate-limit behavior");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /secure-keypad-test-sentinel-7f2c4e/, "device verification must define the canonical disposable sentinel");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /securityPatchLevel/, "device verification must require platform security patch metadata");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /platform-security-patch/, "device verification must require a hashed platform patch artifact");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /MAX_DEVICE_EVIDENCE_RECORD_BYTES/, "device evidence CLI must bound the top-level record before parsing");
@@ -906,6 +915,9 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /pathHasSymlinkComponent/, "device evidence paths must reject symlink traversal");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePlatformSupport/, "device evidence tooling must enforce the platform support policy when requested");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /validatePlatformSupportDevice/, "device evidence tooling must validate platform security metadata");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /platform-security-patch/, "physical device evidence must require a platform patch artifact");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /DEVICE_RELEASE_GATES/, "device evidence tooling must bind records to a supported device release gate");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedGate/, "device evidence tooling must bind records to the expected release gate");
@@ -917,6 +929,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /NATIVE_TEST_CASES/, "native evidence emitter must require the complete native test matrix");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /normalizeHostModes/, "native evidence emitter must materialize both native host modes");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /MAX_NATIVE_EVIDENCE_FILE_BYTES/, "native evidence emitter must bound evidence file materialization");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /securityPatchLevel/, "native evidence emitter must record platform patch metadata");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /apiLevel/, "native evidence emitter must record Android API level");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /verifyDeviceEvidenceFiles/, "native evidence emitter must verify referenced files before writing evidence");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /currentCommit/, "native evidence emitter must derive the checkout commit");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /pathHasSymlinkComponent/, "native evidence emitter must reject symlink traversal");
@@ -1095,6 +1109,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-ci-release-evidence/, "CI must retain an aggregated release evidence artifact");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-web-browser-evidence\.mjs/, "CI must emit a validator-compatible web browser evidence record");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:platform-support/, "CI must validate the platform support policy contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation accessibility contract/, "CI must execute the Android presentation accessibility contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-ui\.xml/, "CI must retain Flutter Android accessibility hierarchy evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-ui\.xml/, "CI must retain React Native Android accessibility hierarchy evidence");
@@ -1224,6 +1239,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyDeviceEvidenceFiles/, "release tooling must verify nested device evidence digests");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyNativeChecksumBinding/, "release tooling must bind physical native checksums to candidate artifacts");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /expectedHostModeVersions/, "release tooling must bind physical host modes to manifest toolchain versions");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requirePlatformSupport/, "release tooling must enforce platform support floors for physical device gates");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence commit/, "release tooling must reject stale embedded gate evidence commits");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate evidence gate/, "release tooling must reject cross-gate evidence reuse");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /gate: <same gate name>/, "release gates must require machine-readable gate-bound records");
@@ -1240,6 +1256,8 @@ export function runSecurityAudit() {
   const releaseBundleCheck = source("scripts/check-release-bundle.mjs", findings);
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checkReleaseStaging/, "release tooling must inspect the exact staging input before archiving");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad\.sbom\.spdx\.json/, "release staging must require the SPDX SBOM");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /source\/docs\/PLATFORM-SUPPORT\.json/, "release staging must include the platform support policy");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validatePlatformSupportPolicy/, "release staging must validate the platform support policy content");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.sha256/, "release staging must require the verified native FFI checksum manifest");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validateIosFfiChecksum/, "release staging must verify the iOS FFI checksum manifest against signed package bytes");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.commit/, "release staging must bind iOS FFI checksums to the requested commit");
@@ -1275,6 +1293,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:stage-release-evidence/, "release candidate must execute release evidence staging and finalization workflow contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:verify-github-run-provenance/, "release candidate must execute GitHub workflow run provenance contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:verify-lsan-evidence/, "release candidate must execute Linux LeakSanitizer evidence contract tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:platform-support/, "release candidate must execute the platform support policy contract test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
@@ -1287,6 +1306,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
+  requireText(findings, "package.json", rootPackage, /"test:platform-support"/, "the workspace must expose the platform support policy test");
   requireText(findings, "package.json", rootPackage, /"test:emit-independent-review-fragment"/, "the workspace must expose the independent review fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:stage-release-evidence"/, "the workspace must expose the release evidence staging test");
   requireText(findings, "package.json", rootPackage, /"test:verify-lsan-evidence"/, "the workspace must expose the Linux LeakSanitizer evidence test");

@@ -14,6 +14,7 @@ import test from "node:test";
 
 import { REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
 import { checkReleaseStaging } from "./check-release-bundle.mjs";
+import { PLATFORM_SUPPORT_POLICY } from "./platform-support.mjs";
 
 const NPM_PACKAGES = [
   "secure-keypad-contracts",
@@ -105,6 +106,7 @@ function createValidStaging() {
   for (const document of ["SECURITY-SPEC.md", "PLATFORM-SECURITY-POLICY.md", "RELEASE-GATES.md", "ROADMAP.md"]) {
     writeFile(root, `source/docs/${document}`, `# ${document}\n`);
   }
+  writeFile(root, "source/docs/PLATFORM-SUPPORT.json", `${JSON.stringify(PLATFORM_SUPPORT_POLICY, null, 2)}\n`);
 
   for (const packageName of NPM_PACKAGES) {
     const contents = {
@@ -148,6 +150,22 @@ test("release staging requires the complete signed-bundle input contract", () =>
   const root = createValidStaging();
   try {
     assert.deepEqual(checkReleaseStaging(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging validates the signed platform support policy document", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(
+      root,
+      "source/docs/PLATFORM-SUPPORT.json",
+      `${JSON.stringify({ ...PLATFORM_SUPPORT_POLICY, schemaVersion: 999 }, null, 2)}\n`,
+    );
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/docs/PLATFORM-SUPPORT.json")));
+    assert.ok(findings.some((finding) => finding.includes("schemaVersion")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -51,6 +51,34 @@ test("accepts a complete sanitized native evidence record", () => {
   assert.deepEqual(validateDeviceEvidence(VALID_NATIVE), []);
 });
 
+test("requires platform security patch evidence for a production device gate", () => {
+  const findings = validateDeviceEvidence(VALID_NATIVE, { requirePlatformSupport: true });
+
+  assert.ok(findings.some((finding) => finding.includes("device.securityPatchLevel")));
+});
+
+test("rejects native evidence below the checked-in platform support floors", () => {
+  const ios = structuredClone(VALID_NATIVE);
+  ios.device = { model: "iPhone", osVersion: "15.0", osBuild: "old", securityPatchLevel: "15.0" };
+  const iosFindings = validateDeviceEvidence(ios, { requirePlatformSupport: true });
+  assert.ok(iosFindings.some((finding) => finding.includes("below the supported iOS minimum")));
+  assert.ok(iosFindings.some((finding) => finding.includes("below the iOS security patch floor")));
+
+  const android = structuredClone(VALID_NATIVE);
+  android.gate = "android-device-matrix";
+  android.platform = "android";
+  android.device = {
+    model: "Pixel",
+    osVersion: "14",
+    osBuild: "old",
+    apiLevel: 23,
+    securityPatchLevel: "2025-12-31",
+  };
+  const androidFindings = validateDeviceEvidence(android, { requirePlatformSupport: true });
+  assert.ok(androidFindings.some((finding) => finding.includes("below the supported Android API minimum")));
+  assert.ok(androidFindings.some((finding) => finding.includes("below the Android security patch floor")));
+});
+
 test("CLI verifies an evidence root outside the repository when explicitly provided", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-cli-root-"));
   const evidence = structuredClone(VALID_NATIVE);
@@ -358,6 +386,7 @@ test("requires categorized artifacts for a physical native release gate", () => 
     "accessibility-report",
     "autofill-clipboard-report",
     "crash-report-review",
+    "platform-security-patch",
     "native-checksum",
   ].map((kind, index) => ({
     kind,

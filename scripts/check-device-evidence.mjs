@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { pathHasSymlinkComponent } from "./evidence-path.mjs";
+import { validatePlatformSupportDevice } from "./platform-support.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -39,6 +40,7 @@ const REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS = Object.freeze([
   "accessibility-report",
   "autofill-clipboard-report",
   "crash-report-review",
+  "platform-security-patch",
   "native-checksum",
 ]);
 const ALLOWED_FRAMEWORKS = Object.freeze({
@@ -176,7 +178,7 @@ function validateNativeHostModes(hostModes, findings, required, expectedVersions
  * `verifyDeviceEvidenceFiles` to recompute their digests.
  *
  * @param {unknown} evidence
- * @param {{requirePhysicalDevice?: boolean, expectedCommit?: string, expectedGate?: string, expectedHostModeVersions?: Record<string, string>}} [options]
+ * @param {{requirePhysicalDevice?: boolean, requirePlatformSupport?: boolean, expectedCommit?: string, expectedGate?: string, expectedHostModeVersions?: Record<string, string>}} [options]
  * @returns {string[]}
  */
 export function validateDeviceEvidence(evidence, options = {}) {
@@ -248,6 +250,9 @@ export function validateDeviceEvidence(evidence, options = {}) {
   } else {
     for (const field of ["model", "osVersion", "osBuild"]) {
       if (!nonEmptyString(evidence.device[field])) add(findings, `device.${field}`, "must be non-empty");
+    }
+    if (options.requirePlatformSupport === true) {
+      findings.push(...validatePlatformSupportDevice(evidence.platform, evidence.device));
     }
   }
 

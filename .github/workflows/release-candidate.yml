@@ -288,6 +288,7 @@ jobs:
           pnpm test:emit-signed-release-evidence
           pnpm test:emit-independent-review-fragment
           pnpm test:device-evidence
+          pnpm test:platform-support
           pnpm test:fuzz-corpus
           pnpm test:flutter-package-publish-contract
           pnpm test:security-audit

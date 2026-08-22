@@ -84,6 +84,9 @@ exact release-candidate commit by the release evidence manifest.
 - Final release evidence verification now checks the DER public-key type at the
   verifier boundary and rejects a signature descriptor backed by anything
   other than an Ed25519 key, even if its metadata claims `ed25519`.
+- Physical iOS/Android evidence now binds to the machine-readable platform
+  support policy, including OS/API and security-patch floors plus a hashed
+  `platform-security-patch` artifact reviewed independently at release time.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

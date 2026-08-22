@@ -45,6 +45,7 @@ const PHYSICAL_ARTIFACT_KINDS = [
   "accessibility-report",
   "autofill-clipboard-report",
   "crash-report-review",
+  "platform-security-patch",
   "native-checksum",
 ];
 
@@ -150,7 +151,15 @@ function writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes) {
     physicalDevice: !isWeb,
     device: isWeb
       ? { browser: "Chromium", browserVersion: "140.0.0", osVersion: "macOS 15", secureContext: true }
-      : { model: platform === "ios" ? "iPhone 16" : "Pixel 9", osVersion: "15", osBuild: "release" },
+      : platform === "ios"
+        ? { model: "iPhone 16", osVersion: "26.5", osBuild: "release", securityPatchLevel: "26.5" }
+        : {
+            model: "Pixel 9",
+            osVersion: "15",
+            osBuild: "release",
+            apiLevel: 35,
+            securityPatchLevel: "2026-01-01",
+          },
     testCases: Object.fromEntries((isWeb ? WEB_TEST_CASES : NATIVE_TEST_CASES).map((name) => [name, "pass"])),
     sanitizedLogs: true,
     logPath,
@@ -792,6 +801,22 @@ test("binds each device gate to its platform and nested evidence files", () => {
   writeFileSync(join(root, record.logPath), Buffer.from("tampered\n", "utf8"));
   const tamperedFindings = verifyReleaseEvidenceFiles(evidence, root);
   assert.ok(tamperedFindings.some((finding) => finding.includes("device.files") && finding.includes("logSha256")));
+});
+
+test("rejects a physical device gate below the platform security patch floor", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-platform-floor-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const iosGate = evidence.gates.find((candidate) => candidate.name === "ios-device-matrix");
+  const recordPath = join(root, iosGate.evidencePath);
+  const record = JSON.parse(readFileSync(recordPath, "utf8"));
+  record.device.securityPatchLevel = "15.0";
+  const recordBytes = Buffer.from(`${JSON.stringify(record)}\n`, "utf8");
+  writeFileSync(recordPath, recordBytes);
+  iosGate.sha256 = createHash("sha256").update(recordBytes).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("security patch floor")));
 });
 
 test("rejects a physical release device gate that covers only one native host mode", () => {

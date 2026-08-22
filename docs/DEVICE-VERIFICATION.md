@@ -3,8 +3,16 @@
 Host-app compilation proves that the package links; it does not prove that a
 device, system service, or accessibility surface cannot expose the entered
 secret. A production release must attach the exact commit, native artifact
-checksums, framework versions, device OS build, and sanitized test logs for
-the matrix below.
+checksums, framework versions, device OS build and security-patch evidence, and
+sanitized test logs for the matrix below.
+
+The authoritative build/runtime floor is
+[`docs/PLATFORM-SUPPORT.json`](./PLATFORM-SUPPORT.json). The current policy
+requires iOS 15.1 or newer with a dotted `securityPatchLevel` of at least
+15.1, and Android API 24 or newer with an ISO `securityPatchLevel` of at least
+2026-01-01. The patch value is an operator-supplied vendor value, not proof by
+itself; the hashed `platform-security-patch` artifact must identify the device
+settings or vendor bulletin, and the independent reviewer must inspect it.
 
 ## Required matrix
 
@@ -86,7 +94,8 @@ Each platform release run should produce one JSON record containing:
   include an `evidence` object containing only its own relative `logPath` and
   `logSha256`; those paths must be unique from the aggregate log and artifacts
   so a shared log cannot represent both adapter runs;
-- device/browser model, OS version/build, and `secureContext: true` for Web;
+- device/browser model, OS version/build, `securityPatchLevel`, and
+  `apiLevel` for Android; Web additionally requires `secureContext: true`;
 - every applicable test case with the exact status `pass`;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,
   `crashReportReview`, and `protocolDowngrade` pass results in addition to the
@@ -99,6 +108,9 @@ Each platform release run should produce one JSON record containing:
   The native checksum must be the exact candidate iOS or Android checksum
   manifest; final release verification rejects a device record from a
   different native binary.
+- `platform-security-patch` must be a distinct hashed artifact for each
+  physical native record. It must contain sanitized, reviewable evidence of
+  the recorded OS security level and must not contain the disposable sentinel.
 
 The record validator rejects secret-bearing field names (including sentinel
 values, raw input bytes, and credential byte fields), absolute/parent paths,
@@ -141,12 +153,14 @@ node scripts/emit-native-device-evidence.mjs \
   --model "iPhone 17 Pro" \
   --os-version 26.5 \
   --os-build 23A000 \
+  --security-patch-level 26.5 \
   --log logs/ios-rn.txt \
   --artifact screen-capture=artifacts/ios-screen.png \
   --artifact background-snapshot=artifacts/ios-task-switcher.png \
   --artifact accessibility-report=artifacts/ios-voiceover.txt \
   --artifact autofill-clipboard-report=artifacts/ios-autofill.txt \
   --artifact crash-report-review=artifacts/ios-crash-review.txt \
+  --artifact platform-security-patch=artifacts/ios-security-patch.txt \
   --artifact native-checksum=artifacts/secure-ffi.sha256 \
   --test-case maskedStateOnly \
   --test-case captureAndBackground \
@@ -161,7 +175,9 @@ node scripts/emit-native-device-evidence.mjs \
 
 Repeat with `--platform android` and the Android model/OS build. The two
 `--host-log` files must be the sanitized logs from the matching RN and Flutter
-host runs. The emitter creates only hashes and public metadata; it never
+host runs. Add `--api-level` and an ISO `--security-patch-level` for Android,
+and provide the matching `platform-security-patch` artifact. The emitter
+creates only hashes and public metadata; it never
 embeds log, screenshot, or crash-report bytes in the JSON record. The
 standalone record validator bounds
 the top-level JSON record to 1 MiB; each referenced evidence file is bounded to
