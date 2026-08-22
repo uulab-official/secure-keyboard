@@ -21,6 +21,10 @@ export const MAX_STAGED_FILE_BYTES = 512 * 1024 * 1024;
 export const MAX_STAGED_TOTAL_BYTES = 2 * 1024 * 1024 * 1024;
 /** Maximum number of regular files accepted across all evidence roots. */
 export const MAX_STAGED_FILE_COUNT = 16_384;
+/** Maximum number of directories traversed across all evidence roots. */
+export const MAX_STAGED_DIRECTORY_COUNT = 16_384;
+/** Maximum relative directory depth accepted in one evidence root. */
+export const MAX_STAGED_PATH_DEPTH = 64;
 
 function isSafeRelativePath(value) {
   return (
@@ -102,7 +106,24 @@ function copyRegularFile(sourceRoot, outputRoot, relativePath, state) {
   copyFileToOutput(sourcePath, outputRoot, relativePath, state);
 }
 
-function walkFiles(sourceRoot, relativePath = "", fileBudget = { count: 0 }) {
+function walkFiles(
+  sourceRoot,
+  relativePath = "",
+  fileBudget = { count: 0 },
+  directoryBudget = { count: 0 },
+) {
+  const depth = relativePath ? relativePath.split("/").length : 0;
+  if (depth > MAX_STAGED_PATH_DEPTH) {
+    throw new Error(
+      `release evidence input directory depth must not exceed ${MAX_STAGED_PATH_DEPTH} components`,
+    );
+  }
+  directoryBudget.count += 1;
+  if (directoryBudget.count > MAX_STAGED_DIRECTORY_COUNT) {
+    throw new Error(
+      `staged evidence must not contain more than ${MAX_STAGED_DIRECTORY_COUNT} directories`,
+    );
+  }
   const directory = relativePath
     ? ensureContained(sourceRoot, relativePath, "release evidence input directory")
     : sourceRoot;
@@ -114,7 +135,7 @@ function walkFiles(sourceRoot, relativePath = "", fileBudget = { count: 0 }) {
       throw new Error(`${childPath}: symlinks are not allowed in release evidence inputs`);
     }
     if (entry.isDirectory()) {
-      files.push(...walkFiles(sourceRoot, childPath, fileBudget));
+      files.push(...walkFiles(sourceRoot, childPath, fileBudget, directoryBudget));
     } else if (entry.isFile()) {
       fileBudget.count += 1;
       if (fileBudget.count > MAX_STAGED_FILE_COUNT) {
@@ -152,9 +173,10 @@ export function stageReleaseEvidence(outputDirectory, inputDirectories) {
   const outputRoot = requireDirectory(outputDirectory, "release evidence output");
   const state = { paths: new Set(), totalBytes: 0 };
   const fileBudget = { count: 0 };
+  const directoryBudget = { count: 0 };
 
   for (const sourceRoot of sourceDirectories) {
-    for (const relativePath of walkFiles(sourceRoot, "", fileBudget)) {
+    for (const relativePath of walkFiles(sourceRoot, "", fileBudget, directoryBudget)) {
       copyRegularFile(sourceRoot, outputRoot, relativePath, state);
     }
   }

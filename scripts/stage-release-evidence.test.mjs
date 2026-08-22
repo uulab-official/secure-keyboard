@@ -115,6 +115,40 @@ test("staging rejects an oversized untrusted evidence file before copying it", (
   }
 });
 
+test("staging rejects evidence directories deeper than the traversal bound", () => {
+  const { root, candidate, ci, external, output } = fixtureRoots();
+  try {
+    let nested = external;
+    for (let index = 0; index < 65; index += 1) {
+      nested = path.join(nested, `nested-${index}`);
+      mkdirSync(nested);
+    }
+
+    assert.throws(
+      () => stageReleaseEvidence(output, [candidate, ci, external]),
+      /directory depth must not exceed 64 components/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("staging rejects evidence with too many directories before copying it", () => {
+  const { root, candidate, ci, external, output } = fixtureRoots();
+  try {
+    for (let index = 0; index < 16_385; index += 1) {
+      mkdirSync(path.join(external, `empty-${index}`));
+    }
+
+    assert.throws(
+      () => stageReleaseEvidence(output, [candidate, ci, external]),
+      /must not contain more than 16384 directories/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release finalization workflow downloads immutable evidence inputs and runs the trusted verifier", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-finalize.yml", import.meta.url),

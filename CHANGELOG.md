@@ -38,6 +38,9 @@ exact release-candidate commit by the release evidence manifest.
 - Release evidence, merged manifests, and detached signing outputs now use
   exclusive file creation so a pre-existing path or symlink cannot be replaced
   during release assembly.
+- Release evidence staging now bounds directory count and relative path depth
+  in addition to file count and byte budgets, preventing empty or deeply nested
+  untrusted artifact trees from exhausting finalization traversal resources.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.
