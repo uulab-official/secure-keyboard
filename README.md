@@ -10,6 +10,9 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 
 Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
+Use the [independent review packet](docs/INDEPENDENT-REVIEW-PACKET.md) to
+hand the exact candidate, evidence, and signing requirements to an external
+reviewer.
 Review the [changelog](CHANGELOG.md) for security fixes and release-candidate changes.
 Report vulnerabilities through the [private security policy](SECURITY.md), never through a public issue.
 Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
