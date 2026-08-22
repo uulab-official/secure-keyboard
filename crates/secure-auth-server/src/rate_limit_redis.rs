@@ -29,19 +29,29 @@ if current then
   end
   if attempts >= tonumber(ARGV[1]) then
     local ttl = redis.call('PTTL', KEYS[1])
-    if ttl < 1 then
+    if ttl < 1 or ttl > tonumber(ARGV[3]) then
       redis.call('DEL', KEYS[1])
       redis.call('ZREM', KEYS[2], ARGV[4])
       return {-2, 0, 0}
+    end
+    redis.call('ZADD', KEYS[2], now_ms + ttl, ARGV[4])
+    local index_ttl = redis.call('PTTL', KEYS[2])
+    if index_ttl < tonumber(ARGV[3]) then
+      redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[3]))
     end
     return {0, 0, ttl}
   end
   local next_attempts = redis.call('INCR', KEYS[1])
   local ttl = redis.call('PTTL', KEYS[1])
-  if ttl < 1 then
+  if ttl < 1 or ttl > tonumber(ARGV[3]) then
     redis.call('DEL', KEYS[1])
     redis.call('ZREM', KEYS[2], ARGV[4])
     return {-2, 0, 0}
+  end
+  redis.call('ZADD', KEYS[2], now_ms + ttl, ARGV[4])
+  local index_ttl = redis.call('PTTL', KEYS[2])
+  if index_ttl < tonumber(ARGV[3]) then
+    redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[3]))
   end
   return {1, tonumber(ARGV[1]) - next_attempts, ttl}
 end
@@ -315,5 +325,12 @@ mod tests {
             .rfind("redis.call('ZREM', KEYS[2], ARGV[4])")
             .expect("missing counter must release its active-key slot");
         assert!(cleanup < capacity);
+    }
+
+    #[test]
+    fn rate_limit_script_rejects_counter_ttl_drift_and_repairs_missing_index() {
+        assert!(RATE_LIMIT_SCRIPT.contains("ttl > tonumber(ARGV[3])"));
+        assert!(RATE_LIMIT_SCRIPT.contains("redis.call('ZADD', KEYS[2], now_ms + ttl, ARGV[4])"));
+        assert!(RATE_LIMIT_SCRIPT.contains("redis.call('PEXPIRE', KEYS[2], tonumber(ARGV[3]))"));
     }
 }

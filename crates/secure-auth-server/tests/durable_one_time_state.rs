@@ -256,6 +256,64 @@ fn redis_missing_state_releases_pending_index_capacity() {
     assert!(store.insert_bound(fixture_state()).is_ok());
 }
 
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires an isolated Redis service"]
+fn redis_state_without_expiration_is_deleted_before_decryption() {
+    use secure_auth_server::{BoundOneTimeLoginStateStore, RedisOneTimeLoginStateStore};
+    use sha2::{Digest, Sha256};
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").unwrap();
+    let namespace = format!("opaque-test-{}", uuid::Uuid::new_v4().simple());
+    let store = RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
+        &url,
+        &namespace,
+        2,
+        8,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let handle = store.insert_bound(fixture_state()).unwrap();
+    let handle_hash = {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        Sha256::digest(handle.as_bytes())
+            .iter()
+            .flat_map(|byte| {
+                [
+                    HEX[(byte >> 4) as usize] as char,
+                    HEX[(byte & 0x0f) as usize] as char,
+                ]
+            })
+            .collect::<String>()
+    };
+    let state_key = format!("{namespace}:opaque:v1:login:{handle_hash}");
+    let pending_index = format!("{namespace}:opaque:v1:login:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .unwrap()
+        .get_connection()
+        .unwrap();
+    redis::cmd("PERSIST")
+        .arg(&state_key)
+        .query::<()>(&mut inspection)
+        .unwrap();
+
+    assert!(matches!(
+        store.take_bound(&handle),
+        Err(secure_auth_server::StoreError::Unavailable)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&state_key)
+        .query(&mut inspection)
+        .unwrap();
+    let pending_count: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .unwrap();
+    assert_eq!(exists, 0);
+    assert_eq!(pending_count, 0);
+}
+
 #[cfg(feature = "postgres-backend")]
 #[test]
 #[ignore = "requires an isolated PostgreSQL service"]

@@ -37,6 +37,12 @@ const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl == -1 or ttl == 0 or ttl > tonumber(ARGV[3]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[1])
+  return {-2, false}
+end
 local length = redis.call('STRLEN', KEYS[1])
 if length > tonumber(ARGV[2]) then
   redis.call('DEL', KEYS[1])
@@ -247,6 +253,7 @@ impl BoundOneTimeLoginStateStore for RedisOneTimeLoginStateStore {
             .key(self.pending_index_key())
             .arg(&handle_hash)
             .arg(MAX_DISTRIBUTED_LOGIN_STATE_STORAGE_BYTES)
+            .arg(self.ttl_millis)
             .invoke(&mut *connection)
             .map_err(|_| StoreError::Unavailable)?;
         let protected = match status {
@@ -324,5 +331,12 @@ mod tests {
                     .find("return {0, false}")
                     .unwrap()
         );
+    }
+
+    #[test]
+    fn consume_rejects_state_ttl_drift_before_materialization() {
+        assert!(CONSUME_SCRIPT.contains("local ttl = redis.call('PTTL', KEYS[1])"));
+        assert!(CONSUME_SCRIPT.contains("ttl > tonumber(ARGV[3])"));
+        assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
     }
 }

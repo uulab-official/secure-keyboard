@@ -89,6 +89,13 @@ The reference crate includes feature-gated implementations:
   explicitly named local-test constructor. The counter path checks a fixed
   32-byte representation bound before `GET`; an oversized or malformed legacy
   counter is removed from the counter and active-key index and fails closed.
+  Existing counters reject missing, zero, or longer-than-window TTLs and
+  repair their active-index member when a prior Redis eviction removed the
+  index key. This is recovery on access, not a substitute for Redis capacity
+  policy: production Redis must use `maxmemory-policy noeviction` (or an
+  equivalent provider guarantee), reserve memory for the namespace, and alert
+  on eviction/configuration drift. An evicted active-index key can otherwise
+  make the application-level active-key bound unverifiable.
   If Redis has evicted the counter while its sorted-set member remains, the
   script removes that stale member before enforcing active-key capacity.
 - `PostgresRateLimiter` uses a namespace advisory transaction lock, deletes

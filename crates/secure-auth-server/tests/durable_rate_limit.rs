@@ -246,6 +246,72 @@ fn redis_oversized_counter_is_removed_before_lua_get() {
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_repairs_missing_active_index_and_rejects_counter_ttl_drift() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let policy = RateLimitPolicy::new(2, std::time::Duration::from_secs(30)).unwrap();
+    let limiter = secure_auth_server::RedisRateLimiter::from_insecure_url_for_local_testing(
+        &url, &namespace, 2, 1, policy,
+    )
+    .expect("Redis limiter should construct");
+    let key = b"index-repair";
+    assert!(matches!(
+        limiter.check(key),
+        Ok(RateLimitDecision::Allowed { remaining: 1 })
+    ));
+
+    let digest = {
+        use sha2::{Digest, Sha256};
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        Sha256::digest(key)
+            .iter()
+            .flat_map(|byte| {
+                [
+                    HEX[(byte >> 4) as usize] as char,
+                    HEX[(byte & 0x0f) as usize] as char,
+                ]
+            })
+            .collect::<String>()
+    };
+    let counter_key = format!("{namespace}:ratelimit:v1:key:{digest}");
+    let index_key = format!("{namespace}:ratelimit:v1:index");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("DEL")
+        .arg(&index_key)
+        .query::<()>(&mut inspection)
+        .expect("Redis active-key index should be deletable for the migration test");
+
+    assert!(matches!(
+        limiter.check(key),
+        Ok(RateLimitDecision::Allowed { remaining: 0 })
+    ));
+    assert_eq!(
+        limiter.check(b"second-key"),
+        Err(secure_auth_server::RateLimitError::CapacityReached)
+    );
+
+    redis::cmd("PEXPIRE")
+        .arg(&counter_key)
+        .arg(60_000)
+        .query::<()>(&mut inspection)
+        .expect("Redis counter TTL should be writable for the migration test");
+    assert_eq!(
+        limiter.check(key),
+        Err(secure_auth_server::RateLimitError::Unavailable)
+    );
+    let counter_exists: i64 = redis::cmd("EXISTS")
+        .arg(&counter_key)
+        .query(&mut inspection)
+        .expect("Redis counter existence check should succeed");
+    assert_eq!(counter_exists, 0);
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
 fn redis_poisoned_counter_is_removed_before_increment_or_limited_response() {
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
     let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
