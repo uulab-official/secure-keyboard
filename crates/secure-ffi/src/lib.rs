@@ -27,11 +27,14 @@ const MAX_TIMEOUT_MS: u64 = 86_400_000;
 /// C callers can otherwise alias an input ownership slot with an output slot,
 /// causing a successful native operation to lose a handle or overwrite an
 /// unrelated result. The ABI requires all slots to be distinct.
+fn pointer_slots_alias<A, B>(first: *mut A, second: *mut B) -> bool {
+    first.cast::<()>() == second.cast::<()>()
+}
+
 fn output_slots_alias<A, B, C>(first: *mut A, second: *mut B, third: *mut C) -> bool {
-    let first = first.cast::<()>();
-    let second = second.cast::<()>();
-    let third = third.cast::<()>();
-    first == second || first == third || second == third
+    pointer_slots_alias(first, second)
+        || pointer_slots_alias(first, third)
+        || pointer_slots_alias(second, third)
 }
 
 /// ABI version implemented by this linked native library.
@@ -797,8 +800,8 @@ pub unsafe extern "C" fn secure_keypad_client_registration_free(
 /// `login` must point to a live login pointer and is consumed on entry;
 /// `response` must be a live message handle; identifier buffers must be
 /// readable for their declared lengths; and `output_finalization` must be a
-/// valid writable pointer. All pointers must remain valid for this call and
-/// must not be used concurrently.
+/// valid writable pointer distinct from `login`. All pointers must remain
+/// valid for this call and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_login_finish(
     login: *mut *mut SecureKeypadClientLogin,
@@ -811,6 +814,9 @@ pub unsafe extern "C" fn secure_keypad_client_login_finish(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if login.is_null() || response.is_null() || output_finalization.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if pointer_slots_alias(login, output_finalization) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: The output pointer is checked for null and must be writable.
@@ -871,8 +877,8 @@ pub unsafe extern "C" fn secure_keypad_client_login_finish(
 /// `registration` must point to a live registration pointer and is consumed on
 /// entry; `response` must be a live message handle; identifier buffers must be
 /// readable for their declared lengths; and `output_upload` must be a valid
-/// writable pointer. All pointers must remain valid for this call and must not
-/// be used concurrently.
+/// writable pointer distinct from `registration`. All pointers must remain
+/// valid for this call and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_registration_finish(
     registration: *mut *mut SecureKeypadClientRegistration,
@@ -885,6 +891,9 @@ pub unsafe extern "C" fn secure_keypad_client_registration_finish(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if registration.is_null() || response.is_null() || output_upload.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if pointer_slots_alias(registration, output_upload) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: The output pointer is checked for null and must be writable.

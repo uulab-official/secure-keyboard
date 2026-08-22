@@ -480,8 +480,11 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_start/, "C ABI must expose native-only registration handoff");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_finish/, "C ABI must expose native-only registration completion");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn output_slots_alias/, "FFI auth-start functions must reject aliased ownership/output slots");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn pointer_slots_alias/, "FFI auth-finish functions must reject aliased state/output slots");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_login, output_request\)/, "FFI login start must validate distinct pointer slots before clearing outputs");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_registration, output_request\)/, "FFI registration start must validate distinct pointer slots before clearing outputs");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slots_alias\(login, output_finalization\)/, "FFI login finish must validate distinct state/output slots before clearing outputs");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slots_alias\(registration, output_upload\)/, "FFI registration finish must validate distinct state/output slots before clearing outputs");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
   const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);
