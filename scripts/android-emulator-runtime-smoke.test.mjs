@@ -14,6 +14,7 @@ function fakeAndroidTools(
   uiXml,
   secureFlags = "0x2000",
   focusedPackage = "dev.fake.securekeypad",
+  windowPackage = "dev.fake.securekeypad",
 ) {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-android-smoke-tools-"));
   const apkPath = join(root, "host.apk");
@@ -39,7 +40,7 @@ case "\${1:-}" in
     case "\${1:-}" in
       am|cmd) [ "\${1:-}" = am ] && exit 0 || printf '%s/.Main\\n' "\${FAKE_PACKAGE}" ;;
       pidof) printf '123\\n' ;;
-      dumpsys) printf 'mCurrentFocus=Window{fixture u0 %s/.Main}\\nWindow{fixture u0 %s/.Main}: mAttrs={fl=%s}\\n' "\${FAKE_FOCUS_PACKAGE}" "\${FAKE_PACKAGE}" "\${FAKE_SECURE_FLAGS}" ;;
+      dumpsys) printf 'mCurrentFocus=Window{fixture u0 %s/.Main}\\nWindow{fixture u0 %s/.Main}: mAttrs={fl=%s}\\n' "\${FAKE_FOCUS_PACKAGE}" "\${FAKE_WINDOW_PACKAGE}" "\${FAKE_SECURE_FLAGS}" ;;
       uiautomator) exit 0 ;;
       cat) cat "\${FAKE_UI_XML}" ;;
       *) exit 0 ;;
@@ -59,8 +60,9 @@ function runSmokeWithFakeTools(
   uiXml,
   secureFlags = "0x2000",
   focusedPackage = "dev.fake.securekeypad",
+  windowPackage = "dev.fake.securekeypad",
 ) {
-  const tools = fakeAndroidTools(uiXml, secureFlags, focusedPackage);
+  const tools = fakeAndroidTools(uiXml, secureFlags, focusedPackage, windowPackage);
   const screenshotPath = join(tools.root, "out/smoke.png");
   const dumpPath = join(tools.root, "out/ui.xml");
   const result = spawnSync("bash", ["-s", tools.apkPath, screenshotPath, dumpPath], {
@@ -72,6 +74,7 @@ function runSmokeWithFakeTools(
       FAKE_PACKAGE: "dev.fake.securekeypad",
       FAKE_FOCUS_PACKAGE: focusedPackage,
       FAKE_SECURE_FLAGS: secureFlags,
+      FAKE_WINDOW_PACKAGE: windowPackage,
       FAKE_UI_XML: tools.uiXmlPath,
       PATH: `${tools.root}:${process.env.PATH ?? ""}`,
     },
@@ -168,6 +171,17 @@ test("Android runtime smoke rejects a secure window that is not the focused app"
   );
   assert.equal(run.result.status, 1);
   assert.match(run.result.stderr, /foreground app window/);
+});
+
+test("Android runtime smoke rejects a secure window from a package-name lookalike", () => {
+  const run = runSmokeWithFakeTools(
+    '<hierarchy><node content-desc="No input"/><node content-desc="1"/></hierarchy>\n',
+    "0x2000",
+    "dev.fake.securekeypad",
+    "dev.fake.securekeypad.attacker",
+  );
+  assert.equal(run.result.status, 1);
+  assert.match(run.result.stderr, /FLAG_SECURE/);
 });
 
 test("Flutter host artifact contains every supported Android target platform", () => {

@@ -61,7 +61,8 @@ if not focused or not focused.group(1).startswith(package + "/"):
     print("foreground app window does not belong to the launched package", file=sys.stderr)
     raise SystemExit(1)
 for block in re.split(r"(?=Window\s*\{)", dump):
-    if package not in block:
+    owner = re.search(r"Window\s*\{[^}]*\bu\d+\s+([^\s}]+)", block)
+    if not owner or not owner.group(1).startswith(package + "/"):
         continue
     for raw_flags in re.findall(r"\b(?:fl|flags)=0x([0-9a-fA-F]+)", block):
         if int(raw_flags, 16) & 0x2000:
