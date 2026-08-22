@@ -569,15 +569,23 @@ impl ServerLoginState {
     #[must_use]
     pub fn into_bytes(self) -> ServerLoginStateBytes {
         let mut serialized = self.0.serialize();
-        let serialized = copy_and_zeroize_serialized(&mut serialized);
-        let suite_id = CIPHER_SUITE_ID.as_bytes();
-        let mut bytes = Vec::with_capacity(6 + suite_id.len() + serialized.len());
-        bytes.extend_from_slice(SERVER_LOGIN_STATE_MAGIC);
-        bytes.extend_from_slice(&SERVER_LOGIN_STATE_VERSION.to_le_bytes());
-        bytes.extend_from_slice(suite_id);
-        bytes.extend_from_slice(&serialized);
-        ServerLoginStateBytes(bytes)
+        package_server_login_state(&mut serialized)
     }
+}
+
+fn package_server_login_state<T>(serialized: &mut T) -> ServerLoginStateBytes
+where
+    T: AsRef<[u8]> + Zeroize,
+{
+    let mut serialized = copy_and_zeroize_serialized(serialized);
+    let suite_id = CIPHER_SUITE_ID.as_bytes();
+    let mut bytes = Vec::with_capacity(6 + suite_id.len() + serialized.len());
+    bytes.extend_from_slice(SERVER_LOGIN_STATE_MAGIC);
+    bytes.extend_from_slice(&SERVER_LOGIN_STATE_VERSION.to_le_bytes());
+    bytes.extend_from_slice(suite_id);
+    bytes.extend_from_slice(&serialized);
+    serialized.zeroize();
+    ServerLoginStateBytes(bytes)
 }
 
 impl ServerLoginStateBytes {
@@ -1106,7 +1114,10 @@ pub fn server_login_finish(
 
 #[cfg(test)]
 mod tests {
-    use super::{copy_and_zeroize_serialized, secret_output_from_zeroizing};
+    use super::{
+        copy_and_zeroize_serialized, package_server_login_state, secret_output_from_zeroizing,
+        CIPHER_SUITE_ID,
+    };
     use std::cell::Cell;
     use std::rc::Rc;
     use zeroize::Zeroize;
@@ -1154,5 +1165,17 @@ mod tests {
 
         assert_eq!(output.len(), 4);
         assert!(zeroized.get());
+    }
+
+    #[test]
+    fn server_login_state_packaging_zeroizes_intermediate_serialization() {
+        let original = vec![9, 8, 7, 6];
+        let mut serialized = original.clone();
+
+        let packaged = package_server_login_state(&mut serialized);
+
+        let state_offset = 6 + CIPHER_SUITE_ID.len();
+        assert_eq!(&packaged.as_bytes()[state_offset..], original.as_slice());
+        assert!(serialized.iter().all(|byte| *byte == 0));
     }
 }
