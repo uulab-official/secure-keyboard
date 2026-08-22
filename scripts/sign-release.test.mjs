@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, verify } from "node:crypto";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -60,4 +60,22 @@ test("rejects an empty release artifact before signing", () => {
     () => signReleaseArtifact(artifactPath, privateKeyPath, signaturePath, publicKeyPath),
     /artifact must be non-empty/,
   );
+});
+
+test("preflights both signing outputs before creating either file", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-sign-release-output-conflict-"));
+  const artifactPath = join(root, "release.tar.gz");
+  const privateKeyPath = join(root, "signing-key.pem");
+  const signaturePath = join(root, "release.sig");
+  const publicKeyPath = join(root, "release.pub.der");
+  const { privateKey } = generateKeyPairSync("ed25519");
+  writeFileSync(artifactPath, Buffer.from("release artifact", "utf8"));
+  writeFileSync(privateKeyPath, privateKey.export({ format: "pem", type: "pkcs8" }));
+  writeFileSync(publicKeyPath, Buffer.from("existing output", "utf8"));
+
+  assert.throws(
+    () => signReleaseArtifact(artifactPath, privateKeyPath, signaturePath, publicKeyPath),
+    /public key output must not already exist/,
+  );
+  assert.equal(existsSync(signaturePath), false);
 });

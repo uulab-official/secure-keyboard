@@ -1,5 +1,5 @@
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
-import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,16 @@ function readBoundedFile(filePath, label, maximumBytes) {
   return readFileSync(filePath);
 }
 
+function requireUnusedOutput(filePath, label) {
+  try {
+    lstatSync(filePath);
+  } catch (error) {
+    if (error.code === "ENOENT") return;
+    throw error;
+  }
+  throw new Error(`${label} output must not already exist`);
+}
+
 /**
  * Creates the detached Ed25519 material required by the release evidence
  * manifest. The private key is read only; it is never copied to an output
@@ -26,6 +36,12 @@ function readBoundedFile(filePath, label, maximumBytes) {
  * @returns {{algorithm: "ed25519", signatureBytes: number, publicKeySha256: string}}
  */
 export function signReleaseArtifact(artifactPath, privateKeyPath, signaturePath, publicKeyPath) {
+  if (path.resolve(signaturePath) === path.resolve(publicKeyPath)) {
+    throw new Error("signature and public key outputs must use different paths");
+  }
+  requireUnusedOutput(signaturePath, "signature");
+  requireUnusedOutput(publicKeyPath, "public key");
+
   const privateKeyBytes = readBoundedFile(privateKeyPath, "private key", MAX_PRIVATE_KEY_BYTES);
   let privateKey;
   try {
