@@ -20,7 +20,10 @@ Android, React Native, and Flutter adapters.
 - use-after-free or double-free of handles.
 
 The submission handle is intentionally not serializable. Native authentication
-code consumes it inside the native/Rust boundary or releases it. The native
+code consumes it inside the native/Rust boundary or releases it. The login and
+registration start functions consume the submission pointer after argument
+validation, set the caller's pointer to null, and release the submission even
+when the protocol operation returns an error. The native
 OPAQUE functions can turn that submission into registration/login request and
 upload/finalization message handles for a native HTTP client; they never expose
 a password, export key, or derived client session key. Registration and login

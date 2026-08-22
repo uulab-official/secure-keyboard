@@ -627,9 +627,10 @@ pub unsafe extern "C" fn secure_keypad_auth_message_free(message: *mut SecureKey
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_login` and
-/// `output_request` must be valid writable pointers. On success the submission
-/// pointer is set to null and ownership is consumed. All handles are
-/// single-owner and must not be used concurrently.
+/// `output_request` must be valid writable pointers. Once the pointer and
+/// output arguments pass validation, the submission is consumed on entry and
+/// the caller's pointer is set to null even when the protocol operation fails.
+/// All handles are single-owner and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_login_start(
     submission: *mut *mut SecureKeypadSubmission,
@@ -680,9 +681,10 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_registration`
-/// and `output_request` must be valid writable pointers. On success the
-/// submission pointer is set to null and ownership is consumed. All handles are
-/// single-owner and must not be used concurrently.
+/// and `output_request` must be valid writable pointers. Once the pointer and
+/// output arguments pass validation, the submission is consumed on entry and
+/// the caller's pointer is set to null even when the protocol operation fails.
+/// All handles are single-owner and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_registration_start(
     submission: *mut *mut SecureKeypadSubmission,

@@ -408,6 +408,48 @@ fn client_login_free_is_safe_for_an_aborted_native_flow() {
 }
 
 #[test]
+fn client_registration_free_is_safe_for_an_aborted_native_flow() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(2, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    let key = b"digit-1";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Ok
+    );
+
+    let mut submission: *mut SecureKeypadSubmission = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, &mut submission) },
+        SecureKeypadError::Ok
+    );
+    unsafe { secure_keypad_session_free(session) };
+
+    let mut registration: *mut SecureKeypadClientRegistration = ptr::null_mut();
+    let mut request: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_registration_start(
+                &mut submission,
+                &mut registration,
+                &mut request,
+            )
+        },
+        SecureKeypadError::Ok
+    );
+    assert!(submission.is_null());
+    assert!(!registration.is_null());
+    assert!(!request.is_null());
+
+    unsafe {
+        secure_keypad_client_registration_free(registration);
+        secure_keypad_auth_message_free(request);
+    }
+}
+
+#[test]
 fn auth_message_copy_reports_required_size_without_partial_secret_copy() {
     let payload = b"fixture-opaque-message";
     let mut message: *mut SecureKeypadAuthMessage = ptr::null_mut();
