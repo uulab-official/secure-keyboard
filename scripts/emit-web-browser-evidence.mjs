@@ -255,6 +255,15 @@ function currentPackageVersion() {
   return packageJson.version;
 }
 
+export function currentPlaywrightFrameworkVersion() {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  const version = packageJson.devDependencies?.playwright;
+  if (typeof version !== "string" || !VERSION.test(version)) {
+    throw new Error("current Playwright dependency version is invalid or not exact");
+  }
+  return `playwright-${version}`;
+}
+
 function parseOptions(argumentsList) {
   let frameworkVersion;
   let runner;
@@ -293,6 +302,10 @@ function main() {
     const root = path.resolve(process.cwd(), rootArgument);
     mkdirSync(root, { recursive: true });
     const { frameworkVersion, runner, logs } = parseOptions(options);
+    const expectedFrameworkVersion = currentPlaywrightFrameworkVersion();
+    if (frameworkVersion !== expectedFrameworkVersion) {
+      throw new Error(`frameworkVersion must match the pinned workspace dependency (${expectedFrameworkVersion})`);
+    }
     writeWebBrowserEvidence({
       root,
       commit: currentCommit(),

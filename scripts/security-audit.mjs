@@ -930,6 +930,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /verifyDeviceEvidenceFiles|buildReleaseGateFragment/, "web evidence must bind hashed files to the release gate contract");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /secureContext: true/, "web evidence must record secure-context verification");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /parseBrowserSmokeVersion/, "web evidence must bind browser versions to checked-in smoke output");
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /currentPlaywrightFrameworkVersion/, "web evidence must bind the framework version to the workspace pin");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /pathHasSymlinkComponent/, "web evidence emitter must reject symlink traversal");
   const independentReviewEmitter = source("scripts/emit-independent-review-fragment.mjs", findings);
   requireText(findings, "scripts/emit-independent-review-fragment.mjs", independentReviewEmitter, /createPublicKey/, "independent review emitter must parse the reviewer public key");

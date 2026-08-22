@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -7,7 +8,11 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
-import { buildWebBrowserEvidence, writeWebBrowserEvidence } from "./emit-web-browser-evidence.mjs";
+import {
+  buildWebBrowserEvidence,
+  currentPlaywrightFrameworkVersion,
+  writeWebBrowserEvidence,
+} from "./emit-web-browser-evidence.mjs";
 
 const COMMIT = "d".repeat(40);
 const BROWSERS = ["chromium", "firefox", "webkit"];
@@ -29,6 +34,31 @@ const LOGS = [
     bytes: Buffer.from("webkit@26.0: secure-context pass; webauthn=available\n"),
   },
 ];
+
+test("derives the browser framework version from the pinned workspace dependency", () => {
+  assert.equal(currentPlaywrightFrameworkVersion(), "playwright-1.62.1");
+});
+
+test("CLI rejects a browser framework version that differs from the workspace pin", () => {
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL("./emit-web-browser-evidence.mjs", import.meta.url)),
+          mkdtempSync(join(tmpdir(), "secure-keypad-web-version-mismatch-")),
+          "evidence/web-browser-matrix.json",
+          "fragments/web-browser-matrix.json",
+          "--framework-version",
+          "playwright-0.0.0",
+          "--runner",
+          "ubuntu-24.04",
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ),
+    (error) => /frameworkVersion must match the pinned workspace dependency/.test(error.stderr),
+  );
+});
 
 test("builds a valid sanitized web browser matrix record from hashed log references", () => {
   const record = buildWebBrowserEvidence({

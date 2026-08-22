@@ -336,6 +336,9 @@ and creates the validator-compatible matrix record. The record keeps the
 exact Playwright tool version in `frameworkVersion` and the three actual
 browser runtime versions in `device.browserVersion`:
 
+The CLI compares `--framework-version` with the exact `devDependencies.playwright`
+pin in the checked-out workspace and fails closed on a mismatch.
+
 ```sh
 node scripts/emit-web-browser-evidence.mjs \
   "$RUNNER_TEMP/release-evidence" \
