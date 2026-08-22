@@ -27,21 +27,22 @@ void main() {
     expect(configuration.timeoutMs, 60000);
   });
 
-  test('default theme supplies the bounded typography required by native rendering', () {
-    final theme = SecureKeypadTheme.defaultTheme();
+  test(
+    'default theme supplies the bounded typography required by native rendering',
+    () {
+      final theme = SecureKeypadTheme.defaultTheme();
 
-    expect(theme.keyFontSize, 24);
-    expect(SecureKeypadConfiguration.defaultNumeric().validate(), isEmpty);
-  });
+      expect(theme.keyFontSize, 24);
+      expect(SecureKeypadConfiguration.defaultNumeric().validate(), isEmpty);
+    },
+  );
 
   test('ASCII policy remains a native-only policy', () {
     final configuration = SecureKeypadConfiguration(
       layout: const KeypadLayout(
         schemaVersion: 1,
         rows: <List<KeySpec>>[
-          <KeySpec>[
-            KeySpec(id: 'ascii-41', label: 'A', role: KeyRole.input),
-          ],
+          <KeySpec>[KeySpec(id: 'ascii-41', label: 'A', role: KeyRole.input)],
         ],
       ),
       theme: SecureKeypadTheme.defaultTheme(),
@@ -53,61 +54,65 @@ void main() {
     expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
   });
 
-  test('randomized input layout is explicit and remains public configuration only', () {
-    const configuration = SecureKeypadConfiguration(
-      layout: KeypadLayout(
-        schemaVersion: 1,
-        rows: <List<KeySpec>>[
-          <KeySpec>[
-            KeySpec(id: 'digit-1', label: '1', role: KeyRole.input),
+  test(
+    'randomized input layout is explicit and remains public configuration only',
+    () {
+      const configuration = SecureKeypadConfiguration(
+        layout: KeypadLayout(
+          schemaVersion: 1,
+          rows: <List<KeySpec>>[
+            <KeySpec>[KeySpec(id: 'digit-1', label: '1', role: KeyRole.input)],
           ],
-        ],
-        randomizeInputKeys: true,
-      ),
-      theme: SecureKeypadTheme(
-        colors: <String, String>{
-          'background': '#101114',
-          'keyBackground': '#23262D',
-          'keyForeground': '#FFFFFF',
-          'keyPressedBackground': '#3B82F6',
-          'keyDisabledBackground': '#4B5563',
-          'error': '#F87171',
-        },
-        metrics: <String, double>{
-          'keyHeight': 56,
-          'keyGap': 8,
-          'keyRadius': 12,
-          'contentPadding': 16,
-        },
-        keyFontSize: 24,
-      ),
-    );
+          randomizeInputKeys: true,
+        ),
+        theme: SecureKeypadTheme(
+          colors: <String, String>{
+            'background': '#101114',
+            'keyBackground': '#23262D',
+            'keyForeground': '#FFFFFF',
+            'keyPressedBackground': '#3B82F6',
+            'keyDisabledBackground': '#4B5563',
+            'error': '#F87171',
+          },
+          metrics: <String, double>{
+            'keyHeight': 56,
+            'keyGap': 8,
+            'keyRadius': 12,
+            'contentPadding': 16,
+          },
+          keyFontSize: 24,
+        ),
+      );
 
-    expect(configuration.validate(), isEmpty);
-    final layout = configuration.toPlatformCreationParams()['layout'] as Map<String, Object?>;
-    expect(layout['randomizeInputKeys'], isTrue);
-    expect(layout.keys, isNot(contains('value')));
-    expect(layout.keys, isNot(contains('password')));
-  });
+      expect(configuration.validate(), isEmpty);
+      final layout =
+          configuration.toPlatformCreationParams()['layout']
+              as Map<String, Object?>;
+      expect(layout['randomizeInputKeys'], isTrue);
+      expect(layout.keys, isNot(contains('value')));
+      expect(layout.keys, isNot(contains('password')));
+    },
+  );
 
-  test('configuration rejects input IDs outside the selected native policy', () {
-    final configuration = SecureKeypadConfiguration(
-      layout: const KeypadLayout(
-        schemaVersion: 1,
-        rows: <List<KeySpec>>[
-          <KeySpec>[
-            KeySpec(id: 'digit-01', label: '1', role: KeyRole.input),
+  test(
+    'configuration rejects input IDs outside the selected native policy',
+    () {
+      final configuration = SecureKeypadConfiguration(
+        layout: const KeypadLayout(
+          schemaVersion: 1,
+          rows: <List<KeySpec>>[
+            <KeySpec>[KeySpec(id: 'digit-01', label: '1', role: KeyRole.input)],
           ],
-        ],
-      ),
-      theme: SecureKeypadTheme.defaultTheme(),
-    );
+        ),
+        theme: SecureKeypadTheme.defaultTheme(),
+      );
 
-    expect(
-      configuration.validate(),
-      contains('layout.rows[0][0].id is invalid for input policy'),
-    );
-  });
+      expect(
+        configuration.validate(),
+        contains('layout.rows[0][0].id is invalid for input policy'),
+      );
+    },
+  );
 
   test(
     'headless host mode requires explicit lower-assurance acknowledgement',

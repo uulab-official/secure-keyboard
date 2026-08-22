@@ -105,6 +105,7 @@ class KeypadLayout {
   final String? id;
   final String? locale;
   final LayoutDirection direction;
+
   /// Lets the native renderer shuffle input-role keys with a CSPRNG.
   final bool randomizeInputKeys;
   final List<List<KeySpec>> rows;
@@ -365,7 +366,8 @@ class SecureKeypadConfiguration {
     if (layout.locale != null && !_localePattern.hasMatch(layout.locale!)) {
       errors.add('layout.locale is invalid');
     }
-    if (layout.randomizeInputKeys != true && layout.randomizeInputKeys != false) {
+    if (layout.randomizeInputKeys != true &&
+        layout.randomizeInputKeys != false) {
       errors.add('layout.randomizeInputKeys is invalid');
     }
     if (layout.rows.isEmpty || layout.rows.length > 16)
