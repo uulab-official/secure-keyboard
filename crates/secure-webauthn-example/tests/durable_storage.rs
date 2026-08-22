@@ -214,9 +214,12 @@ fn redis_ceremony_ttl_drift_is_removed_before_materialization() {
         let _ = write!(over_bound_handle_hex, "{byte:02x}");
     }
     let over_bound_key = format!("{namespace}:webauthn:v1:authentication:{over_bound_handle_hex}");
+    let over_bound_ttl = u64::try_from(secure_webauthn_example::MAX_CEREMONY_TTL.as_millis())
+        .expect("ceremony TTL should fit Redis millisecond precision")
+        + 1;
     redis::cmd("PEXPIRE")
         .arg(&over_bound_key)
-        .arg(secure_webauthn_example::MAX_CEREMONY_TTL.as_millis() as u64 + 1)
+        .arg(over_bound_ttl)
         .query::<()>(&mut inspection)
         .expect("Redis over-bound PEXPIRE should succeed");
     assert!(matches!(
