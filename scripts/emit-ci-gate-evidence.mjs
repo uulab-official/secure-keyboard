@@ -104,7 +104,7 @@ function writeJson(root, relativePath, bytes) {
 /**
  * Writes one sanitized record and its commit-bound release-gate fragment.
  *
- * @param {{root: string, commit: string, packageVersion: string, gateName: string, evidencePath: string, fragmentPath: string, runner: string, checks: string[], recordedAt: string}} input
+ * @param {{root: string, commit: string, packageVersion: string, gateName: string, evidencePath: string, fragmentPath: string, runner: string, checks: string[], recordedAt: string, toolchains?: Record<string, string>}} input
  * @returns {{record: Record<string, unknown>, fragment: Record<string, unknown>}}
  */
 export function writeCiGateEvidence(input) {
@@ -127,6 +127,7 @@ export function writeCiGateEvidence(input) {
     gateName: input.gateName,
     evidencePath,
     evidenceBytes,
+    toolchains: input.toolchains,
   });
   const fragmentBytes = Buffer.from(`${JSON.stringify(fragment, null, 2)}\n`, "utf8");
   writeJson(root, evidencePath, evidenceBytes);
@@ -156,6 +157,7 @@ function currentPackageVersion() {
 function parseOptions(argumentsList) {
   let runner;
   const checks = [];
+  const toolchains = {};
   for (let index = 0; index < argumentsList.length; index += 1) {
     const option = argumentsList[index];
     const value = argumentsList[index + 1];
@@ -165,16 +167,27 @@ function parseOptions(argumentsList) {
       index += 1;
       continue;
     }
-    throw new Error("options must use --runner value and --check value");
+    if (option === "--toolchain" && typeof value === "string") {
+      const separator = value.indexOf("=");
+      if (separator <= 0 || separator === value.length - 1) {
+        throw new Error("toolchain option must use --toolchain name=version");
+      }
+      const name = value.slice(0, separator);
+      if (Object.hasOwn(toolchains, name)) throw new Error(`toolchain ${name} must be specified once`);
+      toolchains[name] = value.slice(separator + 1);
+      index += 1;
+      continue;
+    }
+    throw new Error("options must use --runner value, --check value, and --toolchain name=version");
   }
-  return { runner, checks };
+  return { runner, checks, toolchains };
 }
 
 function main() {
   const [rootArgument, gateName, evidencePath, fragmentPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !gateName || !evidencePath || !fragmentPath) {
     console.error(
-      "usage: node scripts/emit-ci-gate-evidence.mjs <evidence-root> <gate-name> <evidence-json> <fragment-json> --runner <label> --check <label>...",
+      "usage: node scripts/emit-ci-gate-evidence.mjs <evidence-root> <gate-name> <evidence-json> <fragment-json> --runner <label> --check <label>... [--toolchain name=version]...",
     );
     process.exitCode = 64;
     return;
@@ -182,7 +195,7 @@ function main() {
   try {
     const root = path.resolve(process.cwd(), rootArgument);
     mkdirSync(root, { recursive: true });
-    const { runner, checks } = parseOptions(options);
+    const { runner, checks, toolchains } = parseOptions(options);
     writeCiGateEvidence({
       root,
       commit: currentCommit(),
@@ -192,6 +205,7 @@ function main() {
       fragmentPath,
       runner,
       checks,
+      toolchains,
       recordedAt: new Date().toISOString(),
     });
     console.log(`CI release gate evidence emitted: ${path.relative(process.cwd(), root)}`);

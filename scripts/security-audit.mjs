@@ -1218,6 +1218,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /pathHasSymlinkComponent/, "native evidence emitter must reject symlink traversal");
   const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /toolchains: input\.toolchains/, "CI gate evidence must preserve the release toolchain context");
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /--toolchain name=version/, "CI gate evidence must support explicit toolchain context emission");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /sanitized CI gate record/, "CI gate evidence must reject raw log payloads");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /realpathSync/, "CI gate evidence paths must be contained after symlink resolution");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /pathHasSymlinkComponent/, "CI gate evidence outputs must reject symlink traversal");
@@ -1252,6 +1254,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:production-candidate/, "CI must test the production-candidate gate aggregator contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-ci-gate-evidence\.mjs[\s\S]{0,260}http-contract-version-parity/, "CI release evidence must emit the HTTP contract version parity gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-ci-gate-evidence\.mjs[\s\S]{0,260}opaque-protocol-parity/, "CI release evidence must emit the OPAQUE protocol parity gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /rust-workspace[\s\S]{0,320}--toolchain rust=1\.97\.1[\s\S]{0,240}--toolchain ndk=27\.1\.12297006/, "CI release evidence must seed the final manifest with exact production toolchains");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the React Native Podspec");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/flutter\/ios\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the Flutter Podspec");

@@ -563,6 +563,9 @@ artifacts, an independent-review report, reviewer DER public key, and
 `independent-review-signature` artifacts, a Linux LeakSanitizer result,
 physical iOS/Android and Web browser matrix results, an independent security
 review, and signed-release evidence.
+The CI aggregate emits this exact toolchain context on the `rust-workspace`
+fragment before finalization; the merger carries it into the manifest and the
+trusted verifier checks it before accepting any gate evidence.
 Every gate entry must also carry the exact 40-character commit SHA it verified;
 the validator rejects a missing or mismatched gate commit before accepting the
 manifest.

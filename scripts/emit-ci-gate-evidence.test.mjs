@@ -85,6 +85,36 @@ test("writes a commit-bound evidence record and matching fragment without raw lo
   assert.equal(Object.hasOwn(result.record, "log"), false);
 });
 
+test("carries the pinned release toolchain context into the CI fragment", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-ci-toolchains-"));
+  const result = writeCiGateEvidence({
+    root,
+    commit: COMMIT,
+    packageVersion: "0.1.0",
+    gateName: "rust-workspace",
+    evidencePath: "evidence/rust-workspace.json",
+    fragmentPath: "fragments/rust-workspace.json",
+    runner: "ubuntu-24.04",
+    checks: ["job-rust"],
+    recordedAt: "2026-08-22T00:00:00.000Z",
+    toolchains: {
+      rust: "1.97.1",
+      node: "22.13.0",
+      flutter: "3.47.0",
+      reactNative: "0.87.0",
+      ndk: "27.1.12297006",
+    },
+  });
+
+  assert.deepEqual(result.fragment.toolchains, {
+    rust: "1.97.1",
+    node: "22.13.0",
+    flutter: "3.47.0",
+    reactNative: "0.87.0",
+    ndk: "27.1.12297006",
+  });
+});
+
 test("rejects evidence outputs reached through an in-root symlinked parent", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-ci-output-symlink-"));
   mkdirSync(join(root, "real-output"), { recursive: true });
@@ -198,4 +228,17 @@ test("CI aggregate reuses the fuzz gate artifact without emitting a duplicate fu
   assert.match(aggregate, /name: secure-keypad-ci-gate-fuzz/);
   assert.match(aggregate, /path: \$\{\{ runner\.temp \}\}\/secure-keypad-ci-release-evidence/);
   assert.doesNotMatch(aggregate, /fuzz-stability-aggregate\.json/);
+});
+
+test("CI seeds the final manifest with the exact production toolchain context", () => {
+  const rustEvidence = CI_WORKFLOW.slice(CI_WORKFLOW.indexOf("rust-workspace"), CI_WORKFLOW.indexOf("javascript-contracts"));
+  for (const toolchain of [
+    "rust=1.97.1",
+    "node=22.13.0",
+    "flutter=3.47.0",
+    "reactNative=0.87.0",
+    "ndk=27.1.12297006",
+  ]) {
+    assert.match(rustEvidence, new RegExp(`--toolchain ${toolchain}`));
+  }
 });

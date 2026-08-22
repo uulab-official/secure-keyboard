@@ -1315,7 +1315,12 @@ jobs:
           EVIDENCE_ROOT="$RUNNER_TEMP/secure-keypad-ci-release-evidence"
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" rust-workspace \
             "ci/rust-workspace.json" "fragments/rust-workspace.json" \
-            --runner ci-aggregate --check job-rust
+            --runner ci-aggregate --check job-rust \
+            --toolchain rust=1.97.1 \
+            --toolchain node=22.13.0 \
+            --toolchain flutter=3.47.0 \
+            --toolchain reactNative=0.87.0 \
+            --toolchain ndk=27.1.12297006
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" javascript-contracts \
             "ci/javascript-contracts.json" "fragments/javascript-contracts.json" \
             --runner ci-aggregate --check job-contracts
