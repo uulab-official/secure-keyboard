@@ -204,12 +204,15 @@ export function runSecurityAudit() {
   forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");
   const httpContract = source("crates/secure-auth-http/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /csrf_validated:\s*bool/, "framework-neutral OPAQUE requests must carry an explicit CSRF verdict");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub fn validate_content_length/, "HTTP adapters must share the strict Content-Length validator");
   const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /validate_content_length/, "Axum adapters must reject malformed Content-Length before body buffering");
   const actixAdapter = source("crates/secure-auth-actix/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /csrf:\s*Arc</, "Actix adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /if !\(state\.csrf\)\(&request\)/, "Actix adapters must reject failed CSRF validation before body buffering");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /validate_content_length/, "Actix adapters must reject malformed Content-Length before body buffering");
   const actixManifest = source("crates/secure-auth-actix/Cargo.toml", findings);
   requireText(findings, "crates/secure-auth-actix/Cargo.toml", actixManifest, /webauthn\s*=\s*\["dep:secure-webauthn-example",\s*"dep:uuid"\]/, "Actix WebAuthn support must remain explicitly feature-gated");
   const webauthnDebug = source("crates/secure-webauthn-example/src/lib.rs", findings);

@@ -34,6 +34,13 @@ for invalid input. Server integrations should map internal
 `ServerAuthError` values through `PublicAuthCode` before returning an external
 response; do not expose internal protocol, credential, or store messages.
 
+The Node, Axum, and Actix adapters reject malformed, non-decimal, overflowing,
+comma-joined, invalid-byte, and duplicate `Content-Length` values before body
+buffering. A valid declaration above the host's configured limit returns 413;
+an invalid declaration returns a generic 400. Chunked or otherwise streaming
+requests may omit `Content-Length`, but the bounded body collector remains
+mandatory.
+
 The current suite is pinned as
 `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2`. Raw OPAQUE payloads are
 limited to 16 KiB. The server must reject unsupported protocol versions and

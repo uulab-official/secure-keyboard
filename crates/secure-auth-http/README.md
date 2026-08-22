@@ -11,6 +11,12 @@ and a body no larger than 128 KiB. It provides these routes:
 - `/v1/opaque/login/start`
 - `/v1/opaque/login/finish`
 
+Framework adapters must reject malformed, non-decimal, overflowing,
+comma-joined, invalid-byte, or duplicate `Content-Length` values before body
+buffering. A valid declaration above the configured limit is a generic 413;
+an invalid declaration is a generic 400. Requests without `Content-Length`
+remain subject to the bounded streaming collector.
+
 All routes return generic public error classes. Login state handles are fixed
 32-byte opaque values encoded as lowercase hex for transport and are consumed
 atomically by the configured `BoundOneTimeLoginStateStore`. The HTTP response

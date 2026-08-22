@@ -65,6 +65,50 @@ pub const RESPONSE_SECURITY_HEADERS: &[HttpHeader] = &[
     },
 ];
 
+/// Failure classes for a declared HTTP `Content-Length` value.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ContentLengthError {
+    /// The value is malformed or not representable as a non-negative
+    /// machine-sized decimal integer.
+    Invalid,
+    /// The value is valid but exceeds the caller's enforced body limit.
+    TooLarge,
+}
+
+/// Validates one declared HTTP `Content-Length` value before body buffering.
+///
+/// An absent header is valid because chunked or streaming requests do not have
+/// to declare their size. A present value must contain only ASCII decimal
+/// digits after surrounding whitespace is removed; signs, comma-separated
+/// values, overflow, and values above `limit` are rejected. Framework
+/// adapters must separately reject duplicate header fields and invalid header
+/// bytes before calling this function.
+///
+/// # Errors
+///
+/// Returns [`ContentLengthError::Invalid`] for malformed or overflowing
+/// values, and [`ContentLengthError::TooLarge`] when the parsed value exceeds
+/// `limit`.
+pub fn validate_content_length(
+    value: Option<&str>,
+    limit: usize,
+) -> Result<(), ContentLengthError> {
+    let Some(value) = value else {
+        return Ok(());
+    };
+    let value = value.trim();
+    if value.is_empty() || !value.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(ContentLengthError::Invalid);
+    }
+    let length = value
+        .parse::<usize>()
+        .map_err(|_| ContentLengthError::Invalid)?;
+    if length > limit {
+        return Err(ContentLengthError::TooLarge);
+    }
+    Ok(())
+}
+
 const REGISTRATION_START_PATH: &str = "/v1/opaque/registration/start";
 const REGISTRATION_FINISH_PATH: &str = "/v1/opaque/registration/finish";
 const LOGIN_START_PATH: &str = "/v1/opaque/login/start";

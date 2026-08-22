@@ -112,6 +112,45 @@ async fn adapter_bounds_streaming_body_before_route_parsing() {
 }
 
 #[actix_web::test]
+async fn adapter_rejects_malformed_content_length_before_route_dispatch() {
+    let app = actix_test::init_service(
+        App::new().service(app_with_context(HttpDeploymentContext::direct_tls())),
+    )
+    .await;
+    let response = actix_test::call_service(
+        &app,
+        actix_test::TestRequest::post()
+            .uri("/not-an-auth-route")
+            .insert_header(("content-type", "application/json"))
+            .insert_header(("content-length", "not-a-number"))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[actix_web::test]
+async fn adapter_rejects_duplicate_content_length_before_route_dispatch() {
+    let app = actix_test::init_service(
+        App::new().service(app_with_context(HttpDeploymentContext::direct_tls())),
+    )
+    .await;
+    let response = actix_test::call_service(
+        &app,
+        actix_test::TestRequest::post()
+            .uri("/not-an-auth-route")
+            .insert_header(("content-type", "application/json"))
+            .insert_header(("content-length", "0"))
+            .append_header(("content-length", "0"))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[actix_web::test]
 async fn adapter_fails_closed_for_invalid_context_and_custom_body_limit() {
     let app = actix_test::init_service(App::new().service(app_with_context(
         HttpDeploymentContext::new(TransportSecurity::Plaintext, MAX_JSON_BODY_BYTES, true),

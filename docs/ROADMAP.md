@@ -140,6 +140,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, N
 - [x] Add public opaque-handle generation and an executable atomic backend contract test.
 - [x] Add bounded HTTP/JSON routes for registration and one-time login finish.
 - [x] Enforce POST, JSON media type, 128 KiB body limit, fixed-size handle encoding, and generic public errors at the route boundary.
+- [x] Make Node, Axum, Actix, and optional WebAuthn `Content-Length` parsing fail closed before body buffering.
 - [x] Add end-to-end HTTP OPAQUE registration/login/replay tests without returning credential files or session keys.
 - [x] Add positive login, wrong-password, setup persistence, and credential-file tests.
 - [x] Bind a sealed keypad submission directly to native OPAQUE login state without a password getter.

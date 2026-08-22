@@ -19,6 +19,10 @@ exact release-candidate commit by the release evidence manifest.
   proxy validation, rate limits, sessions, and durable stores to the host. Its
   optional `webauthn` feature provides the same body-free host-principal and
   bounded passkey route boundary.
+- Unified the Node, Axum, Actix, and optional WebAuthn body-boundary checks:
+  malformed, overflowing, signed, comma-joined, invalid-byte, and duplicate
+  `Content-Length` values now fail closed before request-body buffering, while
+  valid declarations above the configured limit retain the 413 response.
 
 ### Security
 

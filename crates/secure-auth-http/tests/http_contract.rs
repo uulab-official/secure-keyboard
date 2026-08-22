@@ -4,8 +4,9 @@ use secure_auth::{
     CredentialFile, ServerSetupBytes, CIPHER_SUITE_ID, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES,
 };
 use secure_auth_http::{
-    CredentialRepository, HttpAuthRouter, HttpDeploymentContext, HttpRequest, RepositoryError,
-    TransportSecurity, AUTHENTICATED_RESPONSE, REGISTRATION_STORED_RESPONSE,
+    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
+    HttpDeploymentContext, HttpRequest, RepositoryError, TransportSecurity, AUTHENTICATED_RESPONSE,
+    REGISTRATION_STORED_RESPONSE,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, LoginStateHandle, ServerAuthService};
 use serde::Serialize;
@@ -15,6 +16,23 @@ const CLIENT_ID: &[u8] = b"fixture-client";
 const SERVER_ID: &[u8] = b"fixture-server";
 const CREDENTIAL_ID: &[u8] = b"fixture-user";
 const PASSWORD: &[u8] = b"fixture-only-secret";
+
+#[test]
+fn content_length_validation_is_strict_and_bounded() {
+    assert_eq!(validate_content_length(None, 128), Ok(()));
+    assert_eq!(validate_content_length(Some(" 128 "), 128), Ok(()));
+    assert_eq!(
+        validate_content_length(Some("129"), 128),
+        Err(ContentLengthError::TooLarge)
+    );
+    for value in ["", "+1", "-1", "1, 1", "184467440737095516160"] {
+        assert_eq!(
+            validate_content_length(Some(value), 128),
+            Err(ContentLengthError::Invalid),
+            "unexpectedly accepted content length {value:?}"
+        );
+    }
+}
 
 #[test]
 fn route_requires_tls_and_proxy_limits_before_parsing() {

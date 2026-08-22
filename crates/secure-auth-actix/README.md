@@ -11,7 +11,8 @@ let app = actix_web::App::new().service(secure_auth_actix::router(
 ```
 
 The adapter calls the host CSRF/origin callback before buffering a request,
-uses Actix's bounded payload collector, preserves the framework-neutral generic
+rejects malformed or duplicate `Content-Length` values before buffering, uses
+Actix's bounded payload collector, preserves the framework-neutral generic
 errors and security headers, and never parses forwarded transport headers.
 TLS termination, proxy source validation, connection/read limits, rate limits,
 credential persistence, and session issuance remain host responsibilities.

@@ -17,8 +17,9 @@ use actix_web::{
     HttpRequest, HttpResponse, Scope,
 };
 use secure_auth_http::{
-    CredentialRepository, HttpAuthRouter, HttpDeploymentContext, HttpRequest as ContractRequest,
-    HttpResponse as ContractResponse, JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
+    HttpDeploymentContext, HttpRequest as ContractRequest, HttpResponse as ContractResponse,
+    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
@@ -89,14 +90,8 @@ where
     }
 
     let body_limit = state.context.body_limit_bytes();
-    if request
-        .headers()
-        .get(header::CONTENT_LENGTH)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<usize>().ok())
-        .is_some_and(|length| length > body_limit)
-    {
-        return invalid_request_response(413);
+    if let Some(error) = content_length_error(request.headers(), body_limit) {
+        return invalid_request_response(content_length_status(error));
     }
 
     let method = request.method().as_str().to_owned();
@@ -120,6 +115,28 @@ where
         },
         state.context,
     ))
+}
+
+fn content_length_error(
+    headers: &actix_web::http::header::HeaderMap,
+    limit: usize,
+) -> Option<ContentLengthError> {
+    let mut values = headers.get_all(header::CONTENT_LENGTH);
+    let first = values.next()?;
+    if values.next().is_some() {
+        return Some(ContentLengthError::Invalid);
+    }
+    let Ok(value) = first.to_str() else {
+        return Some(ContentLengthError::Invalid);
+    };
+    validate_content_length(Some(value), limit).err()
+}
+
+fn content_length_status(error: ContentLengthError) -> u16 {
+    match error {
+        ContentLengthError::Invalid => 400,
+        ContentLengthError::TooLarge => 413,
+    }
 }
 
 fn response_from(response: ContractResponse) -> HttpResponse {
@@ -216,14 +233,8 @@ where
     }
 
     let body_limit = state.context.body_limit_bytes();
-    if request
-        .headers()
-        .get(header::CONTENT_LENGTH)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<usize>().ok())
-        .is_some_and(|length| length > body_limit)
-    {
-        return webauthn_invalid_request_response(413);
+    if let Some(error) = content_length_error(request.headers(), body_limit) {
+        return webauthn_invalid_request_response(content_length_status(error));
     }
 
     let method = request.method().as_str().to_owned();

@@ -16,8 +16,8 @@ use axum::{
     Router,
 };
 use secure_auth_http::{
-    CredentialRepository, HttpAuthRouter, HttpDeploymentContext, HttpRequest, HttpResponse,
-    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
+    HttpDeploymentContext, HttpRequest, HttpResponse, JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
@@ -83,15 +83,9 @@ where
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
 
-    if parts
-        .headers
-        .get(header::CONTENT_LENGTH)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse::<usize>().ok())
-        .is_some_and(|length| length > body_limit)
-    {
+    if let Some(error) = content_length_error(&parts.headers, body_limit) {
         return response_from(HttpResponse {
-            status: 413,
+            status: content_length_status(error),
             content_type: JSON_CONTENT_TYPE,
             headers: RESPONSE_SECURITY_HEADERS,
             body: br#"{"error":"invalid_request"}"#.to_vec(),
@@ -117,6 +111,28 @@ where
         state.context,
     );
     response_from(response)
+}
+
+fn content_length_error(
+    headers: &axum::http::HeaderMap,
+    limit: usize,
+) -> Option<ContentLengthError> {
+    let mut values = headers.get_all(header::CONTENT_LENGTH).iter();
+    let first = values.next()?;
+    if values.next().is_some() {
+        return Some(ContentLengthError::Invalid);
+    }
+    let Ok(value) = first.to_str() else {
+        return Some(ContentLengthError::Invalid);
+    };
+    validate_content_length(Some(value), limit).err()
+}
+
+fn content_length_status(error: ContentLengthError) -> u16 {
+    match error {
+        ContentLengthError::Invalid => 400,
+        ContentLengthError::TooLarge => 413,
+    }
 }
 
 fn response_from(response: HttpResponse) -> Response {
@@ -247,15 +263,9 @@ mod webauthn_adapter {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
 
-        if parts
-            .headers
-            .get(header::CONTENT_LENGTH)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.parse::<usize>().ok())
-            .is_some_and(|length| length > body_limit)
-        {
+        if let Some(error) = super::content_length_error(&parts.headers, body_limit) {
             return response_from(WebAuthnHttpResponse {
-                status: 413,
+                status: super::content_length_status(error),
                 content_type: WEBAUTHN_JSON_CONTENT_TYPE,
                 headers: WEBAUTHN_RESPONSE_SECURITY_HEADERS,
                 body: br#"{"error":"invalid_request"}"#.to_vec(),

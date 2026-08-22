@@ -22,6 +22,11 @@ malformed non-byte stream chunk is rejected before delegation and any supported
 typed-array backing bytes are cleared.
 JavaScript remains outside the strongest native secret boundary.
 
+The handler rejects malformed, non-decimal, overflowing, signed, comma-joined,
+and oversized `Content-Length` values before reading the body. It also rejects
+duplicate declarations; a missing header remains valid only because the
+streaming reader enforces the same 128 KiB bound.
+
 `transport: "trusted-proxy-tls"` is valid only after the host has independently
 validated the proxy source and forwarded scheme. The adapter never trusts or
 parses `X-Forwarded-*` headers. JavaScript memory is not a secure-memory

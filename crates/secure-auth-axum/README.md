@@ -28,9 +28,10 @@ let app = secure_auth_axum::webauthn_router(
 Before constructing the trusted-proxy context, the host must validate the
 proxy source and forwarded scheme. The adapter bounds body buffering at 128 KiB
 with Axum's streaming body helper, copies the OPAQUE route's static security
-headers, and never returns framework error details. The WebAuthn adapter uses
-the same bounded body and response-header contract and rejects an unavailable
-deployment context before dispatch. Both adapters require a host callback that
+headers, rejects malformed or duplicate `Content-Length` before buffering, and
+never returns framework error details. The WebAuthn adapter uses the same
+bounded body, `Content-Length`, and response-header contract and rejects an
+unavailable deployment context before dispatch. Both adapters require a host callback that
 validates CSRF/origin policy from request parts before the body is buffered;
 the callback result is never inferred from JSON. TLS termination, request
 authentication, rate limits, account-enrollment policy, session issuance, and

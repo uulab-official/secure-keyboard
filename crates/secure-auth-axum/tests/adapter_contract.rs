@@ -105,6 +105,35 @@ async fn adapter_bounds_streaming_body_before_route_parsing() {
 }
 
 #[tokio::test]
+async fn adapter_rejects_malformed_content_length_before_route_dispatch() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/not-an-auth-route")
+        .header("content-type", "application/json")
+        .header("content-length", "not-a-number")
+        .body(Body::empty())
+        .unwrap();
+    let response = app().oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), 400);
+}
+
+#[tokio::test]
+async fn adapter_rejects_duplicate_content_length_before_route_dispatch() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/not-an-auth-route")
+        .header("content-type", "application/json")
+        .header("content-length", "0")
+        .header("content-length", "0")
+        .body(Body::empty())
+        .unwrap();
+    let response = app().oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), 400);
+}
+
+#[tokio::test]
 async fn adapter_fails_closed_for_invalid_context_and_custom_body_limit() {
     let invalid_context = app_with_context(HttpDeploymentContext::new(
         TransportSecurity::Plaintext,
