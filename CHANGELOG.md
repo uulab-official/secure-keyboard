@@ -58,6 +58,9 @@ exact release-candidate commit by the release evidence manifest.
 - Release evidence, merged manifests, and detached signing outputs now use
   exclusive file creation so a pre-existing path or symlink cannot be replaced
   during release assembly.
+- Web browser release evidence now requires each checked-in smoke result line,
+  records the actual Chromium/Firefox/WebKit runtime versions separately from
+  the pinned Playwright version, and rejects arbitrary sanitized log text.
 - Release evidence staging now bounds directory count and relative path depth
   in addition to file count and byte budgets, preventing empty or deeply nested
   untrusted artifact trees from exhausting finalization traversal resources;

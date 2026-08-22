@@ -330,7 +330,11 @@ signed-source paths and can be verified directly from the archive root with
 the candidate metadata commit.
 
 For a browser-only evidence root, the checked-in web emitter accepts the three
-sanitized Playwright logs and creates the validator-compatible matrix record:
+sanitized Playwright logs, requires each log's checked-in
+`<browser>@<runtime-version>: secure-context pass; webauthn=<result>` line,
+and creates the validator-compatible matrix record. The record keeps the
+exact Playwright tool version in `frameworkVersion` and the three actual
+browser runtime versions in `device.browserVersion`:
 
 ```sh
 node scripts/emit-web-browser-evidence.mjs \

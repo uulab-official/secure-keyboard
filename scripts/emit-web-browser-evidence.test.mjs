@@ -13,9 +13,21 @@ const COMMIT = "d".repeat(40);
 const BROWSERS = ["chromium", "firefox", "webkit"];
 const CI_WORKFLOW = readFileSync(fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url)), "utf8");
 const LOGS = [
-  { browser: "chromium", path: "browser/chromium.log", bytes: Buffer.from("chromium secure-context pass\n") },
-  { browser: "firefox", path: "browser/firefox.log", bytes: Buffer.from("firefox secure-context pass\n") },
-  { browser: "webkit", path: "browser/webkit.log", bytes: Buffer.from("webkit secure-context pass\n") },
+  {
+    browser: "chromium",
+    path: "browser/chromium.log",
+    bytes: Buffer.from("chromium@140.0.0: secure-context pass; webauthn=available\n"),
+  },
+  {
+    browser: "firefox",
+    path: "browser/firefox.log",
+    bytes: Buffer.from("firefox@142.0.0: secure-context pass; webauthn=available\n"),
+  },
+  {
+    browser: "webkit",
+    path: "browser/webkit.log",
+    bytes: Buffer.from("webkit@26.0: secure-context pass; webauthn=available\n"),
+  },
 ];
 
 test("builds a valid sanitized web browser matrix record from hashed log references", () => {
@@ -30,6 +42,7 @@ test("builds a valid sanitized web browser matrix record from hashed log referen
   assert.deepEqual(validateDeviceEvidence(record, { expectedCommit: COMMIT }), []);
   assert.equal(record.logPath, "browser/chromium.log");
   assert.equal(record.logSha256, createHash("sha256").update(LOGS[0].bytes).digest("hex"));
+  assert.equal(record.device.browserVersion, "chromium@140.0.0,firefox@142.0.0,webkit@26.0");
   assert.equal(record.artifacts.length, 2);
   assert.equal(Object.hasOwn(record, "rawLogs"), false);
 });
@@ -174,6 +187,22 @@ test("rejects empty browser logs before hashing evidence", () => {
         logs: emptyLogs,
       }),
     /browser log bytes must not be empty/,
+  );
+});
+
+test("rejects browser logs that do not contain the checked-in smoke result", () => {
+  assert.throws(
+    () =>
+      buildWebBrowserEvidence({
+        commit: COMMIT,
+        frameworkVersion: "playwright-1.62.1",
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        logs: LOGS.map((log, index) =>
+          index === 0 ? { ...log, bytes: Buffer.from("arbitrary sanitized text\n", "utf8") } : log,
+        ),
+      }),
+    /checked-in browser smoke result/,
   );
 });
 

@@ -12,6 +12,7 @@ const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const LABEL = /^[a-z0-9][a-z0-9._+:-]{0,120}$/;
+const BROWSER_VERSION = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const BROWSERS = Object.freeze(["chromium", "firefox", "webkit"]);
 const WEB_TEST_CASES = Object.freeze({
@@ -45,6 +46,25 @@ function validateLabel(value, field) {
   if (typeof value !== "string" || !LABEL.test(value)) throw new Error(`${field} must be a bounded label`);
 }
 
+function nonEmptyBoundedBrowserVersion(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 120;
+}
+
+function parseBrowserSmokeVersion(browser, bytes) {
+  const text = Buffer.from(bytes).toString("utf8");
+  const prefix = `${browser}@`;
+  const line = text.split(/\r?\n/).find((candidate) => candidate.startsWith(prefix));
+  const match = line?.match(
+    new RegExp(
+      `^${browser}@([A-Za-z0-9][A-Za-z0-9._+-]{0,63}): secure-context pass; webauthn=[a-z0-9-]+$`,
+    ),
+  );
+  if (!match || !BROWSER_VERSION.test(match[1])) {
+    throw new Error(`${browser} log must contain the checked-in browser smoke result with its runtime version`);
+  }
+  return match[1];
+}
+
 function orderedLogs(logs) {
   if (!Array.isArray(logs) || logs.length !== BROWSERS.length) {
     throw new Error("logs must contain exactly one log for chromium, firefox, and webkit");
@@ -63,7 +83,12 @@ function orderedLogs(logs) {
     if (bytes.length > MAX_DEVICE_EVIDENCE_FILE_BYTES) {
       throw new Error(`browser log bytes must not exceed ${MAX_DEVICE_EVIDENCE_FILE_BYTES} bytes`);
     }
-    byBrowser.set(log.browser, { browser: log.browser, path: log.path, bytes });
+    byBrowser.set(log.browser, {
+      browser: log.browser,
+      path: log.path,
+      bytes,
+      version: parseBrowserSmokeVersion(log.browser, bytes),
+    });
   });
   return BROWSERS.map((browser) => {
     const log = byBrowser.get(browser);
@@ -89,6 +114,10 @@ export function buildWebBrowserEvidence(input) {
   validateLabel(runner, "runner");
   validateTimestamp(recordedAt);
   const logs = orderedLogs(input.logs);
+  const browserVersion = logs.map((log) => `${log.browser}@${log.version}`).join(",");
+  if (!nonEmptyBoundedBrowserVersion(browserVersion)) {
+    throw new Error("browser runtime version summary must be bounded");
+  }
   return {
     schemaVersion: 1,
     status: "pass",
@@ -101,7 +130,7 @@ export function buildWebBrowserEvidence(input) {
     physicalDevice: false,
     device: {
       browser: "chromium+firefox+webkit",
-      browserVersion: frameworkVersion,
+      browserVersion,
       osVersion: runner,
       secureContext: true,
     },

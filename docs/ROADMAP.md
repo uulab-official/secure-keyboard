@@ -200,6 +200,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Add conflict-checked release evidence fragment merging before final manifest validation.
 - [x] Emit commit-bound CI fragments for durable backends, fuzz/LSAN, source gates, host builds, and browser-matrix logs.
 - [x] Convert the three-browser Playwright smoke logs into a validator-compatible Web evidence record without embedding raw logs.
+- [x] Require Web evidence to bind actual Chromium/Firefox/WebKit runtime versions to the checked-in smoke output.
 - [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
 - [x] Bind each referenced JSON gate record's embedded gate name, commit, and pass status to its manifest gate.
 - [x] Revalidate iOS/Android/Web gate records, physical-device artifact categories, and nested log/artifact digests during final release verification.
