@@ -77,6 +77,8 @@ exact release-candidate commit by the release evidence manifest.
 - The WebAuthn base64url decoder now rejects caller-supplied limits that are
   non-integral, unbounded, negative, or above the global binary bound before
   allocating a decode buffer.
+- React Native and Flutter now share the same conservative native session
+  defaults: eight input tokens and a 60-second monotonic inactivity timeout.
 - Added a reviewer-side independent-security-review fragment emitter that
   verifies signed report bytes, review identity, scope, decision, and public
   key binding without accepting private key material.
