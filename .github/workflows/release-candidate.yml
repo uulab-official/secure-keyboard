@@ -59,7 +59,7 @@ jobs:
           printf '%s\n' "$RELEASE_REF" > "$IOS_FFI_DIR/secure-keypad-ios-ffi.commit"
           (
             cd "$IOS_FFI_DIR"
-            find react-native flutter -type f -print0 \
+            find . -type f ! -name secure-keypad-ios-ffi.sha256 -print0 \
               | sort -z \
               | xargs -0 shasum -a 256
           ) > "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256"

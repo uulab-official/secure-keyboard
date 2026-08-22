@@ -930,6 +930,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-ios-artifacts:/, "release workflow must build publishable iOS FFI artifacts in a separate pinned job");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:\s*\n\s*needs:\s*native-ios-artifacts/, "release bundle must depend on the verified iOS FFI artifact job");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release bundle must download the immutable iOS FFI artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /find \. -type f ! -name secure-keypad-ios-ffi\.sha256/, "iOS FFI checksum generation must include the commit binding while excluding only the manifest itself");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /shasum -a 256 -c secure-keypad-ios-ffi\.sha256/, "release bundle must verify the downloaded iOS FFI checksum manifest");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-ios-ffi\.commit/, "release bundle must bind the downloaded iOS FFI artifact to the requested commit");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cat "\$IOS_FFI_DIR\/secure-keypad-ios-ffi\.commit"\)" = "\$RELEASE_REF/, "release bundle must reject an iOS FFI artifact from another commit");
