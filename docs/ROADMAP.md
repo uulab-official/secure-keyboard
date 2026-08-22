@@ -173,6 +173,14 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, N
 - [x] Bind Node server metadata to the exact Rust OPAQUE protocol version and cipher-suite identifier without implementing cryptography in JavaScript.
 - [x] Add bounded replay-store, downgrade, enumeration, and key-rotation tests; wire isolated durable interoperability checks into CI.
 - [ ] Add a first non-Rust backend-language cryptographic implementation only after the reference implementation is interoperable; the Node/TypeScript transport bridge is complete, but it deliberately delegates OPAQUE to Rust/native.
+
+The non-Rust cryptographic implementation remains intentionally outside the
+current production-candidate scope. Reference OPAQUE interoperability is
+complete, but duplicating the cryptographic implementation in JavaScript or a
+second backend language would expand the trusted-computing base and create a
+second downgrade/parity surface. The supported Node server SDK is therefore a
+bounded transport bridge to the pinned Rust/native reference until a separate
+review approves a genuinely interoperable second implementation.
 - [x] Provide migration guidance for systems that currently receive ordinary passwords.
 
 Exit criteria: the server never needs a plaintext password or replayable client-side hash.
