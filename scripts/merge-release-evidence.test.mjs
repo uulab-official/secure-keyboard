@@ -81,6 +81,22 @@ function writeDeviceGateEvidence(
       return { kind, path: artifactPath, sha256: createHash("sha256").update(bytes).digest("hex") };
     },
   );
+  const hostModes = isWeb
+    ? undefined
+    : ["react-native", "flutter"].map((framework) => {
+        const hostLogPath = `device/${gate.name}-${framework}-host.log`;
+        const hostLogBytes = Buffer.from(`${gate.name}:${framework} sanitized host log\n`, "utf8");
+        writeFileSync(join(root, hostLogPath), hostLogBytes);
+        return {
+          framework,
+          frameworkVersion: framework === "react-native" ? "0.87.0" : "3.47.0",
+          status: "pass",
+          evidence: {
+            logPath: hostLogPath,
+            logSha256: createHash("sha256").update(hostLogBytes).digest("hex"),
+          },
+        };
+      });
   const record = {
     schemaVersion: 1,
     commit: gate.commit,
@@ -89,14 +105,7 @@ function writeDeviceGateEvidence(
     platform,
     framework: isWeb ? "web" : "native",
     frameworkVersion: isWeb ? "chromium-140.0.0" : "1.0.0",
-    ...(isWeb
-      ? {}
-      : {
-          hostModes: [
-            { framework: "react-native", frameworkVersion: "0.87.0", status: "pass" },
-            { framework: "flutter", frameworkVersion: "3.47.0", status: "pass" },
-          ],
-        }),
+    ...(isWeb ? {} : { hostModes }),
     recordedAt: "2026-08-21T00:00:00.000Z",
     physicalDevice: !isWeb,
     device: isWeb

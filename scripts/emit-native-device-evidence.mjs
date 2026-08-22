@@ -96,11 +96,19 @@ function normalizeHostModes(hostModes) {
   if (!Array.isArray(hostModes)) throw new Error("hostModes must contain both react-native and flutter");
   return hostModes.map((hostMode) => {
     if (!isRecord(hostMode)) throw new Error("host mode must be an object");
-    return {
+    const normalized = {
       framework: hostMode.framework,
       frameworkVersion: hostMode.frameworkVersion,
       status: hostMode.status,
     };
+    if (hostMode.evidence !== undefined) {
+      if (!isRecord(hostMode.evidence)) throw new Error("host mode evidence must be an object");
+      normalized.evidence = {
+        logPath: hostMode.evidence.logPath,
+        logSha256: hostMode.evidence.logSha256,
+      };
+    }
+    return normalized;
   });
 }
 
@@ -212,6 +220,35 @@ function readEvidenceFile(root, relativePath, field) {
   return readFileSync(filePath);
 }
 
+function attachHostModeLogs(root, hostModes, hostModeLogPaths) {
+  if (hostModeLogPaths === undefined) return hostModes;
+  if (!Array.isArray(hostModeLogPaths)) throw new Error("hostModeLogPaths must be an array");
+  const pathsByFramework = new Map();
+  for (const hostLog of hostModeLogPaths) {
+    if (!isRecord(hostLog) || typeof hostLog.framework !== "string") {
+      throw new Error("host mode log must contain a framework and path");
+    }
+    if (pathsByFramework.has(hostLog.framework)) {
+      throw new Error(`duplicate host mode log for ${hostLog.framework}`);
+    }
+    pathsByFramework.set(hostLog.framework, hostLog.path);
+  }
+  return hostModes.map((hostMode) => {
+    if (!pathsByFramework.has(hostMode.framework)) {
+      throw new Error(`missing host mode log for ${hostMode.framework}`);
+    }
+    const logPath = pathsByFramework.get(hostMode.framework);
+    const bytes = readEvidenceFile(root, logPath, `${hostMode.framework} host mode log path`);
+    return {
+      ...hostMode,
+      evidence: {
+        logPath,
+        logSha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    };
+  });
+}
+
 function writeJson(root, relativePath, bytes) {
   if (!isSafeRelativePath(relativePath)) throw new Error("output path must be safe and relative");
   const realRoot = realpathSync(root);
@@ -242,12 +279,12 @@ function writeJson(root, relativePath, bytes) {
  * Reads physical-device files from an evidence root, rejects leaked sentinel
  * content, then writes the device record and its commit-bound release fragment.
  *
- * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, hostModes: Array<{framework: string, frameworkVersion: string, status: string}>, model: string, osVersion: string, osBuild: string, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
+ * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, hostModes: Array<{framework: string, frameworkVersion: string, status: string}>, hostModeLogPaths?: Array<{framework: string, path: string}>, model: string, osVersion: string, osBuild: string, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
  * @returns {{record: Record<string, unknown>, fragment: Record<string, unknown>}}
  */
 export function writeNativeDeviceEvidence(input) {
   if (!isRecord(input)) throw new Error("native evidence input must be an object");
-  const { root, packageVersion, evidencePath, fragmentPath, logPath, artifactPaths } = input;
+  const { root, packageVersion, evidencePath, fragmentPath, logPath, artifactPaths, hostModeLogPaths } = input;
   if (typeof root !== "string" || root.length === 0) throw new Error("evidence root is required");
   if (!VERSION.test(String(packageVersion))) throw new Error("packageVersion must be a semantic version");
   if (!isSafeRelativePath(evidencePath) || !isSafeRelativePath(fragmentPath)) {
@@ -265,7 +302,8 @@ export function writeNativeDeviceEvidence(input) {
       bytes: readEvidenceFile(root, artifact.path, `artifact ${artifact.kind} path`),
     };
   });
-  const record = buildNativeDeviceEvidence({ ...input, log, artifacts });
+  const hostModes = attachHostModeLogs(root, normalizeHostModes(input.hostModes), hostModeLogPaths);
+  const record = buildNativeDeviceEvidence({ ...input, hostModes, log, artifacts });
   const fileFindings = verifyDeviceEvidenceFiles(record, root);
   if (fileFindings.length > 0) throw new Error(fileFindings.join("\n"));
   const evidenceBytes = Buffer.from(`${JSON.stringify(record, null, 2)}\n`, "utf8");
@@ -301,7 +339,7 @@ function currentPackageVersion() {
 }
 
 function parseOptions(argumentsList) {
-  const values = { testCases: {}, artifactPaths: [] };
+  const values = { testCases: {}, artifactPaths: [], hostModeLogPaths: [] };
   for (let index = 0; index < argumentsList.length; index += 1) {
     const option = argumentsList[index];
     const value = argumentsList[index + 1];
@@ -336,6 +374,16 @@ function parseOptions(argumentsList) {
       index += 1;
       continue;
     }
+    if (option === "--host-log" && typeof value === "string") {
+      const separator = value.indexOf("=");
+      if (separator <= 0) throw new Error("host logs must use --host-log framework=relative/path");
+      values.hostModeLogPaths.push({
+        framework: value.slice(0, separator),
+        path: value.slice(separator + 1),
+      });
+      index += 1;
+      continue;
+    }
     if (option === "--test-case" && typeof value === "string") {
       values.testCases[value] = "pass";
       index += 1;
@@ -349,7 +397,7 @@ function parseOptions(argumentsList) {
       continue;
     }
     throw new Error(
-      "options must use --platform, --framework, --framework-version, --host-mode, --model, --os-version, --os-build, --log, --artifact, and --test-case",
+      "options must use --platform, --framework, --framework-version, --host-mode, --host-log, --model, --os-version, --os-build, --log, --artifact, and --test-case",
     );
   }
   return values;
@@ -359,7 +407,7 @@ function main() {
   const [rootArgument, evidencePath, fragmentPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !evidencePath || !fragmentPath) {
     console.error(
-      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --model <label> --os-version <label> --os-build <label> --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
+      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --host-log <react-native|flutter>=<relative/path> --model <label> --os-version <label> --os-build <label> --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
     );
     process.exitCode = 64;
     return;

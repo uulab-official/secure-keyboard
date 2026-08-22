@@ -82,7 +82,10 @@ Each platform release run should produce one JSON record containing:
   both `react-native` and `flutter`, including the version used for each host;
   a record for only one framework cannot satisfy the native release gate;
   the recorded host versions must match the release manifest's pinned React
-  Native and Flutter toolchains;
+  Native and Flutter toolchains. Each physical host-mode record must also
+  include an `evidence` object containing only its own relative `logPath` and
+  `logSha256`; those paths must be unique from the aggregate log and artifacts
+  so a shared log cannot represent both adapter runs;
 - device/browser model, OS version/build, and `secureContext: true` for Web;
 - every applicable test case with the exact status `pass`;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,
@@ -133,6 +136,8 @@ node scripts/emit-native-device-evidence.mjs \
   --framework-version 0.87.0 \
   --host-mode react-native=0.87.0 \
   --host-mode flutter=3.47.0 \
+  --host-log react-native=logs/ios-react-native-host.txt \
+  --host-log flutter=logs/ios-flutter-host.txt \
   --model "iPhone 17 Pro" \
   --os-version 26.5 \
   --os-build 23A000 \
@@ -154,9 +159,11 @@ node scripts/emit-native-device-evidence.mjs \
   --test-case protocolDowngrade
 ```
 
-Repeat with `--platform android` and the Android model/OS build. The emitter
-creates only hashes and public metadata; it never embeds log, screenshot, or
-crash-report bytes in the JSON record. The standalone record validator bounds
+Repeat with `--platform android` and the Android model/OS build. The two
+`--host-log` files must be the sanitized logs from the matching RN and Flutter
+host runs. The emitter creates only hashes and public metadata; it never
+embeds log, screenshot, or crash-report bytes in the JSON record. The
+standalone record validator bounds
 the top-level JSON record to 1 MiB; each referenced evidence file is bounded to
 32 MiB and must be non-empty before hashing or content scanning.
 

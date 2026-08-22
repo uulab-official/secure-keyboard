@@ -111,6 +111,18 @@ test("requires both React Native and Flutter host modes for a physical native re
   assert.ok(incompleteFindings.some((finding) => finding.includes("flutter")));
 });
 
+test("requires independently hashed evidence for every physical native host mode", () => {
+  const findings = validateDeviceEvidence(structuredClone(VALID_NATIVE), {
+    requirePhysicalDevice: true,
+  });
+
+  assert.ok(
+    findings.some(
+      (finding) => finding.includes("hostModes[0].evidence") && finding.includes("log"),
+    ),
+  );
+});
+
 test("can bind a device record to an expected checkout commit", () => {
   const findings = validateDeviceEvidence(VALID_NATIVE, { expectedCommit: "f".repeat(40) });
 
@@ -200,6 +212,46 @@ test("recomputes log and artifact digests inside the evidence root", () => {
   writeFileSync(join(root, evidence.logPath), Buffer.from("tampered", "utf8"));
   const findings = verifyDeviceEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("logSha256")));
+});
+
+test("recomputes each native host-mode log digest inside the evidence root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-host-mode-evidence-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  evidence.hostModes = evidence.hostModes.map(({ framework, frameworkVersion, status }) => {
+    const logPath = `logs/${framework}.txt`;
+    const bytes = Buffer.from(`${framework} sanitized host log`, "utf8");
+    mkdirSync(join(root, "logs"), { recursive: true });
+    writeFileSync(join(root, logPath), bytes);
+    return {
+      framework,
+      frameworkVersion,
+      status,
+      evidence: {
+        logPath,
+        logSha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    };
+  });
+
+  writeFileSync(join(root, evidence.logPath), Buffer.from("sanitized runtime log", "utf8"));
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("native checksum manifest", "utf8"));
+  evidence.logSha256 = createHash("sha256")
+    .update(Buffer.from("sanitized runtime log", "utf8"))
+    .digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256")
+    .update(Buffer.from("native checksum manifest", "utf8"))
+    .digest("hex");
+
+  assert.deepEqual(
+    validateDeviceEvidence(evidence, { requireNativeHostModes: true }),
+    [],
+  );
+  assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
+
+  writeFileSync(join(root, "logs/flutter.txt"), Buffer.from("tampered", "utf8"));
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+  assert.ok(findings.some((finding) => finding.includes("hostModes[1].evidence.logSha256")));
 });
 
 test("rejects symlinked device evidence files even when the target stays inside the evidence root", () => {
@@ -311,6 +363,13 @@ test("requires categorized artifacts for a physical native release gate", () => 
     kind,
     path: `native/artifact-${index}.bin`,
     sha256: "b".repeat(64),
+  }));
+  complete.hostModes = complete.hostModes.map((hostMode) => ({
+    ...hostMode,
+    evidence: {
+      logPath: `logs/${hostMode.framework}.txt`,
+      logSha256: "c".repeat(64),
+    },
   }));
   assert.deepEqual(validateDeviceEvidence(complete, { requirePhysicalDevice: true }), []);
 });

@@ -253,7 +253,9 @@ with both passing `react-native` and `flutter` entries in `hostModes`, all requi
 test cases, and categorized artifacts; one framework's device run cannot satisfy
 the native gate. The `react-native` and `flutter` host-mode versions must also
 match the manifest's pinned `toolchains.reactNative` and `toolchains.flutter`
-values. `web-browser-matrix` is revalidated as a Web record. The verifier
+values. Each physical host-mode entry must carry a distinct sanitized log path
+and SHA-256 digest in `hostModes[].evidence`; the final verifier recomputes
+those per-mode digests and rejects path reuse. `web-browser-matrix` is revalidated as a Web record. The verifier
 also revalidates nested log and artifact digests
 inside those device records, so changing a screenshot, report,
 or sanitized log invalidates the release gate. For native records, the nested

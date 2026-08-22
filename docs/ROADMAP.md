@@ -208,6 +208,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Bind physical native checksum evidence to the matching candidate iOS or Android checksum artifact.
 - [x] Require each physical native release record to include passing React Native and Flutter host-mode evidence.
 - [x] Require physical React Native and Flutter host-mode versions to match the release manifest toolchains.
+- [x] Bind each physical React Native and Flutter host mode to a distinct sanitized log path and digest; reject shared host evidence.
 - [x] Add a checked-in release gate fragment emitter that hashes exact evidence bytes and derives commit/version from the checkout.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Require the maintainer release and independent-review public-key fingerprints to be distinct during final validation.

@@ -100,7 +100,29 @@ function validateTests(testCases, required, findings) {
   }
 }
 
-function validateNativeHostModes(hostModes, findings, required, expectedVersions) {
+function validateHostModeEvidence(evidence, field, findings, required, referencedPaths) {
+  if (!isRecord(evidence)) {
+    if (required) add(findings, field, "must contain a host-mode log path and digest");
+    return;
+  }
+  for (const key of Object.keys(evidence)) {
+    if (!new Set(["logPath", "logSha256"]).has(key)) {
+      add(findings, `${field}.${key}`, "unsupported host-mode evidence field");
+    }
+  }
+  if (!isSafeRelativePath(evidence.logPath)) {
+    add(findings, `${field}.logPath`, "must be a relative, non-parent path");
+  } else if (referencedPaths.has(evidence.logPath)) {
+    add(findings, `${field}.logPath`, "must be unique across evidence files");
+  } else {
+    referencedPaths.add(evidence.logPath);
+  }
+  if (typeof evidence.logSha256 !== "string" || !SHA256.test(evidence.logSha256)) {
+    add(findings, `${field}.logSha256`, "must be a lowercase SHA-256 digest");
+  }
+}
+
+function validateNativeHostModes(hostModes, findings, required, expectedVersions, referencedPaths) {
   if (!Array.isArray(hostModes) || hostModes.length === 0 || hostModes.length > 3) {
     add(findings, "hostModes", "must contain one to three host-mode records");
     return;
@@ -113,7 +135,7 @@ function validateNativeHostModes(hostModes, findings, required, expectedVersions
       continue;
     }
     for (const key of Object.keys(hostMode)) {
-      if (!new Set(["framework", "frameworkVersion", "status"]).has(key)) {
+      if (!new Set(["framework", "frameworkVersion", "status", "evidence"]).has(key)) {
         add(findings, `${field}.${key}`, "unsupported host-mode field");
       }
     }
@@ -134,6 +156,9 @@ function validateNativeHostModes(hostModes, findings, required, expectedVersions
       add(findings, `${field}.frameworkVersion`, "must match the manifest toolchain version");
     }
     if (hostMode.status !== "pass") add(findings, `${field}.status`, "must be exactly 'pass'");
+    if (hostMode.evidence !== undefined || required) {
+      validateHostModeEvidence(hostMode.evidence, `${field}.evidence`, findings, required, referencedPaths);
+    }
   }
   if (required) {
     for (const framework of REQUIRED_NATIVE_HOST_MODES) {
@@ -183,14 +208,18 @@ export function validateDeviceEvidence(evidence, options = {}) {
   }
   if (!nonEmptyString(evidence.frameworkVersion)) add(findings, "frameworkVersion", "must be non-empty");
   const isNativePlatform = evidence.platform === "ios" || evidence.platform === "android";
+  const requireNativeHostModes =
+    options.requireNativeHostModes === true || (options.requirePhysicalDevice === true && isNativePlatform);
+  const referencedPaths = new Set();
   if (isNativePlatform && evidence.hostModes !== undefined) {
     validateNativeHostModes(
       evidence.hostModes,
       findings,
-      options.requireNativeHostModes === true,
+      requireNativeHostModes,
       options.expectedHostModeVersions,
+      referencedPaths,
     );
-  } else if (isNativePlatform && options.requireNativeHostModes === true) {
+  } else if (isNativePlatform && requireNativeHostModes) {
     add(findings, "hostModes", "must contain both react-native and flutter host modes");
   }
   if (
@@ -224,11 +253,14 @@ export function validateDeviceEvidence(evidence, options = {}) {
 
   validateTests(evidence.testCases, evidence.platform === "web" ? WEB_TESTS : NATIVE_TESTS, findings);
   if (evidence.sanitizedLogs !== true) add(findings, "sanitizedLogs", "must be true");
-  const referencedPaths = new Set();
   if (!isSafeRelativePath(evidence.logPath)) {
     add(findings, "logPath", "must be a relative, non-parent path");
   } else {
-    referencedPaths.add(evidence.logPath);
+    if (referencedPaths.has(evidence.logPath)) {
+      add(findings, "logPath", "must be unique across evidence files");
+    } else {
+      referencedPaths.add(evidence.logPath);
+    }
   }
   if (typeof evidence.logSha256 !== "string" || !SHA256.test(evidence.logSha256)) {
     add(findings, "logSha256", "must be a lowercase SHA-256 digest");
@@ -361,6 +393,14 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
   const findings = [];
   verifyDigest(findings, root, "log", evidence.logPath, evidence.logSha256);
   scanEvidenceFileContent(findings, root, "log", evidence.logPath);
+  if (Array.isArray(evidence.hostModes)) {
+    evidence.hostModes.forEach((hostMode, index) => {
+      if (!isRecord(hostMode) || !isRecord(hostMode.evidence)) return;
+      const field = `hostModes[${index}].evidence`;
+      verifyDigest(findings, root, `${field}.log`, hostMode.evidence.logPath, hostMode.evidence.logSha256);
+      scanEvidenceFileContent(findings, root, `${field}.log`, hostMode.evidence.logPath);
+    });
+  }
   if (Array.isArray(evidence.artifacts)) {
     evidence.artifacts.forEach((artifact, index) => {
       if (!isRecord(artifact)) return;
