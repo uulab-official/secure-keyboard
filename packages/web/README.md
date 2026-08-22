@@ -4,6 +4,10 @@ Passkey-first WebAuthn adapter for the Secure Keypad SDK.
 
 The browser adapter accepts server-generated WebAuthn options, converts base64url JSON fields into browser binary values, and serializes the registration/assertion result back to base64url JSON. It does not accept a password, PIN, Hangul string, or other secret as an API value. Browser API rejections and hostile credential objects are converted to stable generic `WebAuthnClientError` codes; original exception messages are never exposed.
 
+All WebAuthn binary conversions are bounded to 8 KiB. The decoder rejects an
+encoded value whose decoded size would exceed that limit before allocating the
+output buffer; the encoder and credential serializer apply the same bound.
+
 WebAuthn must run in a secure context. A custom browser keypad is intentionally not presented as a secure equivalent: page JavaScript can observe browser input and memory. If a product elects to ship that fallback, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)` and display `getWebFallbackNotice()` to the user/operator.
 
 This package is an adapter, not a WebAuthn server. The Rust reference service

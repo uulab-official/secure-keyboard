@@ -57,6 +57,35 @@ describe("base64url boundary", () => {
     expect(() => decodeBase64Url("AA", 1.5)).toThrow(WebAuthnClientError);
     expect(() => decodeBase64Url("AA", -1)).toThrow(WebAuthnClientError);
   });
+
+  it("rejects base64url above the decoded bound before allocating an output buffer", () => {
+    const oversizedEncodedLength = Math.ceil((MAX_WEBAUTHN_BINARY_BYTES * 8) / 6) + 1;
+    const oversized = "A".repeat(oversizedEncodedLength);
+    const originalUint8Array = Uint8Array;
+    let allocations = 0;
+    const trackingUint8Array = new Proxy(originalUint8Array, {
+      construct(target, argumentsList, newTarget) {
+        allocations += 1;
+        return Reflect.construct(target, argumentsList, newTarget);
+      },
+    });
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "Uint8Array");
+
+    try {
+      Object.defineProperty(globalThis, "Uint8Array", {
+        configurable: true,
+        value: trackingUint8Array,
+      });
+      expect(() => decodeBase64Url(oversized)).toThrow(WebAuthnClientError);
+      expect(allocations).toBe(0);
+    } finally {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(globalThis, "Uint8Array");
+      } else {
+        Object.defineProperty(globalThis, "Uint8Array", descriptor);
+      }
+    }
+  });
 });
 
 describe("WebAuthn support and mode policy", () => {

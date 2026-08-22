@@ -248,9 +248,14 @@ export function decodeBase64Url(value: string, maxBytes = MAX_WEBAUTHN_BINARY_BY
   if (
     !Number.isSafeInteger(maxBytes) ||
     maxBytes < 0 ||
-    maxBytes > MAX_WEBAUTHN_BINARY_BYTES ||
+    maxBytes > MAX_WEBAUTHN_BINARY_BYTES
+  ) {
+    throw new WebAuthnClientError("invalid-options", "Base64url WebAuthn data is invalid");
+  }
+  const maxEncodedLength = Math.ceil((maxBytes * 8) / 6);
+  if (
     typeof value !== "string" ||
-    value.length > maxBytes * 2 ||
+    value.length > maxEncodedLength ||
     !BASE64URL_PATTERN.test(value)
   ) {
     throw new WebAuthnClientError("invalid-options", "Base64url WebAuthn data is invalid");
