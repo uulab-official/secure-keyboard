@@ -101,7 +101,8 @@ never an input-value channel.
 
 `direction: "rtl"` is applied to the native key matrix, `slots.display: false`
 collapses the native masked display, and `testId` is forwarded only as a native
-UI test identifier. Header, footer, and error slots are host-composition
+UI test identifier after native validation against the bounded public key-ID
+grammar. Header, footer, and error slots are host-composition
 signals; hosts may render their own public content around the native keypad.
 Bounded animation and haptic/sound feedback tokens are applied natively; mask
 animation affects bullets only and never reveals or stores the entered value.

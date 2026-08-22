@@ -60,8 +60,8 @@ Native renderers must revalidate all public layout and theme data at the
 native entry point, even when a framework adapter already validated it. The
 native boundary must reject oversized row/key collections, duplicate or
 malformed public key IDs, key labels over 16 UTF-8 bytes, accessibility labels
-over 80 UTF-8 bytes, and non-finite or out-of-range theme dimensions before
-creating UI objects or a secure session.
+over 80 UTF-8 bytes, non-canonical optional test IDs, and non-finite or
+out-of-range theme dimensions before creating UI objects or a secure session.
 
 React Native managers must also fail closed during prop churn: if a required
 layout or theme value is removed after a session was configured, the manager
