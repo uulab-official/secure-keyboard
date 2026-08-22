@@ -138,6 +138,20 @@ function writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes) {
           },
         };
       });
+  const artifactPath = (kind) => artifacts.find((artifact) => artifact.kind === kind).path;
+  const testEvidence = isWeb
+    ? undefined
+    : {
+        maskedStateOnly: [logPath],
+        captureAndBackground: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+        screenshotsAndBackgroundSnapshots: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+        autofillAndClipboard: [artifactPath("autofill-clipboard-report")],
+        accessibility: [artifactPath("accessibility-report")],
+        crashReportReview: [artifactPath("crash-report-review")],
+        lifecycleAndZeroization: [logPath],
+        serverReplayRateLimit: [logPath],
+        protocolDowngrade: [logPath],
+      };
   const record = {
     schemaVersion: 1,
     commit: gate.commit,
@@ -161,6 +175,7 @@ function writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes) {
             securityPatchLevel: "2026-01-01",
           },
     testCases: Object.fromEntries((isWeb ? WEB_TEST_CASES : NATIVE_TEST_CASES).map((name) => [name, "pass"])),
+    ...(isWeb ? {} : { testEvidence }),
     sanitizedLogs: true,
     logPath,
     logSha256: createHash("sha256").update(logBytes).digest("hex"),

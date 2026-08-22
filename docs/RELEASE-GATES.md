@@ -68,7 +68,11 @@ physical iOS/Android record. It requires the minimum OS/API level, a
 policy-compliant `securityPatchLevel`, and a distinct hashed
 `platform-security-patch` artifact. This is a fail-closed evidence contract;
 the artifact still requires independent human review against the device's
-vendor security settings or bulletin.
+vendor security settings or bulletin. It also requires every physical test
+case to bind to the aggregate log, a host-mode log, or a declared artifact;
+capture/background, accessibility, autofill/clipboard, and crash-review claims
+must point to their matching artifact categories. A passing label without a
+reviewable evidence path cannot satisfy the device gate.
 
 The fuzz job copies the checked-in seed corpus to the runner's temporary
 directory before every smoke, extended, and LeakSanitizer campaign. This keeps

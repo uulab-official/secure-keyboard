@@ -147,7 +147,7 @@ function validateArtifactInputs(artifacts) {
  * artifact bytes are accepted only long enough to hash them and are never
  * copied into the returned JSON record.
  *
- * @param {{commit: string, platform: "ios"|"android", framework: string, frameworkVersion: string, model: string, osVersion: string, osBuild: string, securityPatchLevel: string, apiLevel?: number, recordedAt: string, log: {path: string, bytes: Uint8Array|string}, testCases: Record<string, string>, artifacts: Array<{kind: string, path: string, bytes: Uint8Array|string}>}} input
+ * @param {{commit: string, platform: "ios"|"android", framework: string, frameworkVersion: string, model: string, osVersion: string, osBuild: string, securityPatchLevel: string, apiLevel?: number, recordedAt: string, log: {path: string, bytes: Uint8Array|string}, testCases: Record<string, string>, testEvidence: Record<string, string[]>, artifacts: Array<{kind: string, path: string, bytes: Uint8Array|string}>}} input
  * @returns {Record<string, unknown>}
  */
 export function buildNativeDeviceEvidence(input) {
@@ -203,6 +203,7 @@ export function buildNativeDeviceEvidence(input) {
       ...(platform === "android" ? { apiLevel } : {}),
     },
     testCases: normalizeTestCases(input.testCases),
+    testEvidence: input.testEvidence,
     sanitizedLogs: true,
     logPath: log.path,
     logSha256: createHash("sha256").update(log.bytes).digest("hex"),
@@ -368,8 +369,8 @@ function currentPackageVersion() {
   return packageJson.version;
 }
 
-function parseOptions(argumentsList) {
-  const values = { testCases: {}, artifactPaths: [], hostModeLogPaths: [] };
+export function parseOptions(argumentsList) {
+  const values = { testCases: {}, testEvidence: {}, artifactPaths: [], hostModeLogPaths: [] };
   for (let index = 0; index < argumentsList.length; index += 1) {
     const option = argumentsList[index];
     const value = argumentsList[index + 1];
@@ -421,6 +422,19 @@ function parseOptions(argumentsList) {
       index += 1;
       continue;
     }
+    if (option === "--test-evidence" && typeof value === "string") {
+      const separator = value.indexOf("=");
+      if (separator <= 0) throw new Error("test evidence must use --test-evidence testCase=path[,path]");
+      const testCase = value.slice(0, separator);
+      const paths = value
+        .slice(separator + 1)
+        .split(",")
+        .filter((candidate) => candidate.length > 0);
+      if (paths.length === 0) throw new Error("test evidence must include at least one path");
+      values.testEvidence[testCase] = paths;
+      index += 1;
+      continue;
+    }
     if (option === "--artifact" && typeof value === "string") {
       const separator = value.indexOf("=");
       if (separator <= 0) throw new Error("artifacts must use --artifact kind=relative/path");
@@ -429,7 +443,7 @@ function parseOptions(argumentsList) {
       continue;
     }
     throw new Error(
-      "options must use --platform, --framework, --framework-version, --host-mode, --host-log, --model, --os-version, --os-build, --security-patch-level, --api-level, --log, --artifact, and --test-case",
+      "options must use --platform, --framework, --framework-version, --host-mode, --host-log, --model, --os-version, --os-build, --security-patch-level, --api-level, --log, --artifact, --test-case, and --test-evidence",
     );
   }
   return values;
@@ -439,7 +453,7 @@ function main() {
   const [rootArgument, evidencePath, fragmentPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !evidencePath || !fragmentPath) {
     console.error(
-      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --host-log <react-native|flutter>=<relative/path> --model <label> --os-version <label> --os-build <label> --security-patch-level <version|YYYY-MM-DD> [--api-level <number>] --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
+      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --host-log <react-native|flutter>=<relative/path> --model <label> --os-version <label> --os-build <label> --security-patch-level <version|YYYY-MM-DD> [--api-level <number>] --log <relative/path> --artifact <kind=relative/path> --test-case <name> --test-evidence <testCase=path[,path]>",
     );
     process.exitCode = 64;
     return;

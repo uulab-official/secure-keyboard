@@ -70,6 +70,17 @@ function completeInput() {
     recordedAt: "2026-08-22T00:00:00.000Z",
     log: { path: "logs/ios-rn.txt", bytes: Buffer.from("sanitized physical-device log\n") },
     testCases: Object.fromEntries(TEST_CASES.map((name) => [name, "pass"])),
+    testEvidence: {
+      maskedStateOnly: ["logs/ios-rn.txt"],
+      captureAndBackground: ["artifacts/0.bin", "artifacts/1.bin"],
+      screenshotsAndBackgroundSnapshots: ["artifacts/0.bin", "artifacts/1.bin"],
+      autofillAndClipboard: ["artifacts/3.bin"],
+      accessibility: ["artifacts/2.bin"],
+      crashReportReview: ["artifacts/4.bin"],
+      lifecycleAndZeroization: ["logs/ios-rn.txt"],
+      serverReplayRateLimit: ["logs/ios-rn.txt"],
+      protocolDowngrade: ["logs/ios-rn.txt"],
+    },
     artifacts: ARTIFACT_KINDS.map((kind, index) => ({
       kind,
       path: `artifacts/${index}.bin`,
@@ -99,6 +110,20 @@ test("builds complete sanitized physical native evidence with hashed artifacts",
   assert.equal(record.logSha256, createHash("sha256").update(completeInput().log.bytes).digest("hex"));
   assert.equal(Object.hasOwn(record, "rawLogs"), false);
   assert.equal(Object.hasOwn(record, "rawInput"), false);
+});
+
+test("CLI options preserve explicit test-to-evidence bindings", async () => {
+  const { parseOptions } = await loadEmitter();
+  const parsed = parseOptions([
+    "--test-case",
+    "maskedStateOnly",
+    "--test-evidence",
+    "maskedStateOnly=logs/device.txt,artifacts/screen.png",
+  ]);
+
+  assert.deepEqual(parsed.testEvidence, {
+    maskedStateOnly: ["logs/device.txt", "artifacts/screen.png"],
+  });
 });
 
 test("writes a commit-bound native evidence record and fragment from files", async () => {

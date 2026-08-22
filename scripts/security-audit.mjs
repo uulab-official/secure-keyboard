@@ -903,6 +903,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /secure-keypad-test-sentinel-7f2c4e/, "device verification must define the canonical disposable sentinel");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /securityPatchLevel/, "device verification must require platform security patch metadata");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /platform-security-patch/, "device verification must require a hashed platform patch artifact");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /testEvidence/, "device verification must bind physical test claims to reviewable evidence paths");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /MAX_DEVICE_EVIDENCE_RECORD_BYTES/, "device evidence CLI must bound the top-level record before parsing");
@@ -918,6 +919,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePlatformSupport/, "device evidence tooling must enforce the platform support policy when requested");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /validatePlatformSupportDevice/, "device evidence tooling must validate platform security metadata");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /platform-security-patch/, "physical device evidence must require a platform patch artifact");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /validateTestEvidence/, "physical device evidence must bind test claims to declared evidence");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /DEVICE_RELEASE_GATES/, "device evidence tooling must bind records to a supported device release gate");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedGate/, "device evidence tooling must bind records to the expected release gate");
@@ -931,6 +933,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /MAX_NATIVE_EVIDENCE_FILE_BYTES/, "native evidence emitter must bound evidence file materialization");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /securityPatchLevel/, "native evidence emitter must record platform patch metadata");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /apiLevel/, "native evidence emitter must record Android API level");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /testEvidence/, "native evidence emitter must record test-to-evidence bindings");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /--test-evidence/, "native evidence CLI must accept test-to-evidence bindings");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /verifyDeviceEvidenceFiles/, "native evidence emitter must verify referenced files before writing evidence");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /currentCommit/, "native evidence emitter must derive the checkout commit");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /pathHasSymlinkComponent/, "native evidence emitter must reject symlink traversal");

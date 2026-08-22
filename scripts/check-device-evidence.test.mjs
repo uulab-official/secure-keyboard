@@ -57,6 +57,12 @@ test("requires platform security patch evidence for a production device gate", (
   assert.ok(findings.some((finding) => finding.includes("device.securityPatchLevel")));
 });
 
+test("requires physical test results to bind to declared logs or artifacts", () => {
+  const findings = validateDeviceEvidence(VALID_NATIVE, { requirePhysicalDevice: true });
+
+  assert.ok(findings.some((finding) => finding.includes("testEvidence")));
+});
+
 test("rejects native evidence below the checked-in platform support floors", () => {
   const ios = structuredClone(VALID_NATIVE);
   ios.device = { model: "iPhone", osVersion: "15.0", osBuild: "old", securityPatchLevel: "15.0" };
@@ -400,5 +406,58 @@ test("requires categorized artifacts for a physical native release gate", () => 
       logSha256: "c".repeat(64),
     },
   }));
+  const artifactPath = (kind) => complete.artifacts.find((artifact) => artifact.kind === kind).path;
+  complete.testEvidence = {
+    maskedStateOnly: [complete.logPath],
+    captureAndBackground: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+    screenshotsAndBackgroundSnapshots: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+    autofillAndClipboard: [artifactPath("autofill-clipboard-report")],
+    accessibility: [artifactPath("accessibility-report")],
+    crashReportReview: [artifactPath("crash-report-review")],
+    lifecycleAndZeroization: [complete.logPath],
+    serverReplayRateLimit: [complete.logPath],
+    protocolDowngrade: [complete.logPath],
+  };
   assert.deepEqual(validateDeviceEvidence(complete, { requirePhysicalDevice: true }), []);
+});
+
+test("rejects test evidence that points to an unrelated artifact or undeclared path", () => {
+  const complete = structuredClone(VALID_NATIVE);
+  complete.artifacts = [
+    "screen-capture",
+    "background-snapshot",
+    "accessibility-report",
+    "autofill-clipboard-report",
+    "crash-report-review",
+    "platform-security-patch",
+    "native-checksum",
+  ].map((kind, index) => ({
+    kind,
+    path: `native/artifact-${index}.bin`,
+    sha256: "b".repeat(64),
+  }));
+  complete.hostModes = complete.hostModes.map((hostMode) => ({
+    ...hostMode,
+    evidence: {
+      logPath: `logs/${hostMode.framework}.txt`,
+      logSha256: "c".repeat(64),
+    },
+  }));
+  const artifactPath = (kind) => complete.artifacts.find((artifact) => artifact.kind === kind).path;
+  complete.testEvidence = {
+    maskedStateOnly: [complete.logPath],
+    captureAndBackground: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+    screenshotsAndBackgroundSnapshots: [artifactPath("screen-capture"), artifactPath("background-snapshot")],
+    autofillAndClipboard: [artifactPath("autofill-clipboard-report")],
+    accessibility: [complete.logPath],
+    crashReportReview: ["native/not-declared.bin"],
+    lifecycleAndZeroization: [complete.logPath],
+    serverReplayRateLimit: [complete.logPath],
+    protocolDowngrade: [complete.logPath],
+  };
+
+  const findings = validateDeviceEvidence(complete, { requirePhysicalDevice: true });
+
+  assert.ok(findings.some((finding) => finding.includes("testEvidence.accessibility") && finding.includes("accessibility-report")));
+  assert.ok(findings.some((finding) => finding.includes("testEvidence.crashReportReview") && finding.includes("declared")));
 });

@@ -226,6 +226,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Bind each Linux LeakSanitizer target log to an explicit post-command success marker, bounded size, SHA-256 digest, pinned toolchain, and final retained evidence path.
 - [x] Emit candidate-bound iOS/Android native checksum, SBOM, and license-notice artifact fragments so final evidence assembly does not depend on undocumented external claims.
 - [x] Define a machine-readable iOS/Android OS/API and security-patch policy, require matching physical-device metadata and hashed patch artifacts, and apply it in final release verification.
+- [x] Bind every physical native test result to declared aggregate/host logs or matching categorized artifacts before accepting the release gate.
 - [ ] Run the Linux leak-sanitizer campaign and add platform memory/leak evidence to the release bundle.
 - [ ] Test logs, crash reports, clipboard, autofill, accessibility, screenshots, background snapshots, replay, and downgrade behavior.
 - [ ] Publish threat model, limitations, SBOM, license notices, and release signatures.

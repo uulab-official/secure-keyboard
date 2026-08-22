@@ -97,6 +97,13 @@ Each platform release run should produce one JSON record containing:
 - device/browser model, OS version/build, `securityPatchLevel`, and
   `apiLevel` for Android; Web additionally requires `secureContext: true`;
 - every applicable test case with the exact status `pass`;
+- for physical native records, `testEvidence` must map every test case to one or
+  more paths already declared as the aggregate log, a host-mode log, or an
+  artifact. Capture/background claims must reference both `screen-capture` and
+  `background-snapshot`; accessibility, autofill/clipboard, and crash-review
+  claims must reference their matching artifact categories. This binds a
+  machine-readable pass claim to reviewable evidence without embedding its
+  contents in the record;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,
   `crashReportReview`, and `protocolDowngrade` pass results in addition to the
   input, accessibility, lifecycle, and replay/rate-limit cases;
@@ -170,7 +177,16 @@ node scripts/emit-native-device-evidence.mjs \
   --test-case crashReportReview \
   --test-case lifecycleAndZeroization \
   --test-case serverReplayRateLimit \
-  --test-case protocolDowngrade
+  --test-case protocolDowngrade \
+  --test-evidence maskedStateOnly=logs/ios-rn.txt \
+  --test-evidence captureAndBackground=artifacts/ios-screen.png,artifacts/ios-task-switcher.png \
+  --test-evidence screenshotsAndBackgroundSnapshots=artifacts/ios-screen.png,artifacts/ios-task-switcher.png \
+  --test-evidence autofillAndClipboard=artifacts/ios-autofill.txt \
+  --test-evidence accessibility=artifacts/ios-voiceover.txt \
+  --test-evidence crashReportReview=artifacts/ios-crash-review.txt \
+  --test-evidence lifecycleAndZeroization=logs/ios-rn.txt \
+  --test-evidence serverReplayRateLimit=logs/ios-rn.txt \
+  --test-evidence protocolDowngrade=logs/ios-rn.txt
 ```
 
 Repeat with `--platform android` and the Android model/OS build. The two

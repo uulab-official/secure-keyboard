@@ -43,6 +43,13 @@ const REQUIRED_PHYSICAL_NATIVE_ARTIFACT_KINDS = Object.freeze([
   "platform-security-patch",
   "native-checksum",
 ]);
+const REQUIRED_TEST_EVIDENCE_ARTIFACT_KINDS = Object.freeze({
+  captureAndBackground: Object.freeze(["screen-capture", "background-snapshot"]),
+  screenshotsAndBackgroundSnapshots: Object.freeze(["screen-capture", "background-snapshot"]),
+  autofillAndClipboard: Object.freeze(["autofill-clipboard-report"]),
+  accessibility: Object.freeze(["accessibility-report"]),
+  crashReportReview: Object.freeze(["crash-report-review"]),
+});
 const ALLOWED_FRAMEWORKS = Object.freeze({
   ios: new Set(["native", "react-native", "flutter"]),
   android: new Set(["native", "react-native", "flutter"]),
@@ -99,6 +106,45 @@ function validateTests(testCases, required, findings) {
   }
   for (const name of required) {
     if (testCases[name] !== "pass") add(findings, `testCases.${name}`, "must be exactly 'pass'");
+  }
+}
+
+function validateTestEvidence(testEvidence, required, availablePaths, artifactKindsByPath, findings) {
+  if (!isRecord(testEvidence)) {
+    add(findings, "testEvidence", "must map every physical test case to declared evidence paths");
+    return;
+  }
+  const requiredNames = new Set(required);
+  for (const name of Object.keys(testEvidence)) {
+    if (!requiredNames.has(name)) add(findings, `testEvidence.${name}`, "is not a supported test case");
+  }
+  for (const name of required) {
+    const field = `testEvidence.${name}`;
+    const paths = testEvidence[name];
+    if (!Array.isArray(paths) || paths.length === 0 || paths.length > 8) {
+      add(findings, field, "must contain one to eight declared evidence paths");
+      continue;
+    }
+    const uniquePaths = new Set();
+    for (const [index, evidencePath] of paths.entries()) {
+      if (!isSafeRelativePath(evidencePath)) {
+        add(findings, `${field}[${index}]`, "must be a safe relative path");
+        continue;
+      }
+      if (uniquePaths.has(evidencePath)) {
+        add(findings, `${field}[${index}]`, "must not repeat a path within one test case");
+        continue;
+      }
+      uniquePaths.add(evidencePath);
+      if (!availablePaths.has(evidencePath)) {
+        add(findings, `${field}[${index}]`, "must reference the aggregate log, a host log, or a declared artifact");
+      }
+    }
+    for (const kind of REQUIRED_TEST_EVIDENCE_ARTIFACT_KINDS[name] ?? []) {
+      if (!paths.some((evidencePath) => artifactKindsByPath.get(evidencePath) === kind)) {
+        add(findings, field, `must reference artifact kind ${kind}`);
+      }
+    }
   }
 }
 
@@ -213,6 +259,8 @@ export function validateDeviceEvidence(evidence, options = {}) {
   const requireNativeHostModes =
     options.requireNativeHostModes === true || (options.requirePhysicalDevice === true && isNativePlatform);
   const referencedPaths = new Set();
+  const availableEvidencePaths = new Set();
+  const artifactKindsByPath = new Map();
   if (isNativePlatform && evidence.hostModes !== undefined) {
     validateNativeHostModes(
       evidence.hostModes,
@@ -221,6 +269,11 @@ export function validateDeviceEvidence(evidence, options = {}) {
       options.expectedHostModeVersions,
       referencedPaths,
     );
+    for (const hostMode of evidence.hostModes) {
+      if (isRecord(hostMode?.evidence) && isSafeRelativePath(hostMode.evidence.logPath)) {
+        availableEvidencePaths.add(hostMode.evidence.logPath);
+      }
+    }
   } else if (isNativePlatform && requireNativeHostModes) {
     add(findings, "hostModes", "must contain both react-native and flutter host modes");
   }
@@ -255,6 +308,7 @@ export function validateDeviceEvidence(evidence, options = {}) {
       findings.push(...validatePlatformSupportDevice(evidence.platform, evidence.device));
     }
   }
+  if (isSafeRelativePath(evidence.logPath)) availableEvidencePaths.add(evidence.logPath);
 
   validateTests(evidence.testCases, evidence.platform === "web" ? WEB_TESTS : NATIVE_TESTS, findings);
   if (evidence.sanitizedLogs !== true) add(findings, "sanitizedLogs", "must be true");
@@ -286,6 +340,10 @@ export function validateDeviceEvidence(evidence, options = {}) {
         add(findings, `${artifactPath}.path`, "must be unique across evidence files");
       } else {
         referencedPaths.add(artifact.path);
+        availableEvidencePaths.add(artifact.path);
+      }
+      if (isSafeRelativePath(artifact.path) && nonEmptyString(artifact.kind)) {
+        artifactKindsByPath.set(artifact.path, artifact.kind);
       }
       if (typeof artifact.sha256 !== "string" || !SHA256.test(artifact.sha256)) {
         add(findings, `${artifactPath}.sha256`, "must be a lowercase SHA-256 digest");
@@ -308,6 +366,18 @@ export function validateDeviceEvidence(evidence, options = {}) {
         if (!artifactKinds.has(kind)) add(findings, "artifacts", `must contain physical-device artifact kind ${kind}`);
       }
     }
+  }
+  if (
+    options.requirePhysicalDevice === true &&
+    (evidence.platform === "ios" || evidence.platform === "android")
+  ) {
+    validateTestEvidence(
+      evidence.testEvidence,
+      NATIVE_TESTS,
+      availableEvidencePaths,
+      artifactKindsByPath,
+      findings,
+    );
   }
   return findings;
 }
