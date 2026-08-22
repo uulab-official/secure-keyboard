@@ -680,11 +680,17 @@ public class SecureKeypadView: UIView {
               theme.keyRadius.isFinite, theme.keyRadius >= 0, theme.keyRadius <= 80,
               theme.contentPadding.isFinite, theme.contentPadding >= 0, theme.contentPadding <= 80,
               theme.keyFontSize.isFinite, theme.keyFontSize >= 10, theme.keyFontSize <= 72,
-              [-0.4, -0.3, -0.2, 0.3].contains(theme.keyFontWeight.rawValue),
+              supportedFontWeight(theme.keyFontWeight),
               theme.pressDuration.isFinite, theme.pressDuration >= 0, theme.pressDuration <= 0.5,
               theme.maskRevealDuration.isFinite, theme.maskRevealDuration >= 0,
               theme.maskRevealDuration <= 2 else {
             throw SecureKeypadViewError.invalidLayout
+        }
+    }
+
+    private func supportedFontWeight(_ value: UIFont.Weight) -> Bool {
+        [UIFont.Weight.regular, .medium, .semibold, .bold].contains { supported in
+            abs(supported.rawValue - value.rawValue) < 0.0001
         }
     }
 }

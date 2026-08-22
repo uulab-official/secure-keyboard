@@ -13,6 +13,7 @@ const IOS_BRIDGE_CONFIG = readFileSync(
   `${ROOT}/packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift`,
   "utf8",
 );
+const IOS_NATIVE_VIEW = readFileSync(`${ROOT}/native/ios/SecureKeypadView.swift`, "utf8");
 const RN_VIEW_MANAGER = readFileSync(
   `${ROOT}/packages/react-native/ios/SecureKeypadViewManager.swift`,
   "utf8",
@@ -115,6 +116,12 @@ test("iOS bridge requires exact integer schema versions", () => {
     /Self\.boundedInteger\(value\["schemaVersion"\], minimum: 1, maximum: 1\)/g,
   ) ?? [];
   assert.equal(exactSchemaVersionChecks.length, 2);
+});
+
+test("iOS theme validation accepts the platform representation of supported font weights", () => {
+  assert.match(IOS_NATIVE_VIEW, /abs\(supported\.rawValue - value\.rawValue\) < 0\.0001/);
+  assert.match(IOS_NATIVE_VIEW, /supportedFontWeight/);
+  assert.doesNotMatch(IOS_NATIVE_VIEW, /\[-0\.4, -0\.3, -0\.2, 0\.3\]\.contains\(theme\.keyFontWeight\.rawValue\)/);
 });
 
 test("React Native iOS manager uses a distinct immutable bridge dictionary", () => {
