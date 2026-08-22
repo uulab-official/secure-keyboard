@@ -74,6 +74,13 @@ test("native host ABI expectations stay synchronized with the FFI header", () =>
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
 
+test("FFI audit locks opaque object and identifier range alias checks", () => {
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /auth_finish_arguments_alias/);
+  assert.match(securityAudit, /pointer_slot_overlaps_object/);
+  assert.match(securityAudit, /buffer_overlaps_object\\\(client_identifier/);
+});
+
 test("native presentation snapshots expose only bounded masked state", () => {
   const presentationSources = [
     "../native/ios/SecureKeypadPresentation.swift",

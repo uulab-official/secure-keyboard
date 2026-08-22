@@ -575,6 +575,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_finish/, "C ABI must expose native-only registration completion");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn output_slots_alias/, "FFI auth-start functions must reject aliased ownership/output slots");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn pointer_slots_alias/, "FFI auth-finish functions must reject aliased state/output slots");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn pointer_slot_overlaps_object/, "FFI output slots must reject overlap with live opaque objects");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn auth_finish_arguments_alias/, "FFI OPAQUE finish functions must validate all live argument ranges before consuming state");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_login, output_request\)/, "FFI login start must validate distinct pointer slots before clearing outputs");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_registration, output_request\)/, "FFI registration start must validate distinct pointer slots before clearing outputs");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slots_alias\(login, output_finalization\)/, "FFI login finish must validate distinct state/output slots before clearing outputs");
@@ -582,6 +584,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn memory_ranges_overlap/, "FFI transport buffers must reject overlapping caller ranges");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn buffer_overlaps_pointer_slot/, "FFI message construction must reject input/output slot overlap");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /buffer_overlaps_pointer_slot\(bytes, length, output\)/, "FFI message construction must validate input bytes before clearing the output slot");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /buffer_overlaps_object\(client_identifier, client_identifier_len, response\)/, "FFI OPAQUE finish identifiers must not alias the response object");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slot_overlaps_object\(output, response\)/, "FFI OPAQUE finish output slots must not alias the response object");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /memory_ranges_overlap\(\s*output,\s*output_length,\s*output_written\.cast::<u8>\(\)/, "FFI message copy must validate output and length-slot overlap");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
