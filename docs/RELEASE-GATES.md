@@ -83,6 +83,10 @@ Release evidence, merged manifests, and detached signing outputs use exclusive
 file creation. A pre-existing output path is a release failure; do not reuse an
 evidence directory or replace an existing record in place.
 
+The `http-contract-version-parity` gate is emitted separately from the broader
+JavaScript contract gate, so a release cannot pass while the Rust HTTP route
+and Node transport bridge declarations drift silently inside one job.
+
 ## Reproducible local gates
 
 ```sh

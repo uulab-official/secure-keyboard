@@ -1280,6 +1280,9 @@ jobs:
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" javascript-contracts \
             "ci/javascript-contracts.json" "fragments/javascript-contracts.json" \
             --runner ci-aggregate --check job-contracts
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" http-contract-version-parity \
+            "ci/http-contract-version-parity.json" "fragments/http-contract-version-parity.json" \
+            --runner ci-aggregate --check job-contracts
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" native-parity \
             "ci/native-parity.json" "fragments/native-parity.json" \
             --runner ci-aggregate --check job-contracts

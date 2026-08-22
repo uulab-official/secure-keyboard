@@ -44,6 +44,7 @@ const NATIVE_CHECKSUM_ARTIFACT_BY_PLATFORM = Object.freeze({
 export const REQUIRED_RELEASE_GATES = Object.freeze([
   "rust-workspace",
   "javascript-contracts",
+  "http-contract-version-parity",
   "native-parity",
   "release-version-parity",
   "framework-host-builds",
@@ -71,6 +72,7 @@ export const DEVICE_RELEASE_GATE_POLICIES = Object.freeze({
 export const CI_RELEASE_GATE_CHECKS = Object.freeze({
   "rust-workspace": Object.freeze([Object.freeze(["job-rust"])]),
   "javascript-contracts": Object.freeze([Object.freeze(["job-contracts"])]),
+  "http-contract-version-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "native-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "release-version-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "framework-host-builds": Object.freeze([

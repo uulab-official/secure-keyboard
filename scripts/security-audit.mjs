@@ -1007,6 +1007,7 @@ export function runSecurityAudit() {
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:http-contract-version-parity/, "CI must test HTTP contract version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm check:http-contract-version-parity/, "CI must check HTTP contract version parity");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-ci-gate-evidence\.mjs[\s\S]{0,260}http-contract-version-parity/, "CI release evidence must emit the HTTP contract version parity gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the React Native Podspec");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/flutter\/ios\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the Flutter Podspec");
@@ -1263,6 +1264,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /MAX_RELEASE_MANIFEST_BYTES/, "release evidence CLI must bound the top-level manifest before parsing");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /http-contract-version-parity/, "release evidence must require the HTTP contract version parity gate");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /native-checksum-android/, "release evidence must require the Android native checksum artifact");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /must use a distinct public key from the maintainer release signature/, "release evidence must require an independent reviewer key");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate\.commit/, "release evidence must bind every gate to the manifest commit");

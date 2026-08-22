@@ -6,10 +6,25 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { CI_RELEASE_GATE_CHECKS, REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
 import { buildCiGateEvidence, writeCiGateEvidence } from "./emit-ci-gate-evidence.mjs";
 
 const COMMIT = "c".repeat(40);
 const CI_WORKFLOW = readFileSync(fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url)), "utf8");
+
+test("HTTP contract version parity is a first-class CI release gate", () => {
+  assert.equal(REQUIRED_RELEASE_GATES.includes("http-contract-version-parity"), true);
+  assert.deepEqual(CI_RELEASE_GATE_CHECKS["http-contract-version-parity"], [["job-contracts"]]);
+  const record = buildCiGateEvidence({
+    commit: COMMIT,
+    gateName: "http-contract-version-parity",
+    runner: "ubuntu-24.04",
+    checks: ["job-contracts"],
+    recordedAt: "2026-08-22T00:00:00.000Z",
+  });
+  assert.equal(record.gate, "http-contract-version-parity");
+  assert.match(CI_WORKFLOW, /emit-ci-gate-evidence\.mjs[\s\S]*?http-contract-version-parity/);
+});
 
 test("builds a sanitized pass record for an allowed CI release gate", () => {
   const record = buildCiGateEvidence({

@@ -677,11 +677,12 @@ test("rejects a physical native host mode whose framework version differs from t
   iosGate.sha256 = createHash("sha256").update(iosRecordBytes).digest("hex");
 
   const findings = verifyReleaseEvidenceFiles(evidence, root);
+  const iosGateIndex = evidence.gates.indexOf(iosGate);
 
   assert.ok(
     findings.some(
       (finding) =>
-        finding.includes("gates[8]") &&
+        finding.includes(`gates[${iosGateIndex}]`) &&
         finding.includes("hostModes") &&
         finding.includes("frameworkVersion") &&
         finding.includes("manifest"),
@@ -780,8 +781,9 @@ test("rejects an under-specified CI gate evidence record", () => {
   gate.sha256 = createHash("sha256").update(payload).digest("hex");
 
   const findings = verifyReleaseEvidenceFiles(evidence, root);
+  const gateIndex = evidence.gates.indexOf(gate);
 
-  assert.ok(findings.some((finding) => finding.includes("gates[5].evidence.checks")));
+  assert.ok(findings.some((finding) => finding.includes(`gates[${gateIndex}].evidence.checks`)));
 });
 
 test("does not allow a minimal JSON object to satisfy a physical device gate", () => {
@@ -797,8 +799,9 @@ test("does not allow a minimal JSON object to satisfy a physical device gate", (
   gate.sha256 = createHash("sha256").update(payload).digest("hex");
 
   const findings = verifyReleaseEvidenceFiles(evidence, root);
+  const gateIndex = evidence.gates.indexOf(gate);
 
-  assert.ok(findings.some((finding) => finding.includes("gates[8].device")));
+  assert.ok(findings.some((finding) => finding.includes(`gates[${gateIndex}].device`)));
 });
 
 test("binds each device gate to its platform and nested evidence files", () => {
