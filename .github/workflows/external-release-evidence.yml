@@ -1,0 +1,66 @@
+name: Validate external production evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Exact 40-character commit represented by the lab evidence"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate physical-device and independent-review evidence
+    runs-on:
+      - self-hosted
+      - secure-keypad-device-lab
+    environment: secure-keypad-external-evidence
+    timeout-minutes: 30
+    env:
+      RELEASE_REF: ${{ inputs.ref }}
+      REVIEWER_PUBLIC_KEY_SHA256: ${{ secrets.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256 }}
+      EVIDENCE_ROOT: ${{ vars.SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Require immutable release identity and a mounted lab evidence root
+        run: |
+          test -n "$RELEASE_REF"
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+          test -n "$EVIDENCE_ROOT"
+          test -d "$EVIDENCE_ROOT"
+          EVIDENCE_REALPATH="$(realpath "$EVIDENCE_ROOT")"
+          WORKSPACE_REALPATH="$(realpath "$GITHUB_WORKSPACE")"
+          case "$EVIDENCE_REALPATH/" in
+            "$WORKSPACE_REALPATH/"*)
+              echo "external evidence root must not be inside the checkout"
+              exit 1
+              ;;
+          esac
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.13.0"
+      - name: Validate the complete external evidence artifact
+        run: |
+          PACKAGE_VERSION="$(node -e 'const fs = require("node:fs"); process.stdout.write(JSON.parse(fs.readFileSync("packages/contracts/package.json", "utf8")).version);')"
+          test -n "$REVIEWER_PUBLIC_KEY_SHA256"
+          node scripts/validate-external-release-evidence.mjs \
+            "$EVIDENCE_ROOT" \
+            "$RELEASE_REF" \
+            "$PACKAGE_VERSION" \
+            --reviewer-public-key-sha256 "$REVIEWER_PUBLIC_KEY_SHA256"
+      - name: Upload only verified external evidence
+        uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-external-release-evidence
+          path: ${{ env.EVIDENCE_ROOT }}
+          if-no-files-found: error

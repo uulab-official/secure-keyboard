@@ -221,6 +221,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Require the maintainer release and independent-review public-key fingerprints to be distinct during final validation.
 - [x] Provide a clean-checkout independent-review fragment emitter that verifies the report bytes and public-key binding.
+- [x] Add a self-hosted device-lab external-evidence workflow that validates physical iOS/Android records and independent-review signatures before upload without synthesizing pass claims.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.
 - [x] Emit a commit-bound `signed-release` evidence record that verifies the detached Ed25519 signature and hashes the bundle, signature, and public key.
 - [x] Bound top-level and intermediate release-evidence, device records, browser logs, fragments, and signing inputs before parsing, hashing, or signing.

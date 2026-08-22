@@ -125,6 +125,7 @@ pnpm test:verify-lsan-evidence
 pnpm test:expo-development-build
 pnpm test:sign-release
 pnpm test:emit-signed-release-evidence
+pnpm test:external-release-evidence
 pnpm test:device-evidence
 pnpm test:security-audit
 pnpm security-audit
@@ -352,6 +353,20 @@ reviewers. Before the merger runs, `check-release-fragment-set.mjs` parses the
 staged fragment inputs and requires every canonical release gate exactly once;
 artifact-only fragments remain allowed, while unsupported or duplicate gate
 fragments fail closed.
+
+The checked-in `external-release-evidence.yml` workflow is the standard
+producer for the external artifact. It runs on a separately administered
+`self-hosted` runner labeled `secure-keypad-device-lab`, checks out the exact
+requested commit, and reads the lab-mounted path configured as the
+`SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT` environment variable. Before upload,
+`scripts/validate-external-release-evidence.mjs` rejects symlinks, special
+files, private material, stale commits, invalid iOS/Android physical records,
+bad nested digests, and invalid or unsigned independent-review evidence. The
+workflow never creates a device pass or review decision; those must already be
+produced by the physical lab and independent reviewer. Configure the
+`secure-keypad-external-evidence` environment with the protected reviewer key
+fingerprint, then pass the resulting successful run and artifact to
+`release-finalize.yml`.
 
 Before downloading those artifacts, finalization queries the GitHub Actions
 API for all three supplied run IDs. Each run must belong to the current

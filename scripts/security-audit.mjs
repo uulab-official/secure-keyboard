@@ -1234,6 +1234,33 @@ export function runSecurityAudit() {
     });
   }
   forbidText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /contents:\s*write/, "release finalization must not publish or mutate repository contents");
+  const externalEvidenceWorkflow = source(".github/workflows/external-release-evidence.yml", findings);
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /workflow_dispatch:/, "external evidence must be manually bound to an explicit release commit");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /runs-on:\s*\n\s*- self-hosted\n\s*- secure-keypad-device-lab/, "external evidence must run only on the configured physical-device lab runner");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /RELEASE_REF:\s*\$\{\{ inputs\.ref \}\}/, "external evidence must validate the requested immutable release commit");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /git rev-parse HEAD\)"\s*=\s*"\$RELEASE_REF/, "external evidence must prove checkout HEAD equals the requested release commit");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT/, "external evidence must come from the configured lab evidence root");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /secrets\.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "external evidence must use the protected reviewer fingerprint secret");
+  forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /inputs\.reviewer-public-key-sha256/, "external evidence must not accept a reviewer fingerprint from an untrusted dispatch input");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /external evidence root must not be inside the checkout/, "external evidence must not upload the checkout as a lab artifact");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /scripts\/validate-external-release-evidence\.mjs/, "external evidence must be validated before upload");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /--reviewer-public-key-sha256/, "external evidence must bind the protected reviewer key fingerprint");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /name: secure-keypad-external-release-evidence/, "external evidence must use the finalizer's expected artifact name");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /if-no-files-found: error/, "external evidence upload must fail when the verified root is empty");
+  for (const line of findMutableCiActionLines(externalEvidenceWorkflow)) {
+    findings.push({
+      rule: "ci-action-immutability",
+      file: ".github/workflows/external-release-evidence.yml",
+      detail: `every GitHub Action must use a 40-character immutable commit SHA: ${line.trim()}`,
+    });
+  }
+  forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /contents:\s*write/, "external evidence workflow must not mutate repository contents");
+  const externalEvidenceValidator = source("scripts/validate-external-release-evidence.mjs", findings);
+  requireText(findings, "scripts/validate-external-release-evidence.mjs", externalEvidenceValidator, /validateDeviceEvidence/, "external evidence must revalidate physical-device records");
+  requireText(findings, "scripts/validate-external-release-evidence.mjs", externalEvidenceValidator, /verifyDeviceEvidenceFiles/, "external evidence must recompute nested device evidence digests");
+  requireText(findings, "scripts/validate-external-release-evidence.mjs", externalEvidenceValidator, /buildIndependentReviewFragment/, "external evidence must verify the independent review signature");
+  requireText(findings, "scripts/validate-external-release-evidence.mjs", externalEvidenceValidator, /symbolic links are not allowed/, "external evidence must reject symbolic links before upload");
+  requireText(findings, "scripts/validate-external-release-evidence.mjs", externalEvidenceValidator, /expectedReviewerPublicKeySha256/, "external evidence must bind the protected reviewer fingerprint");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked -p secure-auth-actix/, "CI must run the Actix adapter contract tests");
@@ -1478,6 +1505,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
   requireText(findings, "package.json", rootPackage, /"test:platform-support"/, "the workspace must expose the platform support policy test");
   requireText(findings, "package.json", rootPackage, /"test:emit-independent-review-fragment"/, "the workspace must expose the independent review fragment emitter test");
+  requireText(findings, "package.json", rootPackage, /"test:external-release-evidence"/, "the workspace must expose the external evidence validation contract test");
   requireText(findings, "package.json", rootPackage, /"test:stage-release-evidence"/, "the workspace must expose the release evidence staging test");
   requireText(findings, "package.json", rootPackage, /"test:verify-lsan-evidence"/, "the workspace must expose the Linux LeakSanitizer evidence test");
   const lsanVerifier = source("scripts/verify-lsan-evidence.mjs", findings);

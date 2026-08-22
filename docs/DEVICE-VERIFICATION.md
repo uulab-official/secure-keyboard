@@ -78,6 +78,26 @@ unavailable physical-device case keeps the device gate open; source inspection
 and host compilation are not substitutes. The independent security reviewer
 must re-run a representative sample and sign the exact evidence bundle.
 
+After both physical native records and the signed review files have been
+placed under the required `evidence/`, `artifacts/`, and `fragments/` layout,
+run the checked-in external evidence workflow from a separately administered
+device-lab runner. Its `SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT` environment
+variable must point at that mounted root; the workflow checks out the exact
+release SHA and runs:
+
+```sh
+node scripts/validate-external-release-evidence.mjs \
+  "$SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT" \
+  "$RELEASE_COMMIT" \
+  "$PACKAGE_VERSION" \
+  --reviewer-public-key-sha256 "$SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256"
+```
+
+The workflow only uploads the root after this validation succeeds. It does
+not synthesize `physicalDevice: true`, a passing test case, or an independent
+review decision. A successful external run is then supplied to the read-only
+`release-finalize.yml` workflow together with the candidate and CI run IDs.
+
 ## Machine-readable evidence record
 
 Each platform release run should produce one JSON record containing:
