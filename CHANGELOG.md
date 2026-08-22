@@ -50,6 +50,9 @@ exact release-candidate commit by the release evidence manifest.
 - Normalized browser WebAuthn API rejections and hostile credential-object
   exceptions to stable generic error codes without propagating original
   messages.
+- Added native FFI coverage for aborted OPAQUE registration flows and clarified
+  that validated start calls consume and null the submission pointer even when
+  protocol setup fails.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.

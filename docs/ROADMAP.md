@@ -71,6 +71,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Revalidate native layout cardinality, UTF-8 label byte bounds, and finite theme bounds before UI/session allocation.
 - [x] Add opt-in native CSPRNG input-key randomization while keeping action-key roles and positions stable.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
+- [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
 - [ ] Complete device-level accessibility review and native snapshot tests.
 
