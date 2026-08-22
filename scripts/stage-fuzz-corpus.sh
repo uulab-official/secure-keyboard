@@ -12,6 +12,14 @@ readonly corpus_root="$repository_root/fuzz/corpus"
 readonly targets=(auth_envelope core_sequence ffi_sequence webauthn_state)
 
 mkdir -p "$destination"
+readonly resolved_destination="$(cd "$destination" && pwd -P)"
+case "$resolved_destination" in
+  "$repository_root"|"$repository_root"/*)
+    echo "corpus destination must be outside the checkout" >&2
+    exit 64
+    ;;
+esac
+
 for target in "${targets[@]}"; do
   corpus_path="$corpus_root/$target"
   target_path="$destination/$target"

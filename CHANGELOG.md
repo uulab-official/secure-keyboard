@@ -13,7 +13,8 @@ exact release-candidate commit by the release evidence manifest.
 - Shared contracts and every native framework adapter now enforce the selected
   policy's canonical input IDs for numeric, printable-ASCII, and Hangul layouts.
 - Fuzz campaigns now run against a temporary corpus copy outside the checkout,
-  so libFuzzer's corpus growth cannot invalidate the clean-checkout evidence gate.
+  and the staging helper rejects checkout destinations, so libFuzzer's corpus
+  growth cannot invalidate the clean-checkout evidence gate.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

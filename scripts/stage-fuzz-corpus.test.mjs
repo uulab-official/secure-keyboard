@@ -22,3 +22,13 @@ test("stages every fuzz corpus outside the checkout", () => {
     rmSync(destination, { recursive: true, force: true });
   }
 });
+
+test("rejects a corpus destination inside the checkout", () => {
+  const destination = path.join(ROOT, ".tmp-secure-keypad-fuzz-corpus");
+  rmSync(destination, { recursive: true, force: true });
+  try {
+    assert.throws(() => execFileSync("bash", [SCRIPT, destination], { cwd: ROOT, stdio: "pipe" }), /outside the checkout/);
+  } finally {
+    rmSync(destination, { recursive: true, force: true });
+  }
+});
