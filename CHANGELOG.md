@@ -32,8 +32,11 @@ exact release-candidate commit by the release evidence manifest.
   and Flutter package paths, with staging-time byte comparison against the
   signed native source.
 - iOS Podspecs and CI host builds now consume bundled release XCFrameworks by
-  default while retaining validated explicit artifact overrides for source and
-  custom builds; missing or mismatched native inputs still fail closed.
+  default while retaining explicit source/custom artifact overrides only when
+  their SHA-256 content matches the staged package artifact; missing or
+  mismatched native inputs still fail closed. Release staging also compares the
+  published React Native iOS and Android FFI bytes against signed source
+  package artifacts.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.

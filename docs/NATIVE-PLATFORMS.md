@@ -90,9 +90,10 @@ The React Native podspec consumes `secure_ffi.xcframework` from its package
 root; the Flutter podspec consumes `ios/secure_ffi.xcframework` from the
 plugin package. Published packages select these bundled paths without an
 environment variable; an explicit source path remains available for custom
-builds. CI performs the same staging and parses both Podspecs against the
-result. Absolute paths are used only as validated source inputs, never as
-CocoaPods vendored paths.
+builds only when its SHA-256 content matches the staged package artifact. CI
+performs the same staging and parses both Podspecs against the result. Absolute
+paths are used only as validated source inputs, never as CocoaPods vendored
+paths.
 
 ## Android
 

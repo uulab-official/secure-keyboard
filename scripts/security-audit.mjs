@@ -828,6 +828,9 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "iOS package must support an explicit or bundled FFI XCFramework");
     requireText(findings, file, contents, /SECURE_KEYPAD_FFI_LIB/, "iOS package must support a single-platform FFI fallback");
+    requireText(findings, file, contents, /require ['"]digest['"]/, "iOS package must use a standard digest implementation for FFI parity");
+    requireText(findings, file, contents, /same_ffi_artifact/, "iOS package must compare explicit FFI bytes with the staged artifact");
+    requireText(findings, file, contents, /does not match the staged package FFI artifact/, "iOS package must fail closed when explicit FFI bytes differ");
     requireText(findings, file, contents, /raise ['"]SECURE_KEYPAD_FFI_XCFRAMEWORK/, "iOS package must fail closed without FFI artifacts");
   }
   for (const file of [
@@ -1219,6 +1222,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release staging must require the verified Android x86_64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /packages\/flutter\/android\/secure_ffi\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the packaged Flutter Android arm64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /package\/android\/secure_ffi\/x86_64\/libsecure_ffi\.a/, "release staging must require the packaged React Native Android x86_64 FFI library");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validatePackagedIosFfi/, "release staging must compare packaged iOS FFI bytes with signed source");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validatePackagedAndroidFfi/, "release staging must compare packaged Android FFI bytes with signed source");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /packaged bytes do not match signed source/, "release staging must reject tampered packaged Android FFI bytes");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");

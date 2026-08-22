@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -104,4 +106,51 @@ test("native CI executes the Android input-key randomization contract", () => {
   assert.match(workflow, /Android input-key randomization contract/);
   assert.match(workflow, /native\/android\/SecureKeypadRandomizationContractTest\.kt/);
   assert.match(workflow, /secure-keypad-randomization-contract\.jar/);
+});
+
+test("iOS podspecs reject explicit FFI artifacts that differ from the staged bundle", () => {
+  const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+  const rubyHarness = `
+    module Pod
+      class Spec
+        @@last = nil
+        def self.last
+          @@last
+        end
+        def initialize
+          @@last = self
+          yield self
+        end
+        def method_missing(_name, *_args)
+          nil
+        end
+      end
+    end
+    load ARGV.fetch(0)
+    puts Pod::Spec.last
+  `;
+
+  for (const podspec of [
+    "packages/react-native/SecureKeypadReactNative.podspec",
+    "packages/flutter/ios/secure_keypad_flutter.podspec",
+  ]) {
+    const stage = mkdtempSync(path.join(os.tmpdir(), "secure-keypad-podspec-"));
+    try {
+      const stagedPodspec = path.join(stage, path.basename(podspec));
+      cpSync(path.join(root, podspec), stagedPodspec);
+      const stagedLibrary = path.join(stage, "libsecure_ffi.a");
+      const explicitLibrary = path.join(stage, "external-libsecure_ffi.a");
+      writeFileSync(stagedLibrary, "staged native bytes\n");
+      writeFileSync(explicitLibrary, "different native bytes\n");
+
+      const result = spawnSync("ruby", ["-e", rubyHarness, stagedPodspec], {
+        env: { ...process.env, SECURE_KEYPAD_FFI_LIB: explicitLibrary },
+        encoding: "utf8",
+      });
+      assert.notEqual(result.status, 0, `${podspec} accepted mismatched explicit FFI bytes`);
+      assert.match(`${result.stdout}\n${result.stderr}`, /does not match the staged package FFI artifact/);
+    } finally {
+      rmSync(stage, { recursive: true, force: true });
+    }
+  }
 });

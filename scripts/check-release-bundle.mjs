@@ -73,6 +73,10 @@ const ANDROID_PACKAGE_FFI_ENTRIES = Object.freeze([
   },
 ]);
 const MAX_PACKAGED_FFI_BYTES = 64 * 1024 * 1024;
+const IOS_PACKAGE_XCFRAMEWORK_SOURCE = "source/packages/flutter/ios/secure_ffi.xcframework";
+const IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX = "package/secure_ffi.xcframework";
+const IOS_PACKAGE_LIBRARY_SOURCE = "source/packages/flutter/ios/libsecure_ffi.a";
+const IOS_PACKAGE_LIBRARY_ARCHIVE = "package/libsecure_ffi.a";
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -306,7 +310,52 @@ function sha256Bytes(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function validatePackagedAndroidFfi(root, version, findings) {
+function validatePackagedIosFfi(root, version, findings, archiveEntryMap) {
+  const reactNativeArchiveRelativePath = `packages/secure-keypad-react-native-${version}.tgz`;
+  const reactNativeArchivePath = regularFile(root, reactNativeArchiveRelativePath, findings);
+  if (!reactNativeArchivePath) return;
+  const archiveEntriesForPackage = archiveEntryMap.get(reactNativeArchiveRelativePath) ?? [];
+
+  const sourceFiles = listFiles(root, IOS_PACKAGE_XCFRAMEWORK_SOURCE);
+  const expectedXcframeworkEntries = new Set();
+  for (const sourceFile of sourceFiles) {
+    const relativePath = sourceFile.relativePath.slice(`${IOS_PACKAGE_XCFRAMEWORK_SOURCE}/`.length);
+    const archiveEntry = `${IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX}/${relativePath}`;
+    if (!sourceFile.regular) {
+      findings.push(`${sourceFile.relativePath}: iOS XCFramework source entries must be regular files`);
+      continue;
+    }
+    expectedXcframeworkEntries.add(archiveEntry);
+    if (!archiveEntriesForPackage.includes(archiveEntry)) {
+      findings.push(`${reactNativeArchiveRelativePath}: archive must contain ${archiveEntry}`);
+      continue;
+    }
+    const archiveBytes = archiveEntryBytes(reactNativeArchivePath, archiveEntry, findings);
+    if (archiveBytes && sha256Bytes(archiveBytes) !== sha256Bytes(readFileSync(path.join(root, sourceFile.relativePath)))) {
+      findings.push(`React Native iOS FFI ${relativePath}: packaged bytes do not match signed source`);
+    }
+  }
+
+  const actualXcframeworkEntries = new Set(
+    archiveEntriesForPackage.filter(
+      (entry) => entry.startsWith(`${IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX}/`) && !entry.endsWith("/"),
+    ),
+  );
+  for (const extraEntry of actualXcframeworkEntries) {
+    if (!expectedXcframeworkEntries.has(extraEntry)) {
+      findings.push(`${reactNativeArchiveRelativePath}: unexpected iOS XCFramework entry ${extraEntry}`);
+    }
+  }
+
+  const sourceLibrary = regularFile(root, IOS_PACKAGE_LIBRARY_SOURCE, findings);
+  if (!sourceLibrary || !archiveEntriesForPackage.includes(IOS_PACKAGE_LIBRARY_ARCHIVE)) return;
+  const archiveBytes = archiveEntryBytes(reactNativeArchivePath, IOS_PACKAGE_LIBRARY_ARCHIVE, findings);
+  if (archiveBytes && sha256Bytes(archiveBytes) !== sha256Bytes(readFileSync(sourceLibrary))) {
+    findings.push("React Native iOS FFI libsecure_ffi.a: packaged bytes do not match signed source");
+  }
+}
+
+function validatePackagedAndroidFfi(root, version, findings, archiveEntryMap) {
   const reactNativeArchiveRelativePath = `packages/secure-keypad-react-native-${version}.tgz`;
   const reactNativeArchivePath = regularFile(root, reactNativeArchiveRelativePath, findings);
   for (const entry of ANDROID_PACKAGE_FFI_ENTRIES) {
@@ -320,6 +369,8 @@ function validatePackagedAndroidFfi(root, version, findings) {
     }
 
     if (!reactNativeArchivePath) continue;
+    const archiveEntriesForPackage = archiveEntryMap.get(reactNativeArchiveRelativePath) ?? [];
+    if (!archiveEntriesForPackage.includes(entry.reactNativeArchivePath)) continue;
     const archiveBytes = archiveEntryBytes(reactNativeArchivePath, entry.reactNativeArchivePath, findings);
     if (archiveBytes && sha256Bytes(archiveBytes) !== expectedHash) {
       findings.push(`React Native Android FFI ${entry.abi}: packaged bytes do not match signed source ${entry.sourcePath}`);
@@ -328,11 +379,13 @@ function validatePackagedAndroidFfi(root, version, findings) {
 }
 
 function validateNpmArchives(root, version, findings) {
+  const archiveEntryMap = new Map();
   for (const packageName of NPM_PACKAGES) {
     const relativePath = `packages/${packageName}-${version}.tgz`;
     const absolutePath = regularFile(root, relativePath, findings);
     if (!absolutePath) continue;
     const entries = archiveEntries(absolutePath, findings);
+    archiveEntryMap.set(relativePath, entries);
     const requiredEntries = ["package/package.json", "package/LICENSE", "package/README.md"];
     if (packageName === "secure-keypad-react-native") {
       requiredEntries.push(
@@ -348,6 +401,7 @@ function validateNpmArchives(root, version, findings) {
       }
     }
   }
+  return archiveEntryMap;
 }
 
 function validateRustArchives(root, version, findings) {
@@ -394,8 +448,9 @@ export function checkReleaseStaging(root) {
   validateSpdx(root, findings);
   validateAndroidFfiChecksum(root, findings);
   if (validatedMetadata?.packageVersion) {
-    validateNpmArchives(root, validatedMetadata.packageVersion, findings);
-    validatePackagedAndroidFfi(root, validatedMetadata.packageVersion, findings);
+    const archiveEntryMap = validateNpmArchives(root, validatedMetadata.packageVersion, findings);
+    validatePackagedIosFfi(root, validatedMetadata.packageVersion, findings, archiveEntryMap);
+    validatePackagedAndroidFfi(root, validatedMetadata.packageVersion, findings, archiveEntryMap);
     validateRustArchives(root, validatedMetadata.packageVersion, findings);
   }
 
