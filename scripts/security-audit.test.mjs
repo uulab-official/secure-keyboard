@@ -54,6 +54,12 @@ test("CI action audit rejects mutable refs and accepts immutable revisions", () 
   );
 });
 
+test("CI exercises every release evidence emitter contract", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.match(workflow, /pnpm test:emit-release-artifact-fragment/);
+  assert.match(workflow, /pnpm test:emit-native-device-evidence/);
+});
+
 test("security policy provides a private vulnerability reporting channel", () => {
   const policy = readFileSync(new URL("../SECURITY.md", import.meta.url), "utf8");
   assert.match(policy, /github\.com\/uulab-official\/secure-keyboard\/security\/advisories\/new/);

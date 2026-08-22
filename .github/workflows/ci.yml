@@ -124,6 +124,8 @@ jobs:
       - run: pnpm test:verify-lsan-evidence
       - run: pnpm test:expo-development-build
       - run: pnpm test:emit-release-gate-evidence
+      - run: pnpm test:emit-release-artifact-fragment
+      - run: pnpm test:emit-native-device-evidence
       - run: pnpm test:emit-ci-gate-evidence
       - run: pnpm test:emit-web-browser-evidence
       - run: pnpm test:merge-release-evidence
