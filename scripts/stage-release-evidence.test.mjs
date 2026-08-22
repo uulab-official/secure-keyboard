@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
   symlinkSync,
+  truncateSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -90,6 +92,24 @@ test("staging requires the candidate signed-release evidence record", () => {
       () => stageReleaseEvidence(output, [candidate, ci, external]),
       /candidate signed-release evidence is missing/,
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("staging rejects an oversized untrusted evidence file before copying it", () => {
+  const { root, candidate, ci, external, output } = fixtureRoots();
+  try {
+    const oversized = path.join(external, "retained", "oversized.log");
+    mkdirSync(path.dirname(oversized), { recursive: true });
+    writeFileSync(oversized, "");
+    truncateSync(oversized, 512 * 1024 * 1024 + 1);
+
+    assert.throws(
+      () => stageReleaseEvidence(output, [candidate, ci, external]),
+      /must not exceed 536870912 bytes/,
+    );
+    assert.equal(existsSync(path.join(output, "retained", "oversized.log")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

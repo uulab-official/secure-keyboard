@@ -1243,6 +1243,9 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /duplicate release evidence path/, "release evidence staging must reject duplicate paths");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /only regular files are allowed/, "release evidence staging must reject special files");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /PRIVATE_MATERIAL_PATH/, "release evidence staging must reject private or secret file inputs");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_FILE_BYTES/, "release evidence staging must bound each untrusted input file");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_TOTAL_BYTES/, "release evidence staging must bound combined untrusted input size");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_FILE_COUNT/, "release evidence staging must bound untrusted input file count");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /candidate signed-release evidence is missing/, "release evidence staging must require the candidate signing record");
 
   return findings;

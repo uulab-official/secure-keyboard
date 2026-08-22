@@ -194,7 +194,11 @@ The checked-in gate-fragment emitter and evidence merger apply the same 1 MiB
 bound to gate JSON and fragments before parsing them. The browser evidence
 emitter bounds each browser log to the 32 MiB device-evidence limit, and the
 release signer bounds the signed bundle to 512 MiB and the private-key input
-to 64 KiB.
+to 64 KiB. Before any downloaded candidate/CI/external root is copied, the
+release-evidence stager rejects individual files over 512 MiB, more than 2 GiB
+combined input, or more than 16,384 regular files. This protects the finalizer
+from an untrusted artifact archive exhausting its workspace before the normal
+manifest bounds can run.
 
 The standalone device-evidence validator also requires `status: "pass"` on
 every platform record; a record with passing test-case fields but a missing or

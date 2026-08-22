@@ -5,6 +5,7 @@ import {
   mkdirSync,
   realpathSync,
   readdirSync,
+  statSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,12 @@ import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 const COPYFILE_EXCL = 1;
 const CANDIDATE_SIGNED_EVIDENCE = "evidence/signed-release.json";
 const PRIVATE_MATERIAL_PATH = /(?:private|signing[-_]?key|password|secret|\.pem$|\.key$)/i;
+/** Maximum size of one untrusted evidence input before staging. */
+export const MAX_STAGED_FILE_BYTES = 512 * 1024 * 1024;
+/** Maximum combined size of candidate, CI, and external evidence inputs. */
+export const MAX_STAGED_TOTAL_BYTES = 2 * 1024 * 1024 * 1024;
+/** Maximum number of regular files accepted across all evidence roots. */
+export const MAX_STAGED_FILE_COUNT = 16_384;
 
 function isSafeRelativePath(value) {
   return (
@@ -48,7 +55,7 @@ function ensureContained(root, relativePath, label) {
   return absolutePath;
 }
 
-function copyFileToOutput(sourcePath, outputRoot, relativePath, seen) {
+function copyFileToOutput(sourcePath, outputRoot, relativePath, state) {
   if (PRIVATE_MATERIAL_PATH.test(relativePath)) {
     throw new Error(`${relativePath}: private signing material or secret files are not allowed in release evidence inputs`);
   }
@@ -59,10 +66,16 @@ function copyFileToOutput(sourcePath, outputRoot, relativePath, seen) {
   if (!sourceEntry.isFile()) {
     throw new Error(`${relativePath}: only regular files are allowed in release evidence inputs`);
   }
-  if (seen.has(relativePath)) {
+  if (state.paths.has(relativePath)) {
     throw new Error(`duplicate release evidence path ${relativePath}`);
   }
-  seen.add(relativePath);
+  const size = statSync(sourcePath).size;
+  if (size > MAX_STAGED_FILE_BYTES) {
+    throw new Error(`${relativePath}: file must not exceed ${MAX_STAGED_FILE_BYTES} bytes before staging`);
+  }
+  if (state.totalBytes > MAX_STAGED_TOTAL_BYTES - size) {
+    throw new Error(`staged evidence must not exceed ${MAX_STAGED_TOTAL_BYTES} bytes`);
+  }
 
   const outputPath = ensureContained(outputRoot, relativePath, "release evidence output path");
   const outputParent = path.dirname(outputPath);
@@ -80,14 +93,16 @@ function copyFileToOutput(sourcePath, outputRoot, relativePath, seen) {
     throw error;
   }
   chmodSync(outputPath, 0o600);
+  state.paths.add(relativePath);
+  state.totalBytes += size;
 }
 
-function copyRegularFile(sourceRoot, outputRoot, relativePath, seen) {
+function copyRegularFile(sourceRoot, outputRoot, relativePath, state) {
   const sourcePath = ensureContained(sourceRoot, relativePath, "release evidence input path");
-  copyFileToOutput(sourcePath, outputRoot, relativePath, seen);
+  copyFileToOutput(sourcePath, outputRoot, relativePath, state);
 }
 
-function walkFiles(sourceRoot, relativePath = "") {
+function walkFiles(sourceRoot, relativePath = "", fileBudget = { count: 0 }) {
   const directory = relativePath
     ? ensureContained(sourceRoot, relativePath, "release evidence input directory")
     : sourceRoot;
@@ -99,8 +114,12 @@ function walkFiles(sourceRoot, relativePath = "") {
       throw new Error(`${childPath}: symlinks are not allowed in release evidence inputs`);
     }
     if (entry.isDirectory()) {
-      files.push(...walkFiles(sourceRoot, childPath));
+      files.push(...walkFiles(sourceRoot, childPath, fileBudget));
     } else if (entry.isFile()) {
+      fileBudget.count += 1;
+      if (fileBudget.count > MAX_STAGED_FILE_COUNT) {
+        throw new Error(`staged evidence must not contain more than ${MAX_STAGED_FILE_COUNT} regular files`);
+      }
       files.push(childPath);
     } else {
       throw new Error(`${childPath}: only regular files are allowed in release evidence inputs`);
@@ -131,19 +150,20 @@ export function stageReleaseEvidence(outputDirectory, inputDirectories) {
   );
   mkdirSync(outputDirectory, { recursive: true });
   const outputRoot = requireDirectory(outputDirectory, "release evidence output");
-  const seen = new Set();
+  const state = { paths: new Set(), totalBytes: 0 };
+  const fileBudget = { count: 0 };
 
   for (const sourceRoot of sourceDirectories) {
-    for (const relativePath of walkFiles(sourceRoot)) {
-      copyRegularFile(sourceRoot, outputRoot, relativePath, seen);
+    for (const relativePath of walkFiles(sourceRoot, "", fileBudget)) {
+      copyRegularFile(sourceRoot, outputRoot, relativePath, state);
     }
   }
 
-  if (!seen.has(CANDIDATE_SIGNED_EVIDENCE)) {
+  if (!state.paths.has(CANDIDATE_SIGNED_EVIDENCE)) {
     throw new Error("candidate signed-release evidence is missing");
   }
 
-  const fragmentPaths = [...seen]
+  const fragmentPaths = [...state.paths]
     .filter((relativePath) => relativePath.startsWith("fragments/") && relativePath.endsWith(".json"))
     .sort();
   return { fragmentPaths };

@@ -70,6 +70,10 @@ exact release-candidate commit by the release evidence manifest.
 - Physical native release evidence now requires passing `hostModes` for both
   React Native and Flutter; a single framework/device run cannot close the
   iOS or Android release gate.
+- CI release evidence now retains simulator/emulator screenshots, fuzz and
+  LeakSanitizer logs, and dependency metadata inside the final evidence root;
+  the staging copier also rejects oversized, over-budget, or over-counted
+  untrusted evidence inputs before copying them.
 - Added a reviewer-side independent-security-review fragment emitter that
   verifies signed report bytes, review identity, scope, decision, and public
   key binding without accepting private key material.
