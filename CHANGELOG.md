@@ -70,6 +70,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- Secure-auth now zeroizes the intermediate serialized server-login-state copy
+  after packaging it for one-time storage, closing a transient native-memory
+  duplicate of the OPAQUE state.
 - PostgreSQL rate-limit reads now fail closed on malformed persisted attempt
   counters (zero, negative, or outside the `u32` contract) before applying
   policy arithmetic, matching the Redis adapter's poisoned-counter behavior.
