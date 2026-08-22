@@ -32,8 +32,37 @@ private fun validConfiguration(): MutableMap<String, Any?> = mutableMapOf(
 )
 
 fun main() {
-    val parsed = SecureKeypadBridgeConfigParser.parse(validConfiguration())
+    val configuration = validConfiguration().also {
+        @Suppress("UNCHECKED_CAST")
+        val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
+        layout["direction"] = "rtl"
+        layout["slots"] = mapOf("header" to false, "display" to false, "footer" to true, "error" to false)
+        layout["rows"] = listOf(
+            listOf(
+                mapOf(
+                    "id" to "digit-1",
+                    "label" to "1",
+                    "role" to "input",
+                    "testId" to "pin.one",
+                ),
+            ),
+            listOf(mapOf("id" to "submit", "label" to "Continue", "role" to "submit")),
+        )
+        it["layout"] = layout
+    }
+    val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
     check(parsed.layout.rows.size == 2)
+    check(parsed.layout.direction == SecureKeypadLayoutDirection.RTL)
+    check(!parsed.layout.slots.display)
+    check(parsed.layout.rows[0][0].testId == "pin.one")
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            @Suppress("UNCHECKED_CAST")
+            val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
+            layout["direction"] = true
+            it["layout"] = layout
+        })
+    }.isFailure)
     check(parsed.maxTokens == 8)
     check(parsed.mode == "secure-native")
     check(!parsed.acknowledgeLowerAssurance)

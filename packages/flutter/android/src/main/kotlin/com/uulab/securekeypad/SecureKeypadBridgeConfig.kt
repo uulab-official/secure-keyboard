@@ -79,12 +79,19 @@ internal object SecureKeypadBridgeConfigParser {
             val locale = value["locale"] as? String ?: invalid()
             require(locale.matches(Regex("[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?")))
         }
-        if (value.containsKey("direction")) {
-            require(value["direction"] == "ltr" || value["direction"] == "rtl")
+        val direction = when {
+            !value.containsKey("direction") || value["direction"] == "ltr" -> SecureKeypadLayoutDirection.LTR
+            value["direction"] == "rtl" -> SecureKeypadLayoutDirection.RTL
+            else -> invalid()
         }
-        optionalMap(value["slots"], "header", "display", "footer", "error")?.values?.forEach {
-            require(it is Boolean)
-        }
+        val slotValues = optionalMap(value["slots"], "header", "display", "footer", "error")
+        slotValues?.values?.forEach { require(it is Boolean) }
+        val slots = SecureKeypadSlots(
+            header = slotValues?.get("header") as? Boolean ?: true,
+            display = slotValues?.get("display") as? Boolean ?: true,
+            footer = slotValues?.get("footer") as? Boolean ?: true,
+            error = slotValues?.get("error") as? Boolean ?: true,
+        )
         val rows = value["rows"] as? List<*> ?: invalid()
         require(rows.isNotEmpty() && rows.size <= 16)
         val ids = HashSet<String>()
@@ -121,10 +128,10 @@ internal object SecureKeypadBridgeConfigParser {
                 require(label.toByteArray(Charsets.UTF_8).size <= 16)
                 val accessibilityLabel = (key["accessibilityLabel"] as? String) ?: label
                 require(accessibilityLabel.toByteArray(Charsets.UTF_8).size <= 80)
-                SecureKeySpec(id, label, role, accessibilityLabel)
+                SecureKeySpec(id, label, role, accessibilityLabel, key["testId"] as? String)
             }
         }
-        return SecureKeypadLayout(parsedRows)
+        return SecureKeypadLayout(parsedRows, direction, slots)
     }
 
     private fun parseTheme(value: Map<*, *>): SecureKeypadTheme {

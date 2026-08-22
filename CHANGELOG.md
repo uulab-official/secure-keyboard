@@ -56,6 +56,9 @@ exact release-candidate commit by the release evidence manifest.
   the RN, Flutter, and shared contract validators.
 - Native bridge parsers now validate every required theme color value,
   including disabled-state colors, before configuration reaches UI allocation.
+- Native renderers now preserve the public layout direction, display-slot
+  visibility, and per-key test identifiers across iOS, Android, React Native,
+  and Flutter instead of silently discarding those customization fields.
 - Android color parsing now rejects signed and non-hex text so native validation
   matches the shared RN/Flutter color contract exactly.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,

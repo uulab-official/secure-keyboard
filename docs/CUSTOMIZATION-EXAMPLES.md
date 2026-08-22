@@ -98,6 +98,11 @@ the native bridge also rejects unknown layout/theme keys before reading their
 values and bounds the defensive public-value conversion; configuration is
 never an input-value channel.
 
+`direction: "rtl"` is applied to the native key matrix, `slots.display: false`
+collapses the native masked display, and `testId` is forwarded only as a native
+UI test identifier. Header, footer, and error slots are host-composition
+signals; hosts may render their own public content around the native keypad.
+
 ## Printable ASCII policy (native only)
 
 For passwords that need letters and symbols, use the native `ascii` policy.

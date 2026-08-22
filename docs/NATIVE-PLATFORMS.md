@@ -164,6 +164,13 @@ KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/ko
 java -jar /tmp/secure-keypad-submission-contract.jar
 ```
 
+The native renderer applies the public layout direction to the key matrix and
+honors `slots.display` by showing or collapsing the native masked display.
+`slots.header`, `slots.footer`, and `slots.error` are host-composition signals:
+they reserve surrounding content for the framework/native host and never carry
+input. A key's optional `testId` becomes a native UI test identifier (or view
+tag); it is public metadata only and is not used as an input value.
+
 The application must link the JNI adapter with the Rust `secure-ffi` library
 for every ABI it ships. The CMake file intentionally does not invent a Rust
 library path; the host build must provide the architecture-specific artifact.

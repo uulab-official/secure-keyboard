@@ -18,21 +18,56 @@ public struct SecureKeySpec {
     public let label: String
     public let role: SecureKeyRole
     public let accessibilityLabel: String
+    public let testId: String?
 
-    public init(id: String, label: String, role: SecureKeyRole, accessibilityLabel: String? = nil) {
+    public init(
+        id: String,
+        label: String,
+        role: SecureKeyRole,
+        accessibilityLabel: String? = nil,
+        testId: String? = nil
+    ) {
         self.id = id
         self.label = label
         self.role = role
         self.accessibilityLabel = accessibilityLabel ?? label
+        self.testId = testId
+    }
+}
+
+public enum SecureKeypadLayoutDirection {
+    case ltr
+    case rtl
+}
+
+public struct SecureKeypadSlots {
+    public var header: Bool
+    public var display: Bool
+    public var footer: Bool
+    public var error: Bool
+
+    public init(header: Bool = true, display: Bool = true, footer: Bool = true, error: Bool = true) {
+        self.header = header
+        self.display = display
+        self.footer = footer
+        self.error = error
     }
 }
 
 /// A row-based presentation layout with public IDs only.
 public struct SecureKeypadLayout {
     public let rows: [[SecureKeySpec]]
+    public let direction: SecureKeypadLayoutDirection
+    public let slots: SecureKeypadSlots
 
-    public init(rows: [[SecureKeySpec]]) {
+    public init(
+        rows: [[SecureKeySpec]],
+        direction: SecureKeypadLayoutDirection = .ltr,
+        slots: SecureKeypadSlots = SecureKeypadSlots()
+    ) {
         self.rows = rows
+        self.direction = direction
+        self.slots = slots
     }
 }
 
@@ -380,6 +415,12 @@ public class SecureKeypadView: UIView {
     private func render(layout: SecureKeypadLayout) {
         keypadStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         backgroundColor = theme.backgroundColor
+        let semanticDirection: UISemanticContentAttribute = layout.direction == .rtl
+            ? .forceRightToLeft
+            : .forceLeftToRight
+        rootContainer.semanticContentAttribute = semanticDirection
+        keypadStack.semanticContentAttribute = semanticDirection
+        displayLabel.isHidden = !layout.slots.display
         for row in layout.rows {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
@@ -405,7 +446,7 @@ public class SecureKeypadView: UIView {
                     button.layer.cornerRadius = buttonTheme.keyRadius
                 }
                 button.accessibilityLabel = key.accessibilityLabel
-                button.accessibilityIdentifier = key.id
+                button.accessibilityIdentifier = key.testId ?? key.id
                 button.addAction(UIAction { [weak self] _ in
                     self?.activate(key: key)
                 }, for: .touchUpInside)

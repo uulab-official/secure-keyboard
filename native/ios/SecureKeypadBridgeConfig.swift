@@ -87,16 +87,31 @@ public struct SecureKeypadBridgeConfiguration {
                 throw SecureKeypadBridgeConfigError.invalid
             }
         }
+        let directionValue: String
         if value.allKeys.contains(where: { ($0 as? String) == "direction" }) {
-            guard value["direction"] as? String == "ltr" || value["direction"] as? String == "rtl" else {
+            guard let value = value["direction"] as? String else {
                 throw SecureKeypadBridgeConfigError.invalid
             }
+            directionValue = value
+        } else {
+            directionValue = "ltr"
         }
-        if let slots = try Self.optionalMap(value["slots"], allowed: ["header", "display", "footer", "error"]) {
-            guard slots.allValues.allSatisfy({ Self.boolean($0) != nil }) else {
-                throw SecureKeypadBridgeConfigError.invalid
-            }
+        let direction: SecureKeypadLayoutDirection
+        switch directionValue {
+        case "ltr": direction = .ltr
+        case "rtl": direction = .rtl
+        default: throw SecureKeypadBridgeConfigError.invalid
         }
+        let slotValues = try Self.optionalMap(value["slots"], allowed: ["header", "display", "footer", "error"])
+        if let slotValues, !slotValues.allValues.allSatisfy({ Self.boolean($0) != nil }) {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
+        let slots = SecureKeypadSlots(
+            header: Self.boolean(slotValues?["header"]) ?? true,
+            display: Self.boolean(slotValues?["display"]) ?? true,
+            footer: Self.boolean(slotValues?["footer"]) ?? true,
+            error: Self.boolean(slotValues?["error"]) ?? true
+        )
         guard let rows = value["rows"] as? NSArray, rows.count > 0, rows.count <= 16 else {
             throw SecureKeypadBridgeConfigError.invalid
         }
@@ -146,12 +161,13 @@ public struct SecureKeypadBridgeConfiguration {
                     id: id,
                     label: label,
                     role: role,
-                    accessibilityLabel: accessibilityLabel
+                    accessibilityLabel: accessibilityLabel,
+                    testId: key["testId"] as? String
                 ))
             }
             parsedRows.append(parsedRow)
         }
-        return SecureKeypadLayout(rows: parsedRows)
+        return SecureKeypadLayout(rows: parsedRows, direction: direction, slots: slots)
     }
 
     private static func parseTheme(_ value: NSDictionary) throws -> SecureKeypadTheme {

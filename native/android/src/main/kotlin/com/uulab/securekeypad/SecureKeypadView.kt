@@ -31,10 +31,27 @@ public data class SecureKeySpec(
     val label: String,
     val role: SecureKeyRole,
     val accessibilityLabel: String = label,
+    val testId: String? = null,
+)
+
+public enum class SecureKeypadLayoutDirection {
+    LTR,
+    RTL,
+}
+
+public data class SecureKeypadSlots(
+    val header: Boolean = true,
+    val display: Boolean = true,
+    val footer: Boolean = true,
+    val error: Boolean = true,
 )
 
 /** A serializable row-based presentation layout. */
-public data class SecureKeypadLayout(val rows: List<List<SecureKeySpec>>)
+public data class SecureKeypadLayout(
+    val rows: List<List<SecureKeySpec>>,
+    val direction: SecureKeypadLayoutDirection = SecureKeypadLayoutDirection.LTR,
+    val slots: SecureKeypadSlots = SecureKeypadSlots(),
+)
 
 /** Theme values for the native renderer. */
 public data class SecureKeypadTheme(
@@ -354,6 +371,14 @@ public open class SecureKeypadView @JvmOverloads constructor(
         activeLayout = layout.rows.flatten().associateBy { it.id }
         keypad.removeAllViews()
         setBackgroundColor(currentTheme.backgroundColor)
+        val layoutDirection = if (layout.direction == SecureKeypadLayoutDirection.RTL) {
+            View.LAYOUT_DIRECTION_RTL
+        } else {
+            View.LAYOUT_DIRECTION_LTR
+        }
+        rootContainer.layoutDirection = layoutDirection
+        keypad.layoutDirection = layoutDirection
+        display.visibility = if (layout.slots.display) View.VISIBLE else View.GONE
         rootContainer.setPadding(
             currentTheme.contentPaddingPx,
             currentTheme.contentPaddingPx,
@@ -373,6 +398,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     textSize = currentTheme.keyFontSizePx
                     setTextColor(currentTheme.keyTextColor)
                     background = keyBackground()
+                    tag = key.testId ?: key.id
                     importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
                     setOnClickListener { activate(key) }
                 }
