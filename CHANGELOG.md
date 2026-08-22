@@ -23,6 +23,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: Redis rate-limit scripts now reject and remove wrong-type counter
   keys before any string operation, releasing their active-key index member so
   backend key poisoning cannot strand capacity.
+- Security: Web custom-keypad fallback now requires a secure browser context
+  even after its explicit lower-assurance acknowledgement, preventing the
+  fallback from authorizing plaintext-origin input transport.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session

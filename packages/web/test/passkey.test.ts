@@ -152,11 +152,28 @@ describe("WebAuthn support and mode policy", () => {
 
   it("does not silently approve the lower-assurance custom keypad fallback", () => {
     expect(() => assertWebAuthnMode("custom-keypad-fallback")).toThrow(/acknowledgement/i);
-    expect(() => assertWebAuthnMode("custom-keypad-fallback", undefined, true)).not.toThrow();
+    expect(() =>
+      assertWebAuthnMode(
+        "custom-keypad-fallback",
+        environment({ create: async () => null, get: async () => null }),
+        true,
+      ),
+    ).not.toThrow();
     expect(getWebFallbackNotice()).toMatchObject({
       code: WEB_FALLBACK_WARNING_CODE,
       severity: "warning",
     });
+  });
+
+  it("requires a secure context even for an acknowledged custom keypad fallback", () => {
+    const insecureEnvironment = environment(
+      { create: async () => null, get: async () => null },
+      { isSecureContext: false },
+    );
+
+    expect(() => assertWebAuthnMode("custom-keypad-fallback", insecureEnvironment, true)).toThrow(
+      expect.objectContaining({ code: "insecure-context" }),
+    );
   });
 
   it("rejects an unknown mode at the runtime boundary", () => {

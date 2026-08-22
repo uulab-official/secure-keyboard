@@ -26,8 +26,10 @@ the browser or serializing it back to the server.
   payloads in analytics, CSP reports, URLs, or client logs.
 - Keep the browser adapter's explicit fallback acknowledgement in the product
   UI and operator documentation. Never silently switch to the custom keypad
-  when WebAuthn is unavailable. Prefer the passkey controller for custom
-  presentation and preserve its lifecycle-only state contract.
+  when WebAuthn is unavailable. The fallback must still run in a secure
+  context; an acknowledgement never authorizes HTTP or another insecure
+  origin. Prefer the passkey controller for custom presentation and preserve
+  its lifecycle-only state contract.
 
 Example baseline header (replace the nonce and API origin per response):
 

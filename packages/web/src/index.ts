@@ -744,6 +744,15 @@ export function assertWebAuthnMode(
         "The lower-assurance web keypad fallback requires explicit acknowledgement",
       );
     }
+    let isSecureContext = false;
+    try {
+      isSecureContext = environment.isSecureContext === true;
+    } catch {
+      isSecureContext = false;
+    }
+    if (!isSecureContext) {
+      throw new WebAuthnClientError("insecure-context", "A secure context is required for web keypad fallback");
+    }
     return;
   }
   const support = detectWebAuthnSupport(environment);

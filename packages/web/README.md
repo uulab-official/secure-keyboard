@@ -32,8 +32,9 @@ credential result or user input. Call `controller.cancel()` to abort an
 in-flight ceremony; the resulting state uses the generic `aborted` code and
 does not expose browser exception text. If a product independently elects to ship a
 custom browser keypad, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)`
-and display `getWebFallbackNotice()` to the user/operator; that path remains
-lower assurance and is not a Secure Native Mode substitute.
+with a secure-context environment and display `getWebFallbackNotice()` to the
+user/operator; that path remains lower assurance and is not a Secure Native
+Mode substitute.
 
 This package is an adapter, not a WebAuthn server. The Rust reference service
 is in `crates/secure-webauthn-example`; it delegates ceremony verification to
