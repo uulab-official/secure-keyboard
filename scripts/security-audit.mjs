@@ -1158,6 +1158,20 @@ export function runSecurityAudit() {
     });
   }
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  for (const image of ["redis:7.2-alpine", "postgres:16-alpine"]) {
+    const escapedImage = image.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const imagePattern = new RegExp("image:\\s*" + escapedImage + "@sha256:[0-9a-f]{64}");
+    requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, imagePattern, image + " must be pinned to an immutable digest in the release candidate workflow");
+    const composeMatch = durableCompose.match(imagePattern)?.[0];
+    const releaseMatch = releaseWorkflow.match(imagePattern)?.[0];
+    if (composeMatch !== releaseMatch) {
+      findings.push({
+        rule: "release-candidate-backend-image-parity",
+        file: ".github/workflows/release-candidate.yml",
+        detail: image + " must use the same immutable digest as local compose and CI",
+      });
+    }
+  }
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm test:http-contract-version-parity/, "release candidates must test HTTP contract version parity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm check:http-contract-version-parity/, "release candidates must check HTTP contract version parity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm test:opaque-protocol-parity/, "release candidates must test OPAQUE protocol metadata parity");

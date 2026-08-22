@@ -153,7 +153,7 @@ jobs:
       TRUSTED_VERIFIER_REF: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
     services:
       redis:
-        image: redis:7.2-alpine
+        image: redis:7.2-alpine@sha256:ccd6aa8d45ff3f033d6fa15b8cc1a50579f65c89f38cf9bb607a954c4f2128ed
         ports:
           - 6379:6379
         options: >-
@@ -162,7 +162,7 @@ jobs:
           --health-timeout 3s
           --health-retries 20
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
         env:
           POSTGRES_PASSWORD: postgres
         ports:

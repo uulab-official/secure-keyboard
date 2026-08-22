@@ -7,6 +7,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPOSE = readFileSync(`${ROOT}/compose.durable-backends.yml`, "utf8");
 const RUNNER = readFileSync(`${ROOT}/scripts/run-durable-backend-tests.sh`, "utf8");
 const CI_WORKFLOW = readFileSync(`${ROOT}/.github/workflows/ci.yml`, "utf8");
+const RELEASE_WORKFLOW = readFileSync(`${ROOT}/.github/workflows/release-candidate.yml`, "utf8");
 
 function imageReference(source, image) {
   const escaped = image.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -26,7 +27,9 @@ test("local durable services use the pinned CI images and loopback-only ports", 
 
 test("durable backend images are immutable and identical in local and CI services", () => {
   for (const image of ["redis:7.2-alpine", "postgres:16-alpine"]) {
-    assert.equal(imageReference(COMPOSE, image), imageReference(CI_WORKFLOW, image));
+    const expected = imageReference(COMPOSE, image);
+    assert.equal(expected, imageReference(CI_WORKFLOW, image));
+    assert.equal(expected, imageReference(RELEASE_WORKFLOW, image));
   }
 });
 
