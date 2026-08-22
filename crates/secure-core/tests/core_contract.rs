@@ -1,4 +1,6 @@
-use secure_core::{DisplayState, InputError, InputPolicy, KeyId, SecretBuffer, SecureSession};
+use secure_core::{
+    DisplayState, InputError, InputPolicy, KeyId, SecretBuffer, SecureSession, MAX_KEY_ID_BYTES,
+};
 use std::time::Duration;
 
 #[test]
@@ -15,6 +17,19 @@ fn untrusted_key_id_constructor_rejects_oversized_public_ids() {
     let oversized = KeyId::try_new("0".repeat(65));
 
     assert_eq!(oversized, Err(InputError::InvalidKey));
+}
+
+#[test]
+fn untrusted_key_id_constructor_bounds_utf8_bytes_not_scalar_count() {
+    assert_eq!(KeyId::try_new(""), Err(InputError::InvalidKey));
+    assert_eq!(KeyId::try_new("digit-1"), Ok(KeyId::new("digit-1")),);
+
+    let within_bound = "가".repeat(MAX_KEY_ID_BYTES / "가".len());
+    let over_bound = format!("{within_bound}가");
+    assert_eq!(within_bound.len(), MAX_KEY_ID_BYTES - 1);
+    assert_eq!(over_bound.len(), MAX_KEY_ID_BYTES + 2);
+    assert!(KeyId::try_new(within_bound).is_ok());
+    assert_eq!(KeyId::try_new(over_bound), Err(InputError::InvalidKey));
 }
 
 #[test]
