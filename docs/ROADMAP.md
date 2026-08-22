@@ -38,6 +38,8 @@ Status: core contract complete
 - [x] Lock the initial canonical composition behavior with test vectors.
 - [x] Add explicit buffer clearing and a no-secret-API test harness.
 - [x] Add the monotonic inactivity timeout policy.
+- [x] Bound untrusted public key-ID construction and policy resolution before
+  native session allocation.
 - [x] Add the native FFI boundary with explicit ownership and null-safety rules.
 - [x] Reject aliased C ABI ownership/state/output slots and overlapping transport buffers before clearing or consuming opaque handles.
 
