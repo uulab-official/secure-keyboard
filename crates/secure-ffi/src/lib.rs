@@ -77,6 +77,21 @@ fn buffer_overlaps_pointer_slot<T>(
     )
 }
 
+/// Checks whether a caller-provided byte range overlaps a live opaque object.
+fn buffer_overlaps_object<T>(buffer: *const u8, buffer_length: usize, object: *const T) -> bool {
+    memory_ranges_overlap(buffer, buffer_length, object.cast::<u8>(), size_of::<T>())
+}
+
+/// Checks whether a caller-provided pointer slot overlaps a live opaque object.
+fn pointer_slot_overlaps_object<T, U>(slot: *const *mut T, object: *const U) -> bool {
+    memory_ranges_overlap(
+        slot.cast::<u8>(),
+        size_of::<*mut T>(),
+        object.cast::<u8>(),
+        size_of::<U>(),
+    )
+}
+
 /// ABI version implemented by this linked native library.
 pub const SECURE_KEYPAD_ABI_VERSION: u32 = 2;
 
@@ -390,7 +405,8 @@ pub unsafe extern "C" fn secure_keypad_submission_free(submission: *mut SecureKe
 ///
 /// `session` must be a live handle owned by the caller. `key_id` must point to
 /// a readable UTF-8 buffer of exactly `key_id_len` bytes for the duration of
-/// this call. The session must not be used concurrently.
+/// this call that does not overlap the live session object. The session must
+/// not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_session_press_key(
     session: *mut SecureKeypadSession,
@@ -401,14 +417,17 @@ pub unsafe extern "C" fn secure_keypad_session_press_key(
         if session.is_null() {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: The caller contract guarantees a live, exclusive session.
-        let session = unsafe { &mut *session };
+        if buffer_overlaps_object(key_id, key_id_len, session) {
+            return SecureKeypadError::InvalidArgument;
+        }
         // SAFETY: The caller contract for this function validates the key
         // buffer's readability and lifetime.
         let key_id = match unsafe { parse_key_id(key_id, key_id_len) } {
             Ok(key_id) => key_id,
             Err(error) => return error,
         };
+        // SAFETY: The caller contract guarantees a live, exclusive session.
+        let session = unsafe { &mut *session };
         session
             .core
             .press_key(&key_id)
@@ -486,8 +505,8 @@ pub unsafe extern "C" fn secure_keypad_session_cancel(
 /// # Safety
 ///
 /// `session` must be a live, exclusively owned handle. `output` must be a
-/// valid, writable pointer for the duration of this call. The session must not
-/// be used concurrently.
+/// valid, writable pointer that does not overlap the session object for the
+/// duration of this call. The session must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_session_refresh(
     session: *mut SecureKeypadSession,
@@ -495,6 +514,13 @@ pub unsafe extern "C" fn secure_keypad_session_refresh(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if session.is_null() || output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if buffer_overlaps_object(
+            output.cast::<u8>(),
+            size_of::<SecureKeypadMaskedState>(),
+            session,
+        ) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: The caller contract guarantees a live, exclusive session.
@@ -512,8 +538,9 @@ pub unsafe extern "C" fn secure_keypad_session_refresh(
 /// # Safety
 ///
 /// `session` must be a live, exclusively owned handle. `output` must be a
-/// valid, writable pointer to a `*mut SecureKeypadSubmission`. The session and
-/// output handle must not be used concurrently.
+/// valid, writable pointer to a `*mut SecureKeypadSubmission` that does not
+/// overlap the session object. The session and output handle must not be used
+/// concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_session_submit(
     session: *mut SecureKeypadSession,
@@ -521,6 +548,9 @@ pub unsafe extern "C" fn secure_keypad_session_submit(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if session.is_null() || output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if pointer_slot_overlaps_object(output, session) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: `output` is checked for null and is required to be writable.
@@ -596,7 +626,7 @@ pub unsafe extern "C" fn secure_keypad_auth_message_new(
 /// # Safety
 ///
 /// `message` must be a live message handle and `output_length` must be a valid
-/// writable pointer.
+/// writable pointer that does not overlap the message object.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_auth_message_size(
     message: *const SecureKeypadAuthMessage,
@@ -604,6 +634,9 @@ pub unsafe extern "C" fn secure_keypad_auth_message_size(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if message.is_null() || output_length.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if buffer_overlaps_object(output_length.cast::<u8>(), size_of::<usize>(), message) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: The caller contract guarantees live message and output
@@ -620,9 +653,10 @@ pub unsafe extern "C" fn secure_keypad_auth_message_size(
 /// # Safety
 ///
 /// `message` must be live. `output_written` must be a valid writable pointer
-/// that does not overlap the output buffer. When the message is non-empty,
-/// `output` must point to a writable buffer of at least `output_length` bytes.
-/// The caller must not use the handles concurrently.
+/// that does not overlap the message object or output buffer. When the message
+/// is non-empty, `output` must point to a writable buffer of at least
+/// `output_length` bytes that does not overlap the message object. The caller
+/// must not use the handles concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_auth_message_copy(
     message: *const SecureKeypadAuthMessage,
@@ -634,6 +668,9 @@ pub unsafe extern "C" fn secure_keypad_auth_message_copy(
         if message.is_null() || output_written.is_null() {
             return SecureKeypadError::InvalidArgument;
         }
+        if buffer_overlaps_object(output_written.cast::<u8>(), size_of::<usize>(), message) {
+            return SecureKeypadError::InvalidArgument;
+        }
         // SAFETY: The caller contract guarantees a live message and writable
         // output-length pointer.
         let bytes = unsafe { &(*message).core.as_bytes() };
@@ -642,6 +679,9 @@ pub unsafe extern "C" fn secure_keypad_auth_message_copy(
             *output_written = 0;
         }
         if output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if buffer_overlaps_object(output, output_length, message) {
             return SecureKeypadError::InvalidArgument;
         }
         if memory_ranges_overlap(

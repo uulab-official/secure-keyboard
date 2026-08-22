@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use std::ptr;
 
 use secure_auth::{
@@ -114,6 +115,63 @@ fn ffi_rejects_null_and_invalid_public_key_inputs() {
     assert_eq!(
         unsafe { secure_keypad_session_press_key(session, unknown.as_ptr(), unknown.len()) },
         SecureKeypadError::InvalidKey
+    );
+
+    unsafe { secure_keypad_session_free(session) };
+}
+
+#[test]
+fn ffi_rejects_key_buffers_that_overlap_the_session_object() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(4, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+
+    let overlapping_key = session.cast::<u8>();
+    assert_eq!(
+        unsafe {
+            secure_keypad_session_press_key(
+                session,
+                overlapping_key,
+                size_of::<SecureKeypadSession>().min(1),
+            )
+        },
+        SecureKeypadError::InvalidArgument
+    );
+
+    unsafe { secure_keypad_session_free(session) };
+}
+
+#[test]
+fn ffi_rejects_masked_state_output_that_overlaps_the_session_object() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(4, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+
+    let overlapping_output = session.cast::<SecureKeypadMaskedState>();
+    assert_eq!(
+        unsafe { secure_keypad_session_refresh(session, overlapping_output) },
+        SecureKeypadError::InvalidArgument
+    );
+
+    unsafe { secure_keypad_session_free(session) };
+}
+
+#[test]
+fn ffi_rejects_submission_output_that_overlaps_the_session_object() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(4, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+
+    let overlapping_output = session.cast::<*mut SecureKeypadSubmission>();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, overlapping_output) },
+        SecureKeypadError::InvalidArgument
     );
 
     unsafe { secure_keypad_session_free(session) };
@@ -342,6 +400,50 @@ fn ffi_rejects_aliased_auth_message_output_and_length_slots() {
                 storage.bytes.as_mut_ptr(),
                 storage.bytes.len(),
                 aliased_output_written,
+            )
+        },
+        SecureKeypadError::InvalidArgument
+    );
+
+    unsafe { secure_keypad_auth_message_free(message) };
+}
+
+#[test]
+fn ffi_rejects_auth_message_size_output_that_overlaps_the_message_object() {
+    let payload = b"fixture-opaque-message";
+    let mut message: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_new(payload.as_ptr(), payload.len(), &mut message) },
+        SecureKeypadError::Ok
+    );
+
+    let overlapping_output = message.cast::<usize>();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_size(message, overlapping_output) },
+        SecureKeypadError::InvalidArgument
+    );
+
+    unsafe { secure_keypad_auth_message_free(message) };
+}
+
+#[test]
+fn ffi_rejects_auth_message_copy_output_that_overlaps_the_message_object() {
+    let payload = b"fixture-opaque-message";
+    let mut message: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_new(payload.as_ptr(), payload.len(), &mut message) },
+        SecureKeypadError::Ok
+    );
+
+    let overlapping_output = message.cast::<u8>();
+    let mut written = 0;
+    assert_eq!(
+        unsafe {
+            secure_keypad_auth_message_copy(
+                message,
+                overlapping_output,
+                size_of::<SecureKeypadAuthMessage>(),
+                &mut written,
             )
         },
         SecureKeypadError::InvalidArgument
