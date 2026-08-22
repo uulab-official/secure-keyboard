@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -58,6 +58,36 @@ test("writes web evidence and a commit-bound fragment whose files verify", () =>
   assert.deepEqual(evidence, result.record);
   assert.equal(fragment.gates[0].evidencePath, "ci/web-browser-matrix.json");
   assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
+});
+
+test("rejects symlinked browser logs even when the target stays inside the evidence root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-web-evidence-symlink-"));
+  for (const log of LOGS) {
+    mkdirSync(join(root, log.path.split("/")[0]), { recursive: true });
+    if (log.browser === "chromium") {
+      writeFileSync(join(root, "browser/actual-chromium.log"), log.bytes);
+      symlinkSync("actual-chromium.log", join(root, log.path));
+    } else {
+      writeFileSync(join(root, log.path), log.bytes);
+    }
+  }
+
+  assert.throws(
+    () =>
+      writeWebBrowserEvidence({
+        root,
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        evidencePath: "ci/web-browser-matrix.json",
+        fragmentPath: "fragments/web-browser-matrix.json",
+        frameworkVersion: "playwright-1.62.1",
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        logs: LOGS.map(({ browser, path }) => ({ browser, path })),
+      }),
+    /symbolic link/,
+  );
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("rejects incomplete browser matrices and unsafe log references", () => {

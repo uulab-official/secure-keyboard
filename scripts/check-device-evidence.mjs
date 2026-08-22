@@ -3,6 +3,8 @@ import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
+
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
@@ -223,7 +225,12 @@ function containedFilePath(findings, root, field, relativePath) {
   if (!isSafeRelativePath(relativePath)) return undefined;
   try {
     const realRoot = realpathSync(root);
-    const realFile = realpathSync(path.resolve(realRoot, relativePath));
+    const absoluteFile = path.resolve(realRoot, relativePath);
+    if (pathHasSymlinkComponent(realRoot, absoluteFile)) {
+      add(findings, `${field}.path`, "must not resolve through symbolic links");
+      return undefined;
+    }
+    const realFile = realpathSync(absoluteFile);
     const relative = path.relative(realRoot, realFile);
     if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
       add(findings, `${field}.path`, "must resolve inside the evidence root");
@@ -313,6 +320,9 @@ export function verifyDeviceEvidenceFiles(evidence, root) {
 function checkFile(filePath, options, evidenceRoot = ROOT) {
   let evidence;
   try {
+    if (pathHasSymlinkComponent(evidenceRoot, filePath)) {
+      throw new Error("evidence file must not resolve through symbolic links");
+    }
     if (lstatSync(filePath).isSymbolicLink()) throw new Error("evidence file must not be a symbolic link");
     const fileStats = statSync(filePath);
     if (!fileStats.isFile()) throw new Error("evidence file must reference a regular file");

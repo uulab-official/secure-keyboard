@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -96,6 +96,38 @@ test("writes a commit-bound native evidence record and fragment from files", asy
   assert.deepEqual(evidence, result.record);
   assert.equal(fragment.gates[0].evidencePath, "device/ios-rn.json");
   assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
+});
+
+test("rejects symlinked native evidence files even when the target stays inside the evidence root", async () => {
+  const { writeNativeDeviceEvidence } = await loadEmitter();
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-evidence-symlink-"));
+  const input = completeInput();
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, input.log.path), input.log.bytes);
+  for (const [index, artifact] of input.artifacts.entries()) {
+    if (index === 0) {
+      writeFileSync(join(root, "artifacts/actual-screen-capture.bin"), artifact.bytes);
+      symlinkSync("actual-screen-capture.bin", join(root, artifact.path));
+    } else {
+      writeFileSync(join(root, artifact.path), artifact.bytes);
+    }
+  }
+
+  assert.throws(
+    () =>
+      writeNativeDeviceEvidence({
+        root,
+        packageVersion: "0.1.0",
+        evidencePath: "device/ios-rn.json",
+        fragmentPath: "fragments/ios-rn.json",
+        ...input,
+        logPath: input.log.path,
+        artifactPaths: input.artifacts.map(({ kind, path }) => ({ kind, path })),
+      }),
+    /symbolic link/,
+  );
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("rejects incomplete test cases and required physical artifact categories", async () => {

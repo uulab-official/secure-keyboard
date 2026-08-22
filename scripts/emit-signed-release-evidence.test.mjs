@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -119,4 +119,16 @@ test("rejects an evidence output directory that resolves outside the root", () =
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /outputPath must resolve inside the evidence root/);
+});
+
+test("rejects signed-release inputs reached through a symlinked parent directory", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-symlinked-release-input-"));
+  writeSignedArtifacts(root);
+  renameSync(join(root, "artifacts"), join(root, "real-artifacts"));
+  symlinkSync("real-artifacts", join(root, "artifacts"), "dir");
+
+  const result = runEmitter(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /symbolic link/);
 });

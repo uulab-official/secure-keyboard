@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -178,6 +178,25 @@ test("recomputes log and artifact digests inside the evidence root", () => {
   writeFileSync(join(root, evidence.logPath), Buffer.from("tampered", "utf8"));
   const findings = verifyDeviceEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("logSha256")));
+});
+
+test("rejects symlinked device evidence files even when the target stays inside the evidence root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-device-evidence-symlink-"));
+  const evidence = structuredClone(VALID_NATIVE);
+  const log = Buffer.from("sanitized runtime log", "utf8");
+  const artifact = Buffer.from("native checksum manifest", "utf8");
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "native"), { recursive: true });
+  writeFileSync(join(root, "logs/actual.txt"), log);
+  writeFileSync(join(root, evidence.artifacts[0].path), artifact);
+  symlinkSync("actual.txt", join(root, evidence.logPath));
+  evidence.logSha256 = createHash("sha256").update(log).digest("hex");
+  evidence.artifacts[0].sha256 = createHash("sha256").update(artifact).digest("hex");
+
+  const findings = verifyDeviceEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("log") && finding.includes("symbolic link")));
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("rejects empty logs and artifacts before a device gate can pass", () => {

@@ -4,6 +4,8 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSy
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
+
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -29,6 +31,9 @@ function containedPath(root, relativePath, field) {
   }
   const realRoot = realpathSync(root);
   const absolutePath = path.resolve(realRoot, relativePath);
+  if (pathHasSymlinkComponent(realRoot, absolutePath)) {
+    throw new Error(`${field} must not resolve through symbolic links`);
+  }
   const relative = path.relative(realRoot, absolutePath);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${field} must resolve inside the evidence root`);

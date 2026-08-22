@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { MAX_DEVICE_EVIDENCE_FILE_BYTES } from "./check-device-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -119,7 +120,11 @@ export function buildWebBrowserEvidence(input) {
 function containedFile(root, relativePath) {
   if (!isSafeRelativePath(relativePath)) throw new Error("browser log path must be a safe relative path");
   const realRoot = realpathSync(root);
-  const realFile = realpathSync(path.resolve(realRoot, relativePath));
+  const absoluteFile = path.resolve(realRoot, relativePath);
+  if (pathHasSymlinkComponent(realRoot, absoluteFile)) {
+    throw new Error("browser log path must not resolve through symbolic links");
+  }
+  const realFile = realpathSync(absoluteFile);
   const relative = path.relative(realRoot, realFile);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error("browser log path must resolve inside the evidence root");

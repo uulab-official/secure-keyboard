@@ -174,6 +174,11 @@ symlinks whose targets remain inside the evidence root), and fails if the
 resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
+The device, browser, and signed-release evidence emitters apply the same
+symlink refusal before reading or hashing their input files. A parent directory
+that is a symlink is rejected even when its target remains inside the evidence
+root.
+
 The final verifier bounds the top-level manifest and every referenced file
 before parsing or hashing it: the manifest, gate records, and independent-
 review reports are limited to 1 MiB, detached Ed25519 public keys to 1 KiB,

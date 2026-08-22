@@ -873,6 +873,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /SANITIZED_TEST_SENTINEL/, "device evidence tooling must reject the canonical test sentinel");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /scanEvidenceFileContent/, "device evidence tooling must scan referenced content for secret-bearing text");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /realpathSync/, "device evidence paths must be contained after symlink resolution");
+  requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /pathHasSymlinkComponent/, "device evidence paths must reject symlink traversal");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /requirePhysicalDevice/, "device evidence tooling must distinguish physical-device release evidence");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /expectedCommit/, "device evidence tooling must bind records to the expected checkout commit");
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /DEVICE_RELEASE_GATES/, "device evidence tooling must bind records to a supported device release gate");
@@ -884,6 +885,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /MAX_NATIVE_EVIDENCE_FILE_BYTES/, "native evidence emitter must bound evidence file materialization");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /verifyDeviceEvidenceFiles/, "native evidence emitter must verify referenced files before writing evidence");
   requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /currentCommit/, "native evidence emitter must derive the checkout commit");
+  requireText(findings, "scripts/emit-native-device-evidence.mjs", nativeEvidenceEmitter, /pathHasSymlinkComponent/, "native evidence emitter must reject symlink traversal");
   const ciGateEvidence = source("scripts/emit-ci-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /sanitized CI gate record/, "CI gate evidence must reject raw log payloads");
@@ -892,6 +894,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /chromium.*firefox.*webkit/, "web evidence must require the complete browser matrix");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /verifyDeviceEvidenceFiles|buildReleaseGateFragment/, "web evidence must bind hashed files to the release gate contract");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /secureContext: true/, "web evidence must record secure-context verification");
+  requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /pathHasSymlinkComponent/, "web evidence emitter must reject symlink traversal");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
@@ -1165,6 +1168,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /verify\(null, bundle, publicKey, signature\)/, "signed-release evidence must verify the detached signature");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /bundleSha256|signatureSha256|publicKeySha256/, "signed-release evidence must hash every signed artifact");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /currentCommit/, "signed-release evidence must bind to the current checkout commit");
+  requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /pathHasSymlinkComponent/, "signed-release evidence must reject symlink traversal");
 
   return findings;
 }

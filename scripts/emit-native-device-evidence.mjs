@@ -10,6 +10,7 @@ import {
   verifyDeviceEvidenceFiles,
 } from "./check-device-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -170,7 +171,11 @@ export function buildNativeDeviceEvidence(input) {
 function containedFile(root, relativePath, field) {
   if (!isSafeRelativePath(relativePath)) throw new Error(`${field} must be a safe relative path`);
   const realRoot = realpathSync(root);
-  const realFile = realpathSync(path.resolve(realRoot, relativePath));
+  const absoluteFile = path.resolve(realRoot, relativePath);
+  if (pathHasSymlinkComponent(realRoot, absoluteFile)) {
+    throw new Error(`${field} must not resolve through symbolic links`);
+  }
+  const realFile = realpathSync(absoluteFile);
   const relative = path.relative(realRoot, realFile);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${field} must resolve inside the evidence root`);
