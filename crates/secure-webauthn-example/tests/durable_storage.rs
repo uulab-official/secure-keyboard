@@ -352,6 +352,127 @@ fn redis_oversized_ceremony_value_is_removed_before_materialization() {
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_wrong_type_ceremony_is_removed_before_string_operations() {
+    use secure_webauthn_example::{CeremonyKind, CeremonyStateStore, CeremonyStoreError};
+
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+        &url, &namespace, 2,
+    )
+    .expect("Redis store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let handle = store
+        .insert(
+            CeremonyKind::Authentication,
+            user_id,
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .expect("Redis ceremony insert should succeed");
+    let mut handle_hex = String::with_capacity(64);
+    for byte in handle.as_bytes() {
+        handle_hex.push(HEX[(byte >> 4) as usize] as char);
+        handle_hex.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    let key = format!("{namespace}:webauthn:v1:authentication:{handle_hex}");
+    let pending_index = format!("{namespace}:webauthn:v1:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("DEL")
+        .arg(&key)
+        .query::<()>(&mut inspection)
+        .expect("Redis ceremony key should be deletable for the migration test");
+    redis::cmd("SADD")
+        .arg(&key)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .expect("Redis wrong-type ceremony should be writable for the migration test");
+    redis::cmd("ZADD")
+        .arg(&pending_index)
+        .arg(9_999_999_999_999_i64)
+        .arg(&key)
+        .query::<()>(&mut inspection)
+        .expect("Redis pending index seed should succeed");
+
+    assert!(matches!(
+        store.take(CeremonyKind::Authentication, &handle),
+        Err(CeremonyStoreError::Unavailable)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&key)
+        .query(&mut inspection)
+        .expect("Redis ceremony existence check should succeed");
+    let indexed: Option<f64> = redis::cmd("ZSCORE")
+        .arg(&pending_index)
+        .arg(&key)
+        .query(&mut inspection)
+        .expect("Redis pending index check should succeed");
+    assert_eq!(exists, 0);
+    assert_eq!(indexed, None);
+    assert!(store
+        .insert(
+            CeremonyKind::Authentication,
+            user_id,
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .is_ok());
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_wrong_type_pending_index_is_repaired_before_sorted_set_operations() {
+    use secure_webauthn_example::{CeremonyKind, CeremonyStateStore, CeremonyStoreError};
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+        &url, &namespace, 2,
+    )
+    .expect("Redis store should construct");
+    let pending_index = format!("{namespace}:webauthn:v1:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SADD")
+        .arg(&pending_index)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .expect("Redis wrong-type pending index should be writable for the migration test");
+
+    assert!(matches!(
+        store.insert(
+            CeremonyKind::Registration,
+            uuid::Uuid::new_v4(),
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        ),
+        Err(CeremonyStoreError::Unavailable)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis pending index existence check should succeed");
+    assert_eq!(exists, 0);
+    assert!(store
+        .insert(
+            CeremonyKind::Registration,
+            uuid::Uuid::new_v4(),
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .is_ok());
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
 fn redis_oversized_credential_value_fails_closed_before_json_decode() {
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
     let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
@@ -390,6 +511,42 @@ fn redis_oversized_credential_value_fails_closed_before_json_decode() {
         .arg(&key)
         .query::<()>(&mut inspection)
         .expect("Redis oversized credential cleanup should succeed");
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_wrong_type_credential_is_removed_before_string_operations() {
+    use secure_webauthn_example::CredentialStore;
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+        &url, &namespace, 2,
+    )
+    .expect("Redis store should construct");
+    let user_id = uuid::Uuid::new_v4();
+    let key = format!("{namespace}:webauthn:v1:credentials:{user_id}");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SADD")
+        .arg(&key)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .expect("Redis wrong-type credential should be writable for the migration test");
+
+    assert!(matches!(
+        store.load(user_id),
+        Err(secure_webauthn_example::CredentialStoreError::InvalidRecord)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&key)
+        .query(&mut inspection)
+        .expect("Redis credential existence check should succeed");
+    assert_eq!(exists, 0);
+    assert!(store.load(user_id).unwrap().is_empty());
 }
 
 #[cfg(feature = "redis-backend")]

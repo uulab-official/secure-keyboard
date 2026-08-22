@@ -17,6 +17,11 @@ const MAX_POOL_SIZE: u32 = 256;
 const INSERT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+local index_type = redis.call('TYPE', KEYS[2]).ok
+if index_type ~= 'none' and index_type ~= 'zset' then
+  redis.call('DEL', KEYS[2])
+  return -2
+end
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[3]) then
   return 0
@@ -36,9 +41,21 @@ return 1
 const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+local index_type = redis.call('TYPE', KEYS[2]).ok
+if index_type ~= 'none' and index_type ~= 'zset' then
+  redis.call('DEL', KEYS[1])
+  redis.call('DEL', KEYS[2])
+  return {-2, false}
+end
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 local ttl = redis.call('PTTL', KEYS[1])
 if ttl == -1 or ttl == 0 or ttl > tonumber(ARGV[3]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], ARGV[1])
+  return {-2, false}
+end
+local key_type = redis.call('TYPE', KEYS[1]).ok
+if key_type ~= 'none' and key_type ~= 'string' then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], ARGV[1])
   return {-2, false}
@@ -302,7 +319,21 @@ fn validate_namespace(namespace: &str) -> Result<(), RedisOneTimeStateConfigErro
 
 #[cfg(test)]
 mod tests {
-    use super::CONSUME_SCRIPT;
+    use super::{CONSUME_SCRIPT, INSERT_SCRIPT};
+
+    #[test]
+    fn insert_checks_pending_index_type_before_sorted_set_commands() {
+        let type_check = INSERT_SCRIPT
+            .find("local index_type = redis.call('TYPE', KEYS[2]).ok")
+            .expect("opaque insert must inspect the pending-index type");
+        let sorted_set_command = INSERT_SCRIPT
+            .find("redis.call('ZREMRANGEBYSCORE', KEYS[2]")
+            .expect("opaque insert must clean the pending index");
+        assert!(type_check < sorted_set_command);
+        assert!(INSERT_SCRIPT.contains("index_type ~= 'none' and index_type ~= 'zset'"));
+        assert!(INSERT_SCRIPT.contains("redis.call('DEL', KEYS[2])"));
+        assert!(INSERT_SCRIPT.contains("return -2"));
+    }
 
     #[test]
     fn consume_checks_length_before_get() {
@@ -315,6 +346,33 @@ mod tests {
         assert!(length_check < get);
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
         assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
+    }
+
+    #[test]
+    fn consume_cleans_wrong_type_state_before_string_operations() {
+        let type_check = CONSUME_SCRIPT
+            .find("local key_type = redis.call('TYPE', KEYS[1]).ok")
+            .expect("opaque consume must inspect the state key type");
+        let length_check = CONSUME_SCRIPT
+            .find("redis.call('STRLEN', KEYS[1])")
+            .expect("opaque consume must check length");
+        assert!(type_check < length_check);
+        assert!(CONSUME_SCRIPT.contains("key_type ~= 'none' and key_type ~= 'string'"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('DEL', KEYS[1])"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('ZREM', KEYS[2], ARGV[1])"));
+    }
+
+    #[test]
+    fn consume_checks_pending_index_type_before_sorted_set_commands() {
+        let type_check = CONSUME_SCRIPT
+            .find("local index_type = redis.call('TYPE', KEYS[2]).ok")
+            .expect("opaque consume must inspect the pending-index type");
+        let sorted_set_command = CONSUME_SCRIPT
+            .find("redis.call('ZREMRANGEBYSCORE', KEYS[2]")
+            .expect("opaque consume must clean the pending index");
+        assert!(type_check < sorted_set_command);
+        assert!(CONSUME_SCRIPT.contains("index_type ~= 'none' and index_type ~= 'zset'"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('DEL', KEYS[2])"));
     }
 
     #[test]

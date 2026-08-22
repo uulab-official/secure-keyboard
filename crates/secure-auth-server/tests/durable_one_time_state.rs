@@ -212,6 +212,116 @@ fn redis_oversized_state_is_removed_before_materialization() {
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires an isolated Redis service"]
+fn redis_wrong_type_state_is_removed_before_string_operations() {
+    use secure_auth_server::{
+        BoundOneTimeLoginStateStore, RedisOneTimeLoginStateStore, StoreError,
+    };
+    use sha2::{Digest, Sha256};
+
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").unwrap();
+    let namespace = format!("opaque-test-{}", uuid::Uuid::new_v4().simple());
+    let store = RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
+        &url,
+        &namespace,
+        2,
+        1,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let handle = store.insert_bound(fixture_state()).unwrap();
+    let digest = Sha256::digest(handle.as_bytes());
+    let mut handle_hash = String::with_capacity(64);
+    for byte in digest {
+        handle_hash.push(HEX[(byte >> 4) as usize] as char);
+        handle_hash.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    let state_key = format!("{namespace}:opaque:v1:login:{handle_hash}");
+    let pending_index = format!("{namespace}:opaque:v1:login:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .unwrap()
+        .get_connection()
+        .unwrap();
+    redis::cmd("DEL")
+        .arg(&state_key)
+        .query::<()>(&mut inspection)
+        .unwrap();
+    redis::cmd("SADD")
+        .arg(&state_key)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .unwrap();
+    redis::cmd("ZADD")
+        .arg(&pending_index)
+        .arg(9_999_999_999_999_i64)
+        .arg(&handle_hash)
+        .query::<()>(&mut inspection)
+        .unwrap();
+
+    assert!(matches!(
+        store.take_bound(&handle),
+        Err(StoreError::Unavailable)
+    ));
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&state_key)
+        .query(&mut inspection)
+        .unwrap();
+    let indexed: Option<f64> = redis::cmd("ZSCORE")
+        .arg(&pending_index)
+        .arg(&handle_hash)
+        .query(&mut inspection)
+        .unwrap();
+    assert_eq!(exists, 0);
+    assert_eq!(indexed, None);
+    assert!(store.insert_bound(fixture_state()).is_ok());
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires an isolated Redis service"]
+fn redis_wrong_type_pending_index_is_repaired_before_sorted_set_operations() {
+    use secure_auth_server::{
+        BoundOneTimeLoginStateStore, RedisOneTimeLoginStateStore, StoreError,
+    };
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").unwrap();
+    let namespace = format!("opaque-test-{}", uuid::Uuid::new_v4().simple());
+    let store = RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
+        &url,
+        &namespace,
+        2,
+        1,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let pending_index = format!("{namespace}:opaque:v1:login:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .unwrap()
+        .get_connection()
+        .unwrap();
+    redis::cmd("SADD")
+        .arg(&pending_index)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .unwrap();
+
+    assert!(matches!(
+        store.insert_bound(fixture_state()),
+        Err(StoreError::Unavailable)
+    ));
+    let index_exists: i64 = redis::cmd("EXISTS")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .unwrap();
+    assert_eq!(index_exists, 0);
+    assert!(store.insert_bound(fixture_state()).is_ok());
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires an isolated Redis service"]
 fn redis_missing_state_releases_pending_index_capacity() {
     use secure_auth_server::{
         BoundOneTimeLoginStateStore, LoginStateHandle, RedisOneTimeLoginStateStore,

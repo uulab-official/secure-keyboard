@@ -306,6 +306,43 @@ fn redis_wrong_type_counter_is_removed_before_string_operations() {
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_wrong_type_active_index_is_repaired_before_sorted_set_operations() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let policy = RateLimitPolicy::new(2, std::time::Duration::from_secs(30)).unwrap();
+    let limiter = secure_auth_server::RedisRateLimiter::from_insecure_url_for_local_testing(
+        &url, &namespace, 2, 1, policy,
+    )
+    .expect("Redis limiter should construct");
+    let index_key = format!("{namespace}:ratelimit:v1:index");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("SADD")
+        .arg(&index_key)
+        .arg("poisoned")
+        .query::<i64>(&mut inspection)
+        .expect("Redis wrong-type active index should be writable for the migration test");
+
+    assert_eq!(
+        limiter.check(b"repaired-index"),
+        Err(secure_auth_server::RateLimitError::Unavailable)
+    );
+    let exists: i64 = redis::cmd("EXISTS")
+        .arg(&index_key)
+        .query(&mut inspection)
+        .expect("Redis active-index existence check should succeed");
+    assert_eq!(exists, 0);
+    assert!(matches!(
+        limiter.check(b"repaired-index"),
+        Ok(RateLimitDecision::Allowed { remaining: 1 })
+    ));
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
 fn redis_repairs_missing_active_index_and_rejects_counter_ttl_drift() {
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
     let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());

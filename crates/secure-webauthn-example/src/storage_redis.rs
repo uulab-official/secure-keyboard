@@ -22,6 +22,11 @@ const MAX_CEREMONY_TTL_MILLIS: u64 = MAX_CEREMONY_TTL.as_secs() * 1_000;
 const INSERT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+local index_type = redis.call('TYPE', KEYS[2]).ok
+if index_type ~= 'none' and index_type ~= 'zset' then
+  redis.call('DEL', KEYS[2])
+  return -2
+end
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[3]) then
   return 0
@@ -40,6 +45,12 @@ return 1
 const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+local index_type = redis.call('TYPE', KEYS[2]).ok
+if index_type ~= 'none' and index_type ~= 'zset' then
+  redis.call('DEL', KEYS[1])
+  redis.call('DEL', KEYS[2])
+  return {-2, false}
+end
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 local ttl = redis.call('PTTL', KEYS[1])
 if ttl == -2 then
@@ -47,6 +58,12 @@ if ttl == -2 then
   return {0, false}
 end
 if ttl < 1 or ttl > tonumber(ARGV[2]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], KEYS[1])
+  return {-2, false}
+end
+local key_type = redis.call('TYPE', KEYS[1]).ok
+if key_type ~= 'none' and key_type ~= 'string' then
   redis.call('DEL', KEYS[1])
   redis.call('ZREM', KEYS[2], KEYS[1])
   return {-2, false}
@@ -68,6 +85,11 @@ end
 return {1, value}
 ";
 const BOUNDED_CREDENTIAL_GET_SCRIPT: &str = r"
+local key_type = redis.call('TYPE', KEYS[1]).ok
+if key_type ~= 'none' and key_type ~= 'string' then
+  redis.call('DEL', KEYS[1])
+  return {-1, false}
+end
 local length = redis.call('STRLEN', KEYS[1])
 if length > tonumber(ARGV[1]) then
   return {0, false}
@@ -259,6 +281,9 @@ impl CeremonyStateStore for RedisWebAuthnStore {
             }
             if inserted == 0 {
                 return Err(CeremonyStoreError::CapacityReached);
+            }
+            if inserted == -2 {
+                return Err(CeremonyStoreError::Unavailable);
             }
         }
         Err(CeremonyStoreError::HandleCollision)
@@ -453,7 +478,21 @@ fn hex_handle(handle: &LoginStateHandle) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{BOUNDED_CREDENTIAL_GET_SCRIPT, CONSUME_SCRIPT};
+    use super::{BOUNDED_CREDENTIAL_GET_SCRIPT, CONSUME_SCRIPT, INSERT_SCRIPT};
+
+    #[test]
+    fn ceremony_insert_checks_pending_index_type_before_sorted_set_commands() {
+        let type_check = INSERT_SCRIPT
+            .find("local index_type = redis.call('TYPE', KEYS[2]).ok")
+            .expect("WebAuthn insert must inspect the pending-index type");
+        let sorted_set_command = INSERT_SCRIPT
+            .find("redis.call('ZREMRANGEBYSCORE', KEYS[2]")
+            .expect("WebAuthn insert must clean the pending index");
+        assert!(type_check < sorted_set_command);
+        assert!(INSERT_SCRIPT.contains("index_type ~= 'none' and index_type ~= 'zset'"));
+        assert!(INSERT_SCRIPT.contains("redis.call('DEL', KEYS[2])"));
+        assert!(INSERT_SCRIPT.contains("return -2"));
+    }
 
     #[test]
     fn bounded_credential_get_checks_length_before_get() {
@@ -480,6 +519,49 @@ mod tests {
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[1])"));
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
         assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
+    }
+
+    #[test]
+    fn ceremony_consume_cleans_wrong_type_state_before_string_operations() {
+        let type_check = CONSUME_SCRIPT
+            .find("local key_type = redis.call('TYPE', KEYS[1]).ok")
+            .expect("WebAuthn consume must inspect the ceremony key type");
+        let length_check = CONSUME_SCRIPT
+            .find("redis.call('STRLEN', KEYS[1])")
+            .expect("WebAuthn consume must check length");
+        assert!(type_check < length_check);
+        assert!(CONSUME_SCRIPT.contains("key_type ~= 'none' and key_type ~= 'string'"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('DEL', KEYS[1])"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('ZREM', KEYS[2], KEYS[1])"));
+    }
+
+    #[test]
+    fn ceremony_consume_checks_pending_index_type_before_sorted_set_commands() {
+        let type_check = CONSUME_SCRIPT
+            .find("local index_type = redis.call('TYPE', KEYS[2]).ok")
+            .expect("WebAuthn consume must inspect the pending-index type");
+        let sorted_set_command = CONSUME_SCRIPT
+            .find("redis.call('ZREMRANGEBYSCORE', KEYS[2]")
+            .expect("WebAuthn consume must clean the pending index");
+        assert!(type_check < sorted_set_command);
+        assert!(CONSUME_SCRIPT.contains("index_type ~= 'none' and index_type ~= 'zset'"));
+        assert!(CONSUME_SCRIPT.contains("redis.call('DEL', KEYS[2])"));
+    }
+
+    #[test]
+    fn bounded_credential_get_checks_type_before_string_operations() {
+        let type_check = BOUNDED_CREDENTIAL_GET_SCRIPT
+            .find("local key_type = redis.call('TYPE', KEYS[1]).ok")
+            .expect("credential get must inspect the credential key type");
+        let length_check = BOUNDED_CREDENTIAL_GET_SCRIPT
+            .find("redis.call('STRLEN', KEYS[1])")
+            .expect("credential get must check length");
+        assert!(type_check < length_check);
+        assert!(
+            BOUNDED_CREDENTIAL_GET_SCRIPT.contains("key_type ~= 'none' and key_type ~= 'string'")
+        );
+        assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("redis.call('DEL', KEYS[1])"));
+        assert!(BOUNDED_CREDENTIAL_GET_SCRIPT.contains("return {-1, false}"));
     }
 
     #[test]

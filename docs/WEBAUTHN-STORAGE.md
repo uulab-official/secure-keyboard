@@ -61,8 +61,9 @@ The backend must:
 5. bind and verify the account principal before response parsing; and
 6. map malformed, expired, or unavailable records to generic server errors.
 
-The Redis adapter uses a server-side atomic `PTTL`/`STRLEN`-before-`GET`/delete
-consume script and an atomic `SET NX PX`/pending-index capacity script. The
+The Redis adapter uses server-side type checks before sorted-set or string
+operations, an atomic `PTTL`/`STRLEN`-before-`GET`/delete consume script, and
+an atomic `SET NX PX`/pending-index capacity script. The
 consume script deletes a key whose TTL is missing, expired, or longer than the
 15-minute ceremony bound before inspecting its value; this prevents a
 persisted/recreated key from becoming replay state outside the retention
@@ -100,13 +101,15 @@ are materialized. The extra row lets the adapter distinguish a valid limit from
 an already-over-limit account without loading an unbounded legacy or corrupted
 record set; an over-size value is returned as a sentinel and rejected.
 
-The Redis adapter performs `STRLEN` before every credential `GET`, including
-the transactional insert and post-authentication update paths. Values over
-`MAX_CREDENTIAL_RECORD_BYTES` fail closed before JSON decoding; accepted byte
-buffers are zeroized when dropped. Deployments must treat an oversized legacy
-record as a migration/integrity incident and investigate the Redis ACL,
-namespace isolation, and backup source even though the adapter removes it to
-restore bounded operation.
+The Redis adapter performs a type check and then `STRLEN` before every
+credential `GET`, including the transactional insert and post-authentication
+update paths. Wrong-type credential keys are removed and reported as the
+typed `InvalidRecord` error; values over `MAX_CREDENTIAL_RECORD_BYTES` fail
+closed before JSON decoding. Accepted byte buffers are zeroized when dropped.
+Deployments must treat a wrong-type or oversized legacy record as a
+migration/integrity incident and investigate the Redis ACL, namespace
+isolation, and backup source even though the adapter removes it to restore
+bounded operation.
 
 The `danger-allow-state-serialisation` feature is enabled only because the
 server-side ceremony contract needs it. It must never be used to serialize

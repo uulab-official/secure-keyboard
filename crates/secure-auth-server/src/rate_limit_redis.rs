@@ -12,6 +12,12 @@ const MAX_RATE_COUNTER_BYTES: usize = 32;
 const RATE_LIMIT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
+local index_type = redis.call('TYPE', KEYS[2]).ok
+if index_type ~= 'none' and index_type ~= 'zset' then
+  redis.call('DEL', KEYS[1])
+  redis.call('DEL', KEYS[2])
+  return {-2, 0, 0}
+end
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
 local key_type = redis.call('TYPE', KEYS[1]).ok
 if key_type ~= 'none' and key_type ~= 'string' then
@@ -356,5 +362,19 @@ mod tests {
         assert!(RATE_LIMIT_SCRIPT.contains("key_type ~= 'none' and key_type ~= 'string'"));
         assert!(RATE_LIMIT_SCRIPT.contains("redis.call('DEL', KEYS[1])"));
         assert!(RATE_LIMIT_SCRIPT.contains("redis.call('ZREM', KEYS[2], ARGV[4])"));
+    }
+
+    #[test]
+    fn rate_limit_script_checks_active_index_type_before_sorted_set_commands() {
+        let type_check = RATE_LIMIT_SCRIPT
+            .find("local index_type = redis.call('TYPE', KEYS[2]).ok")
+            .expect("rate-limit script must inspect the active-index Redis type");
+        let sorted_set_command = RATE_LIMIT_SCRIPT
+            .find("redis.call('ZREMRANGEBYSCORE', KEYS[2]")
+            .expect("rate-limit script must clean the active index");
+        assert!(type_check < sorted_set_command);
+        assert!(RATE_LIMIT_SCRIPT.contains("index_type ~= 'none' and index_type ~= 'zset'"));
+        assert!(RATE_LIMIT_SCRIPT.contains("redis.call('DEL', KEYS[2])"));
+        assert!(RATE_LIMIT_SCRIPT.contains("return {-2, 0, 0}"));
     }
 }

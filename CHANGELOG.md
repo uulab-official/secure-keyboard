@@ -23,6 +23,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: Redis rate-limit scripts now reject and remove wrong-type counter
   keys before any string operation, releasing their active-key index member so
   backend key poisoning cannot strand capacity.
+- Security: Redis OPAQUE and WebAuthn adapters now validate and repair
+  wrong-type state, credential, and active-index keys before sorted-set/string
+  operations, with live interoperability regressions for capacity recovery.
 - Security: Web custom-keypad fallback now requires a secure browser context
   even after its explicit lower-assurance acknowledgement, preventing the
   fallback from authorizing plaintext-origin input transport.

@@ -50,9 +50,13 @@ operation must:
 6. never log keys, handles, state bytes, credential IDs, or client responses.
 
 `RedisOneTimeLoginStateStore` uses a small server-side Lua transaction with
+Redis type checks before every sorted-set or string operation, followed by
 `STRLEN`-before-`GET` and `GETDEL`-equivalent read-and-delete semantics; do not
-issue a separate `GET` followed by `DEL`. An oversized legacy value is deleted
-from both the state key and pending index without being returned to the client.
+issue a separate `GET` followed by `DEL`. Wrong-type index/state keys and
+oversized legacy values are deleted from the affected key and pending index
+without being returned to the client. An index repair failure is reported as a
+generic unavailable error, and the next operation can re-establish the bounded
+sorted-set index.
 If the state key has disappeared before consume (for example after an
 eviction), the same script removes its stale pending-index member so a missing
 key cannot reserve capacity until the original TTL expires.
@@ -91,6 +95,9 @@ The reference crate includes feature-gated implementations:
   representation bound before `GET`; a wrong-type, oversized, or malformed
   legacy counter is removed from the counter and active-key index and fails
   closed.
+  The script also validates the active-index key is a sorted set before any
+  sorted-set command; a wrong-type index is removed and the operation fails
+  closed so key poisoning cannot strand namespace capacity.
   Existing counters reject missing, zero, or longer-than-window TTLs and
   repair their active-index member when a prior Redis eviction removed the
   index key. This is recovery on access, not a substitute for Redis capacity
