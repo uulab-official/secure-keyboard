@@ -35,6 +35,10 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- React Native no longer exports an unwrapped native view escape hatch. All
+  public usage now goes through the prop allowlist and fail-closed masked-event
+  boundary; custom rendering remains available only through the explicitly
+  acknowledged Headless Host mode.
 - OPAQUE HTTP credential persistence is now create-only: an existing account
   credential cannot be replaced by a replayed registration upload or an
   enrollment race, and conflicts use the generic invalid-request response.
