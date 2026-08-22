@@ -32,6 +32,9 @@ function nodeScriptTestFiles() {
  */
 export function buildProductionCandidateCommands({ evidencePath } = {}) {
   const commands = [
+    command("Clean checkout", process.execPath, ["scripts/check-clean-checkout.mjs"], {
+      display: "node scripts/check-clean-checkout.mjs",
+    }),
     command("Pinned host toolchains", process.execPath, ["scripts/verify-toolchains.mjs"], {
       display: "node scripts/verify-toolchains.mjs",
     }),

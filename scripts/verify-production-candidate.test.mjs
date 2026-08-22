@@ -11,6 +11,7 @@ test("dry-run plan contains every deterministic production-candidate gate", () =
   const commands = buildProductionCandidateCommands();
   const rendered = commands.map(({ executable, args, display }) => display ?? [executable, ...args].join(" "));
 
+  assert.equal(rendered[0], "node scripts/check-clean-checkout.mjs");
   assert.ok(rendered.includes("cargo fmt --all -- --check"));
   assert.ok(rendered.includes("cargo test --locked --workspace --all-features"));
   assert.ok(rendered.includes("cargo +1.88.0 test --locked --workspace --all-features"));

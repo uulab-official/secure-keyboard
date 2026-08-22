@@ -112,6 +112,7 @@ test("CI exercises every release evidence emitter contract", () => {
 test("independent security audit covers the production-candidate gate aggregator", () => {
   const audit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(audit, /scripts\/verify-production-candidate\.mjs/);
+  assert.match(audit, /scripts\/check-clean-checkout\.mjs/);
   assert.match(audit, /--require-trusted-keys/);
   assert.match(audit, /external device, service, CI-provenance, and independent-review evidence is not synthesized/);
 });

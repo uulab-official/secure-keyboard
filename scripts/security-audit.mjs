@@ -1302,6 +1302,9 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /cargo publish --locked --workspace --all-features --dry-run/, "release gates must publish-check all feature-gated crates through Cargo's temporary registry");
   const productionCandidateVerifier = source("scripts/verify-production-candidate.mjs", findings);
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /buildProductionCandidateCommands/, "production-candidate verification must expose one deterministic gate plan");
+  requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /check-clean-checkout\.mjs/, "production-candidate verification must reject dirty or untracked checkouts before running gates");
+  const cleanCheckoutVerifier = source("scripts/check-clean-checkout.mjs", findings);
+  requireText(findings, "scripts/check-clean-checkout.mjs", cleanCheckoutVerifier, /validateCheckoutStatus/, "clean-checkout verification must fail closed on any modified or untracked path");
   const pinnedToolchainVerifier = source("scripts/verify-toolchains.mjs", findings);
   requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /PINNED_TOOLCHAINS/, "production-candidate verification must enforce pinned host toolchains");
   requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /rustcVersionOutput/, "production-candidate verification must inspect the pinned Rust executable");

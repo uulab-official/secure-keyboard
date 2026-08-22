@@ -122,6 +122,12 @@ deterministic source and adapter gates:
 pnpm verify:production-candidate
 ```
 
+The aggregate starts by requiring an empty `git status --porcelain` result,
+including untracked files. Generated Flutter, Cargo, browser, and package
+state must be kept outside the checkout or ignored by the repository before
+the candidate gate is run; this prevents a dirty local tree from being
+mistaken for commit-bound verification.
+
 Before running the functional gates, this command fails closed unless the
 host matches the release toolchain contract: Node `22.13.0`, pnpm `11.19.0`,
 Rust/Cargo `1.97.1`, Flutter `3.47.0`, the bundled Dart `3.13.0`, and the
