@@ -986,7 +986,11 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-simulator-runtime/, "CI must retain iOS Simulator runtime smoke evidence");
-  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", source("scripts/ios-simulator-runtime-smoke.sh", findings), /simctl install/, "iOS runtime smoke must install the generated host app through simctl");
+  const iosRuntimeSmoke = source("scripts/ios-simulator-runtime-smoke.sh", findings);
+  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", iosRuntimeSmoke, /simctl install/, "iOS runtime smoke must install the generated host app through simctl");
+  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", iosRuntimeSmoke, /simctl launch/, "iOS runtime smoke must launch the generated host app through simctl");
+  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", iosRuntimeSmoke, /simctl io[^\n]*screenshot/, "iOS runtime smoke must capture a simulator screenshot artifact");
+  requireText(findings, "scripts/ios-simulator-runtime-smoke.sh", iosRuntimeSmoke, /test -s "\$SCREENSHOT_PATH"/, "iOS runtime smoke must reject an empty screenshot artifact");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-host-runtime-smoke/, "CI must retain Android emulator runtime smoke evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /reactivecircus\/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d/, "Android emulator runtime smoke must use an immutable action revision");
   const androidRuntimeSmoke = source("scripts/android-emulator-runtime-smoke.sh", findings);
