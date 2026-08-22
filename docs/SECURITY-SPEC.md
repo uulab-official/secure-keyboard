@@ -110,6 +110,14 @@ session/origin policy. Axum and Actix adapters require a request-parts CSRF
 callback and reject a failed result before buffering JSON; no adapter may
 infer CSRF state from a request body.
 
+The publishable `@secure-keypad/server-node` adapter applies the same boundary
+to Web Fetch requests: it requires an explicit TLS/proxy deployment context,
+validates CSRF before reading the body, bounds streaming input at 128 KiB, and
+emits only the generic response contract and security headers. It is a
+transport bridge, not a JavaScript OPAQUE implementation. Its delegate must
+keep the pinned OPAQUE engine in Rust/native code and must not log, persist, or
+return password/PIN values.
+
 TLS/pinning ownership and compromised-runtime limits are defined in
 `docs/PLATFORM-SECURITY-POLICY.md`; the SDK does not claim to implement
 certificate pinning, root/jailbreak detection, or tamper resistance across
