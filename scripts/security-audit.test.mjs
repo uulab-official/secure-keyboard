@@ -60,6 +60,15 @@ test("CI exercises every release evidence emitter contract", () => {
   assert.match(workflow, /pnpm test:emit-native-device-evidence/);
 });
 
+test("CI checkout steps do not persist GitHub credentials into candidate worktrees", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.ok((workflow.match(/actions\/checkout@/g) ?? []).length > 0);
+  assert.equal(
+    (workflow.match(/actions\/checkout@/g) ?? []).length,
+    (workflow.match(/persist-credentials:\s*false/g) ?? []).length,
+  );
+});
+
 test("React Native does not publish an unwrapped native view escape hatch", () => {
   const source = readFileSync(new URL("../packages/react-native/src/index.ts", import.meta.url), "utf8");
   const guide = readFileSync(new URL("../packages/react-native/README.md", import.meta.url), "utf8");
