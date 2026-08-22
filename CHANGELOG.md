@@ -24,6 +24,9 @@ exact release-candidate commit by the release evidence manifest.
   sessions from retained public configuration on iOS application/window and
   Android focus/visibility restoration; one-time Headless Host commands are
   never replayed during that recovery.
+- Security: direct iOS native views now enforce the canonical public key-ID
+  grammar before allocating UI or a session, matching the bridge and Android
+  fail-closed validation paths across all publishable source copies.
 
 ### Server adapters
 

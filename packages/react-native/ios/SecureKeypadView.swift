@@ -658,6 +658,7 @@ public class SecureKeypadView: UIView {
             guard totalKeys <= 512 else { throw SecureKeypadViewError.invalidLayout }
             for key in row {
                 guard (1...64).contains(key.id.utf8.count), ids.insert(key.id).inserted,
+                      key.id.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil,
                       key.id.unicodeScalars.allSatisfy({ $0.value < 128 }), key.label.utf8.count <= 16,
                       key.accessibilityLabel.utf8.count <= 80 else {
                     throw SecureKeypadViewError.invalidLayout

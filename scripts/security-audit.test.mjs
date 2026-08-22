@@ -550,6 +550,11 @@ test("native views reject noncanonical input IDs for the selected policy", () =>
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(source, /try validate\(layout: layout, policy: policy\)/);
     assert.match(source, /case \.input:[\s\S]{0,240}isCanonicalInputKeyId/);
+    assert.match(
+      source,
+      /key\.id\.range\(of: "\^\[a-z0-9\]\[a-z0-9\._-\]\{0,63\}\$", options: \.regularExpression\)/,
+      `${relativePath} must enforce the canonical public key-ID grammar before native UI allocation`,
+    );
   }
 });
 
