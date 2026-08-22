@@ -67,6 +67,9 @@ exact release-candidate commit by the release evidence manifest.
 - Final evidence assembly now rechecks the signed tar entry contract,
   candidate checksum manifest, and byte equality of signed source evidence
   before accepting downloaded external inputs.
+- Physical native release evidence now requires passing `hostModes` for both
+  React Native and Flutter; a single framework/device run cannot close the
+  iOS or Android release gate.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

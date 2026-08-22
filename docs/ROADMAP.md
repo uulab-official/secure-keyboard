@@ -201,6 +201,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Bind every release gate claim to the exact manifest commit and reject missing or mismatched gate bindings.
 - [x] Bind each referenced JSON gate record's embedded gate name, commit, and pass status to its manifest gate.
 - [x] Revalidate iOS/Android/Web gate records, physical-device artifact categories, and nested log/artifact digests during final release verification.
+- [x] Require each physical native release record to include passing React Native and Flutter host-mode evidence.
 - [x] Add a checked-in release gate fragment emitter that hashes exact evidence bytes and derives commit/version from the checkout.
 - [x] Cryptographically bind the independent security review report to a reviewer Ed25519 key and detached signature.
 - [x] Add a manual deterministic release-candidate bundle workflow with protected Ed25519 signing and exact-ref/package binding.

@@ -72,12 +72,15 @@ must re-run a representative sample and sign the exact evidence bundle.
 
 ## Machine-readable evidence record
 
-Each platform/framework run should produce one JSON record containing:
+Each platform release run should produce one JSON record containing:
 
 - `schemaVersion: 1`, `status: "pass"`, and the exact release gate name
   (`ios-device-matrix`, `android-device-matrix`, or
-  `web-browser-matrix`), exact 40-character commit SHA, framework version,
-  canonical millisecond UTC timestamp, and `physicalDevice` flag;
+  `web-browser-matrix`), exact 40-character commit SHA, primary framework
+  version, canonical millisecond UTC timestamp, and `physicalDevice` flag;
+- for physical native records, `hostModes` with exactly one passing record for
+  both `react-native` and `flutter`, including the version used for each host;
+  a record for only one framework cannot satisfy the native release gate;
 - device/browser model, OS version/build, and `secureContext: true` for Web;
 - every applicable test case with the exact status `pass`;
 - for native records, explicit `screenshotsAndBackgroundSnapshots`,
@@ -123,6 +126,8 @@ node scripts/emit-native-device-evidence.mjs \
   --platform ios \
   --framework react-native \
   --framework-version 0.87.0 \
+  --host-mode react-native=0.87.0 \
+  --host-mode flutter=3.47.0 \
   --model "iPhone 17 Pro" \
   --os-version 26.5 \
   --os-build 23A000 \

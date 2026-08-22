@@ -92,6 +92,18 @@ function normalizeTestCases(testCases) {
   return Object.fromEntries(NATIVE_TEST_CASES.map((name) => [name, "pass"]));
 }
 
+function normalizeHostModes(hostModes) {
+  if (!Array.isArray(hostModes)) throw new Error("hostModes must contain both react-native and flutter");
+  return hostModes.map((hostMode) => {
+    if (!isRecord(hostMode)) throw new Error("host mode must be an object");
+    return {
+      framework: hostMode.framework,
+      frameworkVersion: hostMode.frameworkVersion,
+      status: hostMode.status,
+    };
+  });
+}
+
 function validateArtifactInputs(artifacts) {
   if (!Array.isArray(artifacts) || artifacts.length === 0 || artifacts.length > 64) {
     throw new Error("artifacts must contain one to 64 entries");
@@ -142,6 +154,7 @@ export function buildNativeDeviceEvidence(input) {
   validateLabel(osVersion, "osVersion");
   validateLabel(osBuild, "osBuild");
   validateTimestamp(recordedAt);
+  const hostModes = normalizeHostModes(input.hostModes);
   if (!isRecord(log)) throw new Error("log must be an object");
   if (!isSafeRelativePath(log.path)) throw new Error("log path must be safe and relative");
   validateBytes(log.bytes, "log bytes");
@@ -154,6 +167,7 @@ export function buildNativeDeviceEvidence(input) {
     platform,
     framework,
     frameworkVersion,
+    hostModes,
     recordedAt,
     physicalDevice: true,
     device: { model, osVersion, osBuild },
@@ -163,7 +177,11 @@ export function buildNativeDeviceEvidence(input) {
     logSha256: createHash("sha256").update(log.bytes).digest("hex"),
     artifacts: validateArtifactInputs(input.artifacts),
   };
-  const findings = validateDeviceEvidence(record, { requirePhysicalDevice: true, expectedCommit: commit });
+  const findings = validateDeviceEvidence(record, {
+    requirePhysicalDevice: true,
+    requireNativeHostModes: true,
+    expectedCommit: commit,
+  });
   if (findings.length > 0) throw new Error(findings.join("\n"));
   return record;
 }
@@ -224,7 +242,7 @@ function writeJson(root, relativePath, bytes) {
  * Reads physical-device files from an evidence root, rejects leaked sentinel
  * content, then writes the device record and its commit-bound release fragment.
  *
- * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, model: string, osVersion: string, osBuild: string, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
+ * @param {{root: string, commit: string, packageVersion: string, platform: "ios"|"android", framework: string, frameworkVersion: string, hostModes: Array<{framework: string, frameworkVersion: string, status: string}>, model: string, osVersion: string, osBuild: string, recordedAt: string, testCases: Record<string, string>, logPath: string, artifactPaths: Array<{kind: string, path: string}>, evidencePath: string, fragmentPath: string}} input
  * @returns {{record: Record<string, unknown>, fragment: Record<string, unknown>}}
  */
 export function writeNativeDeviceEvidence(input) {
@@ -306,6 +324,18 @@ function parseOptions(argumentsList) {
       index += 1;
       continue;
     }
+    if (option === "--host-mode" && typeof value === "string") {
+      const separator = value.indexOf("=");
+      if (separator <= 0) throw new Error("host modes must use --host-mode framework=version");
+      values.hostModes ??= [];
+      values.hostModes.push({
+        framework: value.slice(0, separator),
+        frameworkVersion: value.slice(separator + 1),
+        status: "pass",
+      });
+      index += 1;
+      continue;
+    }
     if (option === "--test-case" && typeof value === "string") {
       values.testCases[value] = "pass";
       index += 1;
@@ -319,7 +349,7 @@ function parseOptions(argumentsList) {
       continue;
     }
     throw new Error(
-      "options must use --platform, --framework, --framework-version, --model, --os-version, --os-build, --log, --artifact, and --test-case",
+      "options must use --platform, --framework, --framework-version, --host-mode, --model, --os-version, --os-build, --log, --artifact, and --test-case",
     );
   }
   return values;
@@ -329,7 +359,7 @@ function main() {
   const [rootArgument, evidencePath, fragmentPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !evidencePath || !fragmentPath) {
     console.error(
-      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --model <label> --os-version <label> --os-build <label> --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
+      "usage: node scripts/emit-native-device-evidence.mjs <evidence-root> <evidence-json> <fragment-json> --platform <ios|android> --framework <native|react-native|flutter> --framework-version <label> --host-mode <react-native|flutter>=<version> --model <label> --os-version <label> --os-build <label> --log <relative/path> --artifact <kind=relative/path> --test-case <name>",
     );
     process.exitCode = 64;
     return;

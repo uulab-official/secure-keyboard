@@ -23,6 +23,10 @@ const VALID_NATIVE = {
   platform: "ios",
   framework: "react-native",
   frameworkVersion: "0.87.0",
+  hostModes: [
+    { framework: "react-native", frameworkVersion: "0.87.0", status: "pass" },
+    { framework: "flutter", frameworkVersion: "3.47.0", status: "pass" },
+  ],
   recordedAt: "2026-08-21T12:00:00.000Z",
   physicalDevice: true,
   device: { model: "iPhone", osVersion: "26.5", osBuild: "23A000" },
@@ -87,6 +91,24 @@ test("can require a physical device for a native release gate", () => {
   assert.deepEqual(validateDeviceEvidence(simulator), []);
   const findings = validateDeviceEvidence(simulator, { requirePhysicalDevice: true });
   assert.ok(findings.some((finding) => finding.includes("physicalDevice")));
+});
+
+test("requires both React Native and Flutter host modes for a physical native release gate", () => {
+  const missing = structuredClone(VALID_NATIVE);
+  delete missing.hostModes;
+  const missingFindings = validateDeviceEvidence(missing, {
+    requirePhysicalDevice: true,
+    requireNativeHostModes: true,
+  });
+  assert.ok(missingFindings.some((finding) => finding.includes("hostModes")));
+
+  const incomplete = structuredClone(VALID_NATIVE);
+  incomplete.hostModes = [incomplete.hostModes[0]];
+  const incompleteFindings = validateDeviceEvidence(incomplete, {
+    requirePhysicalDevice: true,
+    requireNativeHostModes: true,
+  });
+  assert.ok(incompleteFindings.some((finding) => finding.includes("flutter")));
 });
 
 test("can bind a device record to an expected checkout commit", () => {

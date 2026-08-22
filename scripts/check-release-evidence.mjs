@@ -552,6 +552,7 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
   for (const finding of validateDeviceEvidence(record, {
     expectedCommit: gate.commit,
     expectedGate: gate.name,
+    requireNativeHostModes: true,
     requirePhysicalDevice: devicePolicy.requirePhysicalDevice,
   })) {
     add(findings, `${field}.device`, finding);

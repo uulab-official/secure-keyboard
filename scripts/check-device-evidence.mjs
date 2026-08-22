@@ -46,6 +46,7 @@ const ALLOWED_FRAMEWORKS = Object.freeze({
   android: new Set(["native", "react-native", "flutter"]),
   web: new Set(["web"]),
 });
+export const REQUIRED_NATIVE_HOST_MODES = Object.freeze(["react-native", "flutter"]);
 const DEVICE_RELEASE_GATES = Object.freeze({
   "ios-device-matrix": "ios",
   "android-device-matrix": "android",
@@ -99,6 +100,42 @@ function validateTests(testCases, required, findings) {
   }
 }
 
+function validateNativeHostModes(hostModes, findings, required) {
+  if (!Array.isArray(hostModes) || hostModes.length === 0 || hostModes.length > 3) {
+    add(findings, "hostModes", "must contain one to three host-mode records");
+    return;
+  }
+  const frameworks = new Set();
+  for (const [index, hostMode] of hostModes.entries()) {
+    const field = `hostModes[${index}]`;
+    if (!isRecord(hostMode)) {
+      add(findings, field, "must be an object");
+      continue;
+    }
+    for (const key of Object.keys(hostMode)) {
+      if (!new Set(["framework", "frameworkVersion", "status"]).has(key)) {
+        add(findings, `${field}.${key}`, "unsupported host-mode field");
+      }
+    }
+    if (!ALLOWED_FRAMEWORKS.ios.has(hostMode.framework) && !ALLOWED_FRAMEWORKS.android.has(hostMode.framework)) {
+      add(findings, `${field}.framework`, "must be a supported native host mode");
+    } else if (frameworks.has(hostMode.framework)) {
+      add(findings, `${field}.framework`, "must not be duplicated");
+    } else {
+      frameworks.add(hostMode.framework);
+    }
+    if (!nonEmptyString(hostMode.frameworkVersion)) {
+      add(findings, `${field}.frameworkVersion`, "must be non-empty");
+    }
+    if (hostMode.status !== "pass") add(findings, `${field}.status`, "must be exactly 'pass'");
+  }
+  if (required) {
+    for (const framework of REQUIRED_NATIVE_HOST_MODES) {
+      if (!frameworks.has(framework)) add(findings, "hostModes", `must contain ${framework}`);
+    }
+  }
+}
+
 /**
  * Validates one sanitized device/browser verification record.
  *
@@ -139,6 +176,12 @@ export function validateDeviceEvidence(evidence, options = {}) {
     add(findings, "gate", "must match the evidence platform");
   }
   if (!nonEmptyString(evidence.frameworkVersion)) add(findings, "frameworkVersion", "must be non-empty");
+  const isNativePlatform = evidence.platform === "ios" || evidence.platform === "android";
+  if (isNativePlatform && evidence.hostModes !== undefined) {
+    validateNativeHostModes(evidence.hostModes, findings, options.requireNativeHostModes === true);
+  } else if (isNativePlatform && options.requireNativeHostModes === true) {
+    add(findings, "hostModes", "must contain both react-native and flutter host modes");
+  }
   if (
     !nonEmptyString(evidence.recordedAt) ||
     !ISO_TIMESTAMP.test(evidence.recordedAt) ||
@@ -372,6 +415,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     );
     process.exitCode = 2;
   } else {
-    process.exitCode = checkFile(path.resolve(evidenceRoot, filePath), { requirePhysicalDevice, expectedCommit }, evidenceRoot);
+    process.exitCode = checkFile(
+      path.resolve(evidenceRoot, filePath),
+      { requirePhysicalDevice, requireNativeHostModes: requirePhysicalDevice, expectedCommit },
+      evidenceRoot,
+    );
   }
 }

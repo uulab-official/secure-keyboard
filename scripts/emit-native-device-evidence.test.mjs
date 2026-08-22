@@ -42,6 +42,10 @@ function completeInput() {
     platform: "ios",
     framework: "react-native",
     frameworkVersion: "0.87.0",
+    hostModes: [
+      { framework: "react-native", frameworkVersion: "0.87.0", status: "pass" },
+      { framework: "flutter", frameworkVersion: "3.47.0", status: "pass" },
+    ],
     model: "iPhone 17 Pro",
     osVersion: "26.5",
     osBuild: "23A000",
@@ -164,6 +168,14 @@ test("rejects incomplete test cases and required physical artifact categories", 
 
   assert.throws(() => buildNativeDeviceEvidence(incomplete), /testCases\.protocolDowngrade/);
   assert.throws(() => buildNativeDeviceEvidence({ ...completeInput(), artifacts: incomplete.artifacts }), /crash-report-review/);
+});
+
+test("rejects a physical record that omits one required host mode", async () => {
+  const { buildNativeDeviceEvidence } = await loadEmitter();
+  const incomplete = completeInput();
+  incomplete.hostModes = incomplete.hostModes.filter(({ framework }) => framework !== "flutter");
+
+  assert.throws(() => buildNativeDeviceEvidence(incomplete), /hostModes.*flutter/);
 });
 
 test("rejects oversized physical evidence bytes before hashing", async () => {

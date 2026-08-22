@@ -218,8 +218,10 @@ verification recomputes its digest and checks that embedded commit, status, and
 gate binding and secret-field policy, so a current manifest cannot be assembled
 from an older, cross-gate, or secret-bearing gate record. The `ios-device-matrix` and
 `android-device-matrix` records are then revalidated as physical native records
-with all required test cases and categorized artifacts; `web-browser-matrix` is
-revalidated as a Web record. The verifier also revalidates nested log and artifact digests
+with both passing `react-native` and `flutter` entries in `hostModes`, all required
+test cases, and categorized artifacts; one framework's device run cannot satisfy
+the native gate. `web-browser-matrix` is revalidated as a Web record. The verifier
+also revalidates nested log and artifact digests
 inside those device records, so changing a screenshot, report,
 or sanitized log invalidates the release gate.
 

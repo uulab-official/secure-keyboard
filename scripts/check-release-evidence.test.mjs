@@ -123,6 +123,14 @@ function writeDeviceGateEvidence(root, gate, platform) {
     platform,
     framework: isWeb ? "web" : "native",
     frameworkVersion: isWeb ? "chromium-140.0.0" : "1.0.0",
+    ...(isWeb
+      ? {}
+      : {
+          hostModes: [
+            { framework: "react-native", frameworkVersion: "0.87.0", status: "pass" },
+            { framework: "flutter", frameworkVersion: "3.47.0", status: "pass" },
+          ],
+        }),
     recordedAt: "2026-08-21T00:00:00.000Z",
     physicalDevice: !isWeb,
     device: isWeb
