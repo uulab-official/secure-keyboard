@@ -26,7 +26,9 @@ unsubscribe();
 
 The controller state contains only `idle`, `pending`, `success`, or `error`,
 the public operation kind, and a stable error code. It never contains a
-credential result or user input. If a product independently elects to ship a
+credential result or user input. Call `controller.cancel()` to abort an
+in-flight ceremony; the resulting state uses the generic `aborted` code and
+does not expose browser exception text. If a product independently elects to ship a
 custom browser keypad, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)`
 and display `getWebFallbackNotice()` to the user/operator; that path remains
 lower assurance and is not a Secure Native Mode substitute.

@@ -220,6 +220,33 @@ describe("WebAuthn support and mode policy", () => {
     });
   });
 
+  it("cancels an in-flight passkey operation without exposing browser error text", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const api: WebAuthnCredentialApi = {
+      create: (options) => new Promise((_, reject) => {
+        observedSignal = (options as { signal?: AbortSignal }).signal;
+        observedSignal?.addEventListener("abort", () => {
+          reject({ name: "AbortError", message: "fixture-only-secret" });
+        }, { once: true });
+      }),
+      get: async () => null,
+    };
+    const controller = createPasskeyController(environment(api));
+
+    expect(typeof controller.cancel).toBe("function");
+    const operation = controller.createPasskey(creationOptions);
+    await Promise.resolve();
+    controller.cancel();
+
+    await expect(operation).rejects.toMatchObject({ code: "aborted" });
+    expect(observedSignal?.aborted).toBe(true);
+    expect(controller.getState()).toEqual({
+      phase: "error",
+      operation: "registration",
+      errorCode: "aborted",
+    });
+  });
+
   it("normalizes browser API failures without exposing the original error", async () => {
     const secret = "fixture-only-secret";
     const api: WebAuthnCredentialApi = {

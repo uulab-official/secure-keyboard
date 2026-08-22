@@ -64,6 +64,9 @@ exact release-candidate commit by the release evidence manifest.
 - Clarified that the Web package ships WebAuthn plus an explicit lower-assurance
   fallback contract, not a browser DOM keypad that can provide native-like
   secret isolation.
+- Added a secret-free Web passkey presentation controller with abortable
+  registration/authentication ceremonies, stable `aborted` state, and no
+  credential or browser exception text in UI state.
 
 ### Security
 

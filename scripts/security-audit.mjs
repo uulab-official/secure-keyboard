@@ -902,6 +902,9 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /createPasskey/, "Web adapter must expose passkey-first registration");
   requireText(findings, "packages/web/src/index.ts", web, /createPasskeyController/, "Web custom passkey UI must use the secret-free state controller");
   requireText(findings, "packages/web/src/index.ts", web, /operation-in-progress/, "Web passkey UI controller must reject concurrent ceremonies");
+  requireText(findings, "packages/web/src/index.ts", web, /readonly cancel: \(\) => void/, "Web passkey UI controller must expose cancellation without secret data");
+  requireText(findings, "packages/web/src/index.ts", web, /new AbortController\(\)/, "Web passkey UI cancellation must use an abortable browser ceremony");
+  requireText(findings, "packages/web/src/index.ts", web, /\| \"aborted\"/, "Web aborted ceremonies must use a stable error code");
   requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)/, "Web passkey UI controller must normalize unexpected errors");
   requireText(findings, "packages/web/src/index.ts", web, /MAX_WEBAUTHN_EXTENSION_NODES/, "WebAuthn extension JSON must be bounded");
   requireText(findings, "packages/web/src/index.ts", web, /copyBoundedExtensionValue/, "WebAuthn extension JSON must be defensively copied");

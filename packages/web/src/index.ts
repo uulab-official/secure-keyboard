@@ -28,6 +28,7 @@ export type WebAuthnClientErrorCode =
   | "invalid-credential"
   | "credential-api-failure"
   | "operation-in-progress"
+  | "aborted"
   | "fallback-not-acknowledged";
 
 /** Errors contain stable codes and never include credential bytes or user input. */
@@ -41,12 +42,19 @@ export class WebAuthnClientError extends Error {
   }
 }
 
+function isAbortError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+}
+
 function normalizeWebAuthnError(
   error: unknown,
   code: WebAuthnClientErrorCode,
   message: string,
 ): never {
   if (error instanceof WebAuthnClientError) throw error;
+  if (isAbortError(error)) {
+    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+  }
   throw new WebAuthnClientError(code, message);
 }
 
@@ -115,10 +123,16 @@ export interface WebAuthnRequestOptionsJson {
 
 export interface WebAuthnCredentialCreationRequest {
   readonly publicKey: Record<string, unknown>;
+  readonly signal?: AbortSignal;
 }
 
 export interface WebAuthnCredentialRequest {
   readonly publicKey: Record<string, unknown>;
+  readonly signal?: AbortSignal;
+}
+
+export interface WebAuthnOperationOptions {
+  readonly signal?: AbortSignal;
 }
 
 export interface WebAuthnRegistrationResponse {
@@ -173,6 +187,7 @@ export interface PasskeyPresentationState {
 export interface PasskeyPresentationController {
   readonly getState: () => PasskeyPresentationState;
   readonly subscribe: (listener: (state: PasskeyPresentationState) => void) => () => void;
+  readonly cancel: () => void;
   readonly createPasskey: (
     options: WebAuthnCreationOptionsJson,
   ) => Promise<SerializedRegistrationCredential>;
@@ -725,10 +740,17 @@ export function assertWebAuthnMode(
 export async function createPasskey(
   options: WebAuthnCreationOptionsJson,
   environment = getDefaultWebAuthnEnvironment(),
+  operationOptions: WebAuthnOperationOptions = {},
 ): Promise<SerializedRegistrationCredential> {
   assertWebAuthnMode("passkey", environment);
+  if (operationOptions.signal?.aborted) {
+    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+  }
   try {
-    const credential = await environment.credentials!.create({ publicKey: toNativeCreationOptions(options) });
+    const credential = await environment.credentials!.create({
+      publicKey: toNativeCreationOptions(options),
+      ...(operationOptions.signal === undefined ? {} : { signal: operationOptions.signal }),
+    });
     if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
     return serializeRegistrationCredential(credential);
   } catch (error) {
@@ -739,10 +761,17 @@ export async function createPasskey(
 export async function getPasskey(
   options: WebAuthnRequestOptionsJson,
   environment = getDefaultWebAuthnEnvironment(),
+  operationOptions: WebAuthnOperationOptions = {},
 ): Promise<SerializedAssertionCredential> {
   assertWebAuthnMode("passkey", environment);
+  if (operationOptions.signal?.aborted) {
+    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+  }
   try {
-    const credential = await environment.credentials!.get({ publicKey: toNativeRequestOptions(options) });
+    const credential = await environment.credentials!.get({
+      publicKey: toNativeRequestOptions(options),
+      ...(operationOptions.signal === undefined ? {} : { signal: operationOptions.signal }),
+    });
     if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
     return serializeAssertionCredential(credential);
   } catch (error) {
@@ -767,6 +796,9 @@ function presentationState(
 
 function presentationError(error: unknown): WebAuthnClientError {
   if (error instanceof WebAuthnClientError) return error;
+  if (isAbortError(error)) {
+    return new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+  }
   return new WebAuthnClientError("credential-api-failure", "WebAuthn credential operation failed");
 }
 
@@ -778,6 +810,7 @@ export function createPasskeyController(
   environment = getDefaultWebAuthnEnvironment(),
 ): PasskeyPresentationController {
   let state = presentationState("idle");
+  let activeAbortController: AbortController | undefined;
   const listeners = new Set<(nextState: PasskeyPresentationState) => void>();
 
   const publish = (nextState: PasskeyPresentationState): void => {
@@ -793,7 +826,7 @@ export function createPasskeyController(
 
   const run = <T>(
     operation: PasskeyPresentationOperation,
-    work: () => Promise<T>,
+    work: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> => {
     if (state.phase === "pending") {
       return Promise.reject(
@@ -801,9 +834,11 @@ export function createPasskeyController(
       );
     }
 
+    const abortController = new AbortController();
+    activeAbortController = abortController;
     publish(presentationState("pending", operation));
     return Promise.resolve()
-      .then(work)
+      .then(() => work(abortController.signal))
       .then(
         (result) => {
           publish(presentationState("success", operation));
@@ -814,7 +849,14 @@ export function createPasskeyController(
           publish(presentationState("error", operation, normalized.code));
           throw normalized;
         },
-      );
+      )
+      .finally(() => {
+        if (activeAbortController === abortController) activeAbortController = undefined;
+      });
+  };
+
+  const cancel = (): void => {
+    if (state.phase === "pending") activeAbortController?.abort();
   };
 
   return Object.freeze({
@@ -825,9 +867,10 @@ export function createPasskeyController(
         listeners.delete(listener);
       };
     },
+    cancel,
     createPasskey: (options: WebAuthnCreationOptionsJson) =>
-      run("registration", () => createPasskey(options, environment)),
+      run("registration", (signal) => createPasskey(options, environment, { signal })),
     getPasskey: (options: WebAuthnRequestOptionsJson) =>
-      run("authentication", () => getPasskey(options, environment)),
+      run("authentication", (signal) => getPasskey(options, environment, { signal })),
   });
 }

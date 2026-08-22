@@ -3,7 +3,8 @@
 The web adapter is passkey-first. It converts server-generated WebAuthn
 options and returns browser ceremony results; it never accepts a password, PIN,
 or keypad secret as an API value. The SDK does not ship a browser DOM keypad; page JavaScript can observe page input and memory, so a custom browser UI remains lower assurance. For a custom passkey UI, use
-`createPasskeyController()` and render its secret-free lifecycle state. If a
+`createPasskeyController()` and render its secret-free lifecycle state; its
+`cancel()` method aborts an in-flight ceremony without receiving a secret. If a
 product builds a custom browser keypad around the explicit fallback
 acknowledgement, that UI is lower assurance for the same reason.
 
