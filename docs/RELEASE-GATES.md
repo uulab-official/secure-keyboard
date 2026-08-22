@@ -47,7 +47,7 @@ bytes with the signed Android native source, so a package that silently falls
 back to an unverified or altered external library cannot pass the release
 contract. It also parses the iOS checksum manifest, rejects unsafe or duplicate
 paths, and recomputes every listed checksum including the immutable artifact
-commit binding.
+commit binding. Native checksum manifests are bounded to 1 MiB before parsing.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
 contains the staged Flutter iOS artifacts, every version-matched npm/crate

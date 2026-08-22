@@ -1217,6 +1217,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.sha256/, "release staging must require the verified native FFI checksum manifest");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validateIosFfiChecksum/, "release staging must verify the iOS FFI checksum manifest against signed package bytes");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.commit/, "release staging must bind iOS FFI checksums to the requested commit");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /MAX_NATIVE_CHECKSUM_MANIFEST_BYTES/, "release staging must bound native checksum manifest materialization");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-android-ffi\.sha256/, "release staging must require the verified Android FFI checksum manifest");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validateAndroidFfiChecksum/, "release staging must verify the Android FFI checksum manifest against signed-source paths");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checksum does not match/, "release staging must reject Android FFI checksum mismatches");

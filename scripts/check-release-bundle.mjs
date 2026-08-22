@@ -78,6 +78,7 @@ const IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX = "package/secure_ffi.xcframework";
 const IOS_PACKAGE_LIBRARY_SOURCE = "source/packages/flutter/ios/libsecure_ffi.a";
 const IOS_PACKAGE_LIBRARY_ARCHIVE = "package/libsecure_ffi.a";
 const IOS_FFI_CHECKSUM_MANIFEST = "source/secure-keypad-ios-ffi.sha256";
+const MAX_NATIVE_CHECKSUM_MANIFEST_BYTES = 1 * 1024 * 1024;
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -98,18 +99,27 @@ function regularFile(root, relativePath, findings) {
   }
 }
 
+function readBoundedChecksumManifest(absolutePath, relativePath, findings) {
+  try {
+    const stat = lstatSync(absolutePath);
+    if (stat.size > MAX_NATIVE_CHECKSUM_MANIFEST_BYTES) {
+      findings.push(`${relativePath}: must not exceed ${MAX_NATIVE_CHECKSUM_MANIFEST_BYTES} bytes`);
+      return undefined;
+    }
+    return readFileSync(absolutePath, "utf8");
+  } catch (error) {
+    findings.push(`${relativePath}: cannot be read (${error.message})`);
+    return undefined;
+  }
+}
+
 function validateAndroidFfiChecksum(root, findings) {
   const relativeManifest = "source/secure-keypad-android-ffi.sha256";
   const manifestPath = regularFile(root, relativeManifest, findings);
   if (!manifestPath) return;
 
-  let contents;
-  try {
-    contents = readFileSync(manifestPath, "utf8");
-  } catch (error) {
-    findings.push(`${relativeManifest}: cannot be read (${error.message})`);
-    return;
-  }
+  const contents = readBoundedChecksumManifest(manifestPath, relativeManifest, findings);
+  if (contents === undefined) return;
 
   const seen = new Set();
   const lines = contents.split(/\r?\n/).filter((line) => line.length > 0);
@@ -329,13 +339,8 @@ function validateIosFfiChecksum(root, version, findings, archiveEntryMap, metada
   const manifestPath = regularFile(root, IOS_FFI_CHECKSUM_MANIFEST, findings);
   if (!manifestPath) return;
 
-  let manifestContents;
-  try {
-    manifestContents = readFileSync(manifestPath, "utf8");
-  } catch (error) {
-    findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: cannot be read (${error.message})`);
-    return;
-  }
+  const manifestContents = readBoundedChecksumManifest(manifestPath, IOS_FFI_CHECKSUM_MANIFEST, findings);
+  if (manifestContents === undefined) return;
 
   const manifestEntries = new Map();
   for (const [index, line] of manifestContents.split(/\r?\n/).entries()) {

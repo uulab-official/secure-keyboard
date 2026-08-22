@@ -293,6 +293,19 @@ test("release staging rejects a tampered iOS FFI checksum", () => {
   }
 });
 
+test("release staging rejects oversized native checksum manifests", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/secure-keypad-ios-ffi.sha256", `${"a".repeat(1_048_577)}\n`);
+    writeFile(root, "source/secure-keypad-android-ffi.sha256", `${"a".repeat(1_048_577)}\n`);
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-ios-ffi.sha256") && finding.includes("must not exceed")));
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.sha256") && finding.includes("must not exceed")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release staging requires the verified Android FFI checksum and libraries", () => {
   const root = createValidStaging();
   try {
