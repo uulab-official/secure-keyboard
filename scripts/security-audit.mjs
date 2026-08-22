@@ -101,6 +101,7 @@ const RELEASE_WORKFLOW_TOOLCHAIN_CHECKS = Object.freeze([
   ...[
     ["rust", "1.97.1"],
     ["node", "22.13.0"],
+    ["pnpm", "11.19.0"],
     ["flutter", "3.47.0"],
     ["reactNative", "0.87.0"],
     ["ndk", "27.1.12297006"],

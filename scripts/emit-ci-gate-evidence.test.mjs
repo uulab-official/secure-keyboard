@@ -100,6 +100,7 @@ test("carries the pinned release toolchain context into the CI fragment", () => 
     toolchains: {
       rust: "1.97.1",
       node: "22.13.0",
+      pnpm: "11.19.0",
       flutter: "3.47.0",
       reactNative: "0.87.0",
       ndk: "27.1.12297006",
@@ -109,6 +110,7 @@ test("carries the pinned release toolchain context into the CI fragment", () => 
   assert.deepEqual(result.fragment.toolchains, {
     rust: "1.97.1",
     node: "22.13.0",
+    pnpm: "11.19.0",
     flutter: "3.47.0",
     reactNative: "0.87.0",
     ndk: "27.1.12297006",
@@ -235,6 +237,7 @@ test("CI seeds the final manifest with the exact production toolchain context", 
   for (const toolchain of [
     "rust=1.97.1",
     "node=22.13.0",
+    "pnpm=11.19.0",
     "flutter=3.47.0",
     "reactNative=0.87.0",
     "ndk=27.1.12297006",

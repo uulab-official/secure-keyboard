@@ -51,6 +51,16 @@ test("release workflows pin the package manager consistently", () => {
       detail: "release candidate workflow must pin pnpm to 11.19.0",
     },
   ]);
+
+  const brokenCiWorkflow = ciWorkflow.replace("            --toolchain pnpm=11.19.0 \\\n", "");
+  assert.deepEqual(findReleaseWorkflowToolchainMismatches(brokenCiWorkflow, releaseWorkflow), [
+    {
+      file: ".github/workflows/ci.yml",
+      toolchain: "pnpm",
+      expected: "11.19.0",
+      detail: "CI workflow must pin pnpm to 11.19.0",
+    },
+  ]);
 });
 
 test("release evidence and signing outputs use exclusive creation", () => {

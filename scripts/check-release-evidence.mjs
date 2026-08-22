@@ -63,6 +63,7 @@ export const REQUIRED_RELEASE_GATES = Object.freeze([
 export const REQUIRED_RELEASE_TOOLCHAINS = Object.freeze({
   rust: "1.97.1",
   node: "22.13.0",
+  pnpm: "11.19.0",
   flutter: "3.47.0",
   reactNative: "0.87.0",
   ndk: "27.1.12297006",
@@ -215,7 +216,7 @@ export function validateReleaseEvidence(evidence, context = {}) {
     add(findings, "packageVersion", "must match the current release version");
   }
 
-  const requiredToolchains = ["rust", "node", "flutter", "reactNative", "ndk"];
+  const requiredToolchains = ["rust", "node", "pnpm", "flutter", "reactNative", "ndk"];
   if (!isRecord(evidence.toolchains)) {
     add(findings, "toolchains", "must contain pinned toolchain versions");
   } else {

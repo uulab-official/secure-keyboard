@@ -12,7 +12,7 @@ const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const SECRET_KEY = /password|passphrase|secret|sentinel|plaintext|credential(?:Value|Bytes)|rawInput|input(?:Value|Text|Bytes)/i;
-const TOOLCHAIN_NAMES = new Set(["rust", "node", "flutter", "reactNative", "ndk"]);
+const TOOLCHAIN_NAMES = new Set(["rust", "node", "pnpm", "flutter", "reactNative", "ndk"]);
 const CI_CHECK_LABEL = /^[a-z0-9][a-z0-9._-]{0,80}$/;
 export const MAX_GATE_EVIDENCE_BYTES = 1 * 1024 * 1024;
 

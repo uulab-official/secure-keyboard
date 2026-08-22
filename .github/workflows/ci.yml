@@ -1318,6 +1318,7 @@ jobs:
             --runner ci-aggregate --check job-rust \
             --toolchain rust=1.97.1 \
             --toolchain node=22.13.0 \
+            --toolchain pnpm=11.19.0 \
             --toolchain flutter=3.47.0 \
             --toolchain reactNative=0.87.0 \
             --toolchain ndk=27.1.12297006

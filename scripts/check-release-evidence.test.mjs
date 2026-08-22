@@ -58,6 +58,7 @@ function completeEvidence() {
     toolchains: {
       rust: "1.97.1",
       node: "22.13.0",
+      pnpm: "11.19.0",
       flutter: "3.47.0",
       reactNative: "0.87.0",
       ndk: "27.1.12297006",
@@ -492,6 +493,17 @@ test("requires the release manifest to use the pinned production toolchains", ()
   evidence.toolchains = { ...evidence.toolchains, node: "22.14.0" };
   const findings = validateReleaseEvidence(evidence);
   assert.ok(findings.some((finding) => finding.includes("toolchains.node") && finding.includes("22.13.0")));
+});
+
+test("requires the release manifest to record the pinned package manager", () => {
+  const evidence = completeEvidence();
+  delete evidence.toolchains.pnpm;
+  const missingFindings = validateReleaseEvidence(evidence);
+  assert.ok(missingFindings.some((finding) => finding.includes("toolchains.pnpm")));
+
+  evidence.toolchains.pnpm = "11.19.1";
+  const mismatchedFindings = validateReleaseEvidence(evidence);
+  assert.ok(mismatchedFindings.some((finding) => finding.includes("toolchains.pnpm") && finding.includes("11.19.0")));
 });
 
 test("rejects an oversized top-level release manifest before JSON parsing", () => {
