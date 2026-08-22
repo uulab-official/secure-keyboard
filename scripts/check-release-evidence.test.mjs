@@ -661,6 +661,21 @@ test("binds each device gate to its platform and nested evidence files", () => {
   assert.ok(tamperedFindings.some((finding) => finding.includes("device.files") && finding.includes("logSha256")));
 });
 
+test("rejects a physical release device gate that covers only one native host mode", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-host-modes-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const iosGate = evidence.gates.find(({ name }) => name === "ios-device-matrix");
+  const iosPath = join(root, iosGate.evidencePath);
+  const iosRecord = JSON.parse(readFileSync(iosPath, "utf8"));
+  iosRecord.hostModes = iosRecord.hostModes.filter(({ framework }) => framework !== "flutter");
+  const iosBytes = Buffer.from(`${JSON.stringify(iosRecord)}\n`, "utf8");
+  writeFileSync(iosPath, iosBytes);
+  iosGate.sha256 = createHash("sha256").update(iosBytes).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+  assert.ok(findings.some((finding) => finding.includes("hostModes") && finding.includes("flutter")));
+});
+
 test("rejects a tampered detached release signature", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-signature-"));
   const evidence = completeEvidence();
