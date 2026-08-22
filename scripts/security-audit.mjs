@@ -1394,6 +1394,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /ED25519_SIGNATURE_BYTES/, "release tooling must bound detached signature materialization");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence must reject sentinel and raw-input field names");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyGateEvidenceRecord/, "release tooling must bind embedded gate evidence records");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES\.includes\(gate\.name\)/, "release evidence verification must reject unsupported gate names");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /DEVICE_RELEASE_GATE_POLICIES/, "release tooling must map device gates to their expected platforms");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /validateDeviceEvidence/, "release tooling must revalidate embedded device evidence records");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyDeviceEvidenceFiles/, "release tooling must verify nested device evidence digests");

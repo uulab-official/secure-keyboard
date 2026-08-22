@@ -499,7 +499,10 @@ required statuses, recomputes SHA-256 for every referenced evidence/artifact
 file, rejects duplicate evidence paths, ensures the manifest commit/version
 match the current checkout, verifies that each DER public key is actually
 Ed25519, and verifies both the detached release signature and the detached
-`independentReview` signature over the exact review report. The
+`independentReview` signature over the exact review report. It also rejects
+gate names outside the canonical required-gate set, so an extension cannot
+silently become a release claim without updating the verifier contract and
+its tests. The
 `independentReview` descriptor must also carry `reviewedCommit` and
 `reviewedPackageVersion`, each matching the manifest commit and package version;
 a signed report for a different checkout or an empty referenced gate/artifact

@@ -230,6 +230,8 @@ export function validateReleaseEvidence(evidence, context = {}) {
       }
       if (typeof gate.name !== "string" || gate.name.length === 0) {
         add(findings, `${field}.name`, "must be a non-empty gate name");
+      } else if (!REQUIRED_RELEASE_GATES.includes(gate.name)) {
+        add(findings, `${field}.name`, "must be a supported release gate");
       } else if (gatesByName.has(gate.name)) {
         add(findings, `${field}.name`, "must not be duplicated");
       } else {

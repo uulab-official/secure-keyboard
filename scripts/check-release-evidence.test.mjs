@@ -328,6 +328,21 @@ test("accepts a complete release evidence manifest", () => {
   assert.deepEqual(validateReleaseEvidence(completeEvidence()), []);
 });
 
+test("rejects a manifest containing an unsupported release gate", () => {
+  const evidence = completeEvidence();
+  evidence.gates.push({
+    name: "future-gate",
+    commit: evidence.commit,
+    status: "pass",
+    evidencePath: "evidence/future-gate.json",
+    sha256: SHA256,
+  });
+
+  const findings = validateReleaseEvidence(evidence);
+
+  assert.ok(findings.some((finding) => finding.includes("supported release gate")));
+});
+
 test("rejects missing production gates and release artifacts", () => {
   const evidence = completeEvidence();
   evidence.gates = evidence.gates.filter(

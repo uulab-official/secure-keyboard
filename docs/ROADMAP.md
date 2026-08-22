@@ -230,6 +230,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Build, commit-bind, and checksum-verify publishable iOS FFI plus Android `arm64-v8a`/`x86_64` FFI artifacts, include the verified native inputs in the signed release bundle and publishable mobile package paths, and keep npm/crate archives inside the detached-signature tarball scope.
 - [x] Add a read-only finalization workflow that stages candidate/CI/external artifacts, converts the signed-release record into a complete manifest fragment, and runs trusted-key verification before retaining production evidence.
 - [x] Preflight finalization fragments by canonical gate name, rejecting missing, duplicate, unsupported, symlinked, or oversized gate inputs before merge.
+- [x] Reject unsupported gate names in the standalone release manifest verifier as well as the finalization preflight.
 - [x] Bind finalization artifact run IDs to GitHub API repository, commit, workflow-path, and successful-completion provenance before downloading evidence.
 - [x] Bind each Linux LeakSanitizer target log to an explicit post-command success marker, bounded size, SHA-256 digest, pinned toolchain, and final retained evidence path.
 - [x] Emit candidate-bound iOS/Android native checksum, SBOM, and license-notice artifact fragments so final evidence assembly does not depend on undocumented external claims.
