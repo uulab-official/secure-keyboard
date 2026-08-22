@@ -77,6 +77,7 @@ const IOS_PACKAGE_XCFRAMEWORK_SOURCE = "source/packages/flutter/ios/secure_ffi.x
 const IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX = "package/secure_ffi.xcframework";
 const IOS_PACKAGE_LIBRARY_SOURCE = "source/packages/flutter/ios/libsecure_ffi.a";
 const IOS_PACKAGE_LIBRARY_ARCHIVE = "package/libsecure_ffi.a";
+const IOS_FFI_CHECKSUM_MANIFEST = "source/secure-keypad-ios-ffi.sha256";
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -310,6 +311,112 @@ function sha256Bytes(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function normalizeChecksumPath(value) {
+  const normalized = value.replace(/^\.\//, "");
+  if (
+    normalized.length === 0 ||
+    normalized.startsWith("/") ||
+    normalized.includes("\\") ||
+    normalized.includes("//") ||
+    normalized.split("/").includes("..")
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function validateIosFfiChecksum(root, version, findings, archiveEntryMap, metadata) {
+  const manifestPath = regularFile(root, IOS_FFI_CHECKSUM_MANIFEST, findings);
+  if (!manifestPath) return;
+
+  let manifestContents;
+  try {
+    manifestContents = readFileSync(manifestPath, "utf8");
+  } catch (error) {
+    findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: cannot be read (${error.message})`);
+    return;
+  }
+
+  const manifestEntries = new Map();
+  for (const [index, line] of manifestContents.split(/\r?\n/).entries()) {
+    if (line.length === 0) continue;
+    const match = line.match(/^([a-f0-9]{64})  (.+)$/);
+    if (!match) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: malformed checksum line ${index + 1}`);
+      continue;
+    }
+    const relativePath = normalizeChecksumPath(match[2]);
+    if (!relativePath) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: unsafe checksum path on line ${index + 1}`);
+      continue;
+    }
+    if (manifestEntries.has(relativePath)) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: duplicate checksum path ${relativePath}`);
+      continue;
+    }
+    manifestEntries.set(relativePath, match[1]);
+  }
+
+  const expectedEntries = new Map();
+  const sourceFiles = listFiles(root, IOS_PACKAGE_XCFRAMEWORK_SOURCE);
+  for (const sourceFile of sourceFiles) {
+    const relativePath = sourceFile.relativePath.slice(`${IOS_PACKAGE_XCFRAMEWORK_SOURCE}/`.length);
+    if (!sourceFile.regular) {
+      findings.push(`${sourceFile.relativePath}: iOS XCFramework checksum inputs must be regular files`);
+      continue;
+    }
+    expectedEntries.set(`flutter/ios/secure_ffi.xcframework/${relativePath}`, {
+      sourcePath: sourceFile.relativePath,
+    });
+    expectedEntries.set(`react-native/secure_ffi.xcframework/${relativePath}`, {
+      archivePath: `package/secure_ffi.xcframework/${relativePath}`,
+    });
+  }
+
+  const sourceLibrary = regularFile(root, IOS_PACKAGE_LIBRARY_SOURCE, findings);
+  if (sourceLibrary) {
+    expectedEntries.set("flutter/ios/libsecure_ffi.a", { sourcePath: IOS_PACKAGE_LIBRARY_SOURCE });
+  }
+  expectedEntries.set("react-native/libsecure_ffi.a", { archivePath: IOS_PACKAGE_LIBRARY_ARCHIVE });
+  expectedEntries.set("secure-keypad-ios-ffi.commit", {
+    bytes: Buffer.from(`${metadata.commit}\n`, "utf8"),
+  });
+
+  const reactNativeArchiveRelativePath = `packages/secure-keypad-react-native-${version}.tgz`;
+  const reactNativeArchivePath = regularFile(root, reactNativeArchiveRelativePath, findings);
+  const archiveEntriesForPackage = archiveEntryMap.get(reactNativeArchiveRelativePath) ?? [];
+  for (const relativePath of manifestEntries.keys()) {
+    if (!expectedEntries.has(relativePath)) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: unexpected checksum path ${relativePath}`);
+    }
+  }
+  for (const relativePath of expectedEntries.keys()) {
+    if (!manifestEntries.has(relativePath)) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: missing checksum for ${relativePath}`);
+    }
+  }
+
+  for (const [relativePath, expected] of expectedEntries) {
+    const expectedHash = manifestEntries.get(relativePath);
+    if (!expectedHash) continue;
+    let actualHash;
+    if (expected.bytes) {
+      actualHash = sha256Bytes(expected.bytes);
+    } else if (expected.sourcePath) {
+      actualHash = sha256Bytes(readFileSync(path.join(root, expected.sourcePath)));
+    } else if (reactNativeArchivePath && archiveEntriesForPackage.includes(expected.archivePath)) {
+      const archiveBytes = archiveEntryBytes(reactNativeArchivePath, expected.archivePath, findings);
+      if (!archiveBytes) continue;
+      actualHash = sha256Bytes(archiveBytes);
+    } else {
+      continue;
+    }
+    if (actualHash !== expectedHash) {
+      findings.push(`${IOS_FFI_CHECKSUM_MANIFEST}: checksum does not match ${relativePath}`);
+    }
+  }
+}
+
 function validatePackagedIosFfi(root, version, findings, archiveEntryMap) {
   const reactNativeArchiveRelativePath = `packages/secure-keypad-react-native-${version}.tgz`;
   const reactNativeArchivePath = regularFile(root, reactNativeArchiveRelativePath, findings);
@@ -449,6 +556,7 @@ export function checkReleaseStaging(root) {
   validateAndroidFfiChecksum(root, findings);
   if (validatedMetadata?.packageVersion) {
     const archiveEntryMap = validateNpmArchives(root, validatedMetadata.packageVersion, findings);
+    validateIosFfiChecksum(root, validatedMetadata.packageVersion, findings, archiveEntryMap, validatedMetadata);
     validatePackagedIosFfi(root, validatedMetadata.packageVersion, findings, archiveEntryMap);
     validatePackagedAndroidFfi(root, validatedMetadata.packageVersion, findings, archiveEntryMap);
     validateRustArchives(root, validatedMetadata.packageVersion, findings);

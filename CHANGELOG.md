@@ -36,7 +36,8 @@ exact release-candidate commit by the release evidence manifest.
   their SHA-256 content matches the staged package artifact; missing or
   mismatched native inputs still fail closed. Release staging also compares the
   published React Native iOS and Android FFI bytes against signed source
-  package artifacts.
+  package artifacts and verifies the iOS checksum manifest against the exact
+  package bytes and release commit.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.

@@ -84,7 +84,6 @@ function createValidStaging() {
     spdxVersion: "SPDX-2.3",
     packages: [{ name: "secure-core", SPDXID: "SPDXRef-secure-core" }],
   }));
-  writeFile(root, "source/secure-keypad-ios-ffi.sha256", "native checksum fixture\n");
   const androidLibraries = {
     "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a": "arm64 fixture\n",
     "source/native-artifacts/android/x86_64/libsecure_ffi.a": "x86_64 fixture\n",
@@ -126,6 +125,21 @@ function createValidStaging() {
       "README.md": "# Crate\n",
     });
   }
+  const iosCommitBytes = `${commit}\n`;
+  const iosChecksumEntries = [
+    ["react-native/secure_ffi.xcframework/Info.plist", "<plist/>\n"],
+    ["react-native/libsecure_ffi.a", "arm64 fixture\n"],
+    ["flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n"],
+    ["flutter/ios/libsecure_ffi.a", "arm64 fixture\n"],
+    ["secure-keypad-ios-ffi.commit", iosCommitBytes],
+  ];
+  writeFile(
+    root,
+    "source/secure-keypad-ios-ffi.sha256",
+    iosChecksumEntries
+      .map(([relativePath, contents]) => `${createHash("sha256").update(contents).digest("hex")}  ./${relativePath}`)
+      .join("\n") + "\n",
+  );
   return root;
 }
 
@@ -250,6 +264,30 @@ test("release staging requires the verified native FFI checksum manifest", () =>
     rmSync(path.join(root, "source/secure-keypad-ios-ffi.sha256"));
     const findings = checkReleaseStaging(root);
     assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-ios-ffi.sha256")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging verifies the iOS FFI checksum manifest against signed package bytes", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/secure-keypad-ios-ffi.sha256", "not a checksum manifest\n");
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-ios-ffi.sha256")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging rejects a tampered iOS FFI checksum", () => {
+  const root = createValidStaging();
+  try {
+    const manifestPath = path.join(root, "source/secure-keypad-ios-ffi.sha256");
+    const manifest = readFileSync(manifestPath, "utf8");
+    writeFileSync(manifestPath, `${"0".repeat(64)}${manifest.slice(64)}`);
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("checksum does not match react-native/secure_ffi.xcframework/Info.plist")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
