@@ -43,6 +43,8 @@ const IOS_PRESENTATION_SOURCE = readFileSync(
 test("React Native Android bridge rejects unknown keys before reading values", () => {
   assert.match(SOURCE, /value\?\.toPublicMap\(LAYOUT_KEYS\)/);
   assert.match(SOURCE, /value\?\.toPublicMap\(THEME_KEYS\)/);
+  assert.match(SOURCE, /LAYOUT_KEYS = setOf\("schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots"\)/);
+  assert.match(SOURCE, /"randomizeInputKeys",[\s\S]{0,240}"rows"/);
 
   const keyGuard = SOURCE.indexOf("require(key in allowedKeys)");
   const valueRead = SOURCE.indexOf("result[key] = getPublicValue(key");

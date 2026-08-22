@@ -307,6 +307,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /dispatchEvent\(SecureKeypadEvent/, "RN Android events must pass through EventDispatcher");
     forbidText(findings, file, contents, /getJSModule\(RCTEventEmitter/, "RN Android must not call the legacy RCTEventEmitter directly");
     requireText(findings, file, contents, /toPublicMap\(LAYOUT_KEYS\)/, "RN Android layout conversion must use an explicit allowlist");
+    requireText(findings, file, contents, /LAYOUT_KEYS\s*=\s*setOf\([^\n]*randomizeInputKeys/, "RN Android layout allowlist must preserve native input-key randomization");
+    requireText(findings, file, contents, /NESTED_PUBLIC_KEYS\s*=\s*setOf\([\s\S]*randomizeInputKeys/, "RN Android nested public map allowlist must preserve native input-key randomization");
     requireText(findings, file, contents, /toPublicMap\(THEME_KEYS\)/, "RN Android theme conversion must use an explicit allowlist");
     requireText(findings, file, contents, /require\(key in allowedKeys\)/, "RN Android must reject unknown keys before reading bridge values");
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_NODES/, "RN Android public bridge conversion must bound aggregate nodes");

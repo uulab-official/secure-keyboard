@@ -190,7 +190,7 @@ private const val MAX_PUBLIC_BRIDGE_KEYS = 64
 private const val MAX_PUBLIC_BRIDGE_ITEMS = 512
 private const val MAX_PUBLIC_BRIDGE_STRING_LENGTH = 256
 
-private val LAYOUT_KEYS = setOf("schemaVersion", "id", "locale", "direction", "rows", "slots")
+private val LAYOUT_KEYS = setOf("schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots")
 private val THEME_KEYS = setOf("schemaVersion", "colors", "metrics", "typography", "animation", "feedback")
 private val HEADLESS_KEY_PRESS_KEYS = setOf("token", "keyId")
 private val NESTED_PUBLIC_KEYS = setOf(
@@ -198,6 +198,7 @@ private val NESTED_PUBLIC_KEYS = setOf(
     "id",
     "locale",
     "direction",
+    "randomizeInputKeys",
     "rows",
     "slots",
     "header",
