@@ -21,6 +21,7 @@
     "test:merge-release-evidence": "node --test scripts/merge-release-evidence.test.mjs",
     "test:sign-release": "node --test scripts/sign-release.test.mjs",
     "test:emit-signed-release-evidence": "node --test scripts/emit-signed-release-evidence.test.mjs",
+    "test:emit-independent-review-fragment": "node --test scripts/emit-independent-review-fragment.test.mjs",
     "test:stage-release-evidence": "node --test scripts/stage-release-evidence.test.mjs",
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",
     "test:ios-host-build-contract": "node --test scripts/ios-host-build-contract.test.mjs",

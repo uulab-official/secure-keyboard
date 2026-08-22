@@ -70,6 +70,9 @@ exact release-candidate commit by the release evidence manifest.
 - Physical native release evidence now requires passing `hostModes` for both
   React Native and Flutter; a single framework/device run cannot close the
   iOS or Android release gate.
+- Added a reviewer-side independent-security-review fragment emitter that
+  verifies signed report bytes, review identity, scope, decision, and public
+  key binding without accepting private key material.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

@@ -349,6 +349,32 @@ secret-bearing, scope-incomplete, or over-1 MiB reports fail closed before
 release verification; critical/high findings must be `accepted` or
 `remediated`, never `open`.
 
+Reviewers can use the checked-in fragment emitter after signing the report
+with the review key. The signing helper reads the private key only long enough
+to produce the detached signature and DER public key; the fragment emitter
+accepts only the report, signature, and public key, verifies the exact bytes,
+and derives the checkout identity from a clean reviewed checkout:
+
+```sh
+node scripts/sign-release.mjs \
+  "$RUNNER_TEMP/release-evidence/artifacts/independent-review.json" \
+  "$REVIEWER_PRIVATE_KEY_PATH" \
+  "$RUNNER_TEMP/release-evidence/artifacts/independent-review.sig" \
+  "$RUNNER_TEMP/release-evidence/artifacts/independent-review.pub.der"
+node scripts/emit-independent-review-fragment.mjs \
+  "$RUNNER_TEMP/release-evidence" \
+  "evidence/independent-security-review.json" \
+  "fragments/independent-security-review.json" \
+  --report artifacts/independent-review.json \
+  --signature artifacts/independent-review.sig \
+  --public-key artifacts/independent-review.pub.der
+```
+
+The emitter never accepts a private-key path, never copies private material,
+and refuses a report whose reviewed commit, package version, scope, decision,
+or reviewer-key fingerprint does not match the signed inputs. The final
+trusted verifier remains authoritative for every finding-level review rule.
+
 The workflow also embeds `release-candidate-metadata.json` inside the signed
 source bundle. That record is deliberately marked `candidate-only`: it binds
 the exact checkout and package version, enumerates every final gate, and

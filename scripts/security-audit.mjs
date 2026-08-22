@@ -901,6 +901,11 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /verifyDeviceEvidenceFiles|buildReleaseGateFragment/, "web evidence must bind hashed files to the release gate contract");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /secureContext: true/, "web evidence must record secure-context verification");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /pathHasSymlinkComponent/, "web evidence emitter must reject symlink traversal");
+  const independentReviewEmitter = source("scripts/emit-independent-review-fragment.mjs", findings);
+  requireText(findings, "scripts/emit-independent-review-fragment.mjs", independentReviewEmitter, /createPublicKey/, "independent review emitter must parse the reviewer public key");
+  requireText(findings, "scripts/emit-independent-review-fragment.mjs", independentReviewEmitter, /verify\(/, "independent review emitter must verify the detached signature");
+  requireText(findings, "scripts/emit-independent-review-fragment.mjs", independentReviewEmitter, /currentCommit/, "independent review emitter must derive the reviewed checkout commit");
+  requireText(findings, "scripts/emit-independent-review-fragment.mjs", independentReviewEmitter, /private signing material/, "independent review emitter must reject private key paths");
   const deploymentGuide = source("docs/HTTP-DEPLOYMENT.md", findings);
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /client_max_body_size 128k/, "deployment guide must declare an upstream body limit");
   requireText(findings, "docs/HTTP-DEPLOYMENT.md", deploymentGuide, /request_body/, "deployment guide must include a reverse-proxy body-limit example");
@@ -954,6 +959,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-signed-release-evidence/, "release candidate must test signed-release evidence emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-independent-review-fragment/, "release candidate must test independent-review fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/release-candidate-metadata\.mjs/, "release candidate must embed immutable candidate metadata in the signed bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /release-candidate-metadata\.json/, "release candidate must retain the candidate metadata record");
@@ -1188,6 +1194,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:merge-release-evidence"/, "the workspace must expose the release evidence merge test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-gate-evidence"/, "the workspace must expose the release gate fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
+  requireText(findings, "package.json", rootPackage, /"test:emit-independent-review-fragment"/, "the workspace must expose the independent review fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:stage-release-evidence"/, "the workspace must expose the release evidence staging test");
   const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
