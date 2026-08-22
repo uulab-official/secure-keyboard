@@ -115,6 +115,8 @@ jobs:
       - run: pnpm test:release-bundle
       - run: pnpm test:release-archive
       - run: pnpm test:release-candidate-metadata
+      - run: pnpm test:stage-release-evidence
+      - run: pnpm test:verify-github-run-provenance
       - run: pnpm test:expo-development-build
       - run: pnpm test:emit-release-gate-evidence
       - run: pnpm test:emit-ci-gate-evidence

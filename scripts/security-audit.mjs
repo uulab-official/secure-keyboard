@@ -1083,6 +1083,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-version-parity/, "CI must test public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /check:release-version-parity/, "CI must enforce public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:stage-release-evidence/, "CI must validate release evidence staging and finalization workflow contracts");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:verify-github-run-provenance/, "CI must validate GitHub workflow run provenance enforcement");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-signed-release-evidence/, "CI must validate signed-release evidence emission");
@@ -1262,6 +1264,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /archive entry must be unique/, "signed archive validation must reject duplicate paths");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-bundle/, "CI must execute the release staging inspector contract test");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-archive/, "CI must execute the signed archive contract test");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:stage-release-evidence/, "release candidate must execute release evidence staging and finalization workflow contract tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:verify-github-run-provenance/, "release candidate must execute GitHub workflow run provenance contract tests");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
