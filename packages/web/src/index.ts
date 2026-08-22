@@ -711,12 +711,16 @@ export function getDefaultWebAuthnEnvironment(): WebAuthnEnvironment {
 }
 
 export function detectWebAuthnSupport(environment = getDefaultWebAuthnEnvironment()): WebAuthnSupport {
-  if (!environment.isSecureContext) return { available: false, reason: "insecure-context" };
-  if (!environment.hasPublicKeyCredential) return { available: false, reason: "public-key-api-unavailable" };
-  if (environment.credentials === undefined || typeof environment.credentials.create !== "function" || typeof environment.credentials.get !== "function") {
+  try {
+    if (!environment.isSecureContext) return { available: false, reason: "insecure-context" };
+    if (!environment.hasPublicKeyCredential) return { available: false, reason: "public-key-api-unavailable" };
+    if (environment.credentials === undefined || typeof environment.credentials.create !== "function" || typeof environment.credentials.get !== "function") {
+      return { available: false, reason: "credential-api-unavailable" };
+    }
+    return { available: true, reason: undefined };
+  } catch {
     return { available: false, reason: "credential-api-unavailable" };
   }
-  return { available: true, reason: undefined };
 }
 
 /** Returns the required product warning for a browser custom-keypad fallback. */
@@ -807,7 +811,7 @@ function presentationState(
 }
 
 function presentationError(error: unknown): WebAuthnClientError {
-  if (error instanceof WebAuthnClientError) return error;
+  if (isWebAuthnClientError(error)) return error;
   if (isAbortError(error)) {
     return new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
   }

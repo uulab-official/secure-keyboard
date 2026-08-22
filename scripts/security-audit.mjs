@@ -924,6 +924,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /new AbortController\(\)/, "Web passkey UI cancellation must use an abortable browser ceremony");
   requireText(findings, "packages/web/src/index.ts", web, /\| \"aborted\"/, "Web aborted ceremonies must use a stable error code");
   requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)/, "Web passkey UI controller must normalize unexpected errors");
+  requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)[\s\S]{0,180}isWebAuthnClientError\(error\)/, "Web passkey UI error normalization must tolerate hostile exception objects");
   requireText(findings, "packages/web/src/index.ts", web, /function isAbortError\(error: unknown\)[\s\S]{0,300}\btry\s*\{[\s\S]{0,300}\}\s*catch\s*\{/, "WebAuthn abort detection must tolerate hostile exception objects");
   requireText(findings, "packages/web/src/index.ts", web, /function isWebAuthnClientError\(error: unknown\)[\s\S]{0,300}\btry\s*\{[\s\S]{0,300}\}\s*catch\s*\{/, "WebAuthn client-error detection must tolerate hostile exception objects");
   requireText(findings, "packages/web/src/index.ts", web, /MAX_WEBAUTHN_EXTENSION_NODES/, "WebAuthn extension JSON must be bounded");
@@ -937,6 +938,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /normalizeWebAuthnError/, "WebAuthn browser and credential failures must be normalized before leaving the adapter");
   requireText(findings, "packages/web/src/index.ts", web, /credential-api-failure/, "WebAuthn browser API failures must use a stable generic error code");
   requireText(findings, "packages/web/src/index.ts", web, /function getDefaultWebAuthnEnvironment\(\)[\s\S]{0,1800}catch\s*\{[\s\S]{0,180}isSecureContext: false/, "WebAuthn environment discovery must fail closed when browser getters throw");
+  requireText(findings, "packages/web/src/index.ts", web, /function detectWebAuthnSupport\([\s\S]{0,700}\btry\s*\{[\s\S]{0,700}\}\s*catch\s*\{/, "WebAuthn custom environment support checks must fail closed when getters throw");
   requireText(findings, "packages/web/src/index.ts", web, /typeof container\.create === "function"[\s\S]{0,100}typeof container\.get === "function"/, "WebAuthn default environment must verify both browser credential methods");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const nodeServer = source("packages/server-node/src/index.ts", findings);

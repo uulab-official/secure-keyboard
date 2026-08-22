@@ -38,6 +38,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: WebAuthn browser failures from hostile exception objects are now
   normalized through trap-tolerant checks, preventing raw browser error text or
   proxy-thrown values from escaping the adapter.
+- Security: caller-supplied WebAuthn environment getters and passkey controller
+  errors now fail closed through the same trap-tolerant normalization boundary.
 
 ### Server adapters
 

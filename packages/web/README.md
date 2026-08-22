@@ -9,6 +9,8 @@ encoded value whose decoded size would exceed that limit before allocating the
 output buffer; the encoder and credential serializer apply the same bound.
 Hostile browser-environment getters fail closed as an unavailable passkey
 environment rather than exposing their exception text.
+The same fail-closed behavior applies to a caller-supplied WebAuthn environment
+used by tests or controlled browser integrations.
 
 WebAuthn must run in a secure context. A custom browser keypad is intentionally
 not presented as a secure equivalent: page JavaScript can observe browser input

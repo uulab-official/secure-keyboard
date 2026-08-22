@@ -300,6 +300,41 @@ describe("WebAuthn support and mode policy", () => {
     });
     await expect(createPasskey(creationOptions, environment(api))).rejects.not.toThrow(secret);
   });
+
+  it("fails closed when a custom WebAuthn environment throws hostile errors", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const hostileEnvironment = new Proxy(
+      {},
+      {
+        get: () => {
+          throw hostileError;
+        },
+      },
+    ) as WebAuthnEnvironment;
+
+    await expect(createPasskey(creationOptions, hostileEnvironment)).rejects.toMatchObject({
+      code: "unsupported",
+    });
+    await expect(createPasskey(creationOptions, hostileEnvironment)).rejects.not.toThrow(secret);
+
+    const controller = createPasskeyController(hostileEnvironment);
+    const operation = controller.createPasskey(creationOptions);
+    await expect(operation).rejects.toMatchObject({ code: "unsupported" });
+    await expect(operation).rejects.not.toThrow(secret);
+    expect(controller.getState()).toEqual({
+      phase: "error",
+      operation: "registration",
+      errorCode: "unsupported",
+    });
+  });
 });
 
 describe("passkey registration", () => {
