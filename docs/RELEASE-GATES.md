@@ -34,7 +34,10 @@ to `.github/workflows/release-candidate.yml` and
 building or data inspection, while signing, provenance, staging, merging, and
 trusted-key verification run only from the verifier checkout at
 `SECURE_KEYPAD_TRUSTED_VERIFIER_REF`. The maintainer signing key and
-`GITHUB_TOKEN` must never be passed to candidate-controlled scripts.
+`GITHUB_TOKEN` must never be passed to candidate-controlled scripts. Every
+checkout in the CI, candidate, finalizer, and external-evidence workflows also
+sets `persist-credentials: false`, so a checkout cannot leave a reusable token
+inside the worktree.
 
 Before the source tree is archived, the workflow runs
 `node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
