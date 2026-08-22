@@ -207,6 +207,9 @@ export function runSecurityAudit() {
   const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
+  const actixAdapter = source("crates/secure-auth-actix/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /csrf:\s*Arc</, "Actix adapters must retain a host CSRF callback");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /if !\(state\.csrf\)\(&request\)/, "Actix adapters must reject failed CSRF validation before body buffering");
   const webauthnDebug = source("crates/secure-webauthn-example/src/lib.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /impl core::fmt::Debug for CeremonyStart/, "WebAuthn ceremony Debug must be manually redacted");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("handle_len", &self\.handle\.len\(\)\)/, "WebAuthn ceremony Debug may expose handle length only");
@@ -631,6 +634,13 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /WebAuthnHttpRouter(?:::<[^>]+>)?::new/, "WebAuthn Axum adapter must delegate to the framework-neutral route contract");
   forbidText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /X-Forwarded-Proto|x-forwarded-proto/i, "Axum adapter must not parse forwarded transport headers");
 
+  const actix = source("crates/secure-auth-actix/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /payload\.to_bytes_limited\(body_limit\)/, "Actix adapter must bound streaming request bodies before route parsing");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /state\.router\.handle\(/, "Actix adapter must delegate to the framework-neutral route contract");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /RESPONSE_SECURITY_HEADERS/, "Actix adapter must preserve static response security headers");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /Fn\(&HttpRequest\) -> bool/, "Actix adapter CSRF resolver must receive request parts without the body");
+  forbidText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /X-Forwarded-Proto|x-forwarded-proto/i, "Actix adapter must not parse forwarded transport headers");
+
   const webauthnHttp = source("crates/secure-webauthn-example/src/lib.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /pub struct WebAuthnDeploymentContext/, "WebAuthn HTTP routes must require an explicit deployment context");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnHttp, /WebAuthnTransportSecurity::TrustedProxyTls/, "WebAuthn HTTP routes must define trusted-proxy TLS handling");
@@ -913,11 +923,13 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_storage/, "release candidate must execute WebAuthn durable interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_rate_limit/, "release candidate must execute distributed rate-limit interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_one_time_state/, "release candidate must execute distributed OPAQUE one-time-state interoperability tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo test --locked -p secure-auth-actix/, "release candidate must run the Actix adapter contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo package --locked --workspace --all-features/, "release candidate must verify all feature-gated crates from the packaged workspace");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked --workspace/, "CI Rust tests must use the locked dependency graph");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo test --locked -p secure-auth-actix/, "CI must run the Actix adapter contract tests");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo clippy --locked --workspace/, "CI Rust lint must use the locked dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo install cargo-audit --locked --version 0\.22\.2/, "CI must install the pinned RustSec audit tool");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo audit/, "CI must run the RustSec dependency audit");

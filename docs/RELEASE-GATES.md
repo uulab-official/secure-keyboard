@@ -51,6 +51,7 @@ cargo test --locked --workspace --all-features
 cargo test --locked -p secure-webauthn-example
 cargo test --locked -p secure-webauthn-example --test storage_contract
 cargo test --locked -p secure-auth-axum --all-features
+cargo test --locked -p secure-auth-actix
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 cargo install cargo-audit --locked --version 0.22.2
@@ -95,8 +96,9 @@ host bundler vulnerability.
 For crates.io publication, publish the Rust dependency chain in order after
 the exact commit is tagged: `secure-core`, `secure-auth`,
 `secure-auth-server`, `secure-auth-http`, `secure-webauthn-example`, then
-`secure-auth-axum`. A local workspace path dependency is not evidence that an
-individual crate can be published before its registry dependency exists.
+`secure-auth-axum` and `secure-auth-actix`. A local workspace path dependency
+is not evidence that an individual crate can be published before its registry
+dependency exists.
 
 The compatibility matrix in `docs/COMPATIBILITY.md` is part of the release
 input. A release must publish the exact commit, lockfiles, toolchain versions,
@@ -435,8 +437,8 @@ versioned smoke log as a CI artifact, including failed runs.
 - WebAuthn reference verification service, injectable storage contracts,
   feature-gated Redis/PostgreSQL adapters, bounded framework-neutral HTTP
   contract, required host-validated CSRF input, and compile-tested Axum
-  integration are shipped. The deployed host-session/CSRF validator,
-  deployment TLS configuration, and isolated durable-backend interoperability
-  job remain deployment gates.
+  Axum and Actix integrations are shipped. The deployed host-session/CSRF
+  validator, deployment TLS configuration, and isolated durable-backend
+  interoperability job remain deployment gates.
 - Device accessibility/screenshot/autofill verification and an independent
   security review remain mandatory.

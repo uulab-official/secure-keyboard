@@ -106,9 +106,9 @@ OPAQUE registration uploads, credential files, server setup material, and transp
 
 The framework-neutral HTTP/JSON contracts require the host to provide an
 explicit `csrf_validated` result derived from request metadata and the host
-session/origin policy. Axum adapters require a request-parts CSRF callback and
-reject a failed result before buffering JSON; no adapter may infer CSRF state
-from a request body.
+session/origin policy. Axum and Actix adapters require a request-parts CSRF
+callback and reject a failed result before buffering JSON; no adapter may
+infer CSRF state from a request body.
 
 TLS/pinning ownership and compromised-runtime limits are defined in
 `docs/PLATFORM-SECURITY-POLICY.md`; the SDK does not claim to implement

@@ -1,0 +1,23 @@
+[package]
+name = "secure-auth-actix"
+version = "0.1.0"
+description = "Compile-tested Actix Web adapter for Secure Keypad OPAQUE authentication"
+repository = "https://github.com/uulab-official/secure-keyboard"
+readme = "README.md"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+actix-web = { version = "=4.11.0", default-features = false, features = ["macros"] }
+secure-auth-http = { path = "../secure-auth-http", version = "0.1.0" }
+secure-auth-server = { path = "../secure-auth-server", version = "0.1.0" }
+
+[dev-dependencies]
+secure-auth = { path = "../secure-auth", version = "0.1.0" }
+
+[lints]
+workspace = true

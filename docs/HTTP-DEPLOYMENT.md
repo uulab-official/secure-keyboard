@@ -21,8 +21,8 @@ corresponding `WebAuthnDeploymentContext` to the passkey router. The trusted
 proxy variant is an assertion made by the host after validation; it is not a
 header parser or a TLS implementation. The framework-neutral request contract
 also requires `csrf_validated: true` only after the host has completed its
-same-origin/CSRF check. The Axum adapter requires a request-parts callback and
-rejects an unvalidated request before body buffering.
+same-origin/CSRF check. The Axum and Actix adapters require request-parts
+callbacks and reject an unvalidated request before body buffering.
 
 ## Reverse-proxy baseline
 

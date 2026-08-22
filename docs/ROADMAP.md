@@ -151,7 +151,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, i
 - [x] Add a compile-tested Axum adapter after finalizing the host session and storage interfaces.
 - [x] Add an optional compile-tested Axum WebAuthn adapter with a body-free host-principal resolver.
 - [x] Add generic WebAuthn ceremony/credential storage injection with bounded serialization and atomic backend contracts.
-- [ ] Add a second framework adapter only after its body-limit, TLS-context, and response-header contract can be tested equivalently.
+- [x] Add a compile-tested Actix Web adapter after matching the body-limit, TLS-context, CSRF-ordering, generic-error, and response-header contract.
 - [x] Add bounded replay-store, downgrade, enumeration, and key-rotation tests; wire isolated durable interoperability checks into CI.
 - [ ] Add adapters for the first supported backend language only after the reference implementation is interoperable.
 - [x] Provide migration guidance for systems that currently receive ordinary passwords.
@@ -160,7 +160,7 @@ Exit criteria: the server never needs a plaintext password or replayable client-
 
 ### Phase 7 — Web and passkeys
 
-Status: passkey-first adapter, reference server, bounded HTTP route, compile-tested Axum integration, injectable storage contracts, and feature-gated Redis/PostgreSQL adapters complete; host/device and independent review pending
+Status: passkey-first adapter, reference server, bounded HTTP route, compile-tested Axum/Actix integrations, injectable storage contracts, and feature-gated Redis/PostgreSQL adapters complete; host/device and independent review pending
 
 - [x] Add a WebAuthn/passkey-first adapter with server-JSON conversion and result serialization.
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.

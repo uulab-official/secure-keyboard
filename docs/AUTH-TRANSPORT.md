@@ -83,10 +83,10 @@ must implement the check-and-count operation atomically in a shared backend.
 
 The framework-neutral HTTP request contract also requires a host-validated
 `csrf_validated` result. The value must be derived from request metadata and
-the host session/origin policy, never from JSON. The Axum adapter accepts this
-as a request-parts callback and rejects a failed check before buffering the
-body; framework adapters that cannot provide the same pre-buffering check must
-not be treated as production-equivalent.
+the host session/origin policy, never from JSON. The Axum and Actix adapters
+accept this as a request-parts callback and reject a failed check before
+buffering the body; framework adapters that cannot provide the same
+pre-buffering check must not be treated as production-equivalent.
 
 `ServerAuthService` provides the reference registration and
 request/finalization orchestration: it validates the expected envelope kind and

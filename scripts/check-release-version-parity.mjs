@@ -21,6 +21,7 @@ export const RELEASE_ARTIFACTS = Object.freeze([
   Object.freeze({ path: "crates/secure-auth-server/Cargo.toml", format: "cargo" }),
   Object.freeze({ path: "crates/secure-auth-http/Cargo.toml", format: "cargo" }),
   Object.freeze({ path: "crates/secure-auth-axum/Cargo.toml", format: "cargo" }),
+  Object.freeze({ path: "crates/secure-auth-actix/Cargo.toml", format: "cargo" }),
   Object.freeze({ path: "crates/secure-ffi/Cargo.toml", format: "cargo" }),
   Object.freeze({ path: "crates/secure-webauthn-example/Cargo.toml", format: "cargo" }),
 ]);

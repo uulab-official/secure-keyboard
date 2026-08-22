@@ -6,6 +6,13 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+### Server adapters
+
+- Added the compile-tested `secure-auth-actix` server adapter. It validates
+  host CSRF/origin state before buffering, applies Actix's bounded payload
+  collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
+  proxy validation, rate limits, sessions, and durable stores to the host.
+
 ### Security
 
 - Numeric core input now accepts only canonical single-digit key IDs, rejecting

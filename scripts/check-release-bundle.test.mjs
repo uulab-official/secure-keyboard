@@ -22,6 +22,7 @@ const NPM_PACKAGES = [
 const RUST_CRATES = [
   "secure-auth",
   "secure-auth-axum",
+  "secure-auth-actix",
   "secure-auth-http",
   "secure-auth-server",
   "secure-core",

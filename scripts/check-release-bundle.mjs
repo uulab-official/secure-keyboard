@@ -20,6 +20,7 @@ const NPM_PACKAGES = Object.freeze([
 const RUST_CRATES = Object.freeze([
   "secure-auth",
   "secure-auth-axum",
+  "secure-auth-actix",
   "secure-auth-http",
   "secure-auth-server",
   "secure-core",
