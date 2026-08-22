@@ -39,6 +39,8 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/secure-keypad.sbom.spdx.json",
   "source/release-candidate-metadata.json",
   "source/packages/flutter/pubspec.yaml",
+  "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
+  "source/packages/flutter/ios/libsecure_ffi.a",
   "source/docs/SECURITY-SPEC.md",
   "source/docs/PLATFORM-SECURITY-POLICY.md",
   "source/docs/RELEASE-GATES.md",
@@ -215,7 +217,14 @@ function validateNpmArchives(root, version, findings) {
     const absolutePath = regularFile(root, relativePath, findings);
     if (!absolutePath) continue;
     const entries = archiveEntries(absolutePath, findings);
-    for (const requiredEntry of ["package/package.json", "package/LICENSE", "package/README.md"]) {
+    const requiredEntries = ["package/package.json", "package/LICENSE", "package/README.md"];
+    if (packageName === "secure-keypad-react-native") {
+      requiredEntries.push(
+        "package/secure_ffi.xcframework/Info.plist",
+        "package/libsecure_ffi.a",
+      );
+    }
+    for (const requiredEntry of requiredEntries) {
       if (!entries.includes(requiredEntry)) {
         findings.push(`${relativePath}: archive must contain ${requiredEntry}`);
       }

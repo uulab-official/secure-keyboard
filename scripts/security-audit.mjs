@@ -926,6 +926,12 @@ export function runSecurityAudit() {
     });
   }
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /runs-on:\s*ubuntu-24\.04/, "release workflow must use the repository-pinned runner image");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-ios-artifacts:/, "release workflow must build publishable iOS FFI artifacts in a separate pinned job");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:\s*\n\s*needs:\s*native-ios-artifacts/, "release bundle must depend on the verified iOS FFI artifact job");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release bundle must download the immutable iOS FFI artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /shasum -a 256 -c secure-keypad-ios-ffi\.sha256/, "release bundle must verify the downloaded iOS FFI checksum manifest");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/react-native\/secure_ffi\.xcframework/, "release bundle must stage the verified React Native iOS XCFramework");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/flutter\/ios\/libsecure_ffi\.a/, "release bundle must stage the verified Flutter iOS static library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:[\s\S]{0,260}environment:\s*secure-keypad-release/, "release signing must run behind the protected release environment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /trap\s+'rm -f "\$KEY_FILE"'\s+EXIT/, "release workflow must remove the temporary signing key on every exit path");
@@ -945,6 +951,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo test --locked -p secure-auth-actix/, "release candidate must run the Actix adapter contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm --dir packages\/server-node pack --pack-destination/, "release candidate must package the Node server adapter");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo package --locked --workspace --all-features/, "release candidate must verify all feature-gated crates from the packaged workspace");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /-C "\$RELEASE_DIR" source packages/, "release workflow must sign source and publishable package archives in one tarball");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /node-version:.*22\.13\.0/, "CI Node jobs must use the repository-pinned Node toolchain");
@@ -1044,6 +1052,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
   requireText(findings, "package.json", rootPackage, /"test:release-bundle"/, "the workspace must expose the release staging inspector test");
+  requireText(findings, "package.json", rootPackage, /"test:release-archive"/, "the workspace must expose the signed archive contract test");
   for (const file of ["packages/contracts/package.json", "packages/web/package.json", "packages/server-node/package.json"]) {
     const packageManifest = source(file, findings);
     requireText(findings, file, packageManifest, /"files"\s*:\s*\[[^\]]*"LICENSE"/, "publishable npm packages must include their license file");
@@ -1104,7 +1113,12 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-bundle\.mjs\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive");
+  const releaseArchiveCheck = source("scripts/check-release-archive.mjs", findings);
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /validateReleaseArchiveEntries/, "release tooling must inspect the signed archive entry contract");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-react-native/, "signed archive validation must cover the publishable React Native package");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure_ffi\.xcframework/, "signed archive validation must cover publishable native FFI contents");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-bundle/, "CI must execute the release staging inspector contract test");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-archive/, "CI must execute the signed archive contract test");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");

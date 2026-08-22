@@ -84,16 +84,23 @@ function createValidStaging() {
     packages: [{ name: "secure-core", SPDXID: "SPDXRef-secure-core" }],
   }));
   writeFile(root, "source/packages/flutter/pubspec.yaml", "name: secure_keypad_flutter\nversion: 0.1.0\n");
+  writeFile(root, "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n");
+  writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
   for (const document of ["SECURITY-SPEC.md", "PLATFORM-SECURITY-POLICY.md", "RELEASE-GATES.md", "ROADMAP.md"]) {
     writeFile(root, `source/docs/${document}`, `# ${document}\n`);
   }
 
   for (const packageName of NPM_PACKAGES) {
-    createTarball(root, `packages/${packageName}-0.1.0.tgz`, "package", {
+    const contents = {
       "package.json": JSON.stringify({ name: packageName, version: "0.1.0" }),
       LICENSE: "MIT License\n",
       "README.md": "# Package\n",
-    });
+    };
+    if (packageName === "secure-keypad-react-native") {
+      contents["secure_ffi.xcframework/Info.plist"] = "<plist/>\n";
+      contents["libsecure_ffi.a"] = "arm64 fixture\n";
+    }
+    createTarball(root, `packages/${packageName}-0.1.0.tgz`, "package", contents);
   }
   for (const crateName of RUST_CRATES) {
     createTarball(root, `packages/${crateName}-0.1.0.crate`, `${crateName}-0.1.0`, {
@@ -186,6 +193,24 @@ test("release staging rejects missing notices, malformed SBOM, package license l
   }
 });
 
+test("release staging rejects publishable packages without native FFI artifacts", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/packages/flutter/ios/libsecure_ffi.a"));
+    createTarball(root, "packages/secure-keypad-react-native-0.1.0.tgz", "package", {
+      "package.json": JSON.stringify({ name: "secure-keypad-react-native", version: "0.1.0" }),
+      LICENSE: "MIT License\n",
+      "README.md": "# Package\n",
+    });
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/packages/flutter/ios/libsecure_ffi.a")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/secure_ffi.xcframework/Info.plist")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-react-native-0.1.0.tgz: archive must contain package/libsecure_ffi.a")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
@@ -209,4 +234,20 @@ test("release candidate workflow includes public security documents in the signe
   );
   assert.match(workflow, /cp\s+README\.md\s+"\$RELEASE_DIR\/source\/README\.md"/);
   assert.match(workflow, /cp\s+SECURITY\.md\s+"\$RELEASE_DIR\/source\/SECURITY\.md"/);
+});
+
+test("release candidate signs staged package archives and publishable iOS FFI artifacts", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /native-ios-artifacts:/);
+  assert.match(workflow, /needs:\s*native-ios-artifacts/);
+  assert.match(workflow, /name: secure-keypad-release-ios-ffi/);
+  assert.match(workflow, /actions\/download-artifact@[0-9a-f]{40}[\s\S]*?secure-keypad-release-ios-ffi/);
+  assert.match(workflow, /shasum -a 256 -c/);
+  assert.match(workflow, /packages\/react-native\/secure_ffi\.xcframework/);
+  assert.match(workflow, /packages\/flutter\/ios\/secure_ffi\.xcframework/);
+  assert.match(workflow, /scripts\/check-release-archive\.mjs/);
+  assert.match(workflow, /-C "\$RELEASE_DIR" source packages/);
 });

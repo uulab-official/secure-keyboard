@@ -9,6 +9,7 @@
     "test:release-version-parity": "node --test scripts/check-release-version-parity.test.mjs",
     "test:release-evidence": "node --test scripts/check-release-evidence.test.mjs",
     "test:release-bundle": "node --test scripts/check-release-bundle.test.mjs",
+    "test:release-archive": "node --test scripts/release-archive-contract.test.mjs",
     "test:release-candidate-metadata": "node --test scripts/release-candidate-metadata.test.mjs",
     "test:expo-development-build": "node --test scripts/expo-development-build.test.mjs",
     "test:emit-release-gate-evidence": "node --test scripts/emit-release-gate-evidence.test.mjs",

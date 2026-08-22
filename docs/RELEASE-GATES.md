@@ -28,6 +28,14 @@ the staging directory. This proves the input to the deterministic archive is
 complete; it does not replace the protected signing step or external release
 evidence.
 
+The release job builds the iOS FFI XCFramework and device static library on the
+pinned macOS runner, publishes them through a checksum-verified workflow
+artifact, and stages them into both publishable mobile packages before packing.
+The signed tarball contains both `source/` and `packages/`; immediately before
+signing, `node scripts/check-release-archive.mjs` verifies that the tarball
+contains the staged Flutter iOS artifacts and every version-matched npm/crate
+archive. Package archives therefore remain inside the detached-signature scope.
+
 The same immutable candidate job starts isolated Redis 7.2 and PostgreSQL 16
 services and runs both durable `--ignored` interoperability suites before
 building the bundle. Those services are test infrastructure only; production
@@ -65,6 +73,7 @@ pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence
 pnpm test:release-bundle
+pnpm test:release-archive
 pnpm test:release-candidate-metadata
 pnpm test:expo-development-build
 pnpm test:sign-release

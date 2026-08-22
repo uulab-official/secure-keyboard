@@ -6,3 +6,9 @@
 /.pnpm-store/
 *.log
 .DS_Store
+
+# Release-only native artifacts are staged into publishable packages by CI.
+/packages/react-native/secure_ffi.xcframework/
+/packages/react-native/libsecure_ffi.a
+/packages/flutter/ios/secure_ffi.xcframework/
+/packages/flutter/ios/libsecure_ffi.a

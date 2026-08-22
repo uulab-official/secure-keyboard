@@ -12,7 +12,66 @@ permissions:
   contents: read
 
 jobs:
+  native-ios-artifacts:
+    name: Build release iOS FFI artifacts
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Require immutable release commit
+        env:
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          test -n "$RELEASE_REF"
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - name: Build release FFI libraries for device and simulator
+        run: |
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios
+          cargo build --locked --release -p secure-ffi --target aarch64-apple-ios-sim
+      - name: Assemble release XCFramework
+        run: |
+          xcodebuild -create-xcframework \
+            -library target/aarch64-apple-ios/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -library target/aarch64-apple-ios-sim/release/libsecure_ffi.a \
+            -headers crates/secure-ffi/include \
+            -output "$RUNNER_TEMP/secure_ffi.xcframework"
+          test -s "$RUNNER_TEMP/secure_ffi.xcframework/Info.plist"
+          test -s target/aarch64-apple-ios/release/libsecure_ffi.a
+      - name: Stage publishable iOS FFI artifacts
+        run: |
+          mkdir -p "$IOS_FFI_DIR/react-native" "$IOS_FFI_DIR/flutter/ios"
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$IOS_FFI_DIR/react-native/secure_ffi.xcframework"
+          cp target/aarch64-apple-ios/release/libsecure_ffi.a "$IOS_FFI_DIR/react-native/libsecure_ffi.a"
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework"
+          cp target/aarch64-apple-ios/release/libsecure_ffi.a "$IOS_FFI_DIR/flutter/ios/libsecure_ffi.a"
+          (
+            cd "$IOS_FFI_DIR"
+            find react-native flutter -type f -print0 \
+              | sort -z \
+              | xargs -0 shasum -a 256
+          ) > "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256"
+          cat "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-release-ios-ffi
+          path: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+          if-no-files-found: error
+
   bundle:
+    needs: native-ios-artifacts
     name: Build and sign release candidate bundle
     runs-on: ubuntu-24.04
     environment: secure-keypad-release
@@ -70,6 +129,27 @@ jobs:
           flutter-version: "3.47.0"
           cache: true
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-release-ios-ffi
+          path: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+      - name: Verify and stage publishable iOS FFI artifacts
+        env:
+          IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+        run: |
+          test -s "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256"
+          (
+            cd "$IOS_FFI_DIR"
+            shasum -a 256 -c secure-keypad-ios-ffi.sha256
+          )
+          test -s "$IOS_FFI_DIR/react-native/secure_ffi.xcframework/Info.plist"
+          test -s "$IOS_FFI_DIR/react-native/libsecure_ffi.a"
+          test -s "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework/Info.plist"
+          test -s "$IOS_FFI_DIR/flutter/ios/libsecure_ffi.a"
+          cp -R "$IOS_FFI_DIR/react-native/secure_ffi.xcframework" packages/react-native/secure_ffi.xcframework
+          cp "$IOS_FFI_DIR/react-native/libsecure_ffi.a" packages/react-native/libsecure_ffi.a
+          cp -R "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework" packages/flutter/ios/secure_ffi.xcframework
+          cp "$IOS_FFI_DIR/flutter/ios/libsecure_ffi.a" packages/flutter/ios/libsecure_ffi.a
       - name: Run release source gates
         run: |
           cargo fmt --all -- --check
@@ -95,6 +175,7 @@ jobs:
           pnpm check:release-version-parity
           pnpm test:release-evidence
           pnpm test:release-bundle
+          pnpm test:release-archive
           pnpm test:release-candidate-metadata
           pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence
@@ -151,7 +232,8 @@ jobs:
           node scripts/release-candidate-metadata.mjs "$RELEASE_DIR/source/release-candidate-metadata.json"
           node scripts/check-release-bundle.mjs "$RELEASE_DIR"
           tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-            -czf "$RELEASE_DIR/secure-keypad-release.tar.gz" -C "$RELEASE_DIR/source" .
+            -czf "$RELEASE_DIR/secure-keypad-release.tar.gz" -C "$RELEASE_DIR" source packages
+          node scripts/check-release-archive.mjs "$RELEASE_DIR/secure-keypad-release.tar.gz"
       - name: Sign release bundle with the protected maintainer key
         env:
           RELEASE_SIGNING_KEY_PEM: ${{ secrets.RELEASE_SIGNING_KEY_PEM }}
