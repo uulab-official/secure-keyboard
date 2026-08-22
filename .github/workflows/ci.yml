@@ -255,7 +255,7 @@ jobs:
               app_gradle.write_text(gradle)
           (host / "lib/main.dart").write_text('''
           import 'package:flutter/material.dart';
-          import 'package:secure_keypad_flutter/secure_keypad.dart';
+          import 'package:secure_keypad_flutter/secure_keypad_flutter.dart';
 
           void main() => runApp(const SecureKeypadHostSmoke());
 
@@ -1007,7 +1007,7 @@ jobs:
           project.write_text(project_contents)
           (host / "lib/main.dart").write_text('''
           import 'package:flutter/material.dart';
-          import 'package:secure_keypad_flutter/secure_keypad.dart';
+          import 'package:secure_keypad_flutter/secure_keypad_flutter.dart';
 
           void main() => runApp(const SecureKeypadHostSmoke());
 

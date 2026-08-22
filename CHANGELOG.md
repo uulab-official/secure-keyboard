@@ -15,6 +15,8 @@ exact release-candidate commit by the release evidence manifest.
   key and verifies masked-length accessibility state without exposing the
   public key identifier; the host build also fixes the Swift bridge dictionary
   redeclaration that Release-only compilation could conceal.
+- Renamed the Flutter package's canonical Dart library to match the published
+  package name and excluded generated build state from pub.dev archives.
 - Made Android React Native public-map conversion fail closed: malformed or
   over-budget layout/theme/command maps now release the native session and
   emit only the public `invalid` result instead of escaping as a bridge

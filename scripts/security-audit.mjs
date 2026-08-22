@@ -179,17 +179,17 @@ export function runSecurityAudit() {
   );
   requireText(findings, "packages/react-native/src/index.ts", rn, /requireNativeComponent/, "RN must resolve a native component");
 
-  const flutter = source("packages/flutter/lib/secure_keypad.dart", findings);
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypad extends StatefulWidget/, "Flutter must expose a native PlatformView widget");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /class SecureKeypadController/, "Flutter must expose a non-secret native controller");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /invokeMethod<void>\('cancel'\)/, "Flutter controller must use a native cancel method");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /enum SecureKeypadMode/, "Flutter must expose an explicit renderer mode");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /invokeMethod<void>\('pressKey'/, "Flutter headless commands must use a native method channel");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /acknowledgeLowerAssurance/, "Flutter headless mode must require explicit acknowledgement");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /toPlatformCreationParams/, "Flutter must have an explicit public creation map");
-  forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /TextEditingController/, "Flutter must not use a text editing controller");
-  forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
-  forbidText(findings, "packages/flutter/lib/secure_keypad.dart", flutter.match(/toPlatformCreationParams\(\)[\s\S]*?\n  \}/)?.[0] ?? "", /onResult|onMaskedStateChanged/, "Flutter native creation params must not serialize callbacks");
+  const flutter = source("packages/flutter/lib/secure_keypad_flutter.dart", findings);
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /class SecureKeypad extends StatefulWidget/, "Flutter must expose a native PlatformView widget");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /class SecureKeypadController/, "Flutter must expose a non-secret native controller");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /invokeMethod<void>\('cancel'\)/, "Flutter controller must use a native cancel method");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /enum SecureKeypadMode/, "Flutter must expose an explicit renderer mode");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /invokeMethod<void>\('pressKey'/, "Flutter headless commands must use a native method channel");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /acknowledgeLowerAssurance/, "Flutter headless mode must require explicit acknowledgement");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /toPlatformCreationParams/, "Flutter must expose an explicit public creation map");
+  forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /TextEditingController/, "Flutter must not use a text editing controller");
+  forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
+  forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter.match(/toPlatformCreationParams\(\)[\s\S]*?\n  \}/)?.[0] ?? "", /onResult|onMaskedStateChanged/, "Flutter native creation params must not serialize callbacks");
 
   const authDebug = source("crates/secure-auth/src/lib.rs", findings);
   for (const mismatch of findOpaqueSecretOutputMismatches(authDebug)) {
@@ -575,18 +575,18 @@ export function runSecurityAudit() {
   const reactNativeGuide = source("packages/react-native/README.md", findings);
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Development Build/, "React Native must document Expo Development Build support");
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Go/, "React Native must document the Expo Go limitation");
-  const flutterContract = source("packages/flutter/lib/secure_keypad.dart", findings);
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /isSecureKeypadNativeEventShapeValid/, "Flutter must reject unexpected native event fields");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_onNativeEvent\([\s\S]{0,500}isSecureKeypadRenderedLengthValid/, "Flutter must validate masked event length before invoking callbacks");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /bool _hasExactKeys\(/, "Flutter configuration maps must use an exact-key allowlist");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_colorPattern/, "Flutter theme colors must be format-validated before bridge serialization");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /toPlatformCreationParams\(\)\s*\{[\s\S]{0,180}validate\(\)/, "Flutter bridge serialization must fail closed for invalid configuration");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /secureKeypadMaxHeadlessKeyPressToken/, "Flutter headless command tokens must be bounded");
-  requireText(findings, "packages/flutter/lib/secure_keypad.dart", flutterContract, /mode == SecureKeypadMode\.headlessHost/, "Flutter must bind headless command access to the acknowledged mode");
+  const flutterContract = source("packages/flutter/lib/secure_keypad_flutter.dart", findings);
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /isSecureKeypadNativeEventShapeValid/, "Flutter must reject unexpected native event fields");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_onNativeEvent\([\s\S]{0,500}isSecureKeypadRenderedLengthValid/, "Flutter must validate masked event length before invoking callbacks");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /bool _hasExactKeys\(/, "Flutter configuration maps must use an exact-key allowlist");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_colorPattern/, "Flutter theme colors must be format-validated before bridge serialization");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /toPlatformCreationParams\(\)\s*\{[\s\S]{0,180}validate\(\)/, "Flutter bridge serialization must fail closed for invalid configuration");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /secureKeypadMaxHeadlessKeyPressToken/, "Flutter headless command tokens must be bounded");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /mode == SecureKeypadMode\.headlessHost/, "Flutter must bind headless command access to the acknowledged mode");
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
     "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",

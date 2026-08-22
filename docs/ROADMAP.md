@@ -113,6 +113,7 @@ Status: publishable contract, native PlatformView package, parity gate, reproduc
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the Flutter plugin and XCFramework.
 - [x] Preserve Flutter iOS PlatformView creation arguments with the standard codec and accept integer-zero theme durations without Boolean coercion.
 - [x] Add a generated Flutter iOS Simulator UI test for masked state and public key-label non-disclosure.
+- [x] Publish the canonical Dart library entrypoint and exclude generated build state from pub.dev archives.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
 - [ ] Compile the registration in supported host apps and verify device behavior.
 - [x] Provide examples for numeric PIN, printable-ASCII password, Hangul password, and branded themes.

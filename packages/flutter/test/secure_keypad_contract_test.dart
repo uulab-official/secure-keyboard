@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:secure_keypad_flutter/secure_keypad.dart';
+import 'package:secure_keypad_flutter/secure_keypad_flutter.dart';
 
 void main() {
   test(

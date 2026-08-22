@@ -121,7 +121,7 @@ test("all public adapters apply the same UTF-8 byte bounds to labels", () => {
   }
 
   const flutterSource = readFileSync(
-    new URL("../packages/flutter/lib/secure_keypad.dart", import.meta.url),
+    new URL("../packages/flutter/lib/secure_keypad_flutter.dart", import.meta.url),
     "utf8",
   );
   assert.match(flutterSource, /utf8\.encode\(key\.label!\)\.length/);
