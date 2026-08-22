@@ -45,6 +45,7 @@ export const REQUIRED_RELEASE_GATES = Object.freeze([
   "rust-workspace",
   "javascript-contracts",
   "http-contract-version-parity",
+  "opaque-protocol-parity",
   "native-parity",
   "release-version-parity",
   "framework-host-builds",
@@ -73,6 +74,7 @@ export const CI_RELEASE_GATE_CHECKS = Object.freeze({
   "rust-workspace": Object.freeze([Object.freeze(["job-rust"])]),
   "javascript-contracts": Object.freeze([Object.freeze(["job-contracts"])]),
   "http-contract-version-parity": Object.freeze([Object.freeze(["job-contracts"])]),
+  "opaque-protocol-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "native-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "release-version-parity": Object.freeze([Object.freeze(["job-contracts"])]),
   "framework-host-builds": Object.freeze([

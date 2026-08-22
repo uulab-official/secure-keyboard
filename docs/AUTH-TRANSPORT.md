@@ -28,6 +28,13 @@ The typed message kinds are `RegistrationRequest`, `RegistrationResponse`,
 `CredentialFinalization`. `ServerAuthService` provides registration start and
 finish methods as well as the one-time, identifier-bound login flow.
 
+The Node transport bridge also exposes `OPAQUE_PROTOCOL_VERSION` and
+`OPAQUE_CIPHER_SUITE_ID` as metadata for the Rust/native delegate it calls.
+`pnpm test:opaque-protocol-parity` and
+`pnpm check:opaque-protocol-parity` fail if those declarations drift from
+`secure-auth::PROTOCOL_VERSION` or `secure-auth::CIPHER_SUITE_ID`; the Node
+package does not implement OPAQUE itself.
+
 `AuthEnvelope` implements validating `serde::Deserialize` with unknown-field
 rejection; JSON or another Serde-supported transport cannot bypass the empty,
 16 KiB, suite, and server key identifier bounds enforced by

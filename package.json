@@ -7,6 +7,8 @@
     "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs",
     "check:http-contract-version-parity": "node scripts/check-http-contract-version-parity.mjs",
     "test:http-contract-version-parity": "node --test scripts/check-http-contract-version-parity.test.mjs",
+    "check:opaque-protocol-parity": "node scripts/check-opaque-protocol-parity.mjs",
+    "test:opaque-protocol-parity": "node --test scripts/check-opaque-protocol-parity.test.mjs",
     "check:release-version-parity": "node scripts/check-release-version-parity.mjs",
     "test:release-version-parity": "node --test scripts/check-release-version-parity.test.mjs",
     "test:release-evidence": "node --test scripts/check-release-evidence.test.mjs",

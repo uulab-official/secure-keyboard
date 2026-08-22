@@ -209,6 +209,9 @@ export function runSecurityAudit() {
   const httpContractParity = source("scripts/check-http-contract-version-parity.mjs", findings);
   requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /HTTP_CONTRACT_VERSION_SOURCES/, "HTTP contract parity tooling must enumerate every version declaration");
   requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /findHttpContractVersionMismatches/, "HTTP contract parity tooling must fail on missing or mismatched declarations");
+  const opaqueProtocolParity = source("scripts/check-opaque-protocol-parity.mjs", findings);
+  requireText(findings, "scripts/check-opaque-protocol-parity.mjs", opaqueProtocolParity, /OPAQUE_PROTOCOL_SOURCES/, "OPAQUE parity tooling must enumerate Rust and Node protocol declarations");
+  requireText(findings, "scripts/check-opaque-protocol-parity.mjs", opaqueProtocolParity, /findOpaqueProtocolMismatches/, "OPAQUE parity tooling must fail on missing or mismatched protocol metadata");
   for (const file of [
     "native/ios/SecureKeypadPresentation.swift",
     "packages/react-native/ios/SecureKeypadPresentation.swift",
@@ -607,6 +610,8 @@ export function runSecurityAudit() {
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const nodeServer = source("packages/server-node/src/index.ts", findings);
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /NODE_SERVER_CONTRACT_VERSION\s*=\s*1/, "Node server adapter must expose a pinned contract version");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /OPAQUE_PROTOCOL_VERSION\s*=\s*1/, "Node server adapter must expose the pinned OPAQUE protocol version");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /OPAQUE_CIPHER_SUITE_ID\s*=\s*"opaque-ke-4\.0\.1-ristretto255-tripledh-sha512-argon2"/, "Node server adapter must expose the pinned OPAQUE cipher suite metadata");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /MAX_HTTP_BODY_BYTES\s*=\s*128 \* 1024/, "Node server adapter must bound raw request bodies");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /async function readBoundedBody/, "Node server adapter must stream and bound request bodies");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await reader\.cancel()/, "Node server adapter must cancel an oversized request stream");
@@ -1007,7 +1012,10 @@ export function runSecurityAudit() {
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:http-contract-version-parity/, "CI must test HTTP contract version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm check:http-contract-version-parity/, "CI must check HTTP contract version parity");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:opaque-protocol-parity/, "CI must test OPAQUE protocol metadata parity");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm check:opaque-protocol-parity/, "CI must check OPAQUE protocol metadata parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-ci-gate-evidence\.mjs[\s\S]{0,260}http-contract-version-parity/, "CI release evidence must emit the HTTP contract version parity gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-ci-gate-evidence\.mjs[\s\S]{0,260}opaque-protocol-parity/, "CI release evidence must emit the OPAQUE protocol parity gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the React Native Podspec");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/flutter\/ios\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the Flutter Podspec");
@@ -1022,6 +1030,8 @@ export function runSecurityAudit() {
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm test:http-contract-version-parity/, "release candidates must test HTTP contract version parity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm check:http-contract-version-parity/, "release candidates must check HTTP contract version parity");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm test:opaque-protocol-parity/, "release candidates must test OPAQUE protocol metadata parity");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm check:opaque-protocol-parity/, "release candidates must check OPAQUE protocol metadata parity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /ref:\s*\n\s*description:[^\n]*40-character commit SHA[\s\S]{0,180}required:\s*true/, "release workflow must require an immutable commit input");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_REF:\s*\$\{\{\s*inputs\.ref\s*\}\}/, "release workflow must validate the requested immutable commit ref");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /\[\[\s*\"\$RELEASE_REF\"\s*=~\s*\^\[0-9a-f\]\{40\}\$\s*\]\]/, "release workflow must reject mutable or malformed release refs");
@@ -1235,6 +1245,8 @@ export function runSecurityAudit() {
   const rootPackage = source("package.json", findings);
   requireText(findings, "package.json", rootPackage, /"test:http-contract-version-parity"/, "the workspace must expose the HTTP contract parity test");
   requireText(findings, "package.json", rootPackage, /"check:http-contract-version-parity"/, "the workspace must expose the HTTP contract parity check");
+  requireText(findings, "package.json", rootPackage, /"test:opaque-protocol-parity"/, "the workspace must expose the OPAQUE protocol parity test");
+  requireText(findings, "package.json", rootPackage, /"check:opaque-protocol-parity"/, "the workspace must expose the OPAQUE protocol parity check");
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
@@ -1265,6 +1277,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /http-contract-version-parity/, "release evidence must require the HTTP contract version parity gate");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /opaque-protocol-parity/, "release evidence must require the OPAQUE protocol parity gate");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /native-checksum-android/, "release evidence must require the Android native checksum artifact");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /must use a distinct public key from the maintainer release signature/, "release evidence must require an independent reviewer key");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate\.commit/, "release evidence must bind every gate to the manifest commit");

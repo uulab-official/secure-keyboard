@@ -1,5 +1,9 @@
 /** Must match `secure_auth_http::HTTP_CONTRACT_VERSION` in the Rust route. */
 export const NODE_SERVER_CONTRACT_VERSION = 1 as const;
+/** Must match `secure_auth::PROTOCOL_VERSION` in the pinned Rust delegate. */
+export const OPAQUE_PROTOCOL_VERSION = 1 as const;
+/** Must match `secure_auth::CIPHER_SUITE_ID` in the pinned Rust delegate. */
+export const OPAQUE_CIPHER_SUITE_ID = "opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2" as const;
 
 /** Maximum raw JSON body accepted before the host OPAQUE delegate runs. */
 export const MAX_HTTP_BODY_BYTES = 128 * 1024;

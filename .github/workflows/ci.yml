@@ -109,6 +109,8 @@ jobs:
       - run: pnpm check:native-parity
       - run: pnpm test:http-contract-version-parity
       - run: pnpm check:http-contract-version-parity
+      - run: pnpm test:opaque-protocol-parity
+      - run: pnpm check:opaque-protocol-parity
       - run: pnpm test:ios-host-build-contract
       - run: pnpm test:flutter-package-publish-contract
       - run: pnpm test:release-version-parity
@@ -1282,6 +1284,9 @@ jobs:
             --runner ci-aggregate --check job-contracts
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" http-contract-version-parity \
             "ci/http-contract-version-parity.json" "fragments/http-contract-version-parity.json" \
+            --runner ci-aggregate --check job-contracts
+          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" opaque-protocol-parity \
+            "ci/opaque-protocol-parity.json" "fragments/opaque-protocol-parity.json" \
             --runner ci-aggregate --check job-contracts
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" native-parity \
             "ci/native-parity.json" "fragments/native-parity.json" \

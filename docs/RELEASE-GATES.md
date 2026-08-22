@@ -87,6 +87,10 @@ The `http-contract-version-parity` gate is emitted separately from the broader
 JavaScript contract gate, so a release cannot pass while the Rust HTTP route
 and Node transport bridge declarations drift silently inside one job.
 
+The `opaque-protocol-parity` gate separately binds the Node bridge metadata to
+the Rust OPAQUE protocol version and cipher-suite identifier. It is metadata
+only: cryptographic processing remains in the pinned Rust/native delegate.
+
 ## Reproducible local gates
 
 ```sh
@@ -107,6 +111,8 @@ pnpm test:native-parity
 pnpm check:native-parity
 pnpm test:http-contract-version-parity
 pnpm check:http-contract-version-parity
+pnpm test:opaque-protocol-parity
+pnpm check:opaque-protocol-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence

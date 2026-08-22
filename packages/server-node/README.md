@@ -11,6 +11,12 @@ TLS/deployment facts, CSRF/origin policy, route/method/media type, and the
 `pnpm check:http-contract-version-parity` when changing either transport
 implementation; the same checks are mandatory release gates.
 
+`OPAQUE_PROTOCOL_VERSION` and `OPAQUE_CIPHER_SUITE_ID` are metadata bindings
+to the pinned Rust/native delegate. Run
+`pnpm test:opaque-protocol-parity` and
+`pnpm check:opaque-protocol-parity` when changing the authentication protocol
+or suite. This package still does not implement OPAQUE in JavaScript.
+
 The delegate is the cryptographic boundary. This package does not implement
 OPAQUE in JavaScript and must be connected to the pinned Rust reference
 service/native bridge. It receives only the bounded protocol body and must

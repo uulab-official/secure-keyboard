@@ -26,6 +26,20 @@ test("HTTP contract version parity is a first-class CI release gate", () => {
   assert.match(CI_WORKFLOW, /emit-ci-gate-evidence\.mjs[\s\S]*?http-contract-version-parity/);
 });
 
+test("OPAQUE protocol metadata parity is a first-class CI release gate", () => {
+  assert.equal(REQUIRED_RELEASE_GATES.includes("opaque-protocol-parity"), true);
+  assert.deepEqual(CI_RELEASE_GATE_CHECKS["opaque-protocol-parity"], [["job-contracts"]]);
+  const record = buildCiGateEvidence({
+    commit: COMMIT,
+    gateName: "opaque-protocol-parity",
+    runner: "ubuntu-24.04",
+    checks: ["job-contracts"],
+    recordedAt: "2026-08-22T00:00:00.000Z",
+  });
+  assert.equal(record.gate, "opaque-protocol-parity");
+  assert.match(CI_WORKFLOW, /emit-ci-gate-evidence\.mjs[\s\S]*?opaque-protocol-parity/);
+});
+
 test("builds a sanitized pass record for an allowed CI release gate", () => {
   const record = buildCiGateEvidence({
     commit: COMMIT,
