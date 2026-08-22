@@ -10,7 +10,9 @@ if (!builtInKotlinEnabled) {
 group = 'com.uulab.securekeypad'
 version = '0.1.0'
 
-def secureKeypadAbiFilters = (project.findProperty('reactNativeArchitectures') ?: 'armeabi-v7a,arm64-v8a,x86,x86_64')
+// The release FFI matrix is arm64-v8a and x86_64. Hosts may opt into a
+// different matrix only when they provide matching secure_ffi libraries.
+def secureKeypadAbiFilters = (project.findProperty('reactNativeArchitectures') ?: 'arm64-v8a,x86_64')
     .toString()
     .split(',')
     .collect { it.trim() }

@@ -65,6 +65,14 @@ test("React Native Android bridge exposes its view manager through an autolinkab
   assert.match(ANDROID_BUILD_GRADLE, /abiFilters/);
 });
 
+test("React Native Android default ABI matrix matches the verified FFI artifacts", () => {
+  assert.match(
+    ANDROID_BUILD_GRADLE,
+    /findProperty\('reactNativeArchitectures'\)\s*\?\s*:\s*'arm64-v8a,x86_64'/,
+  );
+  assert.doesNotMatch(ANDROID_BUILD_GRADLE, /armeabi-v7a|(?<!arm)\bx86\b/);
+});
+
 test("React Native Android bridge dispatches events through the New Architecture event dispatcher", () => {
   assert.match(SOURCE, /UIManagerHelper/);
   assert.match(SOURCE, /Event<SecureKeypadEvent>/);

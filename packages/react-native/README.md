@@ -79,9 +79,11 @@ npx expo prebuild
 npx expo run:ios   # or: npx expo run:android
 ```
 
-The Android directory must contain `arm64-v8a/libsecure_ffi.a` and every other
-ABI selected by the host. Build the FFI artifacts from the same source commit
-as the package. Expo Go is intentionally unsupported: it cannot load the
+The verified release Android matrix is `arm64-v8a` and `x86_64`; the package
+build defaults to those two ABIs. A host selecting another ABI must provide a
+matching `libsecure_ffi.a` and set `reactNativeArchitectures` explicitly. Build
+the FFI artifacts from the same source commit as the package. Expo Go is
+intentionally unsupported: it cannot load the
 custom native security boundary. Do not replace this native view with a
 JavaScript keypad or a `TextInput` fallback when the secure native mode is
 required.

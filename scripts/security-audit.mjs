@@ -249,6 +249,7 @@ export function runSecurityAudit() {
   const reactNativeAbiBuild = source("packages/react-native/android/build.gradle", findings);
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /secureKeypadAbiFilters/, "React Native Android native build must derive ABI filters from the host architecture contract");
   requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "React Native Android native build must pass only selected ABI filters to CMake");
+  requireText(findings, "packages/react-native/android/build.gradle", reactNativeAbiBuild, /reactNativeArchitectures.*arm64-v8a,x86_64/, "React Native Android default ABI matrix must match the verified release FFI artifacts");
   const flutterAbiBuild = source("packages/flutter/android/build.gradle", findings);
   requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /secureKeypadAbiFilters/, "Flutter Android native build must restrict compilation to supplied FFI architectures");
   requireText(findings, "packages/flutter/android/build.gradle", flutterAbiBuild, /abiFilters\(\*secureKeypadAbiFilters\)/, "Flutter Android native build must pass only available ABI filters to CMake");

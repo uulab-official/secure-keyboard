@@ -16,7 +16,7 @@ package must not silently update the authentication suite.
 | React Native | package `0.1.0`; peer `react-native >=0.76` | Compile the package native sources against the exact host RN/React versions and install a native submission consumer. Expo Go is unsupported. |
 | Flutter | package `0.1.0`; Flutter `>=3.44.0`; Dart `>=3.12.0 <4.0.0` | Uses the built-in Kotlin compiler contract for AGP 9 compatibility. Run `flutter analyze`, `flutter test`, and a host app build with the selected stable Flutter/AGP toolchain. `SecureKeypadController.cancel()` carries no input; `pressKey(keyId)` is available only in explicitly acknowledged lower-assurance Headless Host Mode. |
 | iOS | iOS 15.1 minimum for the current React Native 0.87 host integration and UIKit configuration APIs | Ship matching device/simulator Rust static libraries and verify background/capture masking on supported OS versions. |
-| Android | API 24 minimum; CMake 3.22.1 contract | Ship `libsecure_ffi.a` for every ABI and verify `android.builtInKotlin`/host Gradle compatibility. |
+| Android | API 24 minimum; CMake 3.22.1 contract; release ABIs `arm64-v8a`, `x86_64` | Ship `libsecure_ffi.a` for every selected ABI; the RN default matches the verified release matrix. Verify `android.builtInKotlin`/host Gradle compatibility. |
 
 The independent `pnpm security-audit` gate also compares the C header macro,
 Rust implementation constant, and every shipped iOS/Android host expectation;

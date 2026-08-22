@@ -221,7 +221,9 @@ React Native package paths:
   `SECURE_KEYPAD_FFI_XCFRAMEWORK` and supports `SECURE_KEYPAD_FFI_LIB` only as
   a single-platform fallback.
 - Android CMake requires `SECURE_KEYPAD_FFI_LIB_DIR` with one
-  `libsecure_ffi.a` per shipped ABI.
+  `libsecure_ffi.a` per shipped ABI. The verified release matrix is
+  `arm64-v8a` and `x86_64`; React Native defaults to that matrix and a host
+  selecting another ABI must provide its matching library explicitly.
 - The Android module respects the host's `android.builtInKotlin` setting;
   legacy hosts must expose the Kotlin Gradle plugin, while AGP 9 built-in
   Kotlin hosts must enable that property.
