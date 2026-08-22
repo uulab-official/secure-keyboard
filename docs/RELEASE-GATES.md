@@ -95,6 +95,7 @@ pnpm test:release-evidence
 pnpm test:release-bundle
 pnpm test:release-archive
 pnpm test:release-candidate-metadata
+pnpm test:verify-lsan-evidence
 pnpm test:expo-development-build
 pnpm test:sign-release
 pnpm test:emit-signed-release-evidence
