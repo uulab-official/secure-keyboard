@@ -125,6 +125,8 @@ test("security specification describes the shipped ABI v2 registration boundary"
   );
   assert.match(specification, /ABI version 2 is required for the registration handoff/);
   assert.match(specification, /ABI v1 is not a supported production registration path/);
+  assert.match(specification, /pointer-sized output slot[\s\S]*?must not overlap[\s\S]*?live[\s\S]*?opaque handle objects/i);
+  assert.match(specification, /finish identifier buffers[\s\S]*?must not[\s\S]*?overlap[\s\S]*?any live handle or pointer slot/i);
   assert.doesNotMatch(specification, /Version 1 does not provide a production-safe native registration path/);
 });
 

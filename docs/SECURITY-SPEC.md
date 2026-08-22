@@ -71,6 +71,12 @@ must compare `secure_keypad_abi_version()` with the header's
 mismatch. The shipped iOS view and Android JNI bridge enforce this check.
 ABI v1 is not a supported production registration path; hosts must ship the
 ABI v2 header, native library, and registration handoff as one versioned set.
+Every FFI byte range and every pointer-sized output slot must not overlap live
+opaque handle objects or other output slots; finish identifier buffers must not
+overlap any live handle or pointer slot. These are byte-range preconditions,
+not merely exact-pointer checks, and violations fail with
+`SECURE_KEYPAD_INVALID_ARGUMENT` before state is consumed or outputs are
+cleared.
 
 RN and Flutter bridges require an explicitly installed native submission
 consumer. Without one, submit zeroizes/releases the opaque handle and emits an
