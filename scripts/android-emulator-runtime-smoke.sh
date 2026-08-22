@@ -48,6 +48,31 @@ for _ in $(seq 1 30); do
 done
 
 adb shell pidof "$package_name" | tr -d '\r' | grep -q .
+
+if ! adb shell dumpsys window windows | tr -d '\r' | PACKAGE_NAME="$package_name" python3 -c '
+import os
+import re
+import sys
+
+package = os.environ["PACKAGE_NAME"]
+dump = sys.stdin.read()
+focused = re.search(r"mCurrentFocus=Window\s*\{[^}]*\bu\d+\s+([^\s}]+)\}", dump)
+if not focused or not focused.group(1).startswith(package + "/"):
+    print("foreground app window does not belong to the launched package", file=sys.stderr)
+    raise SystemExit(1)
+for block in re.split(r"(?=Window\s*\{)", dump):
+    if package not in block:
+        continue
+    for raw_flags in re.findall(r"\b(?:fl|flags)=0x([0-9a-fA-F]+)", block):
+        if int(raw_flags, 16) & 0x2000:
+            raise SystemExit(0)
+print("FLAG_SECURE is not set on the foreground app window", file=sys.stderr)
+raise SystemExit(1)
+'; then
+  echo "foreground app window does not enforce FLAG_SECURE" >&2
+  exit 1
+fi
+
 adb exec-out screencap -p > "$SCREENSHOT_PATH"
 test -s "$SCREENSHOT_PATH"
 

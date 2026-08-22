@@ -10,7 +10,11 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const WORKFLOW = readFileSync(`${ROOT}/.github/workflows/ci.yml`, "utf8");
 const SMOKE_SCRIPT = readFileSync(`${ROOT}/scripts/android-emulator-runtime-smoke.sh`, "utf8");
 
-function fakeAndroidTools(uiXml) {
+function fakeAndroidTools(
+  uiXml,
+  secureFlags = "0x2000",
+  focusedPackage = "dev.fake.securekeypad",
+) {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-android-smoke-tools-"));
   const apkPath = join(root, "host.apk");
   const uiXmlPath = join(root, "source-ui.xml");
@@ -35,6 +39,7 @@ case "\${1:-}" in
     case "\${1:-}" in
       am|cmd) [ "\${1:-}" = am ] && exit 0 || printf '%s/.Main\\n' "\${FAKE_PACKAGE}" ;;
       pidof) printf '123\\n' ;;
+      dumpsys) printf 'mCurrentFocus=Window{fixture u0 %s/.Main}\\nWindow{fixture u0 %s/.Main}: mAttrs={fl=%s}\\n' "\${FAKE_FOCUS_PACKAGE}" "\${FAKE_PACKAGE}" "\${FAKE_SECURE_FLAGS}" ;;
       uiautomator) exit 0 ;;
       cat) cat "\${FAKE_UI_XML}" ;;
       *) exit 0 ;;
@@ -50,8 +55,12 @@ esac
   return { root, apkPath, uiXmlPath, aaptPath, adbPath };
 }
 
-function runSmokeWithFakeTools(uiXml) {
-  const tools = fakeAndroidTools(uiXml);
+function runSmokeWithFakeTools(
+  uiXml,
+  secureFlags = "0x2000",
+  focusedPackage = "dev.fake.securekeypad",
+) {
+  const tools = fakeAndroidTools(uiXml, secureFlags, focusedPackage);
   const screenshotPath = join(tools.root, "out/smoke.png");
   const dumpPath = join(tools.root, "out/ui.xml");
   const result = spawnSync("bash", ["-s", tools.apkPath, screenshotPath, dumpPath], {
@@ -61,6 +70,8 @@ function runSmokeWithFakeTools(uiXml) {
       ...process.env,
       AAPT: tools.aaptPath,
       FAKE_PACKAGE: "dev.fake.securekeypad",
+      FAKE_FOCUS_PACKAGE: focusedPackage,
+      FAKE_SECURE_FLAGS: secureFlags,
       FAKE_UI_XML: tools.uiXmlPath,
       PATH: `${tools.root}:${process.env.PATH ?? ""}`,
     },
@@ -98,6 +109,8 @@ test("Android runtime smoke starts the resolved launcher activity without monkey
 
 test("Android runtime smoke verifies the secure native hierarchy without reading input", () => {
   assert.match(SMOKE_SCRIPT, /FLAG_SECURE/);
+  assert.match(SMOKE_SCRIPT, /dumpsys window windows/);
+  assert.match(SMOKE_SCRIPT, /0x2000/);
   assert.match(SMOKE_SCRIPT, /uiautomator dump/);
   assert.match(SMOKE_SCRIPT, /usage: \$0 APK_PATH SCREENSHOT_PATH UI_DUMP_PATH/);
   assert.match(SMOKE_SCRIPT, /UI_DUMP_PATH="\$3"/);
@@ -136,6 +149,25 @@ test("Android runtime smoke fails on editable or password accessibility nodes", 
   );
   assert.equal(run.result.status, 1);
   assert.match(run.result.stderr, /editable text controls|password accessibility nodes/);
+});
+
+test("Android runtime smoke fails when the foreground window lacks FLAG_SECURE", () => {
+  const run = runSmokeWithFakeTools(
+    '<hierarchy><node content-desc="No input"/><node content-desc="1"/></hierarchy>\n',
+    "0x0",
+  );
+  assert.equal(run.result.status, 1);
+  assert.match(run.result.stderr, /FLAG_SECURE/);
+});
+
+test("Android runtime smoke rejects a secure window that is not the focused app", () => {
+  const run = runSmokeWithFakeTools(
+    '<hierarchy><node content-desc="No input"/><node content-desc="1"/></hierarchy>\n',
+    "0x2000",
+    "dev.other.app",
+  );
+  assert.equal(run.result.status, 1);
+  assert.match(run.result.stderr, /foreground app window/);
 });
 
 test("Flutter host artifact contains every supported Android target platform", () => {
