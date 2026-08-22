@@ -55,12 +55,21 @@ fun main() {
     check(parsed.layout.direction == SecureKeypadLayoutDirection.RTL)
     check(!parsed.layout.slots.display)
     check(parsed.layout.rows[0][0].testId == "pin.one")
+    check(parsed.theme.keyFontWeight == 600)
     check(runCatching {
         SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
             @Suppress("UNCHECKED_CAST")
             val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
             layout["direction"] = true
             it["layout"] = layout
+        })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            @Suppress("UNCHECKED_CAST")
+            val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+            theme["typography"] = mapOf("keyFontSize" to 24, "keyFontWeight" to "0600")
+            it["theme"] = theme
         })
     }.isFailure)
     check(parsed.maxTokens == 8)

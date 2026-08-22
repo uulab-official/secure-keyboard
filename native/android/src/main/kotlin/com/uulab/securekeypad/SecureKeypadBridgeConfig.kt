@@ -149,7 +149,7 @@ internal object SecureKeypadBridgeConfigParser {
         color(colors, "keyDisabledBackground")
         color(colors, "error")
         val keyFontSize = number(typography["keyFontSize"] ?: invalid(), 10f, 72f)
-        validateFontWeight(typography["keyFontWeight"] ?: invalid())
+        val keyFontWeight = fontWeight(typography["keyFontWeight"] ?: invalid())
         optionalMap(value["animation"], "pressDurationMs", "maskRevealDurationMs")?.let {
             if (it.containsKey("pressDurationMs")) boundedInteger(it["pressDurationMs"], 0L, 500L)
             if (it.containsKey("maskRevealDurationMs")) boundedInteger(it["maskRevealDurationMs"], 0L, 2_000L)
@@ -173,6 +173,7 @@ internal object SecureKeypadBridgeConfigParser {
             keyGapPx = keyGap.toInt(),
             keyRadiusPx = keyRadius,
             keyFontSizePx = keyFontSize,
+            keyFontWeight = keyFontWeight,
             contentPaddingPx = contentPadding.toInt(),
         ).also {
             require(contentPadding >= 0f)
@@ -215,11 +216,19 @@ internal object SecureKeypadBridgeConfigParser {
         return result.toLong()
     }
 
-    private fun validateFontWeight(value: Any) {
+    private fun fontWeight(value: Any): Int {
         when (value) {
-            is String -> require(value == "400" || value == "500" || value == "600" || value == "700")
-            is Number -> require(boundedInteger(value, 400L, 700L) in setOf(400L, 500L, 600L, 700L))
-            else -> invalid()
+            is String -> return when (value) {
+                "400" -> 400
+                "500" -> 500
+                "600" -> 600
+                "700" -> 700
+                else -> invalid()
+            }
+            is Number -> return boundedInteger(value, 400L, 700L).toInt().also {
+                require(it in setOf(400, 500, 600, 700))
+            }
+            else -> return invalid()
         }
     }
 

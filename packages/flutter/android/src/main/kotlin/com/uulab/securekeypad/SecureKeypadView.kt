@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.AttributeSet
@@ -63,6 +64,7 @@ public data class SecureKeypadTheme(
     val keyGapPx: Int = 8,
     val keyRadiusPx: Float = 12f,
     val keyFontSizePx: Float = 24f,
+    val keyFontWeight: Int = 600,
     val contentPaddingPx: Int = 16,
 )
 
@@ -386,6 +388,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             currentTheme.contentPaddingPx,
         )
         display.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, currentTheme.keyFontSizePx)
+        display.typeface = secureKeypadTypeface(currentTheme.keyFontWeight)
         layout.rows.forEach { row ->
             val rowView = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -396,6 +399,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     text = key.label
                     contentDescription = key.accessibilityLabel
                     textSize = currentTheme.keyFontSizePx
+                    typeface = secureKeypadTypeface(currentTheme.keyFontWeight)
                     setTextColor(currentTheme.keyTextColor)
                     background = keyBackground()
                     tag = key.testId ?: key.id
@@ -512,6 +516,12 @@ public open class SecureKeypadView @JvmOverloads constructor(
         }
         require(theme.contentPaddingPx in 0..80) { "content padding is outside the supported range" }
     }
+}
+
+private fun secureKeypadTypeface(weight: Int): Typeface = when (weight) {
+    500 -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    600, 700 -> Typeface.create("sans-serif", Typeface.BOLD)
+    else -> Typeface.create("sans-serif", Typeface.NORMAL)
 }
 
 private object SecureKeypadNative {

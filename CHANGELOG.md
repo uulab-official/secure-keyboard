@@ -59,6 +59,8 @@ exact release-candidate commit by the release evidence manifest.
 - Native renderers now preserve the public layout direction, display-slot
   visibility, and per-key test identifiers across iOS, Android, React Native,
   and Flutter instead of silently discarding those customization fields.
+- Native renderers now apply the public key font weight consistently on iOS and
+  Android, including framework-package mirrors.
 - Android color parsing now rejects signed and non-hex text so native validation
   matches the shared RN/Flutter color contract exactly.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,

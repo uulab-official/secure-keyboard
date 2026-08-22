@@ -196,7 +196,7 @@ public struct SecureKeypadBridgeConfiguration {
         guard keyHeight >= 32, keyHeight <= 160, keyGap >= 0, keyGap <= 48,
               keyRadius >= 0, keyRadius <= 80, contentPadding >= 0, contentPadding <= 80,
               let keyFontSize = number(typography["keyFontSize"]), keyFontSize >= 10, keyFontSize <= 72,
-              validFontWeight(typography["keyFontWeight"]) else {
+              let keyFontWeight = fontWeight(typography["keyFontWeight"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         if let animation = try Self.optionalMap(value["animation"], allowed: ["pressDurationMs", "maskRevealDurationMs"]) {
@@ -236,6 +236,7 @@ public struct SecureKeypadBridgeConfiguration {
         theme.keyRadius = CGFloat(keyRadius)
         theme.contentPadding = CGFloat(contentPadding)
         theme.keyFontSize = CGFloat(keyFontSize)
+        theme.keyFontWeight = keyFontWeight
         return theme
     }
 
@@ -268,12 +269,24 @@ public struct SecureKeypadBridgeConfiguration {
         return Int(result)
     }
 
-    private static func validFontWeight(_ value: Any?) -> Bool {
+    private static func fontWeight(_ value: Any?) -> UIFont.Weight? {
         if let string = value as? String {
-            return ["400", "500", "600", "700"].contains(string)
+            switch string {
+            case "400": return .regular
+            case "500": return .medium
+            case "600": return .semibold
+            case "700": return .bold
+            default: return nil
+            }
         }
-        guard let weight = boundedInteger(value, minimum: 400, maximum: 700) else { return false }
-        return [400, 500, 600, 700].contains(weight)
+        guard let weight = boundedInteger(value, minimum: 400, maximum: 700) else { return nil }
+        switch weight {
+        case 400: return .regular
+        case 500: return .medium
+        case 600: return .semibold
+        case 700: return .bold
+        default: return nil
+        }
     }
 
     private static func optionalMap(_ value: Any?, allowed: [String]) throws -> NSDictionary? {
