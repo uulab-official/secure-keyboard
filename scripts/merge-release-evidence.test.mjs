@@ -15,6 +15,7 @@ import {
 import { mergeReleaseEvidence, writeMergedEvidence } from "./merge-release-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
+const REVIEW_SHA256 = "c".repeat(64);
 const MERGE_SCRIPT = fileURLToPath(new URL("./merge-release-evidence.mjs", import.meta.url));
 const NATIVE_TEST_CASES = [
   "maskedStateOnly",
@@ -122,7 +123,7 @@ function completeFragments() {
     { kind: "release-public-key", path: "artifacts/release.pub.der", sha256: SHA256 },
     { kind: "release-signature", path: "artifacts/release.sig", sha256: SHA256 },
     { kind: "independent-review-report", path: "artifacts/review.json", sha256: SHA256 },
-    { kind: "independent-review-public-key", path: "artifacts/review.pub.der", sha256: SHA256 },
+    { kind: "independent-review-public-key", path: "artifacts/review.pub.der", sha256: REVIEW_SHA256 },
     { kind: "independent-review-signature", path: "artifacts/review.sig", sha256: SHA256 },
   ];
   return [
@@ -135,15 +136,15 @@ function completeFragments() {
         algorithm: "ed25519",
         publicKeyPath: "artifacts/release.pub.der",
         signedArtifactPath: "artifacts/release.tar.gz",
-      signaturePath: "artifacts/release.sig",
-      publicKeySha256: SHA256,
+        signaturePath: "artifacts/release.sig",
+        publicKeySha256: SHA256,
       },
       independentReview: {
         algorithm: "ed25519",
         publicKeyPath: "artifacts/review.pub.der",
         signedArtifactPath: "artifacts/review.json",
         signaturePath: "artifacts/review.sig",
-        publicKeySha256: SHA256,
+        publicKeySha256: REVIEW_SHA256,
         reviewedCommit: context.commit,
         reviewedPackageVersion: context.packageVersion,
       },

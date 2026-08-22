@@ -115,6 +115,8 @@ exact release-candidate commit by the release evidence manifest.
   Android FFI checksums, SPDX SBOM, and third-party notices; both verified
   native checksum manifests and the Android native commit binding are included
   inside the signed source bundle.
+- Final evidence verification now rejects an independent-review signature that
+  reuses the maintainer release public key.
 - Final evidence assembly now rechecks the signed tar entry contract,
   candidate checksum manifest, and byte equality of signed source evidence
   before accepting downloaded external inputs.

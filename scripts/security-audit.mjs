@@ -1180,6 +1180,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /native-checksum-android/, "release evidence must require the Android native checksum artifact");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /must use a distinct public key from the maintainer release signature/, "release evidence must require an independent reviewer key");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate\.commit/, "release evidence must bind every gate to the manifest commit");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-security-review/, "release evidence must require an independent security review");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");

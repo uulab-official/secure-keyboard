@@ -82,6 +82,10 @@ test("release bundle audit covers Android FFI commit binding", () => {
   assert.match(releaseBundleAudit, /source\/secure-keypad-android-ffi\.commit/);
   assert.match(releaseBundleAudit, /MAX_NATIVE_COMMIT_BINDING_BYTES/);
   assert.match(securityAudit, /MAX_NATIVE_COMMIT_BINDING_BYTES/);
+  assert.match(
+    securityAudit,
+    /must use a distinct public key from the maintainer release signature/,
+  );
 });
 
 test("security specification describes the shipped ABI v2 registration boundary", () => {

@@ -23,6 +23,7 @@ import {
 } from "./check-release-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
+const REVIEW_SHA256 = "c".repeat(64);
 const CHECK_SCRIPT = fileURLToPath(new URL("./check-release-evidence.mjs", import.meta.url));
 
 const NATIVE_TEST_CASES = [
@@ -76,7 +77,7 @@ function completeEvidence() {
       { kind: "release-public-key", path: "artifacts/secure-keypad-release.pub.der", sha256: SHA256 },
       { kind: "independent-review-report", path: "artifacts/independent-review.json", sha256: SHA256 },
       { kind: "independent-review-signature", path: "artifacts/independent-review.sig", sha256: SHA256 },
-      { kind: "independent-review-public-key", path: "artifacts/independent-review.pub.der", sha256: SHA256 },
+      { kind: "independent-review-public-key", path: "artifacts/independent-review.pub.der", sha256: REVIEW_SHA256 },
     ],
     signature: {
       algorithm: "ed25519",
@@ -90,7 +91,7 @@ function completeEvidence() {
       publicKeyPath: "artifacts/independent-review.pub.der",
       signedArtifactPath: "artifacts/independent-review.json",
       signaturePath: "artifacts/independent-review.sig",
-      publicKeySha256: SHA256,
+      publicKeySha256: REVIEW_SHA256,
       reviewedCommit: "b".repeat(40),
       reviewedPackageVersion: "0.1.0",
     },
@@ -358,7 +359,7 @@ test("requires every release gate to bind the exact manifest commit", () => {
 test("binds release and reviewer signatures to trusted public-key fingerprints", () => {
   const findings = validateReleaseEvidence(completeEvidence(), {
     expectedReleasePublicKeySha256: "b".repeat(64),
-    expectedReviewerPublicKeySha256: "c".repeat(64),
+    expectedReviewerPublicKeySha256: "d".repeat(64),
   });
 
   assert.ok(findings.some((finding) => finding.includes("signature.publicKeySha256") && finding.includes("trusted")));
@@ -367,6 +368,13 @@ test("binds release and reviewer signatures to trusted public-key fingerprints",
       (finding) => finding.includes("independentReview.publicKeySha256") && finding.includes("trusted"),
     ),
   );
+});
+
+test("rejects one key from serving as both maintainer and independent reviewer", () => {
+  const evidence = completeEvidence();
+  evidence.independentReview.publicKeySha256 = evidence.signature.publicKeySha256;
+  const findings = validateReleaseEvidence(evidence);
+  assert.ok(findings.some((finding) => finding.includes("distinct")));
 });
 
 test("requires an independent review to bind the exact commit and package version", () => {

@@ -171,9 +171,9 @@ node scripts/check-release-evidence.mjs release-evidence/release-evidence.json
 ```
 
 For the final production-candidate validation, provide the independently
-verified SHA-256 fingerprints of the maintainer and reviewer DER public keys
-and require both pins. These values must come from the protected release
-process, not from the evidence bundle itself:
+verified, distinct SHA-256 fingerprints of the maintainer and reviewer DER
+public keys and require both pins. These values must come from the protected
+release process, not from the evidence bundle itself:
 
 ```sh
 SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256=<maintainer-fingerprint> \
@@ -444,7 +444,8 @@ the device-verification limits. It does not establish CI provenance; trusted
 fingerprints, CI attestation, and reviewer identity must still be verified
 independently against the exact commit. The
 `--require-trusted-keys` mode fails closed when either protected fingerprint is
-missing or does not match the corresponding descriptor.
+missing, does not match the corresponding descriptor, or is identical to the
+other protected fingerprint.
 
 ## Fuzz gate
 

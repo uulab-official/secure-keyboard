@@ -317,6 +317,19 @@ export function validateReleaseEvidence(evidence, context = {}) {
       requireReviewedRelease: true,
     },
   );
+  if (
+    isRecord(evidence.signature) &&
+    isRecord(evidence.independentReview) &&
+    typeof evidence.signature.publicKeySha256 === "string" &&
+    typeof evidence.independentReview.publicKeySha256 === "string" &&
+    evidence.signature.publicKeySha256 === evidence.independentReview.publicKeySha256
+  ) {
+    add(
+      findings,
+      "independentReview.publicKeySha256",
+      "must use a distinct public key from the maintainer release signature",
+    );
+  }
 
   return findings;
 }
