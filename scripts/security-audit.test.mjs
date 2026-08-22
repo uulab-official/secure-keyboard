@@ -479,6 +479,25 @@ test("release candidate validates the unpublished workspace crate chain through 
   assert.match(releaseGates, /cargo publish --locked --workspace --all-features --dry-run[\s\S]*?--target-dir/);
 });
 
+test("Flutter release gates use the Flutter CLI for package dry-runs", () => {
+  const candidateVerifier = readFileSync(
+    new URL("./verify-production-candidate.mjs", import.meta.url),
+    "utf8",
+  );
+  const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const releaseWorkflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  const releaseGates = readFileSync(new URL("../docs/RELEASE-GATES.md", import.meta.url), "utf8");
+  assert.match(candidateVerifier, /command\("Flutter publish dry-run", "flutter", \["pub", "publish", "--dry-run"\]/);
+  assert.doesNotMatch(candidateVerifier, /command\("Flutter publish dry-run", "dart"/);
+  for (const source of [ciWorkflow, releaseWorkflow, releaseGates]) {
+    assert.match(source, /flutter pub publish --dry-run/);
+    assert.doesNotMatch(source, /dart pub publish --dry-run/);
+  }
+});
+
 test("release candidate executes every standalone release contract and copies crates once", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),

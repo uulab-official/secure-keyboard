@@ -76,7 +76,7 @@ export function buildProductionCandidateCommands({ evidencePath } = {}) {
     ),
     command("Flutter analysis", "flutter", ["analyze"], { cwd: path.join(REPOSITORY_ROOT, "packages/flutter") }),
     command("Flutter tests", "flutter", ["test"], { cwd: path.join(REPOSITORY_ROOT, "packages/flutter") }),
-    command("Flutter publish dry-run", "dart", ["pub", "publish", "--dry-run"], {
+    command("Flutter publish dry-run", "flutter", ["pub", "publish", "--dry-run"], {
       cwd: path.join(REPOSITORY_ROOT, "packages/flutter"),
     }),
   ];

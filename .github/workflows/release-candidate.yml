@@ -333,7 +333,7 @@ jobs:
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
           flutter test
-          dart pub publish --dry-run
+          flutter pub publish --dry-run
         working-directory: packages/flutter
       - name: Prepare release output directory
         run: mkdir -p "$RELEASE_DIR"

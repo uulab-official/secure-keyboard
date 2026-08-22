@@ -205,7 +205,7 @@ pnpm --dir packages/server-node typecheck
 pnpm --dir packages/server-node test
 pnpm --dir packages/server-node build
 pnpm --dir packages/server-node pack --dry-run
-(cd packages/flutter && dart pub publish --dry-run)
+(cd packages/flutter && flutter pub publish --dry-run)
 pnpm exec playwright install --with-deps chromium firefox webkit
 pnpm test:web-browser all
 ```

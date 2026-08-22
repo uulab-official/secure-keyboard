@@ -223,7 +223,7 @@ jobs:
         working-directory: packages/flutter
       - run: flutter test
         working-directory: packages/flutter
-      - run: dart pub publish --dry-run
+      - run: flutter pub publish --dry-run
         working-directory: packages/flutter
 
   flutter-host-build:
