@@ -222,6 +222,75 @@ export interface ValidationResult {
 
 const KEY_ROLES: readonly KeyRole[] = ["input", "backspace", "submit", "clear", "cancel", "spacer"];
 const FONT_WEIGHTS: readonly ThemeTokens["typography"]["keyFontWeight"][] = ["400", "500", "600", "700"];
+const HANGUL_INPUT_KEY_IDS: ReadonlySet<string> = new Set([
+  "jamo-giyeok",
+  "jamo-ssang-giyeok",
+  "jamo-nieun",
+  "jamo-digeut",
+  "jamo-ssang-digeut",
+  "jamo-rieul",
+  "jamo-mieum",
+  "jamo-bieub",
+  "jamo-ssang-bieub",
+  "jamo-siot",
+  "jamo-ssang-siot",
+  "jamo-ieung",
+  "jamo-jieut",
+  "jamo-ssang-jieut",
+  "jamo-chieut",
+  "jamo-kieuk",
+  "jamo-tieut",
+  "jamo-pieup",
+  "jamo-hieuh",
+  "vowel-a",
+  "vowel-ae",
+  "vowel-ya",
+  "vowel-yae",
+  "vowel-eo",
+  "vowel-e",
+  "vowel-yeo",
+  "vowel-ye",
+  "vowel-o",
+  "vowel-wa",
+  "vowel-wae",
+  "vowel-oe",
+  "vowel-yo",
+  "vowel-u",
+  "vowel-wo",
+  "vowel-we",
+  "vowel-wi",
+  "vowel-yu",
+  "vowel-eu",
+  "vowel-ui",
+  "vowel-i",
+  "tail-giyeok",
+  "tail-ssang-giyeok",
+  "tail-giyeok-siot",
+  "tail-nieun",
+  "tail-nieun-jieut",
+  "tail-nieun-hieuh",
+  "tail-digeut",
+  "tail-rieul",
+  "tail-rieul-giyeok",
+  "tail-rieul-mieum",
+  "tail-rieul-bieub",
+  "tail-rieul-siot",
+  "tail-rieul-tieut",
+  "tail-rieul-pieup",
+  "tail-rieul-hieuh",
+  "tail-mieum",
+  "tail-bieub",
+  "tail-bieub-siot",
+  "tail-siot",
+  "tail-ssang-siot",
+  "tail-ieung",
+  "tail-jieut",
+  "tail-chieut",
+  "tail-kieuk",
+  "tail-tieut",
+  "tail-pieup",
+  "tail-hieuh",
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -328,6 +397,39 @@ export function validateLayout(value: unknown): ValidationResult {
     } else if (Object.values(value.slots).some((slot) => typeof slot !== "boolean")) {
       errors.push("layout.slots values are invalid");
     }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/** Returns whether an input-role key ID is canonical for a native policy. */
+export function isCanonicalInputKeyId(keyId: string, policy: InputPolicy): boolean {
+  if (policy === "numeric") return /^digit-[0-9]$/.test(keyId);
+  if (policy === "ascii") {
+    if (!/^ascii-[0-9a-f]{2}$/.test(keyId)) return false;
+    const codePoint = Number.parseInt(keyId.slice("ascii-".length), 16);
+    return codePoint >= 0x20 && codePoint <= 0x7e;
+  }
+  return HANGUL_INPUT_KEY_IDS.has(keyId);
+}
+
+/** Validates a layout and its input-role IDs against the selected native policy. */
+export function validateLayoutForPolicy(value: unknown, policy: InputPolicy): ValidationResult {
+  const result = validateLayout(value);
+  const errors = [...result.errors];
+  if (isRecord(value) && Array.isArray(value.rows)) {
+    value.rows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row)) return;
+      row.forEach((key, keyIndex) => {
+        if (
+          isRecord(key) &&
+          key.role === "input" &&
+          typeof key.id === "string" &&
+          !isCanonicalInputKeyId(key.id, policy)
+        ) {
+          errors.push(`layout.rows[${rowIndex}][${keyIndex}].id is invalid for input policy`);
+        }
+      });
+    });
   }
   return { valid: errors.length === 0, errors };
 }

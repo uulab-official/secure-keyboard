@@ -29,7 +29,14 @@ void main() {
 
   test('ASCII policy remains a native-only policy', () {
     final configuration = SecureKeypadConfiguration(
-      layout: SecureKeypadConfiguration.defaultNumeric().layout,
+      layout: const KeypadLayout(
+        schemaVersion: 1,
+        rows: <List<KeySpec>>[
+          <KeySpec>[
+            KeySpec(id: 'ascii-41', label: 'A', role: KeyRole.input),
+          ],
+        ],
+      ),
       theme: SecureKeypadTheme.defaultTheme(),
       inputPolicy: InputPolicy.ascii,
       maxTokens: 32,
@@ -37,6 +44,25 @@ void main() {
 
     expect(configuration.validate(), isEmpty);
     expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
+  });
+
+  test('configuration rejects input IDs outside the selected native policy', () {
+    final configuration = SecureKeypadConfiguration(
+      layout: const KeypadLayout(
+        schemaVersion: 1,
+        rows: <List<KeySpec>>[
+          <KeySpec>[
+            KeySpec(id: 'digit-01', label: '1', role: KeyRole.input),
+          ],
+        ],
+      ),
+      theme: SecureKeypadTheme.defaultTheme(),
+    );
+
+    expect(
+      configuration.validate(),
+      contains('layout.rows[0][0].id is invalid for input policy'),
+    );
   });
 
   test(

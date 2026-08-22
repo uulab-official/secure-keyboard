@@ -2,7 +2,7 @@ import type { HostComponent, StyleProp, ViewStyle } from "react-native";
 import {
   KEY_ID_PATTERN,
   MAX_RENDERED_LENGTH,
-  validateLayout,
+  validateLayoutForPolicy,
   validateMaskedState,
   validateResultEvent as validateContractResultEvent,
   validateTheme,
@@ -172,7 +172,9 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
     errors.push("props contains an unsupported field");
   }
 
-  const layoutResult = validateLayout(value.layout);
+  const inputPolicy =
+    value.inputPolicy === "ascii" || value.inputPolicy === "hangul" ? value.inputPolicy : "numeric";
+  const layoutResult = validateLayoutForPolicy(value.layout, inputPolicy);
   if (!layoutResult.valid) errors.push(...layoutResult.errors);
 
   const themeResult = validateTheme(value.theme);

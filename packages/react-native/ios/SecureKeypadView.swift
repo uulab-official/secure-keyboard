@@ -58,6 +58,20 @@ private enum SecureKeypadInputPolicy {
     case hangul
 }
 
+private let hangulInputKeyIds: Set<String> = [
+    "jamo-giyeok", "jamo-ssang-giyeok", "jamo-nieun", "jamo-digeut", "jamo-ssang-digeut",
+    "jamo-rieul", "jamo-mieum", "jamo-bieub", "jamo-ssang-bieub", "jamo-siot", "jamo-ssang-siot",
+    "jamo-ieung", "jamo-jieut", "jamo-ssang-jieut", "jamo-chieut", "jamo-kieuk", "jamo-tieut",
+    "jamo-pieup", "jamo-hieuh", "vowel-a", "vowel-ae", "vowel-ya", "vowel-yae", "vowel-eo",
+    "vowel-e", "vowel-yeo", "vowel-ye", "vowel-o", "vowel-wa", "vowel-wae", "vowel-oe", "vowel-yo",
+    "vowel-u", "vowel-wo", "vowel-we", "vowel-wi", "vowel-yu", "vowel-eu", "vowel-ui", "vowel-i",
+    "tail-giyeok", "tail-ssang-giyeok", "tail-giyeok-siot", "tail-nieun", "tail-nieun-jieut",
+    "tail-nieun-hieuh", "tail-digeut", "tail-rieul", "tail-rieul-giyeok", "tail-rieul-mieum",
+    "tail-rieul-bieub", "tail-rieul-siot", "tail-rieul-tieut", "tail-rieul-pieup", "tail-rieul-hieuh",
+    "tail-mieum", "tail-bieub", "tail-bieub-siot", "tail-siot", "tail-ssang-siot", "tail-ieung",
+    "tail-jieut", "tail-chieut", "tail-kieuk", "tail-tieut", "tail-pieup", "tail-hieuh",
+]
+
 /// Native-owned opaque submission. It cannot be serialized to JavaScript.
 public final class SecureKeypadSubmission {
     fileprivate var raw: OpaquePointer?
@@ -264,7 +278,7 @@ public class SecureKeypadView: UIView {
         guard maxTokens > 0, maxTokens <= 4_096, timeoutMs > 0, timeoutMs <= 86_400_000 else {
             throw SecureKeypadViewError.invalidLayout
         }
-        try validate(layout: layout)
+        try validate(layout: layout, policy: policy)
         try validate(theme: theme)
         guard secure_keypad_abi_version() == 2 else {
             throw SecureKeypadViewError.abiMismatch
@@ -501,7 +515,7 @@ public class SecureKeypadView: UIView {
         refreshMaskedState()
     }
 
-    private func validate(layout: SecureKeypadLayout) throws {
+    private func validate(layout: SecureKeypadLayout, policy: SecureKeypadInputPolicy) throws {
         guard (1...16).contains(layout.rows.count) else { throw SecureKeypadViewError.invalidLayout }
         var ids = Set<String>()
         var totalKeys = 0
@@ -515,7 +529,30 @@ public class SecureKeypadView: UIView {
                       key.accessibilityLabel.utf8.count <= 80 else {
                     throw SecureKeypadViewError.invalidLayout
                 }
+                switch key.role {
+                case .input:
+                    guard isCanonicalInputKeyId(key.id, policy) else {
+                        throw SecureKeypadViewError.invalidLayout
+                    }
+                default:
+                    break
+                }
             }
+        }
+    }
+
+    private func isCanonicalInputKeyId(_ keyId: String, _ policy: SecureKeypadInputPolicy) -> Bool {
+        switch policy {
+        case .numeric:
+            return keyId.range(of: "^digit-[0-9]$", options: .regularExpression) != nil
+        case .ascii:
+            guard keyId.range(of: "^ascii-[0-9a-f]{2}$", options: .regularExpression) != nil,
+                  let codePoint = UInt8(keyId.dropFirst("ascii-".count), radix: 16) else {
+                return false
+            }
+            return (0x20...0x7e).contains(codePoint)
+        case .hangul:
+            return hangulInputKeyIds.contains(keyId)
         }
     }
 

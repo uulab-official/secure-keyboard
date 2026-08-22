@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { validateLayout, validateMaskedState, validateResultEvent, validateTheme } from "../src/index.js";
+import {
+  validateLayout,
+  validateLayoutForPolicy,
+  validateMaskedState,
+  validateResultEvent,
+  validateTheme,
+} from "../src/index.js";
 
 const exampleLayout = {
   schemaVersion: 1,
@@ -24,6 +30,29 @@ describe("public customization contract", () => {
   it("accepts branded layout and theme data", () => {
     expect(validateLayout(exampleLayout).valid).toBe(true);
     expect(validateTheme(exampleTheme).valid).toBe(true);
+  });
+
+  it("accepts only canonical input IDs for the selected native policy", () => {
+    expect(validateLayoutForPolicy(exampleLayout, "numeric").valid).toBe(true);
+    expect(
+      validateLayoutForPolicy(
+        { ...exampleLayout, rows: [[{ id: "digit-01", label: "1", role: "input" }]] },
+        "numeric",
+      ).valid,
+    ).toBe(false);
+    expect(
+      validateLayoutForPolicy(
+        { ...exampleLayout, rows: [[{ id: "ascii-41", label: "A", role: "input" }]] },
+        "ascii",
+      ).valid,
+    ).toBe(true);
+    expect(validateLayoutForPolicy(exampleLayout, "ascii").valid).toBe(false);
+    expect(
+      validateLayoutForPolicy(
+        { ...exampleLayout, rows: [[{ id: "jamo-unknown", label: "?", role: "input" }]] },
+        "hangul",
+      ).valid,
+    ).toBe(false);
   });
 
   it("rejects secret-bearing fields", () => {

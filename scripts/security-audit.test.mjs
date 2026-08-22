@@ -106,6 +106,30 @@ test("native views enforce bounded public layout and theme configuration", () =>
   }
 });
 
+test("native views reject noncanonical input IDs for the selected policy", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /validateLayout\(layout, policy\)/);
+    assert.match(source, /SecureKeyRole\.INPUT[\s\S]{0,240}isCanonicalInputKeyId/);
+  }
+
+  const iosSources = [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ];
+  for (const relativePath of iosSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /try validate\(layout: layout, policy: policy\)/);
+    assert.match(source, /case \.input:[\s\S]{0,240}isCanonicalInputKeyId/);
+  }
+});
+
 test("all public adapters apply the same UTF-8 byte bounds to labels", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

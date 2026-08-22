@@ -60,6 +60,21 @@ private const val MAX_LAYOUT_KEYS_PER_ROW = 32
 private const val MAX_LAYOUT_KEYS = 512
 private const val MAX_KEY_LABEL_BYTES = 16
 private const val MAX_ACCESSIBILITY_LABEL_LENGTH = 80
+private val NUMERIC_INPUT_KEY_PATTERN = Regex("^digit-[0-9]$")
+private val ASCII_INPUT_KEY_PATTERN = Regex("^ascii-[0-9a-f]{2}$")
+private val HANGUL_INPUT_KEY_IDS = setOf(
+    "jamo-giyeok", "jamo-ssang-giyeok", "jamo-nieun", "jamo-digeut", "jamo-ssang-digeut",
+    "jamo-rieul", "jamo-mieum", "jamo-bieub", "jamo-ssang-bieub", "jamo-siot", "jamo-ssang-siot",
+    "jamo-ieung", "jamo-jieut", "jamo-ssang-jieut", "jamo-chieut", "jamo-kieuk", "jamo-tieut",
+    "jamo-pieup", "jamo-hieuh", "vowel-a", "vowel-ae", "vowel-ya", "vowel-yae", "vowel-eo",
+    "vowel-e", "vowel-yeo", "vowel-ye", "vowel-o", "vowel-wa", "vowel-wae", "vowel-oe", "vowel-yo",
+    "vowel-u", "vowel-wo", "vowel-we", "vowel-wi", "vowel-yu", "vowel-eu", "vowel-ui", "vowel-i",
+    "tail-giyeok", "tail-ssang-giyeok", "tail-giyeok-siot", "tail-nieun", "tail-nieun-jieut",
+    "tail-nieun-hieuh", "tail-digeut", "tail-rieul", "tail-rieul-giyeok", "tail-rieul-mieum",
+    "tail-rieul-bieub", "tail-rieul-siot", "tail-rieul-tieut", "tail-rieul-pieup", "tail-rieul-hieuh",
+    "tail-mieum", "tail-bieub", "tail-bieub-siot", "tail-siot", "tail-ssang-siot", "tail-ieung",
+    "tail-jieut", "tail-chieut", "tail-kieuk", "tail-tieut", "tail-pieup", "tail-hieuh",
+)
 
 /** Resolves an Activity through framework ContextWrappers without assuming a host type. */
 private fun Context.findActivity(): Activity? {
@@ -262,7 +277,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     ) {
         require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
-        validateLayout(layout)
+        validateLayout(layout, policy)
         validateTheme(theme)
         releaseSession()
         val handle = when (policy) {
@@ -427,7 +442,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         onMaskedStateChanged?.invoke(length, displayState)
     }
 
-    private fun validateLayout(layout: SecureKeypadLayout) {
+    private fun validateLayout(layout: SecureKeypadLayout, policy: SecureKeypadInputPolicy) {
         require(layout.rows.size in 1..MAX_LAYOUT_ROWS) { "layout row count is outside the supported range" }
         val ids = HashSet<String>()
         var totalKeys = 0
@@ -438,11 +453,25 @@ public open class SecureKeypadView @JvmOverloads constructor(
             row.forEach { key ->
                 require(key.id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) { "invalid public key ID" }
                 require(ids.add(key.id)) { "duplicate public key ID" }
+                if (key.role == SecureKeyRole.INPUT) {
+                    require(isCanonicalInputKeyId(key.id, policy)) { "input key ID does not match the selected policy" }
+                }
                 require(key.label.toByteArray(Charsets.UTF_8).size <= MAX_KEY_LABEL_BYTES) { "key label is too long" }
                 require(key.accessibilityLabel.toByteArray(Charsets.UTF_8).size <= MAX_ACCESSIBILITY_LABEL_LENGTH) {
                     "accessibility label is too long"
                 }
             }
+        }
+    }
+
+    private fun isCanonicalInputKeyId(keyId: String, policy: SecureKeypadInputPolicy): Boolean {
+        return when (policy) {
+            SecureKeypadInputPolicy.NUMERIC -> NUMERIC_INPUT_KEY_PATTERN.matches(keyId)
+            SecureKeypadInputPolicy.ASCII -> {
+                ASCII_INPUT_KEY_PATTERN.matches(keyId) &&
+                    keyId.substring("ascii-".length).toInt(16) in 0x20..0x7e
+            }
+            SecureKeypadInputPolicy.HANGUL -> HANGUL_INPUT_KEY_IDS.contains(keyId)
         }
     }
 

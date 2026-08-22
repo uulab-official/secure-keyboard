@@ -35,13 +35,28 @@ describe("React Native public prop boundary", () => {
 
   it("accepts the native printable-ASCII policy without creating a value prop", () => {
     const result = validateSecureKeypadProps({
-      layout: DEFAULT_NUMERIC_LAYOUT,
+      layout: {
+        schemaVersion: 1,
+        rows: [[{ id: "ascii-41", label: "A", role: "input" }]],
+      },
       theme: DEFAULT_THEME,
       inputPolicy: "ascii",
       maxTokens: 32,
       timeoutMs: 60_000,
     });
     expect(result.valid).toBe(true);
+  });
+
+  it("rejects a layout whose input IDs do not match the selected native policy", () => {
+    const result = validateSecureKeypadProps({
+      layout: {
+        schemaVersion: 1,
+        rows: [[{ id: "digit-01", label: "1", role: "input" }]],
+      },
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+    });
+    expect(result.valid).toBe(false);
   });
 
   it("rejects secret-bearing host props without echoing values", () => {

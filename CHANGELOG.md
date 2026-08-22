@@ -10,6 +10,8 @@ exact release-candidate commit by the release evidence manifest.
 
 - Numeric core input now accepts only canonical single-digit key IDs, rejecting
   aliases such as `digit-01` and `digit-+1` at the native boundary.
+- Shared contracts and every native framework adapter now enforce the selected
+  policy's canonical input IDs for numeric, printable-ASCII, and Hangul layouts.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

@@ -374,6 +374,10 @@ class SecureKeypadConfiguration {
         final key = row[keyIndex];
         final path = 'layout.rows[$rowIndex][$keyIndex]';
         if (!_keyIdPattern.hasMatch(key.id)) errors.add('$path.id is invalid');
+        if (key.role == KeyRole.input &&
+            !_isCanonicalInputKeyId(key.id, inputPolicy)) {
+          errors.add('$path.id is invalid for input policy');
+        }
         if (!keyIds.add(key.id)) errors.add('$path.id is duplicated');
         if (key.label != null &&
             utf8.encode(key.label!).length > secureKeypadMaxKeyLabelBytes) {
@@ -648,6 +652,90 @@ abstract interface class SecureKeypadNativeAdapter {
 const int secureKeypadMaxHeadlessKeyPressToken = 9007199254740991;
 
 final RegExp _keyIdPattern = RegExp(r'^[a-z0-9][a-z0-9._-]{0,63}$');
+final RegExp _numericInputKeyPattern = RegExp(r'^digit-[0-9]$');
+final RegExp _asciiInputKeyPattern = RegExp(r'^ascii-[0-9a-f]{2}$');
+final Set<String> _hangulInputKeyIds = <String>{
+  'jamo-giyeok',
+  'jamo-ssang-giyeok',
+  'jamo-nieun',
+  'jamo-digeut',
+  'jamo-ssang-digeut',
+  'jamo-rieul',
+  'jamo-mieum',
+  'jamo-bieub',
+  'jamo-ssang-bieub',
+  'jamo-siot',
+  'jamo-ssang-siot',
+  'jamo-ieung',
+  'jamo-jieut',
+  'jamo-ssang-jieut',
+  'jamo-chieut',
+  'jamo-kieuk',
+  'jamo-tieut',
+  'jamo-pieup',
+  'jamo-hieuh',
+  'vowel-a',
+  'vowel-ae',
+  'vowel-ya',
+  'vowel-yae',
+  'vowel-eo',
+  'vowel-e',
+  'vowel-yeo',
+  'vowel-ye',
+  'vowel-o',
+  'vowel-wa',
+  'vowel-wae',
+  'vowel-oe',
+  'vowel-yo',
+  'vowel-u',
+  'vowel-wo',
+  'vowel-we',
+  'vowel-wi',
+  'vowel-yu',
+  'vowel-eu',
+  'vowel-ui',
+  'vowel-i',
+  'tail-giyeok',
+  'tail-ssang-giyeok',
+  'tail-giyeok-siot',
+  'tail-nieun',
+  'tail-nieun-jieut',
+  'tail-nieun-hieuh',
+  'tail-digeut',
+  'tail-rieul',
+  'tail-rieul-giyeok',
+  'tail-rieul-mieum',
+  'tail-rieul-bieub',
+  'tail-rieul-siot',
+  'tail-rieul-tieut',
+  'tail-rieul-pieup',
+  'tail-rieul-hieuh',
+  'tail-mieum',
+  'tail-bieub',
+  'tail-bieub-siot',
+  'tail-siot',
+  'tail-ssang-siot',
+  'tail-ieung',
+  'tail-jieut',
+  'tail-chieut',
+  'tail-kieuk',
+  'tail-tieut',
+  'tail-pieup',
+  'tail-hieuh',
+};
+
+bool _isCanonicalInputKeyId(String keyId, InputPolicy policy) {
+  switch (policy) {
+    case InputPolicy.numeric:
+      return _numericInputKeyPattern.hasMatch(keyId);
+    case InputPolicy.ascii:
+      if (!_asciiInputKeyPattern.hasMatch(keyId)) return false;
+      final codePoint = int.parse(keyId.substring('ascii-'.length), radix: 16);
+      return codePoint >= 0x20 && codePoint <= 0x7e;
+    case InputPolicy.hangul:
+      return _hangulInputKeyIds.contains(keyId);
+  }
+}
 
 const KeypadLayout defaultNumericLayout = KeypadLayout(
   schemaVersion: 1,
