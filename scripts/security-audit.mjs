@@ -303,6 +303,33 @@ export function runSecurityAudit() {
   }
 
   for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(
+      findings,
+      file,
+      contents,
+      /if \(layout == null \|\| theme == null\) \{[\s\S]{0,240}pendingConfigurations\.remove\(view\)[\s\S]{0,240}view\.releaseSession\(\)/,
+      "React Native Android must release stale sessions when required configuration disappears",
+    );
+  }
+  for (const file of [
+    "native/ios/react-native/SecureKeypadViewManager.swift",
+    "packages/react-native/ios/SecureKeypadViewManager.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(
+      findings,
+      file,
+      contents,
+      /guard let layout, let theme else \{[\s\S]{0,240}configuredFingerprint = nil[\s\S]{0,240}releaseSession\(\)/,
+      "React Native iOS must release stale sessions when required configuration disappears",
+    );
+  }
+
+  for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
     "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
   ]) {

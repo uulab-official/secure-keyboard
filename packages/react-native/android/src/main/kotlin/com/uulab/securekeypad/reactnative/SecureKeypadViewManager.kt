@@ -124,7 +124,11 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         configuration[key] = value
         val layout = configuration["layout"] as? Map<*, *>
         val theme = configuration["theme"] as? Map<*, *>
-        if (layout == null || theme == null) return
+        if (layout == null || theme == null) {
+            pendingConfigurations.remove(view)
+            view.releaseSession()
+            return
+        }
         try {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
             view.setRendererMode(parsed.mode, parsed.acknowledgeLowerAssurance)

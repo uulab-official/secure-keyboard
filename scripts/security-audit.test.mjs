@@ -93,6 +93,30 @@ test("Android secure native view fails closed without a secure Activity window",
   assert.match(source, /onAttachedToWindow\(\)[\s\S]*addFlags\(WindowManager\.LayoutParams\.FLAG_SECURE\)/);
 });
 
+test("native framework managers release stale sessions when required configuration disappears", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /if \(layout == null \|\| theme == null\) \{[\s\S]{0,240}pendingConfigurations\.remove\(view\)[\s\S]{0,240}view\.releaseSession\(\)/,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/ios/react-native/SecureKeypadViewManager.swift",
+    "../packages/react-native/ios/SecureKeypadViewManager.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /guard let layout, let theme else \{[\s\S]{0,240}configuredFingerprint = nil[\s\S]{0,240}releaseSession\(\)/,
+    );
+  }
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });

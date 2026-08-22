@@ -98,6 +98,7 @@ Status: publishable contract, native source packaging, parity gate, Expo Develop
 - [x] Expose masked state events and non-secret native cancel controller commands.
 - [x] Revalidate RN/Flutter bridge masked-state bounds and stable result-code shapes before host callbacks.
 - [x] Bound the Android RN public configuration conversion with allowlisted keys and aggregate/depth limits before native parsing.
+- [x] Release stale React Native native sessions when required layout/theme configuration disappears, with canonical-source and package-copy audit parity.
 - [x] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [x] Add an opt-in lower-assurance Headless Host Mode with explicit acknowledgement, monotonic public key-ID commands, and prominent documentation.
 

@@ -63,6 +63,13 @@ malformed public key IDs, key labels over 16 UTF-8 bytes, accessibility labels
 over 80 UTF-8 bytes, and non-finite or out-of-range theme dimensions before
 creating UI objects or a secure session.
 
+React Native managers must also fail closed during prop churn: if a required
+layout or theme value is removed after a session was configured, the manager
+must discard pending public configuration, clear its configuration fingerprint,
+and release the native session before accepting a later complete configuration.
+This contract is enforced independently for the canonical native sources and
+the publishable package copies.
+
 The core exposes `MAX_KEY_ID_BYTES = 64` and a fallible `KeyId::try_new` for
 untrusted public configuration. Policy resolution repeats the byte bound so a
 direct core consumer cannot bypass the native adapter limit.

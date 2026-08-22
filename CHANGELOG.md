@@ -8,6 +8,10 @@ exact release-candidate commit by the release evidence manifest.
 
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
+- Security: React Native iOS and Android managers now release the native session
+  and discard pending configuration whenever a required layout or theme prop
+  disappears; static regression gates cover both canonical sources and package
+  copies.
 
 ### Server adapters
 

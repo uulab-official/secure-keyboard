@@ -65,7 +65,11 @@ final class SecureKeypadReactView: SecureKeypadView {
     }
 
     private func configureIfReady(forceHeadlessCommand: Bool = false) {
-        guard let layout, let theme else { return }
+        guard let layout, let theme else {
+            configuredFingerprint = nil
+            releaseSession()
+            return
+        }
         var config: [String: Any] = [
             "layout": layout,
             "theme": theme,
