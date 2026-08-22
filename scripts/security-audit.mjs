@@ -900,6 +900,22 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_ceremony_ttl_drift_is_removed_before_materialization/, "durable WebAuthn Redis tests must verify missing and over-bound ceremony TTLs are removed before materialization");
   requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_ceremony_value_is_removed_before_materialization/, "durable WebAuthn Redis tests must verify oversized ceremony values are removed before materialization");
   requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_credential_value_fails_closed_before_json_decode/, "durable WebAuthn Redis tests must verify oversized credentials fail closed before JSON decoding");
+  const durableCompose = source("compose.durable-backends.yml", findings);
+  const durableWorkflow = source(".github/workflows/ci.yml", findings);
+  for (const image of ["redis:7.2-alpine", "postgres:16-alpine"]) {
+    const imagePattern = new RegExp(`image:\\s*${image.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}@sha256:[0-9a-f]{64}`);
+    requireText(findings, "compose.durable-backends.yml", durableCompose, imagePattern, `${image} must be pinned to an immutable digest in the local durable-backend compose file`);
+    requireText(findings, ".github/workflows/ci.yml", durableWorkflow, imagePattern, `${image} must be pinned to an immutable digest in CI`);
+    const composeMatch = durableCompose.match(imagePattern)?.[0];
+    const workflowMatch = durableWorkflow.match(imagePattern)?.[0];
+    if (composeMatch !== workflowMatch) {
+      findings.push({
+        rule: "durable-backend-image-parity",
+        file: ".github/workflows/ci.yml",
+        detail: `${image} must use the same immutable digest in local compose and CI`,
+      });
+    }
+  }
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT/, "Redis rate limiting must use one atomic script");
   requireText(findings, "crates/secure-auth-server/src/rate_limit_redis.rs", redisRateLimit, /RATE_LIMIT_SCRIPT[\s\S]{0,500}STRLEN[\s\S]{0,260}'GET'/, "Redis rate limiting must bound counter bytes before GET");

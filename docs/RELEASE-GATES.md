@@ -79,10 +79,11 @@ archive, and no symbolic links. Package archives therefore remain inside the
 detached-signature scope.
 
 The same immutable candidate job starts isolated Redis 7.2 and PostgreSQL 16
-services and runs both durable `--ignored` interoperability suites before
-building the bundle. Those services are test infrastructure only; production
-deployments still require TLS-first configuration and an operator-reviewed
-schema migration.
+services, using the same immutable multi-platform image digests as
+`compose.durable-backends.yml`, and runs all durable `--ignored`
+interoperability suites before building the bundle. Those services are test
+infrastructure only; production deployments still require TLS-first
+configuration and an operator-reviewed schema migration.
 
 The final verifier applies the checked-in platform support policy to every
 physical iOS/Android record. It requires the minimum OS/API level, a
