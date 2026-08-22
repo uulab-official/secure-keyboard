@@ -4,6 +4,8 @@ use secure_core::{InputPolicy, KeyId, SecureSession};
 fn numeric_policy_accepts_only_declared_key_ids() {
     let policy = InputPolicy::numeric(6);
     assert!(policy.resolve(&KeyId::new("digit-1")).is_ok());
+    assert!(policy.resolve(&KeyId::new("digit-01")).is_err());
+    assert!(policy.resolve(&KeyId::new("digit-+1")).is_err());
     assert!(policy.resolve(&KeyId::new("jamo-giyeok")).is_err());
 }
 

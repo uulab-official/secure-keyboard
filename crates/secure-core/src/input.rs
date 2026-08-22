@@ -108,15 +108,16 @@ impl InputPolicy {
         let key = key_id.as_str();
         match self {
             Self::Numeric { .. } => {
+                // Numeric IDs are deliberately canonical: aliases such as
+                // `digit-01` or `digit-+1` must not create a second public
+                // spelling for the same native key.
                 let Some(digit) = key.strip_prefix("digit-") else {
                     return Err(InputError::InvalidKey);
                 };
-                let Ok(value) = digit.parse::<u8>() else {
+                if digit.len() != 1 || !digit.as_bytes()[0].is_ascii_digit() {
                     return Err(InputError::InvalidKey);
-                };
-                (value <= 9)
-                    .then_some(ResolvedKey::Digit(value))
-                    .ok_or(InputError::InvalidKey)
+                }
+                Ok(ResolvedKey::Digit(digit.as_bytes()[0] - b'0'))
             }
             Self::Hangul { .. } => hangul::resolve_key(key).ok_or(InputError::InvalidKey),
             Self::Ascii { .. } => {
