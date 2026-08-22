@@ -13,6 +13,7 @@
     "test:release-candidate-metadata": "node --test scripts/release-candidate-metadata.test.mjs",
     "test:expo-development-build": "node --test scripts/expo-development-build.test.mjs",
     "test:emit-release-gate-evidence": "node --test scripts/emit-release-gate-evidence.test.mjs",
+    "test:emit-release-artifact-fragment": "node --test scripts/emit-release-artifact-fragment.test.mjs",
     "test:emit-ci-gate-evidence": "node --test scripts/emit-ci-gate-evidence.test.mjs",
     "test:emit-web-browser-evidence": "node --test scripts/emit-web-browser-evidence.test.mjs",
     "test:emit-native-device-evidence": "node --test scripts/emit-native-device-evidence.test.mjs",

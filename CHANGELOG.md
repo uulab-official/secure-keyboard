@@ -61,6 +61,12 @@ exact release-candidate commit by the release evidence manifest.
 - Added an exclusive, regular-file-only release-evidence staging helper and a
   signed-release fragment converter so missing physical-device, sanitizer, or
   independent-review evidence fails closed.
+- Release candidates now carry a commit-bound artifact fragment for the native
+  FFI checksum, SPDX SBOM, and third-party notices; the verified iOS FFI
+  checksum is included inside the signed source bundle.
+- Final evidence assembly now rechecks the signed tar entry contract,
+  candidate checksum manifest, and byte equality of signed source evidence
+  before accepting downloaded external inputs.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

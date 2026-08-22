@@ -89,8 +89,20 @@ jobs:
       - name: Validate and stage all release evidence inputs
         run: |
           node scripts/check-release-bundle.mjs "$CANDIDATE_DIR"
+          node scripts/check-release-archive.mjs "$CANDIDATE_DIR/secure-keypad-release.tar.gz"
+          (
+            cd "$CANDIDATE_DIR"
+            sha256sum -c secure-keypad-release.sha256
+          )
           CANDIDATE_COMMIT="$(node -e 'const fs = require("node:fs"); const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(metadata.commit);' "$CANDIDATE_DIR/source/release-candidate-metadata.json")"
           test "$CANDIDATE_COMMIT" = "$RELEASE_REF"
+          for signed_source in \
+            source/secure-keypad-ios-ffi.sha256 \
+            source/secure-keypad.sbom.spdx.json \
+            source/THIRD-PARTY-NOTICES.md; do
+            tar --extract --to-stdout --file "$CANDIDATE_DIR/secure-keypad-release.tar.gz" "$signed_source" \
+              | cmp -s - "$CANDIDATE_DIR/$signed_source"
+          done
           node scripts/stage-release-evidence.mjs \
             "$EVIDENCE_DIR" "$CANDIDATE_DIR" "$CI_EVIDENCE_DIR" "$EXTERNAL_EVIDENCE_DIR"
       - name: Convert signed-release record into the final manifest fragment

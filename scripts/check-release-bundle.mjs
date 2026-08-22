@@ -37,6 +37,7 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/LICENSE-MIT",
   "source/THIRD-PARTY-NOTICES.md",
   "source/secure-keypad.sbom.spdx.json",
+  "source/secure-keypad-ios-ffi.sha256",
   "source/release-candidate-metadata.json",
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",

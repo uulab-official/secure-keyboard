@@ -273,6 +273,20 @@ fragment fails the job and cannot become a production claim. The
 `SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256` values and require its configured
 reviewers.
 
+Before staging, it independently checks the candidate tar entry contract,
+verifies the candidate checksum manifest, and compares the native checksum,
+SBOM, and notices files byte-for-byte with the copies inside the signed
+tarball. This prevents a separately downloaded evidence file from silently
+replacing the signed source input.
+
+The release-candidate artifact also contains
+`fragments/candidate-artifacts.json`. It hashes the native iOS FFI checksum
+manifest, SPDX SBOM, and third-party notices; these are the required
+`native-checksum`, `sbom`, and `license-notices` artifact entries in the final
+manifest. The iOS FFI checksum is copied into `source/` before the deterministic
+tarball is created, so the signed source bundle and final evidence refer to the
+same verified native input.
+
 For a browser-only evidence root, the checked-in web emitter accepts the three
 sanitized Playwright logs and creates the validator-compatible matrix record:
 

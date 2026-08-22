@@ -36,6 +36,7 @@ test("stages candidate, CI, and external evidence without overwriting files", ()
   try {
     writeFile(candidate, "secure-keypad-release.tar.gz", "bundle");
     writeFile(candidate, "evidence/signed-release.json", '{"gate":"signed-release"}\n');
+    writeFile(candidate, "fragments/candidate-artifacts.json", '{"artifacts":[]}\n');
     writeFile(ci, "fragments/rust-workspace.json", '{"gates":[]}\n');
     writeFile(external, "fragments/ios-device-matrix.json", '{"gates":[]}\n');
 
@@ -111,6 +112,10 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/);
   assert.match(workflow, /scripts\/check-release-bundle\.mjs/);
+  assert.match(workflow, /scripts\/check-release-archive\.mjs/);
+  assert.match(workflow, /sha256sum -c secure-keypad-release\.sha256/);
+  assert.match(workflow, /tar --extract --to-stdout/);
+  assert.match(workflow, /secure-keypad-ios-ffi\.sha256/);
   assert.match(workflow, /scripts\/stage-release-evidence\.mjs/);
   assert.match(workflow, /scripts\/emit-signed-release-fragment\.mjs[\s\S]*signed-release/);
   assert.match(workflow, /scripts\/merge-release-evidence\.mjs/);

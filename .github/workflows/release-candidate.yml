@@ -78,6 +78,7 @@ jobs:
     timeout-minutes: 60
     env:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
+      IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
     services:
       redis:
         image: redis:7.2-alpine
@@ -179,6 +180,7 @@ jobs:
           pnpm test:release-bundle
           pnpm test:release-archive
           pnpm test:release-candidate-metadata
+          pnpm test:emit-release-artifact-fragment
           pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence
           pnpm test:emit-ci-gate-evidence
@@ -227,6 +229,7 @@ jobs:
           cp README.md "$RELEASE_DIR/source/README.md"
           cp SECURITY.md "$RELEASE_DIR/source/SECURITY.md"
           cp "$RELEASE_DIR/secure-keypad.sbom.spdx.json" "$RELEASE_DIR/source/secure-keypad.sbom.spdx.json"
+          cp "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256" "$RELEASE_DIR/source/secure-keypad-ios-ffi.sha256"
           mkdir -p "$RELEASE_DIR/source/packages"
           cp -R packages/flutter "$RELEASE_DIR/source/packages/flutter"
           cp -R docs "$RELEASE_DIR/source/docs"
@@ -267,6 +270,14 @@ jobs:
             --bundle secure-keypad-release.tar.gz \
             --signature secure-keypad-release.sig \
             --public-key secure-keypad-release.pub.der
+      - name: Emit candidate public artifact fragment
+        run: |
+          node scripts/emit-release-artifact-fragment.mjs \
+            "$RELEASE_DIR" \
+            "fragments/candidate-artifacts.json" \
+            --artifact native-checksum=source/secure-keypad-ios-ffi.sha256 \
+            --artifact sbom=source/secure-keypad.sbom.spdx.json \
+            --artifact license-notices=source/THIRD-PARTY-NOTICES.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-keypad-release-candidate

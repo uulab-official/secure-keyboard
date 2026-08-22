@@ -50,6 +50,8 @@ export function buildReleaseCandidateMetadata(input) {
       { kind: "release-signature", path: "secure-keypad-release.sig" },
       { kind: "release-public-key", path: "secure-keypad-release.pub.der" },
       { kind: "sbom", path: "secure-keypad.sbom.spdx.json" },
+      { kind: "native-checksum", path: "source/secure-keypad-ios-ffi.sha256" },
+      { kind: "license-notices", path: "source/THIRD-PARTY-NOTICES.md" },
       { kind: "checksums", path: "secure-keypad-release.sha256" },
     ],
     finalVerifier: {

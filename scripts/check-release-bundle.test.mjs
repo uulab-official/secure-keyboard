@@ -83,6 +83,7 @@ function createValidStaging() {
     spdxVersion: "SPDX-2.3",
     packages: [{ name: "secure-core", SPDXID: "SPDXRef-secure-core" }],
   }));
+  writeFile(root, "source/secure-keypad-ios-ffi.sha256", "native checksum fixture\n");
   writeFile(root, "source/packages/flutter/pubspec.yaml", "name: secure_keypad_flutter\nversion: 0.1.0\n");
   writeFile(root, "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n");
   writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
@@ -224,6 +225,17 @@ test("release staging rejects non-regular filesystem entries", () => {
   }
 });
 
+test("release staging requires the verified native FFI checksum manifest", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/secure-keypad-ios-ffi.sha256"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-ios-ffi.sha256")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
@@ -264,6 +276,8 @@ test("release candidate signs staged package archives and publishable iOS FFI ar
   assert.match(workflow, /cat "\$IOS_FFI_DIR\/secure-keypad-ios-ffi\.commit"/);
   assert.match(workflow, /packages\/react-native\/secure_ffi\.xcframework/);
   assert.match(workflow, /packages\/flutter\/ios\/secure_ffi\.xcframework/);
+  assert.match(workflow, /source\/secure-keypad-ios-ffi\.sha256/);
+  assert.match(workflow, /emit-release-artifact-fragment\.mjs/);
   assert.match(workflow, /scripts\/check-release-archive\.mjs/);
   assert.match(workflow, /-C "\$RELEASE_DIR" source packages/);
 });

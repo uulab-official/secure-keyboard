@@ -961,6 +961,10 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo package --locked --workspace --all-features/, "release candidate must verify all feature-gated crates from the packaged workspace");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /-C "\$RELEASE_DIR" source packages/, "release workflow must sign source and publishable package archives in one tarball");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-ios-ffi\.sha256/, "release workflow must carry the verified iOS FFI checksum into the signed source bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /license-notices/, "release workflow must evidence the license notices artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
   const releaseFinalizeWorkflow = source(".github/workflows/release-finalize.yml", findings);
@@ -975,6 +979,9 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/, "release finalization must bind CI evidence to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/, "release finalization must bind external evidence to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-archive\.mjs/, "release finalization must inspect the downloaded signed archive contract");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /sha256sum -c secure-keypad-release\.sha256/, "release finalization must verify the candidate artifact checksum manifest");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /tar --extract --to-stdout/, "release finalization must compare signed source inputs to staged evidence files");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the audited copier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete fragment");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/merge-release-evidence\.mjs/, "release finalization must merge all evidence fragments before verification");
@@ -1088,6 +1095,7 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
   requireText(findings, "package.json", rootPackage, /"test:release-bundle"/, "the workspace must expose the release staging inspector test");
+  requireText(findings, "package.json", rootPackage, /"test:emit-release-artifact-fragment"/, "the workspace must expose the release artifact fragment test");
   requireText(findings, "package.json", rootPackage, /"test:release-archive"/, "the workspace must expose the signed archive contract test");
   for (const file of ["packages/contracts/package.json", "packages/web/package.json", "packages/server-node/package.json"]) {
     const packageManifest = source(file, findings);
@@ -1148,6 +1156,7 @@ export function runSecurityAudit() {
   const releaseBundleCheck = source("scripts/check-release-bundle.mjs", findings);
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checkReleaseStaging/, "release tooling must inspect the exact staging input before archiving");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad\.sbom\.spdx\.json/, "release staging must require the SPDX SBOM");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.sha256/, "release staging must require the verified native FFI checksum manifest");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /only regular files are allowed in release staging/, "release staging must reject non-regular filesystem entries");
@@ -1200,6 +1209,12 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /bundleSha256|signatureSha256|publicKeySha256/, "signed-release evidence must hash every signed artifact");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /currentCommit/, "signed-release evidence must bind to the current checkout commit");
   requireText(findings, "scripts/emit-signed-release-evidence.mjs", signedReleaseEvidence, /pathHasSymlinkComponent/, "signed-release evidence must reject symlink traversal");
+  const releaseArtifactFragment = source("scripts/emit-release-artifact-fragment.mjs", findings);
+  requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /buildReleaseArtifactFragment/, "release artifact evidence must derive a sanitized hashed fragment");
+  requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /MAX_RELEASE_ARTIFACT_BYTES/, "release artifact evidence must bound file materialization");
+  requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /pathHasSymlinkComponent/, "release artifact evidence must reject symlink traversal");
+  requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /flag:\s*["']wx["']/, "release artifact evidence must create fragments exclusively");
+  requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /PRIVATE_MATERIAL_PATH/, "release artifact evidence must reject private or secret paths");
   const signedReleaseFragment = source("scripts/emit-signed-release-fragment.mjs", findings);
   requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /buildSignedReleaseFragment/, "signed-release finalization must preserve gate, artifact, and detached-signature descriptors");
   requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /MAX_GATE_EVIDENCE_BYTES/, "signed-release fragment conversion must bound record materialization");
