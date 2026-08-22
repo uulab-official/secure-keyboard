@@ -18,6 +18,16 @@ valid Ed25519 signature. It uploads a candidate artifact only; it does not
 publish a GitHub release or bypass the external device, backend, and
 independent-review gates below.
 
+The external device-lab workflow treats the requested release checkout as
+untrusted input. Its protected `secure-keypad-external-evidence` environment
+must define `SECURE_KEYPAD_TRUSTED_VERIFIER_REF` as a separately administered,
+40-character commit SHA. The workflow checks out the release candidate only as
+data, checks out the verifier at that protected ref, and executes the verifier
+from the second checkout. Reviewer key fingerprints must never be passed to
+candidate-controlled scripts. The workflow file and environment configuration
+require branch-protection and administrator review before a self-hosted runner
+is permitted to access reviewer secrets.
+
 Before the source tree is archived, the workflow runs
 `node scripts/check-release-bundle.mjs "$RELEASE_DIR"`. This staging gate
 requires the candidate-only metadata, lockfiles, threat-model and deployment

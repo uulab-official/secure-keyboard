@@ -1025,6 +1025,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent-review-(?:report|public-key|signature)/, "release gates must bind the reviewer report to a detached signature");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /--require-trusted-keys/, "release gates must provide a trusted-key validation mode");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /SECURE_KEYPAD_TRUSTED_VERIFIER_REF/, "release gates must separate candidate data from the trusted external evidence verifier");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /cargo publish --locked --workspace --all-features --dry-run/, "release gates must publish-check all feature-gated crates through Cargo's temporary registry");
   const thirdPartyNotices = source("docs/THIRD-PARTY-NOTICES.md", findings);
   requireText(findings, "docs/THIRD-PARTY-NOTICES.md", thirdPartyNotices, /playwright.*verification-only/i, "browser verification dependencies must be identified as non-shipped tooling");
@@ -1046,6 +1047,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /securityPatchLevel/, "device verification must require platform security patch metadata");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /platform-security-patch/, "device verification must require a hashed platform patch artifact");
   requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /testEvidence/, "device verification must bind physical test claims to reviewable evidence paths");
+  requireText(findings, "docs/DEVICE-VERIFICATION.md", deviceVerification, /verifier\/scripts\/validate-external-release-evidence\.mjs/, "device verification must execute the trusted verifier checkout");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /byte-level preflight[\s\S]{0,160}secure-keypad-test-sentinel-7f2c4e/, "release gates must document byte-level sanitized-artifact preflight");
   const deviceEvidenceCheck = source("scripts/check-device-evidence.mjs", findings);
   requireText(findings, "scripts/check-device-evidence.mjs", deviceEvidenceCheck, /MAX_DEVICE_EVIDENCE_RECORD_BYTES/, "device evidence CLI must bound the top-level record before parsing");
@@ -1238,7 +1240,11 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /workflow_dispatch:/, "external evidence must be manually bound to an explicit release commit");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /runs-on:\s*\n\s*- self-hosted\n\s*- secure-keypad-device-lab/, "external evidence must run only on the configured physical-device lab runner");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /RELEASE_REF:\s*\$\{\{ inputs\.ref \}\}/, "external evidence must validate the requested immutable release commit");
-  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /git rev-parse HEAD\)"\s*=\s*"\$RELEASE_REF/, "external evidence must prove checkout HEAD equals the requested release commit");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /git -C candidate rev-parse HEAD\)"\s*=\s*"\$RELEASE_REF/, "external evidence must prove candidate checkout HEAD equals the requested release commit");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/, "external evidence must pin its verifier through protected environment configuration");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /git -C verifier rev-parse HEAD\)"\s*=\s*"\$TRUSTED_VERIFIER_REF/, "external evidence must prove the trusted verifier checkout identity");
+  requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /verifier\/scripts\/validate-external-release-evidence\.mjs/, "external evidence must execute the separately checked-out verifier");
+  forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /node scripts\/validate-external-release-evidence\.mjs/, "external evidence must not execute validator code from the candidate checkout");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT/, "external evidence must come from the configured lab evidence root");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /secrets\.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "external evidence must use the protected reviewer fingerprint secret");
   forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /inputs\.reviewer-public-key-sha256/, "external evidence must not accept a reviewer fingerprint from an untrusted dispatch input");

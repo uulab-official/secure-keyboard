@@ -82,11 +82,14 @@ After both physical native records and the signed review files have been
 placed under the required `evidence/`, `artifacts/`, and `fragments/` layout,
 run the checked-in external evidence workflow from a separately administered
 device-lab runner. Its `SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT` environment
-variable must point at that mounted root; the workflow checks out the exact
-release SHA and runs:
+variable must point at that mounted root, and its protected environment must
+define `SECURE_KEYPAD_TRUSTED_VERIFIER_REF` as the exact 40-character commit
+of the separately reviewed verifier checkout. The workflow checks out the
+release SHA as untrusted data, checks out the verifier at that protected ref,
+and runs the verifier from the trusted checkout:
 
 ```sh
-node scripts/validate-external-release-evidence.mjs \
+node "$GITHUB_WORKSPACE/verifier/scripts/validate-external-release-evidence.mjs" \
   "$SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT" \
   "$RELEASE_COMMIT" \
   "$PACKAGE_VERSION" \

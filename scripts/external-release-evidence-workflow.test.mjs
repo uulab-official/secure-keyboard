@@ -12,7 +12,7 @@ test("external evidence workflow requires a self-hosted device lab and immutable
   assert.match(WORKFLOW, /ref:/);
   assert.match(WORKFLOW, /runs-on:\s*\n\s*- self-hosted\n\s*- secure-keypad-device-lab/);
   assert.match(WORKFLOW, /ref:\s*\$\{\{ inputs\.ref \}\}/);
-  assert.match(WORKFLOW, /test "\$\(git rev-parse HEAD\)" = "\$RELEASE_REF"/);
+  assert.match(WORKFLOW, /test "\$\(git -C candidate rev-parse HEAD\)" = "\$RELEASE_REF"/);
   assert.match(WORKFLOW, /external evidence root must not be inside the checkout/);
 });
 
@@ -30,4 +30,13 @@ test("external evidence workflow does not synthesize a device pass", () => {
   assert.doesNotMatch(WORKFLOW, /physicalDevice:\s*true/);
   assert.doesNotMatch(WORKFLOW, /status:\s*pass/);
   assert.match(WORKFLOW, /validate-external-release-evidence\.mjs/);
+});
+
+test("protected reviewer material is used only by a separately pinned verifier checkout", () => {
+  assert.match(WORKFLOW, /SECURE_KEYPAD_TRUSTED_VERIFIER_REF/);
+  assert.match(WORKFLOW, /path:\s*verifier/);
+  assert.match(WORKFLOW, /ref:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/);
+  assert.match(WORKFLOW, /verifier\/scripts\/validate-external-release-evidence\.mjs/);
+  assert.doesNotMatch(WORKFLOW, /node scripts\/validate-external-release-evidence\.mjs/);
+  assert.match(WORKFLOW, /git -C verifier rev-parse HEAD/);
 });
