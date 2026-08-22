@@ -96,11 +96,16 @@ export function checkReleaseArchive(archivePath) {
     return ["release archive path is required"];
   }
   try {
+    const verboseListing = execFileSync("tar", ["-tvzf", archivePath], { encoding: "utf8" });
     const entries = execFileSync("tar", ["-tzf", archivePath], { encoding: "utf8" })
       .split("\n")
       .map(normalizeEntry)
       .filter(Boolean);
-    return validateReleaseArchiveEntries(entries);
+    const findings = [];
+    if (verboseListing.split("\n").some((line) => line.startsWith("l"))) {
+      findings.push("signed release archive must not contain symbolic links");
+    }
+    return [...new Set([...findings, ...validateReleaseArchiveEntries(entries)])];
   } catch (error) {
     return [`release archive cannot be inspected: ${error.message}`];
   }

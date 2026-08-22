@@ -87,7 +87,8 @@ exact release-candidate commit by the release evidence manifest.
 - Release candidate assembly now builds and checksum-verifies publishable iOS
   FFI artifacts, stages them into the React Native and Flutter packages, and
   signs npm/crate archives inside the same deterministic tarball as the source.
-  A tarball-entry gate rejects source-only or mixed-version signed bundles.
+  A tarball-entry gate rejects source-only, mixed-version, or symbolic-link
+  signed bundles.
 - Device and browser evidence emitters and file verifiers now reject empty
   logs or artifacts before a release gate can hash them as valid evidence.
 - Release evidence file verification now rejects empty gate and artifact files

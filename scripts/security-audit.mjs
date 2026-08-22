@@ -1119,6 +1119,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-bundle\.mjs\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive");
   const releaseArchiveCheck = source("scripts/check-release-archive.mjs", findings);
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /validateReleaseArchiveEntries/, "release tooling must inspect the signed archive entry contract");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /-tvzf/, "signed archive validation must inspect tar entry types");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /must not contain symbolic links/, "signed archive validation must reject symbolic links");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-react-native/, "signed archive validation must cover the publishable React Native package");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure_ffi\.xcframework/, "signed archive validation must cover publishable native FFI contents");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-bundle/, "CI must execute the release staging inspector contract test");

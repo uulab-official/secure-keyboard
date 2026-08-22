@@ -34,8 +34,9 @@ artifact bound to the requested commit, and stages them into both publishable
 mobile packages before packing.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
-contains the staged Flutter iOS artifacts and every version-matched npm/crate
-archive. Package archives therefore remain inside the detached-signature scope.
+contains the staged Flutter iOS artifacts, every version-matched npm/crate
+archive, and no symbolic links. Package archives therefore remain inside the
+detached-signature scope.
 
 The same immutable candidate job starts isolated Redis 7.2 and PostgreSQL 16
 services and runs both durable `--ignored` interoperability suites before

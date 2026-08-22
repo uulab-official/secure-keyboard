@@ -776,11 +776,10 @@ test("rejects an oversized release bundle before hashing or signature verificati
   const findings = verifyReleaseEvidenceFiles(evidence, root);
 
   const bundleIndex = evidence.artifacts.indexOf(bundleArtifact);
-  assert.ok(
-    findings.some(
-      (finding) => finding.includes(`artifacts[${bundleIndex}].path`) && finding.includes("must not exceed"),
-    ),
+  const oversizedFindings = findings.filter(
+    (finding) => finding.includes(`artifacts[${bundleIndex}].path`) && finding.includes("must not exceed"),
   );
+  assert.equal(oversizedFindings.length, 1);
 });
 
 test("rejects an approving review report with an open critical finding", () => {

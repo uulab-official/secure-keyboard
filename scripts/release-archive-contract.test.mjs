@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -46,6 +46,29 @@ test("signed release archive checker reads the actual tarball entry list", () =>
     }
     execFileSync("tar", ["-czf", archive, "-C", stage, "source", "packages"]);
     assert.deepEqual(checkReleaseArchive(archive), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("signed release archive rejects symbolic links even when required paths are present", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "secure-keypad-release-archive-symlink-"));
+  const stage = path.join(root, "stage");
+  const archive = path.join(root, "secure-keypad-release.tar.gz");
+  try {
+    for (const entry of REQUIRED_ENTRIES) {
+      const absolutePath = path.join(stage, entry);
+      mkdirSync(path.dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, "fixture\n");
+    }
+    const symlinkPath = path.join(stage, "source/release-candidate-metadata.json");
+    rmSync(symlinkPath);
+    symlinkSync("outside-release-metadata.json", symlinkPath);
+    execFileSync("tar", ["-czf", archive, "-C", stage, "source", "packages"]);
+
+    const findings = checkReleaseArchive(archive);
+
+    assert.ok(findings.some((finding) => finding.includes("symbolic link")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
