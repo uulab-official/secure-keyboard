@@ -131,6 +131,12 @@ Flutter's machine-readable version fields must also agree with one another.
 This prevents a different SDK on `PATH` from producing a misleading local
 candidate result.
 
+The checked-in `.mise.toml` provides the same pinned host toolchain for
+contributors using mise. After installing mise, run `mise install` once and
+invoke the gate through `mise exec -- pnpm verify:production-candidate`; the
+configuration is a local reproducibility aid and is not a replacement for the
+version checks above.
+
 It then runs the locked Rust workspace and MSRV tests, clippy/docs, dependency
 audits, native/protocol parity checks, JavaScript package tests/typechecks/
 builds, all repository contract tests, the static security audit, the Web
