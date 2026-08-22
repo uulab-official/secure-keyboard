@@ -17,6 +17,10 @@ atomically by the configured `BoundOneTimeLoginStateStore`. The HTTP response
 buffer is zeroized when dropped. Credential files, OPAQUE payloads, and session
 keys are never returned as JSON or included in diagnostics.
 
+`CredentialRepository::load` must return a protected copy without deleting the
+stored credential. Login credentials are reusable records; only the separate
+server login state handle is consumed once.
+
 Every response also carries static `no-store`, `nosniff`, `no-referrer`, and
 API-safe CSP headers through `RESPONSE_SECURITY_HEADERS`; a framework adapter
 must copy them to the actual HTTP response.

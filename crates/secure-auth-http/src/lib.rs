@@ -212,9 +212,10 @@ impl HttpResponse {
 
 /// Protected credential-file persistence boundary.
 pub trait CredentialRepository {
-    /// Loads and removes or clones the credential file for a public account
-    /// identifier. Unknown accounts must return `Ok(None)` so the OPAQUE dummy
-    /// path can run.
+    /// Loads a protected copy of the credential file for a public account
+    /// identifier without removing the stored record. Unknown accounts must
+    /// return `Ok(None)` so the OPAQUE dummy path can run. Credential lookup is
+    /// persistent; only the separate login state handle is one-time.
     ///
     /// # Errors
     ///

@@ -76,6 +76,12 @@ and retry a rare handle collision without logging handles or state bytes. The
 executable backend contract tests exercise atomic delete-and-return behavior
 under concurrency; the Redis/PostgreSQL service tests are mandatory CI gates.
 
+Credential lookups are persistent reads. A `CredentialRepository` must return a
+protected copy without deleting the stored credential; only the one-time login
+state handle is consumed during authentication. This permits a user to log in
+again after a successful or failed attempt while retaining replay protection on
+the protocol state.
+
 It also includes `InMemoryRateLimiter` and the `RateLimiter` backend contract.
 Use separate bounded key namespaces for account, IP, and deployment-wide
 limits. The reference limiter is process-local; a multi-instance deployment

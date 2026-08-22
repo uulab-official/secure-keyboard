@@ -539,6 +539,7 @@ fn registration_finish_never_overwrites_an_existing_credential() {
     assert_eq!(finish_response.body, br#"{"error":"invalid_request"}"#);
 
     assert_login_with_password(&router, PASSWORD);
+    assert_login_with_password(&router, PASSWORD);
 }
 
 fn registration_upload_body(

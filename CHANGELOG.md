@@ -25,6 +25,9 @@ exact release-candidate commit by the release evidence manifest.
 - OPAQUE HTTP credential persistence is now create-only: an existing account
   credential cannot be replaced by a replayed registration upload or an
   enrollment race, and conflicts use the generic invalid-request response.
+- Clarified that OPAQUE credential repository reads are persistent copies; a
+  login must not delete the reusable credential record while one-time protocol
+  state remains consumable exactly once.
 - Added opt-in native CSPRNG input-key randomization via
   `randomizeInputKeys`; only input-role positions move, while action roles,
   seeds, and accumulated input remain outside RN/Flutter bridges.
