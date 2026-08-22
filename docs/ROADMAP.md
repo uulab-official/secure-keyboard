@@ -120,7 +120,7 @@ Status: publishable contract, native PlatformView package, parity gate, reproduc
 - [x] Add a generated Flutter iOS Simulator UI test for masked state and public key-label non-disclosure.
 - [x] Publish the canonical Dart library entrypoint and exclude generated build state from pub.dev archives.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
-- [ ] Compile the registration in supported host apps and verify device behavior.
+- [x] Compile Flutter registration in generated supported host apps and verify simulator/emulator behavior; physical-device verification remains a separate release gate.
 - [x] Provide examples for numeric PIN, printable-ASCII password, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.
