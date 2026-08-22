@@ -1025,12 +1025,15 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /candidate-run-id:/, "release finalization must identify the immutable candidate artifact run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /ci-run-id:/, "release finalization must identify the CI evidence run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /external-evidence-run-id:/, "release finalization must identify the external evidence run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /external-evidence-workflow:/, "release finalization must identify the external evidence workflow path");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions:\s*read/, "release finalization must use read-only artifact permissions");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /contents:\s*read/, "release finalization must use read-only repository permissions");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release finalization must download immutable artifacts through a pinned action");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/, "release finalization must bind the candidate download to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/, "release finalization must bind CI evidence to its requested run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/, "release finalization must bind external evidence to its requested run");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/verify-github-run-provenance\.mjs/, "release finalization must verify GitHub run status, commit, repository, and workflow provenance");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /GITHUB_TOKEN:\s*\$\{\{ github\.token \}\}/, "release finalization must provide a read-only GitHub API token to the run provenance verifier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-archive\.mjs/, "release finalization must inspect the downloaded signed archive contract");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /sha256sum -c secure-keypad-release\.sha256/, "release finalization must verify the candidate artifact checksum manifest");
@@ -1043,6 +1046,12 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release finalization must provide the protected maintainer fingerprint");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release finalization must provide the protected reviewer fingerprint");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /name: secure-keypad-production-release-evidence/, "release finalization must retain the verified production evidence artifact");
+  const githubRunProvenance = source("scripts/verify-github-run-provenance.mjs", findings);
+  requireText(findings, "scripts/verify-github-run-provenance.mjs", githubRunProvenance, /run\.head_sha/, "GitHub run provenance must bind the run to the requested release commit");
+  requireText(findings, "scripts/verify-github-run-provenance.mjs", githubRunProvenance, /run\.path/, "GitHub run provenance must bind the run to the expected workflow path");
+  requireText(findings, "scripts/verify-github-run-provenance.mjs", githubRunProvenance, /status !== \"completed\"|status !== 'completed'/, "GitHub run provenance must require a completed run");
+  requireText(findings, "scripts/verify-github-run-provenance.mjs", githubRunProvenance, /conclusion !== \"success\"|conclusion !== 'success'/, "GitHub run provenance must require a successful run");
+  requireText(findings, "scripts/verify-github-run-provenance.mjs", githubRunProvenance, /Authorization: `Bearer/, "GitHub run provenance must authenticate API requests with the workflow token");
   for (const line of findMutableCiActionLines(releaseFinalizeWorkflow)) {
     findings.push({
       rule: "ci-action-immutability",

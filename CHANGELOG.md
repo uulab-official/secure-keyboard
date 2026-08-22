@@ -67,6 +67,10 @@ exact release-candidate commit by the release evidence manifest.
   untrusted artifact trees from exhausting finalization traversal resources;
   directory entries are streamed during traversal to avoid a large single
   directory being materialized at once.
+- Release finalization now queries GitHub Actions run metadata and requires
+  candidate, CI, and external evidence runs to match the repository, release
+  commit, expected workflow path, and `completed`/`success` status before any
+  artifact is downloaded.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

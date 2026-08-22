@@ -311,6 +311,15 @@ fragment fails the job and cannot become a production claim. The
 `SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256` values and require its configured
 reviewers.
 
+Before downloading those artifacts, finalization queries the GitHub Actions
+API for all three supplied run IDs. Each run must belong to the current
+repository, point at the requested release commit, use the expected workflow
+path (the API's optional `@ref` suffix is allowed; the external path is a
+required dispatch input), and be
+`completed`/`success`. Artifact contents remain independently verified after
+download; run metadata validation prevents a failed, stale, or unrelated
+workflow run from being selected by ID alone.
+
 Before staging, it independently checks the candidate tar entry contract,
 verifies the candidate checksum manifest, and compares both native checksum
 manifests, the SBOM, and the notices file byte-for-byte with the copies inside

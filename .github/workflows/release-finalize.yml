@@ -24,6 +24,10 @@ on:
         required: true
         default: secure-keypad-external-release-evidence
         type: string
+      external-evidence-workflow:
+        description: "Exact .github/workflows YAML path that produced the external evidence run"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -65,6 +69,18 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.13.0"
+      - name: Verify GitHub workflow run provenance
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          EXTERNAL_EVIDENCE_WORKFLOW: ${{ inputs.external-evidence-workflow }}
+        run: |
+          node scripts/verify-github-run-provenance.mjs \
+            "$GITHUB_REPOSITORY" "$RELEASE_REF" \
+            "$CANDIDATE_RUN_ID" ".github/workflows/release-candidate.yml" \
+            "$CI_RUN_ID" ".github/workflows/ci.yml" \
+            "$EXTERNAL_EVIDENCE_RUN_ID" "$EXTERNAL_EVIDENCE_WORKFLOW"
       - name: Download the signed candidate bundle
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

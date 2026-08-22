@@ -159,12 +159,17 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /ci-run-id:/);
   assert.match(workflow, /external-evidence-run-id:/);
   assert.match(workflow, /external-evidence-artifact:/);
+  assert.match(workflow, /external-evidence-workflow:/);
   assert.match(workflow, /actions:\s*read/);
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /actions\/download-artifact@[0-9a-f]{40}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/);
+  assert.match(workflow, /scripts\/verify-github-run-provenance\.mjs/);
+  assert.match(workflow, /"\$CANDIDATE_RUN_ID" "\.github\/workflows\/release-candidate\.yml"/);
+  assert.match(workflow, /"\$CI_RUN_ID" "\.github\/workflows\/ci\.yml"/);
+  assert.match(workflow, /"\$EXTERNAL_EVIDENCE_RUN_ID" "\$EXTERNAL_EVIDENCE_WORKFLOW"/);
   assert.match(workflow, /scripts\/check-release-bundle\.mjs/);
   assert.match(workflow, /scripts\/check-release-archive\.mjs/);
   assert.match(workflow, /sha256sum -c secure-keypad-release\.sha256/);
