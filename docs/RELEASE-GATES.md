@@ -104,7 +104,8 @@ cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 cargo install cargo-audit --locked --version 0.22.2
 cargo audit
-cargo publish --locked --workspace --all-features --dry-run
+CARGO_DRY_RUN_TARGET="$(mktemp -d "${TMPDIR:-/tmp}/secure-keypad-cargo.XXXXXX")"
+cargo publish --locked --workspace --all-features --dry-run --target-dir "$CARGO_DRY_RUN_TARGET"
 pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity

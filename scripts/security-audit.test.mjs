@@ -263,7 +263,7 @@ test("release candidate validates the unpublished workspace crate chain through 
   const releaseGates = readFileSync(new URL("../docs/RELEASE-GATES.md", import.meta.url), "utf8");
   assert.match(workflow, /cargo publish --locked --workspace --all-features --dry-run --target-dir/);
   assert.doesNotMatch(workflow, /cargo package --locked --workspace --all-features/);
-  assert.match(releaseGates, /cargo publish --locked --workspace --all-features --dry-run/);
+  assert.match(releaseGates, /cargo publish --locked --workspace --all-features --dry-run[\s\S]*?--target-dir/);
 });
 
 test("native views reject noncanonical input IDs for the selected policy", () => {
