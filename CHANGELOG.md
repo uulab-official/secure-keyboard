@@ -111,6 +111,9 @@ exact release-candidate commit by the release evidence manifest.
 - Release evidence verification now rejects non-canonical relative paths
   containing dot, empty, or parent components, preventing multiple manifest
   strings from aliasing one hashed evidence file.
+- Physical device evidence validation applies the same canonical relative-path
+  rule to logs and artifacts before their digests or categorized test bindings
+  are accepted.
 - React Native no longer exports an unwrapped native view escape hatch. All
   public usage now goes through the prop allowlist and fail-closed masked-event
   boundary; custom rendering remains available only through the explicitly

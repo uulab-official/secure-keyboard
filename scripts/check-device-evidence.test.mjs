@@ -349,6 +349,21 @@ test("rejects duplicate evidence paths before file verification", () => {
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].path") && finding.includes("unique")));
 });
 
+test("rejects non-canonical evidence paths before file verification", () => {
+  const evidence = structuredClone(VALID_NATIVE);
+  evidence.artifacts[0].path = "native/./secure-ffi.sha256";
+
+  const findings = validateDeviceEvidence(evidence);
+
+  assert.ok(
+    findings.some(
+      (finding) =>
+        finding.includes("artifacts[0].path") &&
+        finding.includes("canonical"),
+    ),
+  );
+});
+
 test("rejects oversized evidence files before reading their contents", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-device-evidence-"));
   const evidence = structuredClone(VALID_NATIVE);

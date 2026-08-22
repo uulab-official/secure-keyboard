@@ -78,7 +78,7 @@ function isSafeRelativePath(value) {
     value.length > 0 &&
     !path.isAbsolute(value) &&
     !value.includes("\\") &&
-    !value.split("/").includes("..")
+    value.split("/").every((component) => component.length > 0 && component !== "." && component !== "..")
   );
 }
 
@@ -313,7 +313,7 @@ export function validateDeviceEvidence(evidence, options = {}) {
   validateTests(evidence.testCases, evidence.platform === "web" ? WEB_TESTS : NATIVE_TESTS, findings);
   if (evidence.sanitizedLogs !== true) add(findings, "sanitizedLogs", "must be true");
   if (!isSafeRelativePath(evidence.logPath)) {
-    add(findings, "logPath", "must be a relative, non-parent path");
+    add(findings, "logPath", "must be a canonical relative path without empty, dot, or parent components");
   } else {
     if (referencedPaths.has(evidence.logPath)) {
       add(findings, "logPath", "must be unique across evidence files");
@@ -335,7 +335,11 @@ export function validateDeviceEvidence(evidence, options = {}) {
         return;
       }
       if (!isSafeRelativePath(artifact.path)) {
-        add(findings, `${artifactPath}.path`, "must be a relative, non-parent path");
+        add(
+          findings,
+          `${artifactPath}.path`,
+          "must be a canonical relative path without empty, dot, or parent components",
+        );
       } else if (referencedPaths.has(artifact.path)) {
         add(findings, `${artifactPath}.path`, "must be unique across evidence files");
       } else {
