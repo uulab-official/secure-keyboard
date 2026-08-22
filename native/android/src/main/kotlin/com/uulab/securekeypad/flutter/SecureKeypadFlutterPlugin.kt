@@ -78,7 +78,7 @@ private class SecureKeypadFlutterPlatformView(
             emit(mapOf("type" to "result", "code" to "error"))
         }
         keypad.onSubmit = { submission ->
-            if (SecureKeypadNativeSubmissionRouter.deliver(submission)) {
+            if (SecureKeypadNativeSubmissionRouter.deliver(submission, keypad)) {
                 emit(mapOf("type" to "result", "code" to "success"))
             } else {
                 submission.close()

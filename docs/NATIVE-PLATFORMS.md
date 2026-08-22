@@ -211,15 +211,17 @@ manifests. `scripts/check-native-package-parity.mjs` verifies that central
 native sources and package copies are byte-for-byte identical.
 
 Before rendering an authentication keypad, the host-native layer must install
-`SecureKeypadNativeSubmissionRouter` with a consumer. The consumer calls
-`takeOpaqueHandle()` on iOS or `takeNativeHandle()` on Android and passes that
-opaque capability to the ABI v2 native OPAQUE registration or login handoff
+`SecureKeypadNativeSubmissionRouter` with a consumer. The consumer receives
+the originating native view and submission, and must bind its account/session
+state to that exact view instance before calling `takeOpaqueHandle()` on iOS or
+`takeNativeHandle()` on Android. It then passes the opaque capability to the
+ABI v2 native OPAQUE registration or login handoff
 (`secure_keypad_client_registration_start` or
-`secure_keypad_client_login_start`). If no consumer is
-installed, submit is released and the framework receives `error`; a framework
-`success` event is emitted only when the consumer both accepts the callback and
-transfers the opaque handle with `takeOpaqueHandle()`/`takeNativeHandle()`.
-The bridge releases an unconsumed handle and the handle/callback never cross
+`secure_keypad_client_login_start`). A mutable global account context is not a
+valid binding. If no consumer is installed, submit is released and the
+framework receives `error`; a framework `success` event is emitted only when
+the consumer both accepts the callback and transfers the opaque handle. The
+bridge releases an unconsumed handle and the handle/callback never cross
 JavaScript, Dart, or JSON.
 
 React Native package paths:

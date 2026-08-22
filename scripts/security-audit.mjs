@@ -289,7 +289,7 @@ export function runSecurityAudit() {
   ];
   for (const file of nativeManagers) {
     const contents = source(file, findings);
-    requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission\)/, "framework bridge must require an installed native submission consumer");
+    requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission[\s\S]{0,80}(?:from:\s*(?:view|keypad)|,\s*(?:view|keypad))\)/, "framework bridge must bind the consumer to the originating native view");
     requireText(findings, file, contents, /submission\.close\(\)/, "framework bridge must release an unconsumed submission");
     requireText(findings, file, contents, /(?:setRendererMode|mode)/, "framework bridge must enforce an explicit renderer mode");
     requireText(findings, file, contents, /(?:headlessKeyPress|pressKey)/, "framework bridge must expose only the bounded headless key-ID command");
@@ -560,10 +560,12 @@ export function runSecurityAudit() {
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
   const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);
+  requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /typealias Consumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Bool/, "iOS submission consumers must receive the originating native view");
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");
-  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /deliverAndReport\(submission/, "Android submission routing must use the exception-safe ownership reporter");
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /deliverAndReport\(\s*submission/, "Android submission routing must use the exception-safe ownership reporter");
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /typealias SecureKeypadSubmissionConsumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Boolean/, "Android submission consumers must receive the originating native view");
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
   const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
@@ -695,6 +697,9 @@ export function runSecurityAudit() {
   const reactNativeGuide = source("packages/react-native/README.md", findings);
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Development Build/, "React Native must document Expo Development Build support");
   requireText(findings, "packages/react-native/README.md", reactNativeGuide, /Expo Go/, "React Native must document the Expo Go limitation");
+  requireText(findings, "packages/react-native/README.md", reactNativeGuide, /originating native view[\s\S]{0,260}mutable global/, "React Native must document view-bound native submission routing");
+  const flutterGuide = source("packages/flutter/README.md", findings);
+  requireText(findings, "packages/flutter/README.md", flutterGuide, /originating[\s\S]{0,80}native view[\s\S]{0,260}mutable global/, "Flutter must document view-bound native submission routing");
   const flutterContract = source("packages/flutter/lib/secure_keypad_flutter.dart", findings);
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /enum KeyRole \{[^}]*cancel/, "Flutter contract must expose an explicit cancel role");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /secureKeypadMaxRenderedLength/, "Flutter must bound masked event metadata");
@@ -901,6 +906,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /SecureKeypadPresentation\.kt/, "native platform guide must compile the Android presentation contract source");
   requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /16 rows, 32 keys per row, 512 total keys/, "native platform guide must document native layout bounds");
   requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /finite and bounded theme dimensions/, "native platform guide must document native theme bounds");
+  requireText(findings, "docs/NATIVE-PLATFORMS.md", nativePlatformsGuide, /originating native view[\s\S]{0,600}mutable global account context/, "native platform guide must require view-bound submission routing");
 
   for (const file of [
     "packages/react-native/SecureKeypadReactNative.podspec",

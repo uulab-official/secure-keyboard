@@ -110,8 +110,10 @@ The `success` result means that the native keypad created an opaque submission
 and an installed native submission consumer accepted ownership. Without a
 consumer, the bridge releases the submission and reports `error`. It is not a
 server authentication decision. A production app must install
-`SecureKeypadNativeSubmissionRouter` in native code, call
-`takeOpaqueHandle()` on the submission, and consume the handle inside a
-host-native authentication service; no handle is exposed to JavaScript.
+`SecureKeypadNativeSubmissionRouter` in native code. Its consumer receives the
+originating native view and submission; it must bind authentication state to
+that view instance, call `takeOpaqueHandle()`, and consume the handle inside a
+host-native authentication service. Do not route through a mutable global
+account context; no handle is exposed to JavaScript.
 
 The package is MIT-licensed. See the repository security specification before exposing it to an authentication flow.

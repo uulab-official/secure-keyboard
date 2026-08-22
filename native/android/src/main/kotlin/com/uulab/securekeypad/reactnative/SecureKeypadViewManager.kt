@@ -36,7 +36,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
                 emitResult(view, if (code == 4) "locked" else "error")
             }
             view.onSubmit = { submission ->
-                if (SecureKeypadNativeSubmissionRouter.deliver(submission)) {
+                if (SecureKeypadNativeSubmissionRouter.deliver(submission, view)) {
                     emitResult(view, "success")
                 } else {
                     submission.close()

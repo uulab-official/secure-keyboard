@@ -149,7 +149,8 @@ public class SecureKeypadSubmission internal constructor(internal var handle: Lo
 }
 
 /** Native-only handoff registry for framework adapters. */
-public typealias SecureKeypadSubmissionConsumer = (SecureKeypadSubmission) -> Boolean
+/** The consumer receives the originating view to bind auth state per keypad instance. */
+public typealias SecureKeypadSubmissionConsumer = (SecureKeypadView, SecureKeypadSubmission) -> Boolean
 
 public object SecureKeypadNativeSubmissionRouter {
     @Volatile
@@ -165,9 +166,13 @@ public object SecureKeypadNativeSubmissionRouter {
         consumer = null
     }
 
-    internal fun deliver(submission: SecureKeypadSubmission): Boolean {
+    internal fun deliver(submission: SecureKeypadSubmission, from: SecureKeypadView): Boolean {
         val current = consumer ?: return false
-        return deliverAndReport(submission, current, SecureKeypadSubmission::close) { it.isConsumed }
+        return deliverAndReport(
+            submission,
+            { candidate -> current(from, candidate) },
+            SecureKeypadSubmission::close,
+        ) { it.isConsumed }
     }
 }
 

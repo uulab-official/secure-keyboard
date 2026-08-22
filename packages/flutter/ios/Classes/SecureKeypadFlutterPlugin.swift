@@ -84,7 +84,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             self?.emit(["type": "result", "code": "error"])
         }
         keypad.onSubmit = { [weak self] submission in
-            if SecureKeypadNativeSubmissionRouter.deliver(submission) {
+            if SecureKeypadNativeSubmissionRouter.deliver(submission, from: keypad) {
                 self?.emit(["type": "result", "code": "success"])
             } else {
                 submission.close()

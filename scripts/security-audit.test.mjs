@@ -193,6 +193,30 @@ test("native keypad sources reject clipboard APIs as a secret channel", () => {
   assert.deepEqual(findNativeClipboardMismatches("class SecureKeypadView", "android"), []);
 });
 
+test("opaque submission routing binds the consumer contract to the originating native view", () => {
+  const iosView = readFileSync(new URL("../native/ios/SecureKeypadView.swift", import.meta.url), "utf8");
+  const iosManager = readFileSync(
+    new URL("../native/ios/react-native/SecureKeypadViewManager.swift", import.meta.url),
+    "utf8",
+  );
+  assert.match(iosView, /typealias Consumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Bool/);
+  assert.match(iosView, /deliver\(_ submission: SecureKeypadSubmission, from view: SecureKeypadView\)/);
+  assert.match(iosManager, /guard let view = self else \{\s*submission\.close\(\)\s*return\s*\}/);
+  assert.match(iosManager, /deliver\(submission, from: view\)/);
+
+  const androidView = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
+    "utf8",
+  );
+  const androidManager = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(androidView, /typealias SecureKeypadSubmissionConsumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Boolean/);
+  assert.match(androidView, /deliver\(submission: SecureKeypadSubmission, from: SecureKeypadView\)/);
+  assert.match(androidManager, /deliver\(submission, view\)/);
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

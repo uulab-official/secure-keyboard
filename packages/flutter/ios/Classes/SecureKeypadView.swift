@@ -168,7 +168,10 @@ public final class SecureKeypadSubmission {
 /// JavaScript or Dart. If no consumer is installed, framework bridges must
 /// release the submission instead of reporting a false success.
 public enum SecureKeypadNativeSubmissionRouter {
-    public typealias Consumer = (SecureKeypadSubmission) -> Bool
+    /// The consumer receives the originating native view so an application can
+    /// bind authentication state to one keypad instance instead of a global
+    /// mutable account context.
+    public typealias Consumer = (SecureKeypadView, SecureKeypadSubmission) -> Bool
 
     private static let lock = NSLock()
     private static var consumer: Consumer?
@@ -187,12 +190,12 @@ public enum SecureKeypadNativeSubmissionRouter {
         lock.unlock()
     }
 
-    static func deliver(_ submission: SecureKeypadSubmission) -> Bool {
+    static func deliver(_ submission: SecureKeypadSubmission, from view: SecureKeypadView) -> Bool {
         lock.lock()
         let current = consumer
         lock.unlock()
         guard let current else { return false }
-        return current(submission) && submission.isConsumed
+        return current(view, submission) && submission.isConsumed
     }
 }
 

@@ -41,11 +41,15 @@ final class SecureKeypadReactView: SecureKeypadView {
             self?.onResult?(["type": "result", "code": "error"])
         }
         onSubmit = { [weak self] submission in
-            if SecureKeypadNativeSubmissionRouter.deliver(submission) {
-                self?.onResult?(["type": "result", "code": "success"])
+            guard let view = self else {
+                submission.close()
+                return
+            }
+            if SecureKeypadNativeSubmissionRouter.deliver(submission, from: view) {
+                view.onResult?(["type": "result", "code": "success"])
             } else {
                 submission.close()
-                self?.onResult?(["type": "result", "code": "error"])
+                view.onResult?(["type": "result", "code": "error"])
             }
         }
     }

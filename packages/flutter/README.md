@@ -23,9 +23,11 @@ the native keypad created an opaque submission and an installed native
 submission consumer accepted ownership. Without a consumer, the plugin
 releases the submission and emits `error`; it is not a server authentication
 decision. Host-native authentication must install
-`SecureKeypadNativeSubmissionRouter`, call `takeOpaqueHandle()` on iOS or
-`takeNativeHandle()` on Android, and consume the handle out-of-band. No handle
-is exposed to Dart. If the Dart listener is temporarily unavailable, each
+`SecureKeypadNativeSubmissionRouter`. Its consumer receives the originating
+native view and submission; it must bind authentication state to that view
+instance, call `takeOpaqueHandle()` on iOS or `takeNativeHandle()` on Android,
+and consume the handle out-of-band. Do not route through a mutable global
+account context. No handle is exposed to Dart. If the Dart listener is temporarily unavailable, each
 native event bridge retains a bounded backlog of 32 public events, coalesces
 adjacent masked-state updates, and evicts state before terminal result events.
 The backlog is cleared when the native view is disposed.
