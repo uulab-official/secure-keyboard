@@ -30,11 +30,13 @@ jobs:
           path: candidate
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: verifier
           ref: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
           fetch-depth: 1
+          persist-credentials: false
       - name: Require immutable release identity and a mounted lab evidence root
         run: |
           test -n "$RELEASE_REF"

@@ -39,4 +39,5 @@ test("protected reviewer material is used only by a separately pinned verifier c
   assert.match(WORKFLOW, /verifier\/scripts\/validate-external-release-evidence\.mjs/);
   assert.doesNotMatch(WORKFLOW, /node scripts\/validate-external-release-evidence\.mjs/);
   assert.match(WORKFLOW, /git -C verifier rev-parse HEAD/);
+  assert.equal((WORKFLOW.match(/persist-credentials:\s*false/g) ?? []).length, 2);
 });

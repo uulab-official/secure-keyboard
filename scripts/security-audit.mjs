@@ -1245,6 +1245,13 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /git -C verifier rev-parse HEAD\)"\s*=\s*"\$TRUSTED_VERIFIER_REF/, "external evidence must prove the trusted verifier checkout identity");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /verifier\/scripts\/validate-external-release-evidence\.mjs/, "external evidence must execute the separately checked-out verifier");
   forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /node scripts\/validate-external-release-evidence\.mjs/, "external evidence must not execute validator code from the candidate checkout");
+  if ((externalEvidenceWorkflow.match(/persist-credentials:\s*false/g) ?? []).length !== 2) {
+    findings.push({
+      rule: "external-evidence-checkout-credentials",
+      file: ".github/workflows/external-release-evidence.yml",
+      detail: "candidate and trusted verifier checkouts must not persist GitHub credentials",
+    });
+  }
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /SECURE_KEYPAD_EXTERNAL_EVIDENCE_ROOT/, "external evidence must come from the configured lab evidence root");
   requireText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /secrets\.SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "external evidence must use the protected reviewer fingerprint secret");
   forbidText(findings, ".github/workflows/external-release-evidence.yml", externalEvidenceWorkflow, /inputs\.reviewer-public-key-sha256/, "external evidence must not accept a reviewer fingerprint from an untrusted dispatch input");
