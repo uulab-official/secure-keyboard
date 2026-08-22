@@ -16,6 +16,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: React Native iOS now recreates a session when lifecycle protection or
   native validation has released it even if the public configuration fingerprint
   is unchanged.
+- Security: React Native Android now requests fail-closed session recreation
+  from retained public configuration after window-focus zeroization, using a
+  callback that carries no input state.
 
 ### Server adapters
 

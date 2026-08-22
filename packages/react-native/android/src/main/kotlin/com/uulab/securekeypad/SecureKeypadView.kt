@@ -187,6 +187,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
     private var sessionHandle: Long = 0L
+    internal var onSessionNeedsReconfiguration: (() -> Unit)? = null
     private val display: TextView
     private val keypad: LinearLayout
     private val rootContainer: LinearLayout
@@ -211,6 +212,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         onSubmit = null
         onError = null
         onMaskedStateChanged = null
+        onSessionNeedsReconfiguration = null
     }
 
     init {
@@ -385,6 +387,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         super.onWindowFocusChanged(hasWindowFocus)
         if (hasWindowFocus) {
             requireSecureWindow()
+            if (sessionHandle == 0L) onSessionNeedsReconfiguration?.invoke()
         } else {
             zeroizeSessionForLifecycleLoss()
         }

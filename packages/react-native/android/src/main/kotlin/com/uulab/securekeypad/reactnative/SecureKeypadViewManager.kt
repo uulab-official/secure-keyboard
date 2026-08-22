@@ -17,6 +17,7 @@ import com.uulab.securekeypad.SecureKeypadBridgeConfigParser
 import com.uulab.securekeypad.SecureKeypadNativeSubmissionRouter
 import com.uulab.securekeypad.SecureKeypadView
 import kotlin.math.floor
+import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
 /** React Native manager that transports public configuration and masked events only. */
@@ -29,6 +30,14 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     override fun createViewInstance(reactContext: ThemedReactContext): SecureKeypadView {
         return SecureKeypadView(reactContext).also { view ->
+            val weakView = WeakReference(view)
+            view.onSessionNeedsReconfiguration = {
+                val currentView = weakView.get()
+                val layout = currentView?.let { pendingConfigurations[it]?.get("layout") }
+                if (currentView != null && layout != null) {
+                    setConfigurationValue(currentView, "layout", layout)
+                }
+            }
             view.onMaskedStateChanged = { length, displayState ->
                 emitState(view, length, displayState)
                 if (displayState == 3) emitResult(view, "cancelled")
@@ -99,6 +108,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     override fun onDropViewInstance(view: SecureKeypadView) {
         pendingConfigurations.remove(view)
         configuredViews.remove(view)
+        view.onSessionNeedsReconfiguration = null
         view.clearBridgeCallbacks()
         view.releaseSession()
         super.onDropViewInstance(view)

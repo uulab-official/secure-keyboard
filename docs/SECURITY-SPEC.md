@@ -73,6 +73,9 @@ If iOS lifecycle protection has released the native session while public props
 remain unchanged, the manager must detect the missing session and recreate it
 from the same validated public configuration; a matching configuration
 fingerprint alone is not proof that a session is live.
+On Android, after window-focus protection has zeroized the session, the native
+view must request the RN manager to reapply the retained public configuration on
+focus regain; the lifecycle callback must not carry input or any secret state.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 

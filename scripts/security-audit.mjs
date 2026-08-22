@@ -451,6 +451,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /require\(key in allowedKeys\)/, "RN Android must reject unknown keys before reading bridge values");
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_NODES/, "RN Android public bridge conversion must bound aggregate nodes");
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_STRING_LENGTH/, "RN Android public bridge conversion must bound string values");
+    requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}setConfigurationValue\(currentView, "layout"/, "RN Android must restore a lost native session from retained public configuration");
+    requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = null/, "RN Android must clear the lifecycle callback during teardown");
   }
   for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
@@ -503,6 +505,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
+    requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
+    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
     requireText(findings, file, contents, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");

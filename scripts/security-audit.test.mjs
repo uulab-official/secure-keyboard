@@ -150,6 +150,29 @@ test("React Native iOS recreates a session after native lifecycle loss", () => {
   }
 });
 
+test("React Native Android recreates a session after window lifecycle loss", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/);
+    assert.match(
+      source,
+      /if \(hasWindowFocus\) \{[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,240}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}setConfigurationValue\(currentView, "layout"/);
+    assert.match(source, /view\.onSessionNeedsReconfiguration = null/);
+  }
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
