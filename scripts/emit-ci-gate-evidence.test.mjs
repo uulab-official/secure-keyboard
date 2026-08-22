@@ -192,3 +192,10 @@ test("CI aggregate retains runtime screenshots, fuzz logs, and dependency eviden
   }
   assert.match(aggregate, /path: \$\{\{ runner\.temp \}\}\/secure-keypad-ci-release-evidence\/retained/);
 });
+
+test("CI aggregate reuses the fuzz gate artifact without emitting a duplicate fuzz gate", () => {
+  const aggregate = CI_WORKFLOW.slice(CI_WORKFLOW.indexOf("  ci-release-evidence:\n"));
+  assert.match(aggregate, /name: secure-keypad-ci-gate-fuzz/);
+  assert.match(aggregate, /path: \$\{\{ runner\.temp \}\}\/secure-keypad-ci-release-evidence/);
+  assert.doesNotMatch(aggregate, /fuzz-stability-aggregate\.json/);
+});

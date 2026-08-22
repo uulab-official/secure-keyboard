@@ -1307,9 +1307,6 @@ jobs:
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" durable-backends \
             "ci/durable-backends-aggregate.json" "fragments/durable-backends-aggregate.json" \
             --runner ci-aggregate --check job-durable-backends
-          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" fuzz-stability \
-            "ci/fuzz-stability-aggregate.json" "fragments/fuzz-stability-aggregate.json" \
-            --runner ci-aggregate --check job-fuzz
       - name: Emit web browser CI release evidence
         run: |
           EVIDENCE_ROOT="$RUNNER_TEMP/secure-keypad-ci-release-evidence"
