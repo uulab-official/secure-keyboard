@@ -950,6 +950,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await reader\.cancel()/, "Node server adapter must cancel an oversized request stream");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.csrfValidated\(request\)[\s\S]{0,1800}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /rateLimitDecision\?:/, "Node server adapter must expose a pre-buffering rate-limit admission callback");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function isReady\(context: NodeDeploymentContext\)[\s\S]{0,700}\btry\s*\{[\s\S]{0,700}\}\s*catch\s*\{/, "Node server deployment context validation must fail closed when accessors throw");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /options\.rateLimitDecision === undefined/, "Node server adapter must fail closed when rate-limit admission is not configured");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.rateLimitDecision\(request\)[\s\S]{0,700}readBoundedBody/, "Node server adapter must resolve rate-limit admission before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /transport === \"direct-tls\" \|\| context\.transport === \"trusted-proxy-tls\"/, "Node server adapter must require explicit TLS deployment facts");

@@ -94,6 +94,39 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("fails closed when deployment context accessors throw hostile errors", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const hostileContext = new Proxy(
+      {},
+      {
+        get: () => {
+          throw hostileError;
+        },
+      },
+    ) as NodeDeploymentContext;
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: hostileContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
+
+    const response = await handler(request("{}"));
+
+    expect(response.status).toBe(400);
+    await expect(response.text()).resolves.not.toContain(secret);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
   it("fails closed before reading a body when transport is not ready", async () => {
     const delegate = vi.fn();
     const handler = createOpaqueHandler({

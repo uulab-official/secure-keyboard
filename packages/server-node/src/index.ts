@@ -143,13 +143,17 @@ function genericResponse(
 }
 
 function isReady(context: NodeDeploymentContext): boolean {
-  return (
-    (context.transport === "direct-tls" || context.transport === "trusted-proxy-tls") &&
-    Number.isSafeInteger(context.upstreamBodyLimitBytes) &&
-    context.upstreamBodyLimitBytes > 0 &&
-    context.upstreamBodyLimitBytes <= MAX_HTTP_BODY_BYTES &&
-    context.connectionLimitsEnforced
-  );
+  try {
+    return (
+      (context.transport === "direct-tls" || context.transport === "trusted-proxy-tls") &&
+      Number.isSafeInteger(context.upstreamBodyLimitBytes) &&
+      context.upstreamBodyLimitBytes > 0 &&
+      context.upstreamBodyLimitBytes <= MAX_HTTP_BODY_BYTES &&
+      context.connectionLimitsEnforced
+    );
+  } catch {
+    return false;
+  }
 }
 
 function routePath(request: Request): (typeof OPAQUE_ROUTE_PATHS)[number] | undefined {

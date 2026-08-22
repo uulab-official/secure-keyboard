@@ -55,6 +55,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: the Node transport now normalizes hostile request body-reader
   exceptions without allowing proxy-thrown values to escape its generic error
   boundary.
+- Security: Node deployment-context validation now fails closed when a host
+  configuration accessor throws an unexpected value.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
