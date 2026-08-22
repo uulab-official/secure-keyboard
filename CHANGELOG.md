@@ -38,6 +38,9 @@ exact release-candidate commit by the release evidence manifest.
 - Release evidence, merged manifests, and detached signing outputs now use
   exclusive file creation so a pre-existing path or symlink cannot be replaced
   during release assembly.
+- Final release evidence verification now rejects symlinked gate, artifact,
+  signature, and nested device paths even when their targets stay inside the
+  evidence root.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

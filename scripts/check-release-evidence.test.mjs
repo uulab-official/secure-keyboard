@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, truncateSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  truncateSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -514,6 +522,22 @@ test("verifies every referenced release evidence and artifact digest", () => {
   writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("tampered", "utf8"));
   const findings = verifyReleaseEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
+});
+
+test("rejects symlinked evidence artifacts even when the target stays inside the evidence root", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-symlinked-release-artifact-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const artifact = evidence.artifacts.find(({ kind }) => kind === "native-checksum");
+  const artifactPath = join(root, artifact.path);
+  const targetPath = join(root, "artifacts/native-checksum-target.sha256");
+
+  writeFileSync(targetPath, readFileSync(artifactPath));
+  rmSync(artifactPath);
+  symlinkSync("native-checksum-target.sha256", artifactPath);
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(findings.some((finding) => finding.includes("artifacts[") && finding.includes("symbolic link")));
 });
 
 test("rejects empty release artifacts before accepting their digest", () => {

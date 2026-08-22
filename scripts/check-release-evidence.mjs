@@ -380,7 +380,16 @@ function containedFilePath(findings, root, field, relativePath) {
   if (!isSafeRelativePath(relativePath)) return undefined;
   try {
     const realRoot = realpathSync(root);
-    const realFile = realpathSync(path.resolve(realRoot, relativePath));
+    const absoluteFile = path.resolve(realRoot, relativePath);
+    let cursor = absoluteFile;
+    while (cursor !== realRoot && cursor.startsWith(`${realRoot}${path.sep}`)) {
+      if (lstatSync(cursor).isSymbolicLink()) {
+        add(findings, `${field}.path`, "must not resolve through symbolic links");
+        return undefined;
+      }
+      cursor = path.dirname(cursor);
+    }
+    const realFile = realpathSync(absoluteFile);
     const relative = path.relative(realRoot, realFile);
     if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
       add(findings, `${field}.path`, "must resolve inside the evidence root");

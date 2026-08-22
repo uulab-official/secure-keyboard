@@ -1091,6 +1091,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/, "release evidence must support a protected reviewer-key fingerprint");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /requireTrustedKeys/, "release evidence must fail closed when trusted-key mode is requested");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /verifyReleaseEvidenceFiles/, "release tooling must verify referenced evidence file digests");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /lstatSync\(cursor\)/, "release evidence must reject symlinked referenced files");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /must not resolve through symbolic links/, "release evidence must fail closed on symlink traversal");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedFile/, "release tooling must bound referenced evidence reads before hashing or signature verification");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /MAX_RELEASE_ARTIFACT_BYTES/, "release tooling must bound release artifact materialization");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /ED25519_SIGNATURE_BYTES/, "release tooling must bound detached signature materialization");

@@ -166,7 +166,9 @@ node scripts/check-release-evidence.mjs --require-trusted-keys \
 
 The merger requires one exact commit, package version, and toolchain set,
 rejects duplicate gate names, artifact kinds, and referenced paths, refuses
-symlink escapes, and fails if the resulting manifest is incomplete. It never
+all symlink traversal for referenced evidence and artifact files (including
+symlinks whose targets remain inside the evidence root), and fails if the
+resulting manifest is incomplete. It never
 turns a skipped or missing fragment into a passing gate.
 
 The final verifier bounds the top-level manifest and every referenced file
