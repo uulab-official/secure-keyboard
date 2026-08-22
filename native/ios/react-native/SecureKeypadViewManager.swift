@@ -71,6 +71,7 @@ final class SecureKeypadReactView: SecureKeypadView {
             releaseSession()
             return
         }
+        let isInitialConfiguration = configuredFingerprint == nil
         var config: [String: Any] = [
             "layout": layout,
             "theme": theme,
@@ -80,7 +81,9 @@ final class SecureKeypadReactView: SecureKeypadView {
             "maxTokens": maxTokens,
             "timeoutMs": timeoutMs,
         ]
-        if forceHeadlessCommand, let headlessKeyPress { config["headlessKeyPress"] = headlessKeyPress }
+        if (forceHeadlessCommand || isInitialConfiguration), let headlessKeyPress {
+            config["headlessKeyPress"] = headlessKeyPress
+        }
         let configDictionary = config as NSDictionary
         let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
         if fingerprint == configuredFingerprint && hasActiveSession {

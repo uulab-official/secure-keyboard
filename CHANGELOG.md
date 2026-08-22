@@ -30,7 +30,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: direct Android and iOS native views now bound optional public test
   IDs to the same canonical key-ID grammar before creating framework UI.
 - Security: React Native Headless Host commands now reach the existing native
-  session without reinitializing or replaying the public command.
+  session without reinitializing or replaying the public command, while a
+  command received before initial configuration is applied once at startup.
 
 ### Server adapters
 

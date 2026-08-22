@@ -462,6 +462,20 @@ export function runSecurityAudit() {
       /onSessionNeedsReconfiguration = \{ \[weak self\] in self\?\.configureIfReady\(\) \}/,
       "React Native iOS must receive a native lifecycle reconfiguration callback",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /let isInitialConfiguration = configuredFingerprint == nil/,
+      "React Native iOS must distinguish initial configuration from lifecycle restoration",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /if \(forceHeadlessCommand \|\| isInitialConfiguration\), let headlessKeyPress/,
+      "React Native iOS must apply pending headless commands only initially or on explicit dispatch",
+    );
   }
   for (const file of [
     "native/ios/SecureKeypadView.swift",

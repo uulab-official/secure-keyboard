@@ -252,6 +252,8 @@ test("all framework adapters restore lifecycle-lost sessions without replaying h
   ]) {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(source, /onSessionNeedsReconfiguration = \{ \[weak self\] in self\?\.configureIfReady\(\) \}/);
+    assert.match(source, /let isInitialConfiguration = configuredFingerprint == nil/);
+    assert.match(source, /if \(forceHeadlessCommand \|\| isInitialConfiguration\), let headlessKeyPress/);
   }
 
   for (const relativePath of [
