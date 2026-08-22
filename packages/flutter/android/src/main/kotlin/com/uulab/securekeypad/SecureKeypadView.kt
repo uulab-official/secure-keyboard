@@ -206,6 +206,13 @@ public open class SecureKeypadView @JvmOverloads constructor(
     /** Called with a stable non-secret native error code. */
     public var onError: ((code: Int) -> Unit)? = null
 
+    /** Detaches framework callbacks so adapter teardown cannot retain this view. */
+    internal fun clearBridgeCallbacks() {
+        onSubmit = null
+        onError = null
+        onMaskedStateChanged = null
+    }
+
     init {
         check(SecureKeypadNative.isAbiCompatible()) { "secure keypad native ABI mismatch" }
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS

@@ -289,11 +289,37 @@ export function runSecurityAudit() {
   ];
   for (const file of nativeManagers) {
     const contents = source(file, findings);
-    requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission[\s\S]{0,80}(?:from:\s*(?:view|keypad)|,\s*(?:view|keypad))\)/, "framework bridge must bind the consumer to the originating native view");
+    requireText(findings, file, contents, /SecureKeypadNativeSubmissionRouter\.deliver\(submission[\s\S]{0,80}(?:from:\s*(?:view|keypad|nativeKeypad)|,\s*(?:view|keypad))\)/, "framework bridge must bind the consumer to the originating native view");
     requireText(findings, file, contents, /submission\.close\(\)/, "framework bridge must release an unconsumed submission");
     requireText(findings, file, contents, /(?:setRendererMode|mode)/, "framework bridge must enforce an explicit renderer mode");
     requireText(findings, file, contents, /(?:headlessKeyPress|pressKey)/, "framework bridge must expose only the bounded headless key-ID command");
     forbidText(findings, file, contents, /submission\.close\(\)[\s\S]{0,100}(?:code.*success|success.*code)/, "framework bridge must not report success after unconditional release");
+  }
+
+  for (const file of [
+    "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /\[weak self, weak nativeKeypad\]/, "iOS Flutter teardown must not retain the native keypad through the submission callback");
+    requireText(findings, file, contents, /guard let nativeKeypad else/, "iOS Flutter submission must fail closed when the native view is gone");
+  }
+  for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /internal fun clearBridgeCallbacks\(\)/, "Android native views must expose callback teardown without touching secret state");
+  }
+  for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /(?:view|keypad)\.clearBridgeCallbacks\(\)/, "Android framework teardown must break callback ownership before releasing the native session");
   }
 
   for (const file of [
@@ -561,6 +587,7 @@ export function runSecurityAudit() {
 
   const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /typealias Consumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Bool/, "iOS submission consumers must receive the originating native view");
+  requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /public func clearBridgeCallbacks\(\)/, "iOS native views must expose callback teardown without touching secret state");
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");

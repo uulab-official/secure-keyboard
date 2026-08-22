@@ -234,6 +234,13 @@ public class SecureKeypadView: UIView {
     /// Called with masked length and non-secret display state only.
     public var onMaskedStateChanged: ((UInt32, UInt32) -> Void)?
 
+    /// Detaches framework callbacks so adapter teardown cannot retain this view.
+    public func clearBridgeCallbacks() {
+        onSubmit = nil
+        onError = nil
+        onMaskedStateChanged = nil
+    }
+
     public override init(frame: CGRect) {
         super.init(frame: frame)
         installViews()

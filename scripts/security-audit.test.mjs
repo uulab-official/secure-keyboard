@@ -217,6 +217,33 @@ test("opaque submission routing binds the consumer contract to the originating n
   assert.match(androidManager, /deliver\(submission, view\)/);
 });
 
+test("native adapter teardown breaks callback ownership cycles", () => {
+  const iosFlutter = readFileSync(
+    new URL("../native/ios/flutter/SecureKeypadFlutterPlugin.swift", import.meta.url),
+    "utf8",
+  );
+  assert.match(iosFlutter, /\[weak self, weak nativeKeypad\]/);
+  assert.match(iosFlutter, /guard let nativeKeypad else \{\s*submission\.close\(\)\s*return\s*\}/);
+
+  const androidView = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(androidView, /internal fun clearBridgeCallbacks\(\)/);
+
+  const androidReactNative = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(androidReactNative, /view\.clearBridgeCallbacks\(\)/);
+
+  const androidFlutter = readFileSync(
+    new URL("../native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(androidFlutter, /keypad\.clearBridgeCallbacks\(\)/);
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

@@ -123,6 +123,7 @@ private class SecureKeypadFlutterPlatformView(
     override fun dispose() {
         eventChannel.setStreamHandler(null)
         controlChannel.setMethodCallHandler(null)
+        keypad.clearBridgeCallbacks()
         keypad.releaseSession()
         eventSink = null
         pendingEvents.clear()

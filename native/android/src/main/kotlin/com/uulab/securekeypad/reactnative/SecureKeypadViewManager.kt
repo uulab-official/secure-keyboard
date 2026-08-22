@@ -97,6 +97,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     override fun onDropViewInstance(view: SecureKeypadView) {
         pendingConfigurations.remove(view)
+        view.clearBridgeCallbacks()
         view.releaseSession()
         super.onDropViewInstance(view)
     }

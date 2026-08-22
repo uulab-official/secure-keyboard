@@ -224,6 +224,12 @@ the consumer both accepts the callback and transfers the opaque handle. The
 bridge releases an unconsumed handle and the handle/callback never cross
 JavaScript, Dart, or JSON.
 
+Adapter teardown must detach framework callbacks before releasing the native
+session so a callback cannot retain a disposed view or its host event bridge.
+The Android adapters use `clearBridgeCallbacks()` before `releaseSession()`;
+the iOS Flutter adapter weakly captures the native keypad and closes a
+submission if that view has already gone away.
+
 React Native package paths:
 
 - `packages/react-native/ios` contains the UIKit view manager and FFI module.

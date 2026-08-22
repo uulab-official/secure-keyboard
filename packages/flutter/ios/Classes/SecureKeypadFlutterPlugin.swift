@@ -83,8 +83,13 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         keypad.onError = { [weak self] _ in
             self?.emit(["type": "result", "code": "error"])
         }
-        keypad.onSubmit = { [weak self] submission in
-            if SecureKeypadNativeSubmissionRouter.deliver(submission, from: keypad) {
+        let nativeKeypad = keypad
+        keypad.onSubmit = { [weak self, weak nativeKeypad] submission in
+            guard let nativeKeypad else {
+                submission.close()
+                return
+            }
+            if SecureKeypadNativeSubmissionRouter.deliver(submission, from: nativeKeypad) {
                 self?.emit(["type": "result", "code": "success"])
             } else {
                 submission.close()
@@ -200,6 +205,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
     deinit {
         eventChannel.setStreamHandler(nil)
         controlChannel.setMethodCallHandler(nil)
+        keypad.clearBridgeCallbacks()
         keypad.releaseSession()
     }
 
