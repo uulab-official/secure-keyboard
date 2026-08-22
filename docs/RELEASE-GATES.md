@@ -23,10 +23,13 @@ Before the source tree is archived, the workflow runs
 requires the candidate-only metadata, lockfiles, threat-model and deployment
 policy documents, public README and security policy, security changelog, SPDX SBOM, third-party notices, all publishable npm
 tarballs (including their license files), and every workspace crate archive.
-It also rejects malformed archives, symlinks, and private signing material in
+It also rejects malformed archives, symlinks, non-regular filesystem entries,
+and private signing material in
 the staging directory. This proves the input to the deterministic archive is
 complete; it does not replace the protected signing step or external release
 evidence.
+The staging scan also rejects every non-regular filesystem entry, including
+FIFOs, device nodes, sockets, and symlinks, before the archive is created.
 
 The release job builds the iOS FFI XCFramework and device static library on the
 pinned macOS runner, publishes them through a checksum-verified workflow

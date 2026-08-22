@@ -83,7 +83,9 @@ function listFiles(root, relativePath = "") {
     } else if (entry.isDirectory()) {
       files.push(...listFiles(root, child));
     } else if (entry.isFile()) {
-      files.push({ relativePath: child, symlink: false });
+      files.push({ relativePath: child, regular: true, symlink: false });
+    } else {
+      files.push({ relativePath: child, regular: false, symlink: false });
     }
   }
   return files;
@@ -282,6 +284,9 @@ export function checkReleaseStaging(root) {
   for (const file of listFiles(root)) {
     if (file.symlink) {
       findings.push(`${file.relativePath}: symlinks are not allowed in release staging`);
+    }
+    if (!file.regular && !file.symlink) {
+      findings.push(`${file.relativePath}: only regular files are allowed in release staging`);
     }
     if (/(?:private|signing[-_]?key)|\.pem$/i.test(file.relativePath)) {
       findings.push(`${file.relativePath}: private signing material must never enter release staging`);

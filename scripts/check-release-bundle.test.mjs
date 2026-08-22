@@ -211,6 +211,19 @@ test("release staging rejects publishable packages without native FFI artifacts"
   }
 });
 
+test("release staging rejects non-regular filesystem entries", () => {
+  const root = createValidStaging();
+  const fifoPath = path.join(root, "source/unexpected.pipe");
+  try {
+    execFileSync("mkfifo", [fifoPath]);
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/unexpected.pipe")));
+    assert.ok(findings.some((finding) => finding.includes("regular files")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),

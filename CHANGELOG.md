@@ -44,6 +44,10 @@ exact release-candidate commit by the release evidence manifest.
 - Increased the CI fuzz job budget to 60 minutes so the four extended
   campaigns and four Linux LeakSanitizer campaigns are not cut off by the
   workflow timeout.
+- Release staging now rejects FIFO, device, socket, and other non-regular
+  filesystem entries instead of silently omitting them from the scan.
+- Signed archive inspection now independently rejects non-regular tar entry
+  types, including hard links and special filesystem nodes.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

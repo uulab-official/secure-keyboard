@@ -74,6 +74,28 @@ test("signed release archive rejects symbolic links even when required paths are
   }
 });
 
+test("signed release archive rejects non-regular filesystem entries", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "secure-keypad-release-archive-special-"));
+  const stage = path.join(root, "stage");
+  const archive = path.join(root, "secure-keypad-release.tar.gz");
+  try {
+    for (const entry of REQUIRED_ENTRIES) {
+      const absolutePath = path.join(stage, entry);
+      mkdirSync(path.dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, "fixture\n");
+    }
+    const fifoPath = path.join(stage, "source/unexpected.pipe");
+    execFileSync("mkfifo", [fifoPath]);
+    execFileSync("tar", ["-czf", archive, "-C", stage, "source", "packages"]);
+
+    const findings = checkReleaseArchive(archive);
+
+    assert.ok(findings.some((finding) => finding.includes("regular files and directories")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("signed release archive rejects a source-only archive", () => {
   const findings = validateReleaseArchiveEntries([
     "source/release-candidate-metadata.json",

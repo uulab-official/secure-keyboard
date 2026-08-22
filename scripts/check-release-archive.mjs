@@ -102,8 +102,15 @@ export function checkReleaseArchive(archivePath) {
       .map(normalizeEntry)
       .filter(Boolean);
     const findings = [];
-    if (verboseListing.split("\n").some((line) => line.startsWith("l"))) {
+    const listingTypes = verboseListing
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => line[0]);
+    if (listingTypes.includes("l")) {
       findings.push("signed release archive must not contain symbolic links");
+    }
+    if (listingTypes.some((type) => type !== "-" && type !== "d")) {
+      findings.push("signed release archive must contain only regular files and directories");
     }
     return [...new Set([...findings, ...validateReleaseArchiveEntries(entries)])];
   } catch (error) {
