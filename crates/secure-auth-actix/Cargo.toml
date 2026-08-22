@@ -10,11 +10,14 @@ rust-version.workspace = true
 
 [features]
 default = []
+webauthn = ["dep:secure-webauthn-example", "dep:uuid"]
 
 [dependencies]
 actix-web = { version = "=4.11.0", default-features = false, features = ["macros"] }
 secure-auth-http = { path = "../secure-auth-http", version = "0.1.0" }
 secure-auth-server = { path = "../secure-auth-server", version = "0.1.0" }
+secure-webauthn-example = { path = "../secure-webauthn-example", version = "0.1.0", optional = true }
+uuid = { version = "1.16.0", features = ["v4"], optional = true }
 
 [dev-dependencies]
 secure-auth = { path = "../secure-auth", version = "0.1.0" }

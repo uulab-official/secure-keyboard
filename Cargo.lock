@@ -2186,6 +2186,8 @@ dependencies = [
  "secure-auth",
  "secure-auth-http",
  "secure-auth-server",
+ "secure-webauthn-example",
+ "uuid",
 ]
 
 [[package]]

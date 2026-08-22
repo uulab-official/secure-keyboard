@@ -16,3 +16,16 @@ errors and security headers, and never parses forwarded transport headers.
 TLS termination, proxy source validation, connection/read limits, rate limits,
 credential persistence, and session issuance remain host responsibilities.
 The crate is an adapter contract rather than a complete server binary.
+
+Enable `webauthn` for the passkey routes. The principal resolver receives only
+Actix request metadata and must resolve the account from the host session; it
+must not trust a browser-supplied JSON principal:
+
+```rust,no_run
+let app = actix_web::App::new().service(secure_auth_actix::webauthn_router(
+    std::sync::Arc::new(webauthn_service),
+    secure_webauthn_example::WebAuthnDeploymentContext::trusted_proxy_tls(),
+    |request| host_session_principal(request),
+    |request| host_csrf_is_valid(request),
+));
+```

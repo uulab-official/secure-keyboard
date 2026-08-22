@@ -11,7 +11,9 @@ exact release-candidate commit by the release evidence manifest.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
-  proxy validation, rate limits, sessions, and durable stores to the host.
+  proxy validation, rate limits, sessions, and durable stores to the host. Its
+  optional `webauthn` feature provides the same body-free host-principal and
+  bounded passkey route boundary.
 
 ### Security
 

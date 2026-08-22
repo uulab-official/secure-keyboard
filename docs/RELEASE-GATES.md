@@ -51,7 +51,7 @@ cargo test --locked --workspace --all-features
 cargo test --locked -p secure-webauthn-example
 cargo test --locked -p secure-webauthn-example --test storage_contract
 cargo test --locked -p secure-auth-axum --all-features
-cargo test --locked -p secure-auth-actix
+cargo test --locked -p secure-auth-actix --all-features
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 cargo install cargo-audit --locked --version 0.22.2

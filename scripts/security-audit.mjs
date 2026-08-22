@@ -210,6 +210,8 @@ export function runSecurityAudit() {
   const actixAdapter = source("crates/secure-auth-actix/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /csrf:\s*Arc</, "Actix adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actixAdapter, /if !\(state\.csrf\)\(&request\)/, "Actix adapters must reject failed CSRF validation before body buffering");
+  const actixManifest = source("crates/secure-auth-actix/Cargo.toml", findings);
+  requireText(findings, "crates/secure-auth-actix/Cargo.toml", actixManifest, /webauthn\s*=\s*\["dep:secure-webauthn-example",\s*"dep:uuid"\]/, "Actix WebAuthn support must remain explicitly feature-gated");
   const webauthnDebug = source("crates/secure-webauthn-example/src/lib.rs", findings);
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /impl core::fmt::Debug for CeremonyStart/, "WebAuthn ceremony Debug must be manually redacted");
   requireText(findings, "crates/secure-webauthn-example/src/lib.rs", webauthnDebug, /field\("handle_len", &self\.handle\.len\(\)\)/, "WebAuthn ceremony Debug may expose handle length only");
@@ -639,6 +641,10 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /state\.router\.handle\(/, "Actix adapter must delegate to the framework-neutral route contract");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /RESPONSE_SECURITY_HEADERS/, "Actix adapter must preserve static response security headers");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /Fn\(&HttpRequest\) -> bool/, "Actix adapter CSRF resolver must receive request parts without the body");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /payload\.to_bytes_limited\(body_limit\)[\s\S]{0,800}state\.principal/, "Actix WebAuthn adapter must resolve the host principal only after bounded body collection");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /WebAuthnHttpRouter::new/, "Actix WebAuthn adapter must delegate to the framework-neutral route contract");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /Fn\(&HttpRequest\) -> Option<Uuid>/, "Actix WebAuthn principal resolver must receive request metadata without the body");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /WEBAUTHN_RESPONSE_SECURITY_HEADERS/, "Actix WebAuthn adapter must preserve passkey response security headers");
   forbidText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /X-Forwarded-Proto|x-forwarded-proto/i, "Actix adapter must not parse forwarded transport headers");
 
   const webauthnHttp = source("crates/secure-webauthn-example/src/lib.rs", findings);
