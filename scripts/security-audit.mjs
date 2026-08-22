@@ -991,6 +991,7 @@ export function runSecurityAudit() {
 
   const securitySpec = source("docs/SECURITY-SPEC.md", findings);
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /cannot guarantee that a password is absent from memory/, "security specification must document memory limitations");
+  requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /does not ship a browser DOM keypad[\s\S]{0,300}(?:page-script|memory)/, "security specification must not imply that the Web package provides native-like browser secret isolation");
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /@secure-keypad\/server-node[\s\S]{0,500}is a\s+transport bridge/, "security specification must define the Node adapter as a transport bridge");
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /Native renderers must revalidate all public layout and theme data/, "security specification must require native configuration revalidation");
   requireText(findings, "schema/layout.schema.json", layoutSchema, /"x-maxUtf8Bytes"\s*:\s*16/, "layout schema must declare the UTF-8 key-label byte bound");

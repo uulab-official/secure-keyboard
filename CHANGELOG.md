@@ -38,6 +38,9 @@ exact release-candidate commit by the release evidence manifest.
 - Raised the declared workspace MSRV from Rust 1.85 to 1.88 to match the
   locked Actix, URL/ICU, and time dependency graph; CI and release-candidate
   source gates now compile the full all-features workspace with Rust 1.88.
+- Clarified that the Web package ships WebAuthn plus an explicit lower-assurance
+  fallback contract, not a browser DOM keypad that can provide native-like
+  secret isolation.
 
 ### Security
 

@@ -28,7 +28,12 @@ older tokens are rejected.
 
 ### Web Mode
 
-WebAuthn/passkeys are the preferred authentication path. A custom web keypad is supported as a convenience fallback and must clearly document browser, page-script, extension, and memory limitations.
+WebAuthn/passkeys are the preferred authentication path. The SDK ships the
+WebAuthn adapter and an explicit lower-assurance fallback-acknowledgement
+contract; it does not ship a browser DOM keypad that could be mistaken for a
+secure native input boundary. A product may build its own custom browser UI
+around that contract, but must clearly document browser, page-script,
+extension, and memory limitations before accepting any input.
 
 ## Public customization contract
 
