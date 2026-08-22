@@ -34,6 +34,8 @@
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",
     "test:platform-support": "node --test scripts/platform-support.test.mjs",
     "test:msrv-contract": "node --test scripts/msrv-contract.test.mjs",
+    "test:production-candidate": "node --test scripts/verify-production-candidate.test.mjs",
+    "verify:production-candidate": "node scripts/verify-production-candidate.mjs",
     "test:ios-host-build-contract": "node --test scripts/ios-host-build-contract.test.mjs",
     "test:flutter-package-publish-contract": "node --test scripts/flutter-package-publish-contract.test.mjs",
     "test:fuzz-corpus": "node --test scripts/fuzz-corpus.test.mjs",

@@ -319,6 +319,7 @@ jobs:
           pnpm test:platform-support
           pnpm test:fuzz-corpus
           pnpm test:flutter-package-publish-contract
+          pnpm test:production-candidate
           pnpm test:security-audit
           pnpm security-audit
           pnpm -r test

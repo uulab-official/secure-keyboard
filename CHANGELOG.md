@@ -6,6 +6,7 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Added `pnpm verify:production-candidate`, a fail-closed aggregate command for deterministic Rust, package, adapter, browser, Flutter, parity, dependency, and security gates; it keeps physical, service, CI-provenance, signing, and independent-review evidence separate.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session

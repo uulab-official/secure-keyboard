@@ -148,6 +148,7 @@ jobs:
       - run: pnpm test:device-evidence
       - run: pnpm test:platform-support
       - run: pnpm test:fuzz-corpus
+      - run: pnpm test:production-candidate
       - run: pnpm test:security-audit
       - run: pnpm security-audit
       - run: pnpm --dir packages/contracts typecheck

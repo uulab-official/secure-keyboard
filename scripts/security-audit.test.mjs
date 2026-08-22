@@ -60,6 +60,13 @@ test("CI exercises every release evidence emitter contract", () => {
   assert.match(workflow, /pnpm test:emit-native-device-evidence/);
 });
 
+test("independent security audit covers the production-candidate gate aggregator", () => {
+  const audit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(audit, /scripts\/verify-production-candidate\.mjs/);
+  assert.match(audit, /--require-trusted-keys/);
+  assert.match(audit, /external device, service, CI-provenance, and independent-review evidence is not synthesized/);
+});
+
 test("CI checkout steps do not persist GitHub credentials into candidate worktrees", () => {
   const workflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
   assert.ok((workflow.match(/actions\/checkout@/g) ?? []).length > 0);

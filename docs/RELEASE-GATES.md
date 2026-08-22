@@ -115,6 +115,31 @@ only: cryptographic processing remains in the pinned Rust/native delegate.
 
 ## Reproducible local gates
 
+The repository also provides one fail-closed local entry point for the
+deterministic source and adapter gates:
+
+```sh
+pnpm verify:production-candidate
+```
+
+It runs the locked Rust workspace and MSRV tests, clippy/docs, dependency
+audits, native/protocol parity checks, JavaScript package tests/typechecks/
+builds, all repository contract tests, the static security audit, the Web
+browser smoke matrix, and the Flutter analyze/test/publish dry-run checks.
+Install the pinned Playwright browsers before running it. It does not claim
+physical-device, live Redis/PostgreSQL, CI-provenance, LeakSanitizer, signing,
+or independent-review evidence. To verify an already assembled release
+manifest as an additional final step, pass trusted fingerprints through the
+protected environment and run:
+
+```sh
+pnpm verify:production-candidate --evidence /absolute/path/to/release-evidence.json
+```
+
+The evidence mode requires `SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256` and
+`SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256`; the command never creates or
+synthetically marks missing evidence as passing.
+
 ```sh
 cargo fmt --all -- --check
 cargo test --locked --workspace --all-features
