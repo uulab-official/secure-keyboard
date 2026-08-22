@@ -52,6 +52,8 @@ exact release-candidate commit by the release evidence manifest.
   larger temporary decode allocation.
 - WebAuthn default-environment discovery now fails closed on hostile browser
   getters instead of propagating their exception text.
+- iOS native bridge configuration now rejects fractional schema versions before
+  layout or theme materialization across the central and publishable copies.
 - Normalized browser WebAuthn API rejections and hostile credential-object
   exceptions to stable generic error codes without propagating original
   messages.

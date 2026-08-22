@@ -72,7 +72,7 @@ public struct SecureKeypadBridgeConfiguration {
         guard onlyKeys(value, ["schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
-        guard let schemaVersion = value["schemaVersion"] as? NSNumber, schemaVersion.intValue == 1 else {
+        guard let schemaVersion = Self.boundedInteger(value["schemaVersion"], minimum: 1, maximum: 1), schemaVersion == 1 else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         if value.allKeys.contains(where: { ($0 as? String) == "id" }) {
@@ -188,8 +188,8 @@ public struct SecureKeypadBridgeConfiguration {
         guard onlyKeys(value, ["schemaVersion", "colors", "metrics", "typography", "animation", "feedback"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
-        guard let schemaVersion = value["schemaVersion"] as? NSNumber,
-              schemaVersion.intValue == 1,
+        guard let schemaVersion = Self.boundedInteger(value["schemaVersion"], minimum: 1, maximum: 1),
+              schemaVersion == 1,
               let colors = value["colors"] as? NSDictionary,
               let metrics = value["metrics"] as? NSDictionary,
               exactKeys(colors, ["background", "keyBackground", "keyForeground", "keyPressedBackground", "keyDisabledBackground", "error"]),

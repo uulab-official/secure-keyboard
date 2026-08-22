@@ -651,6 +651,7 @@ export function runSecurityAudit() {
   ]) {
     const contents = source(file, findings);
     requireText(findings, file, contents, /private static func boundedInteger\(/, "iOS bridge parser must reject fractional numeric configuration values");
+    requireText(findings, file, contents, /Self\.boundedInteger\(value\["schemaVersion"\], minimum: 1, maximum: 1\)/, "iOS bridge parser must reject non-integral schema versions");
     requireText(findings, file, contents, /private static func optionalMap\(/, "iOS bridge parser must reject unknown nested configuration fields");
   }
 

@@ -109,6 +109,13 @@ test("iOS bridge numeric parsing keeps integer zero distinct from Boolean", () =
   assert.doesNotMatch(IOS_BRIDGE_CONFIG, /guard !\(value is Bool\)/);
 });
 
+test("iOS bridge requires exact integer schema versions", () => {
+  const exactSchemaVersionChecks = IOS_BRIDGE_CONFIG.match(
+    /Self\.boundedInteger\(value\["schemaVersion"\], minimum: 1, maximum: 1\)/g,
+  ) ?? [];
+  assert.equal(exactSchemaVersionChecks.length, 2);
+});
+
 test("React Native iOS manager uses a distinct immutable bridge dictionary", () => {
   for (const source of [RN_VIEW_MANAGER, RN_NATIVE_VIEW_MANAGER]) {
     assert.match(source, /var config: \[String: Any\]/);
