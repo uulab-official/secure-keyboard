@@ -266,7 +266,20 @@ function responseFromDelegate(value: NodeHttpResponse): Response {
  */
 export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (request: Request) => Promise<Response> {
   return async (request) => {
-    const upstreamBodyLimitBytes = isReady(options.deploymentContext);
+    let handlerOptions: CreateOpaqueHandlerOptions;
+    try {
+      const rateLimitDecision = options.rateLimitDecision;
+      handlerOptions = {
+        deploymentContext: options.deploymentContext,
+        csrfValidated: options.csrfValidated,
+        delegate: options.delegate,
+        ...(rateLimitDecision === undefined ? {} : { rateLimitDecision }),
+      };
+    } catch {
+      return genericResponse(503, "temporarily_unavailable");
+    }
+    const { deploymentContext, csrfValidated, rateLimitDecision, delegate } = handlerOptions;
+    const upstreamBodyLimitBytes = isReady(deploymentContext);
     if (upstreamBodyLimitBytes === undefined) return genericResponse(400, "invalid_request");
 
     let path: (typeof OPAQUE_ROUTE_PATHS)[number] | undefined;
@@ -290,23 +303,23 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
 
     let csrfPassed = false;
     try {
-      csrfPassed = await options.csrfValidated(request);
+      csrfPassed = await csrfValidated(request);
     } catch {
       return genericResponse(503, "temporarily_unavailable");
     }
     if (!csrfPassed) return genericResponse(403, "invalid_request");
 
-    if (options.rateLimitDecision === undefined) {
+    if (rateLimitDecision === undefined) {
       return genericResponse(503, "temporarily_unavailable");
     }
-    let rateLimitDecision: NodeRateLimitDecision;
+    let rateLimitResult: NodeRateLimitDecision;
     try {
-      rateLimitDecision = await options.rateLimitDecision(request);
+      rateLimitResult = await rateLimitDecision(request);
     } catch {
       return genericResponse(503, "temporarily_unavailable");
     }
-    if (rateLimitDecision === "rate-limited") return genericResponse(429, "rate_limited");
-    if (rateLimitDecision !== "allowed") return genericResponse(503, "temporarily_unavailable");
+    if (rateLimitResult === "rate-limited") return genericResponse(429, "rate_limited");
+    if (rateLimitResult !== "allowed") return genericResponse(503, "temporarily_unavailable");
 
     let body: Uint8Array;
     try {
@@ -317,7 +330,7 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     }
 
     try {
-      const response = await options.delegate(
+      const response = await delegate(
         {
           method: "POST",
           path,
@@ -325,7 +338,7 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
           csrfValidated: true,
           body,
         },
-        options.deploymentContext,
+        deploymentContext,
       );
       return responseFromDelegate(response);
     } catch {

@@ -4,6 +4,7 @@ import {
   MAX_HTTP_BODY_BYTES,
   RESPONSE_SECURITY_HEADERS,
   createOpaqueHandler,
+  type CreateOpaqueHandlerOptions,
   type NodeDeploymentContext,
   type NodeHttpRequest,
 } from "../src/index.js";
@@ -162,6 +163,38 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(response.status).toBe(503);
     await expect(response.text()).resolves.not.toContain(secret);
     expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("normalizes hostile handler option accessors without exposing their traps", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const options = new Proxy(
+      {
+        deploymentContext: secureContext,
+        csrfValidated: () => true,
+        rateLimitDecision: () => "allowed" as const,
+        delegate: vi.fn(),
+      },
+      {
+        get(target, property, receiver) {
+          if (property === "deploymentContext") throw hostileError;
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    ) as unknown as CreateOpaqueHandlerOptions;
+
+    const handler = createOpaqueHandler(options);
+    const response = await handler(request("{}"));
+
+    expect(response.status).toBe(503);
+    await expect(response.text()).resolves.not.toContain(secret);
   });
 
   it("uses one validated body-limit snapshot for the whole request", async () => {

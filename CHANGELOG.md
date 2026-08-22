@@ -57,9 +57,10 @@ exact release-candidate commit by the release evidence manifest.
   boundary.
 - Security: Node deployment-context validation now fails closed when a host
   configuration accessor throws an unexpected value.
-- Security: Node request metadata and the validated body-limit snapshot now stay
-  inside the generic fail-closed boundary, preventing hostile Fetch-like
-  request accessors from escaping raw errors or changing the bound mid-request.
+- Security: Node request metadata, host handler options, and the validated
+  body-limit snapshot now stay inside the generic fail-closed boundary,
+  preventing hostile accessors from escaping raw errors or changing the bound
+  mid-request.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
