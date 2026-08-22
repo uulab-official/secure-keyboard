@@ -1429,6 +1429,13 @@ export function runSecurityAudit() {
     });
   }
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  requireText(
+    findings,
+    ".github/workflows/release-candidate.yml",
+    releaseWorkflow,
+    /mv packages\/flutter\/pubspec\.lock \"\$RUNNER_TEMP\/secure-keypad-flutter-pubspec\.lock\"/,
+    "release candidates must move generated Flutter lock state outside the checkout before provenance metadata",
+  );
   for (const mismatch of findReleaseWorkflowToolchainMismatches(ciWorkflow, releaseWorkflow)) {
     findings.push({
       rule: "release-workflow-toolchain-parity",

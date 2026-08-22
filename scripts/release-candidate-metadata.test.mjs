@@ -76,3 +76,10 @@ test("release candidate workflow embeds the metadata inside the signed bundle", 
   assert.match(WORKFLOW, /scripts\/release-candidate-metadata\.mjs\s+\"\$RELEASE_DIR\/source\/release-candidate-metadata\.json\"/);
   assert.match(WORKFLOW, /release-candidate-metadata\.json/);
 });
+
+test("release candidate workflow moves generated Flutter lock state outside the checkout", () => {
+  assert.match(
+    WORKFLOW,
+    /mv packages\/flutter\/pubspec\.lock \"\$RUNNER_TEMP\/secure-keypad-flutter-pubspec\.lock\"/,
+  );
+});

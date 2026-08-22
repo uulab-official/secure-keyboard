@@ -335,6 +335,11 @@ jobs:
           flutter test
           flutter pub publish --dry-run
         working-directory: packages/flutter
+      - name: Move generated Flutter lock state outside the checkout
+        run: |
+          if test -e packages/flutter/pubspec.lock; then
+            mv packages/flutter/pubspec.lock "$RUNNER_TEMP/secure-keypad-flutter-pubspec.lock"
+          fi
       - name: Prepare release output directory
         run: mkdir -p "$RELEASE_DIR"
       - name: Generate SPDX release SBOM

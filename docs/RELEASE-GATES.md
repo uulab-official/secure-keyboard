@@ -128,6 +128,11 @@ state must be kept outside the checkout or ignored by the repository before
 the candidate gate is run; this prevents a dirty local tree from being
 mistaken for commit-bound verification.
 
+The protected release workflow applies the same rule after its Flutter package
+checks: the generated `packages/flutter/pubspec.lock` is moved to the runner's
+temporary directory before candidate metadata is derived and the source bundle
+is assembled. It is not treated as a commit-bound source file.
+
 Before running the functional gates, this command fails closed unless the
 host matches the release toolchain contract: Node `22.13.0`, pnpm `11.19.0`,
 Rust/Cargo `1.97.1`, Flutter `3.47.0`, the bundled Dart `3.13.0`, and the

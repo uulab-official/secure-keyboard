@@ -10,6 +10,10 @@ exact release-candidate commit by the release evidence manifest.
 - The production-candidate aggregate now rejects a dirty or untracked checkout
   before running any deterministic gate, preserving commit-bound verification
   semantics.
+- The protected release workflow now moves Flutter's generated `pubspec.lock`
+  outside the checkout before clean candidate metadata and source-bundle
+  checks, preventing generated dependency state from invalidating or disguising
+  release provenance.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session
