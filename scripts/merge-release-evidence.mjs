@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateReleaseEvidence, verifyReleaseEvidenceFiles } from "./check-release-evidence.mjs";
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 export const MAX_RELEASE_FRAGMENT_BYTES = 1 * 1024 * 1024;
@@ -35,7 +36,11 @@ function sameValue(left, right) {
 function containedPath(root, relativePath, label) {
   if (!isSafeRelativePath(relativePath)) throw new Error(`${label} must be a safe relative path`);
   const realRoot = realpathSync(root);
-  const realPath = realpathSync(path.resolve(realRoot, relativePath));
+  const absolutePath = path.resolve(realRoot, relativePath);
+  if (pathHasSymlinkComponent(realRoot, absolutePath)) {
+    throw new Error(`${label} must not resolve through symbolic links`);
+  }
+  const realPath = realpathSync(absolutePath);
   const relative = path.relative(realRoot, realPath);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${label} must resolve inside the evidence root`);
@@ -170,7 +175,13 @@ export function writeMergedEvidence(root, outputPath, manifest) {
   const realRoot = realpathSync(root);
   const absolutePath = path.resolve(realRoot, outputPath);
   const parent = path.dirname(absolutePath);
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   mkdirSync(parent, { recursive: true });
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   const realParent = realpathSync(parent);
   const parentRelative = path.relative(realRoot, realParent);
   if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {

@@ -165,7 +165,13 @@ function writeEvidence(root, outputPath, record) {
     throw new Error("outputPath must resolve inside the evidence root");
   }
   const parent = path.dirname(absolutePath);
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("outputPath must not resolve through symbolic links");
+  }
   mkdirSync(parent, { recursive: true });
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("outputPath must not resolve through symbolic links");
+  }
   const realParent = realpathSync(parent);
   const parentRelative = path.relative(realRoot, realParent);
   if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {

@@ -148,7 +148,13 @@ function writeJson(root, relativePath, bytes) {
   const realRoot = realpathSync(root);
   const absolutePath = path.resolve(realRoot, relativePath);
   const parent = path.dirname(absolutePath);
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   mkdirSync(parent, { recursive: true });
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   const realParent = realpathSync(parent);
   const parentRelative = path.relative(realRoot, realParent);
   if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {

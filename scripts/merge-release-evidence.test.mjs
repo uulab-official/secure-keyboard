@@ -201,7 +201,18 @@ test("rejects an output path that escapes the evidence root through a symlink", 
 
   assert.throws(
     () => writeMergedEvidence(root, "escape/release-evidence.json", {}),
-    /inside the evidence root/,
+    /inside the evidence root|symbolic link/,
+  );
+});
+
+test("rejects an output path through an in-root symlinked parent", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-evidence-in-root-output-symlink-"));
+  mkdirSync(join(root, "real-output"), { recursive: true });
+  symlinkSync("real-output", join(root, "output"), "dir");
+
+  assert.throws(
+    () => writeMergedEvidence(root, "output/release-evidence.json", {}),
+    /symbolic link/,
   );
 });
 

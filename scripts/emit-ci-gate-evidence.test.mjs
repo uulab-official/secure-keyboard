@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -54,6 +54,28 @@ test("writes a commit-bound evidence record and matching fragment without raw lo
   assert.equal(fragment.gates[0].evidencePath, "evidence/durable-backends.json");
   assert.equal(fragment.gates[0].sha256, createHash("sha256").update(evidenceBytes).digest("hex"));
   assert.equal(Object.hasOwn(result.record, "log"), false);
+});
+
+test("rejects evidence outputs reached through an in-root symlinked parent", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-ci-output-symlink-"));
+  mkdirSync(join(root, "real-output"), { recursive: true });
+  symlinkSync("real-output", join(root, "output"), "dir");
+
+  assert.throws(
+    () =>
+      writeCiGateEvidence({
+        root,
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        gateName: "durable-backends",
+        evidencePath: "output/durable-backends.json",
+        fragmentPath: "output/durable-backends-fragment.json",
+        runner: "ubuntu-24.04",
+        checks: ["durable_storage", "durable_rate_limit", "durable_one_time_state"],
+        recordedAt: "2026-08-22T00:00:00.000Z",
+      }),
+    /symbolic link/,
+  );
 });
 
 test("rejects unsafe paths, unknown gates, and non-sanitized check labels", () => {

@@ -98,6 +98,32 @@ test("writes a commit-bound native evidence record and fragment from files", asy
   assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
 });
 
+test("rejects native evidence outputs reached through an in-root symlinked parent", async () => {
+  const { writeNativeDeviceEvidence } = await loadEmitter();
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-output-symlink-"));
+  const input = completeInput();
+  mkdirSync(join(root, "logs"), { recursive: true });
+  mkdirSync(join(root, "artifacts"), { recursive: true });
+  writeFileSync(join(root, input.log.path), input.log.bytes);
+  for (const artifact of input.artifacts) writeFileSync(join(root, artifact.path), artifact.bytes);
+  mkdirSync(join(root, "real-output"), { recursive: true });
+  symlinkSync("real-output", join(root, "output"), "dir");
+
+  assert.throws(
+    () =>
+      writeNativeDeviceEvidence({
+        root,
+        packageVersion: "0.1.0",
+        evidencePath: "output/ios-rn.json",
+        fragmentPath: "output/ios-rn-fragment.json",
+        ...input,
+        logPath: input.log.path,
+        artifactPaths: input.artifacts.map(({ kind, path }) => ({ kind, path })),
+      }),
+    /symbolic link/,
+  );
+});
+
 test("rejects symlinked native evidence files even when the target stays inside the evidence root", async () => {
   const { writeNativeDeviceEvidence } = await loadEmitter();
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-evidence-symlink-"));

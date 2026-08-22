@@ -118,7 +118,19 @@ test("rejects an evidence output directory that resolves outside the root", () =
   const result = runEmitter(root);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /outputPath must resolve inside the evidence root/);
+  assert.match(result.stderr, /outputPath must (?:resolve inside the evidence root|not resolve through symbolic links)/);
+});
+
+test("rejects an evidence output directory that is an in-root symlink", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-in-root-release-output-"));
+  writeSignedArtifacts(root);
+  mkdirSync(join(root, "real-evidence"), { recursive: true });
+  symlinkSync("real-evidence", join(root, "evidence"), "dir");
+
+  const result = runEmitter(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /symbolic link/);
 });
 
 test("rejects signed-release inputs reached through a symlinked parent directory", () => {

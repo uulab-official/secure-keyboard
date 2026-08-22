@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CI_RELEASE_GATE_CHECKS, REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -163,7 +164,11 @@ export function buildReleaseGateFragment(input) {
 function containedFile(root, relativePath) {
   if (!isSafeRelativePath(relativePath)) throw new Error("evidencePath must be a safe relative path");
   const realRoot = realpathSync(root);
-  const realFile = realpathSync(path.resolve(realRoot, relativePath));
+  const absoluteFile = path.resolve(realRoot, relativePath);
+  if (pathHasSymlinkComponent(realRoot, absoluteFile)) {
+    throw new Error("evidencePath must not resolve through symbolic links");
+  }
+  const realFile = realpathSync(absoluteFile);
   const relative = path.relative(realRoot, realFile);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error("evidencePath must resolve inside the evidence root");
@@ -176,7 +181,13 @@ function writeFragment(root, outputPath, fragment) {
   const realRoot = realpathSync(root);
   const absolutePath = path.resolve(realRoot, outputPath);
   const parent = path.dirname(absolutePath);
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   mkdirSync(parent, { recursive: true });
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   const realParent = realpathSync(parent);
   const parentRelative = path.relative(realRoot, realParent);
   if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {

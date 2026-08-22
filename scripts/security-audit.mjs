@@ -890,6 +890,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /buildReleaseGateFragment/, "CI gate evidence must bind fragments to the release evidence contract");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /sanitized CI gate record/, "CI gate evidence must reject raw log payloads");
   requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /realpathSync/, "CI gate evidence paths must be contained after symlink resolution");
+  requireText(findings, "scripts/emit-ci-gate-evidence.mjs", ciGateEvidence, /pathHasSymlinkComponent/, "CI gate evidence outputs must reject symlink traversal");
   const webEvidenceEmitter = source("scripts/emit-web-browser-evidence.mjs", findings);
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /chromium.*firefox.*webkit/, "web evidence must require the complete browser matrix");
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", webEvidenceEmitter, /verifyDeviceEvidenceFiles|buildReleaseGateFragment/, "web evidence must bind hashed files to the release gate contract");
@@ -1139,6 +1140,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /independentReview/, "release evidence merging must preserve the independent reviewer attestation");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /realpathSync/, "release evidence merging must contain fragment and output paths");
+  requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /pathHasSymlinkComponent/, "release evidence merging must reject symlink traversal");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /MAX_RELEASE_FRAGMENT_BYTES/, "release evidence merging must bound fragment materialization");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /statSync/, "release evidence merging must inspect fragment size before reading");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /verifyReleaseEvidenceFiles/, "release evidence merging must verify referenced files after assembly");
@@ -1154,6 +1156,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /match the fragment gate/, "release evidence emitter must reject cross-gate evidence reuse");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /MAX_GATE_EVIDENCE_BYTES/, "release evidence emitter must bound gate evidence materialization");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /readBoundedEvidenceFile/, "release evidence emitter must bound evidence files before reading");
+  requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /pathHasSymlinkComponent/, "release evidence emitter must reject symlink traversal");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /sentinel|input\(\?:Value\|Text\|Bytes\)/, "release evidence emitter must reject sentinel and raw-input field names");
   const browserEvidenceEmitter = source("scripts/emit-web-browser-evidence.mjs", findings);
   requireText(findings, "scripts/emit-web-browser-evidence.mjs", browserEvidenceEmitter, /MAX_DEVICE_EVIDENCE_FILE_BYTES/, "browser evidence emitter must bound log materialization");

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { REQUIRED_RELEASE_GATES } from "./check-release-evidence.mjs";
 import { buildReleaseGateFragment } from "./emit-release-gate-evidence.mjs";
+import { pathHasSymlinkComponent } from "./evidence-path.mjs";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -78,7 +79,13 @@ function writeJson(root, relativePath, bytes) {
   const realRoot = realpathSync(root);
   const absolutePath = path.resolve(realRoot, relativePath);
   const parent = path.dirname(absolutePath);
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   mkdirSync(parent, { recursive: true });
+  if (pathHasSymlinkComponent(realRoot, parent)) {
+    throw new Error("output path must not resolve through symbolic links");
+  }
   const realParent = realpathSync(parent);
   const parentRelative = path.relative(realRoot, realParent);
   if (parentRelative.startsWith(`..${path.sep}`) || path.isAbsolute(parentRelative)) {

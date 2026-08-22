@@ -41,8 +41,9 @@ exact release-candidate commit by the release evidence manifest.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.
-- Device, browser, and signed-release evidence emitters now reject symlinked
-  input files and parent directories before hashing or materialization.
+- Device, browser, CI, release-gate, and signed-release evidence emitters plus
+  the fragment merger now reject symlinked input files and output parent
+  directories before hashing or materialization.
 - Increased the CI fuzz job budget to 60 minutes so the four extended
   campaigns and four Linux LeakSanitizer campaigns are not cut off by the
   workflow timeout.

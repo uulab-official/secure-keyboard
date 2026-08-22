@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -193,4 +193,23 @@ test("CLI emits a fragment from the current checkout and package version", () =>
   assert.equal(fragment.packageVersion, "0.1.0");
   assert.equal(fragment.gates[0].commit, commit);
   assert.equal(fragment.gates[0].status, "pass");
+});
+
+test("CLI rejects a fragment output reached through an in-root symlinked parent", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-release-gate-output-symlink-"));
+  mkdirSync(join(root, "evidence"), { recursive: true });
+  const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+  const evidencePath = "evidence/rust-workspace.json";
+  writeFileSync(join(root, evidencePath), `${JSON.stringify(evidenceRecord(commit))}\n`);
+  mkdirSync(join(root, "real-fragments"), { recursive: true });
+  symlinkSync("real-fragments", join(root, "fragments"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [EMIT_SCRIPT, root, "fragments/rust-workspace.json", "rust-workspace", evidencePath],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /symbolic link/);
 });

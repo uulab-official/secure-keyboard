@@ -60,6 +60,32 @@ test("writes web evidence and a commit-bound fragment whose files verify", () =>
   assert.deepEqual(verifyDeviceEvidenceFiles(evidence, root), []);
 });
 
+test("rejects browser evidence outputs reached through an in-root symlinked parent", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-web-output-symlink-"));
+  for (const log of LOGS) {
+    mkdirSync(join(root, log.path.split("/")[0]), { recursive: true });
+    writeFileSync(join(root, log.path), log.bytes);
+  }
+  mkdirSync(join(root, "real-output"), { recursive: true });
+  symlinkSync("real-output", join(root, "output"), "dir");
+
+  assert.throws(
+    () =>
+      writeWebBrowserEvidence({
+        root,
+        commit: COMMIT,
+        packageVersion: "0.1.0",
+        evidencePath: "output/web-browser.json",
+        fragmentPath: "output/web-browser-fragment.json",
+        frameworkVersion: "playwright-1.62.1",
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        logs: LOGS.map(({ browser, path }) => ({ browser, path })),
+      }),
+    /symbolic link/,
+  );
+});
+
 test("rejects symlinked browser logs even when the target stays inside the evidence root", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-web-evidence-symlink-"));
   for (const log of LOGS) {
