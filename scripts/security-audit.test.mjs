@@ -7,11 +7,32 @@ import {
   findMutableCiActionLines,
   findNativeClipboardMismatches,
   findNativeAbiVersionMismatches,
+  findReleaseWorkflowToolchainMismatches,
   runSecurityAudit,
 } from "./security-audit.mjs";
 
 test("independent static security audit has no findings", () => {
   assert.deepEqual(runSecurityAudit(), []);
+});
+
+test("release workflows pin every production host toolchain consistently", () => {
+  const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const releaseWorkflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+
+  assert.deepEqual(findReleaseWorkflowToolchainMismatches(ciWorkflow, releaseWorkflow), []);
+
+  const brokenReleaseWorkflow = releaseWorkflow.replaceAll("22.13.0", "22.13.1");
+  assert.deepEqual(findReleaseWorkflowToolchainMismatches(ciWorkflow, brokenReleaseWorkflow), [
+    {
+      file: ".github/workflows/release-candidate.yml",
+      toolchain: "node",
+      expected: "22.13.0",
+      detail: "release candidate workflow must pin node to 22.13.0",
+    },
+  ]);
 });
 
 test("release evidence and signing outputs use exclusive creation", () => {

@@ -20,6 +20,85 @@ const NATIVE_CLIPBOARD_PATTERNS = Object.freeze({
   android: /\b(?:ClipboardManager|setPrimaryClip|getPrimaryClip|clearPrimaryClip|hasPrimaryClip)\b/,
 });
 
+const RELEASE_WORKFLOW_TOOLCHAIN_CHECKS = Object.freeze([
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain: "rust",
+    expected: "1.97.1",
+    pattern: /dtolnay\/rust-toolchain@[0-9a-f]{40}\s+# Rust 1\.97\.1/,
+  }),
+  Object.freeze({
+    workflow: "release",
+    file: ".github/workflows/release-candidate.yml",
+    toolchain: "rust",
+    expected: "1.97.1",
+    pattern: /dtolnay\/rust-toolchain@[0-9a-f]{40}\s+# Rust 1\.97\.1/,
+  }),
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain: "node",
+    expected: "22.13.0",
+    pattern: /node-version:\s*['"]22\.13\.0['"]/,
+  }),
+  Object.freeze({
+    workflow: "release",
+    file: ".github/workflows/release-candidate.yml",
+    toolchain: "node",
+    expected: "22.13.0",
+    pattern: /node-version:\s*['"]22\.13\.0['"]/,
+  }),
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain: "flutter",
+    expected: "3.47.0",
+    pattern: /flutter-version:\s*['"]3\.47\.0['"]/,
+  }),
+  Object.freeze({
+    workflow: "release",
+    file: ".github/workflows/release-candidate.yml",
+    toolchain: "flutter",
+    expected: "3.47.0",
+    pattern: /flutter-version:\s*['"]3\.47\.0['"]/,
+  }),
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain: "reactNative",
+    expected: "0.87.0",
+    pattern: /--version 0\.87\.0\b/,
+  }),
+  Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain: "ndk",
+    expected: "27.1.12297006",
+    pattern: /(?:ANDROID_NDK_VERSION|NDK_VERSION)\s*[:=]\s*['"]?27\.1\.12297006/,
+  }),
+  Object.freeze({
+    workflow: "release",
+    file: ".github/workflows/release-candidate.yml",
+    toolchain: "ndk",
+    expected: "27.1.12297006",
+    pattern: /ANDROID_NDK_VERSION:\s*27\.1\.12297006/,
+  }),
+  ...[
+    ["rust", "1.97.1"],
+    ["node", "22.13.0"],
+    ["flutter", "3.47.0"],
+    ["reactNative", "0.87.0"],
+    ["ndk", "27.1.12297006"],
+  ].map(([toolchain, expected]) => Object.freeze({
+    workflow: "ci",
+    file: ".github/workflows/ci.yml",
+    toolchain,
+    expected,
+    pattern: new RegExp(`--toolchain ${toolchain}=${expected.replaceAll(".", "\\.")}`),
+  })),
+]);
+
 function source(relativePath, findings) {
   const absolutePath = path.join(ROOT, relativePath);
   if (!existsSync(absolutePath)) {
@@ -156,6 +235,33 @@ export function findMutableCiActionLines(ciWorkflow) {
     .split("\n")
     .filter((line) => /\buses:\s*/.test(line))
     .filter((line) => !/^\s*(?:-\s+)?uses:\s*[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?\s*$/.test(line));
+}
+
+/**
+ * Checks that CI, release packaging, and the aggregate evidence seed all use
+ * the same immutable production host toolchain contract. A release workflow
+ * that merely mentions a toolchain is insufficient: every value used by a
+ * build or emitted into the final manifest must remain exact.
+ *
+ * @param {string} ciWorkflow checked-in CI workflow source
+ * @param {string} releaseWorkflow checked-in release-candidate workflow source
+ * @returns {Array<{file: string, toolchain: string, expected: string, detail: string}>}
+ */
+export function findReleaseWorkflowToolchainMismatches(ciWorkflow, releaseWorkflow) {
+  const workflows = { ci: ciWorkflow, release: releaseWorkflow };
+  const mismatches = [];
+
+  for (const check of RELEASE_WORKFLOW_TOOLCHAIN_CHECKS) {
+    if (check.pattern.test(workflows[check.workflow] ?? "")) continue;
+    const workflowLabel = check.workflow === "ci" ? "CI" : "release candidate";
+    mismatches.push({
+      file: check.file,
+      toolchain: check.toolchain,
+      expected: check.expected,
+      detail: `${workflowLabel} workflow must pin ${check.toolchain} to ${check.expected}`,
+    });
+  }
+  return mismatches;
 }
 
 /**
@@ -1274,6 +1380,12 @@ export function runSecurityAudit() {
     });
   }
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  for (const mismatch of findReleaseWorkflowToolchainMismatches(ciWorkflow, releaseWorkflow)) {
+    findings.push({
+      rule: "release-workflow-toolchain-parity",
+      ...mismatch,
+    });
+  }
   for (const image of ["redis:7.2-alpine", "postgres:16-alpine"]) {
     const escapedImage = image.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const imagePattern = new RegExp("image:\\s*" + escapedImage + "@sha256:[0-9a-f]{64}");
