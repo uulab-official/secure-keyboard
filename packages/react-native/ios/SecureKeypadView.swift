@@ -487,22 +487,13 @@ public class SecureKeypadView: UIView {
         _ rows: [[SecureKeySpec]],
         randomizeInputKeys: Bool
     ) -> [[SecureKeySpec]] {
-        guard randomizeInputKeys else { return rows }
-        var inputKeys = rows.flatMap { $0 }.filter { $0.role == .input }
-        guard inputKeys.count > 1 else { return rows }
         var generator = SystemRandomNumberGenerator()
-        for index in stride(from: inputKeys.count - 1, through: 1, by: -1) {
-            let swapIndex = Int.random(in: 0...index, using: &generator)
-            inputKeys.swapAt(index, swapIndex)
-        }
-        var inputIndex = 0
-        return rows.map { row in
-            row.map { key in
-                guard key.role == .input else { return key }
-                defer { inputIndex += 1 }
-                return inputKeys[inputIndex]
-            }
-        }
+        return secureKeypadPresentationRows(
+            rows,
+            randomizeInputKeys: randomizeInputKeys,
+            isInput: { $0.role == .input },
+            using: &generator
+        )
     }
 
     private func activate(key: SecureKeySpec) {

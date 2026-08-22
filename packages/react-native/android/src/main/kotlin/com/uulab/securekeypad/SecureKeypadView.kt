@@ -18,6 +18,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.security.SecureRandom
+import java.util.Random
 
 /** Public presentation role. It never contains a secret value. */
 public enum class SecureKeyRole {
@@ -456,20 +457,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         rows: List<List<SecureKeySpec>>,
         randomizeInputKeys: Boolean,
     ): List<List<SecureKeySpec>> {
-        if (!randomizeInputKeys) return rows
-        val inputKeys = rows.flatten().filter { it.role == SecureKeyRole.INPUT }.toMutableList()
-        for (index in inputKeys.lastIndex downTo 1) {
-            val swapIndex = secureRandom.nextInt(index + 1)
-            val value = inputKeys[index]
-            inputKeys[index] = inputKeys[swapIndex]
-            inputKeys[swapIndex] = value
-        }
-        var inputIndex = 0
-        return rows.map { row ->
-            row.map { key ->
-                if (key.role == SecureKeyRole.INPUT) inputKeys[inputIndex++] else key
-            }
-        }
+        return secureKeypadPresentationRows(rows, randomizeInputKeys, secureRandom)
     }
 
     private fun activate(key: SecureKeySpec) {
@@ -603,6 +591,28 @@ public open class SecureKeypadView @JvmOverloads constructor(
         require(theme.pressDurationMs in 0L..500L) { "press duration is outside the supported range" }
         require(theme.maskRevealDurationMs in 0L..2_000L) {
             "mask reveal duration is outside the supported range"
+        }
+    }
+}
+
+/** Reorders only input-role keys with the caller-supplied random source. */
+internal fun secureKeypadPresentationRows(
+    rows: List<List<SecureKeySpec>>,
+    randomizeInputKeys: Boolean,
+    random: Random,
+): List<List<SecureKeySpec>> {
+    if (!randomizeInputKeys) return rows
+    val inputKeys = rows.flatten().filter { it.role == SecureKeyRole.INPUT }.toMutableList()
+    for (index in inputKeys.lastIndex downTo 1) {
+        val swapIndex = random.nextInt(index + 1)
+        val value = inputKeys[index]
+        inputKeys[index] = inputKeys[swapIndex]
+        inputKeys[swapIndex] = value
+    }
+    var inputIndex = 0
+    return rows.map { row ->
+        row.map { key ->
+            if (key.role == SecureKeyRole.INPUT) inputKeys[inputIndex++] else key
         }
     }
 }

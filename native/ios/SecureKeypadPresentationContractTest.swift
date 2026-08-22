@@ -1,5 +1,14 @@
 import Foundation
 
+private struct ContractRandomGenerator: RandomNumberGenerator {
+    private var state: UInt64 = 0x9e3779b97f4a7c15
+
+    mutating func next() -> UInt64 {
+        state = state &* 6_364_136_223_846_793_005 &+ 1
+        return state
+    }
+}
+
 @main
 struct SecureKeypadPresentationContractTest {
     static func main() {
@@ -24,5 +33,30 @@ struct SecureKeypadPresentationContractTest {
         precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 5) == .accept)
         precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 4) == .ignore)
         precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 3) == .invalid)
+
+        let rows = [
+            [(id: "digit-1", input: true), (id: "backspace", input: false), (id: "digit-2", input: true)],
+            [(id: "digit-3", input: true), (id: "submit", input: false), (id: "digit-4", input: true)],
+        ]
+        var generator = ContractRandomGenerator()
+        let randomized = secureKeypadPresentationRows(
+            rows,
+            randomizeInputKeys: true,
+            isInput: { $0.input },
+            using: &generator
+        )
+        precondition(randomized.map(\.count) == rows.map(\.count))
+        precondition(randomized[0][1].id == "backspace")
+        precondition(randomized[1][1].id == "submit")
+        precondition(Set(randomized.flatMap { $0 }.filter { $0.input }.map(\.id)) == Set([
+            "digit-1", "digit-2", "digit-3", "digit-4",
+        ]))
+        let unchanged = secureKeypadPresentationRows(
+            rows,
+            randomizeInputKeys: false,
+            isInput: { $0.input },
+            using: &generator
+        )
+        precondition(unchanged.map { $0.map(\.id) } == rows.map { $0.map(\.id) })
     }
 }

@@ -94,3 +94,11 @@ test("iOS podspecs consume only staged relative FFI artifacts", () => {
   assert.match(workflow, /FLUTTER_PACKAGE_DIR/);
   assert.match(workflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" "\$FLUTTER_PACKAGE_DIR\/ios\/secure_ffi\.xcframework"/);
 });
+
+test("native CI executes the Android input-key randomization contract", () => {
+  const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+  const workflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+  assert.match(workflow, /Android input-key randomization contract/);
+  assert.match(workflow, /native\/android\/SecureKeypadRandomizationContractTest\.kt/);
+  assert.match(workflow, /secure-keypad-randomization-contract\.jar/);
+});

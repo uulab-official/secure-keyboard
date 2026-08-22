@@ -742,6 +742,27 @@ jobs:
             -include-runtime -jvm-target 17 -Werror \
             -d /tmp/secure-keypad-bridge-config-contract.jar
           java -jar /tmp/secure-keypad-bridge-config-contract.jar
+      - name: Android input-key randomization contract
+        run: |
+          ANDROID_ROOT="$HOME/Library/Android/sdk"
+          if [ -n "$ANDROID_HOME" ]; then ANDROID_ROOT="$ANDROID_HOME"; fi
+          ANDROID_JAR="$(find "$ANDROID_ROOT/platforms" -name android.jar -print | sort | tail -n 1)"
+          KOTLINC_BIN="$(command -v kotlinc || true)"
+          if [ -z "$KOTLINC_BIN" ]; then
+            KOTLINC_BIN="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
+          fi
+          test -f "$ANDROID_JAR"
+          test -x "$KOTLINC_BIN"
+          "$KOTLINC_BIN" \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt \
+            native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt \
+            native/android/SecureKeypadRandomizationContractTest.kt \
+            -classpath "$ANDROID_JAR" \
+            -include-runtime -jvm-target 17 -Werror \
+            -d /tmp/secure-keypad-randomization-contract.jar
+          java -jar /tmp/secure-keypad-randomization-contract.jar
 
   ios-host-builds:
     name: Compile iOS RN and Flutter host integrations

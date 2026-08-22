@@ -3,6 +3,32 @@ import Foundation
 let secureKeypadMaxRenderedLength = 4_096
 let secureKeypadInternalError: UInt32 = 7
 
+/// Reorders only selected presentation items while preserving every row slot.
+/// The caller owns the random source so production can require the platform
+/// CSPRNG while contract tests can use a deterministic generator.
+func secureKeypadPresentationRows<Item, Random: RandomNumberGenerator>(
+    _ rows: [[Item]],
+    randomizeInputKeys: Bool,
+    isInput: (Item) -> Bool,
+    using generator: inout Random
+) -> [[Item]] {
+    guard randomizeInputKeys else { return rows }
+    var inputItems = rows.flatMap { $0 }.filter(isInput)
+    guard inputItems.count > 1 else { return rows }
+    for index in stride(from: inputItems.count - 1, through: 1, by: -1) {
+        let swapIndex = Int.random(in: 0...index, using: &generator)
+        inputItems.swapAt(index, swapIndex)
+    }
+    var inputIndex = 0
+    return rows.map { row in
+        row.map { item in
+            guard isInput(item) else { return item }
+            defer { inputIndex += 1 }
+            return inputItems[inputIndex]
+        }
+    }
+}
+
 enum SecureKeypadCommandDecision: Equatable {
     case accept
     case ignore
