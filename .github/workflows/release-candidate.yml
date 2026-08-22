@@ -283,6 +283,8 @@ jobs:
           pnpm test:verify-github-run-provenance
           pnpm test:verify-lsan-evidence
           pnpm test:emit-release-artifact-fragment
+          pnpm test:emit-native-device-evidence
+          pnpm test:ios-host-build-contract
           pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence
           pnpm test:emit-ci-gate-evidence

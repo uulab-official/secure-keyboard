@@ -280,6 +280,19 @@ test("release candidate validates the unpublished workspace crate chain through 
   assert.match(releaseGates, /cargo publish --locked --workspace --all-features --dry-run[\s\S]*?--target-dir/);
 });
 
+test("release candidate executes every standalone release contract and copies crates once", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /pnpm test:emit-native-device-evidence/);
+  assert.match(workflow, /pnpm test:ios-host-build-contract/);
+  assert.equal(
+    [...workflow.matchAll(/cp \"\$RUNNER_TEMP\/secure-keypad-cargo-target\/package\/\"\*\.crate/g)].length,
+    1,
+  );
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

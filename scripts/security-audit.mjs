@@ -1153,6 +1153,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:web-browser all/, "release candidate must execute all browser smoke targets");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:merge-release-evidence/, "release candidate must test evidence fragment merging");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-native-device-evidence/, "release candidate must test native device evidence emission");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:ios-host-build-contract/, "release candidate must test the iOS host-build contract");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-signed-release-evidence/, "release candidate must test signed-release evidence emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-independent-review-fragment/, "release candidate must test independent-review fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
