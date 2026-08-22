@@ -39,8 +39,8 @@ export function signReleaseArtifact(artifactPath, privateKeyPath, signaturePath,
   const artifact = readBoundedFile(artifactPath, "release artifact", MAX_RELEASE_ARTIFACT_BYTES);
   const signature = sign(null, artifact, privateKey);
   const publicKeyDer = createPublicKey(privateKey).export({ format: "der", type: "spki" });
-  writeFileSync(signaturePath, signature, { mode: 0o644 });
-  writeFileSync(publicKeyPath, publicKeyDer, { mode: 0o644 });
+  writeFileSync(signaturePath, signature, { mode: 0o644, flag: "wx" });
+  writeFileSync(publicKeyPath, publicKeyDer, { mode: 0o644, flag: "wx" });
 
   return {
     algorithm: "ed25519",

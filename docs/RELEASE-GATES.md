@@ -39,6 +39,10 @@ directory before every smoke, extended, and LeakSanitizer campaign. This keeps
 libFuzzer's automatically discovered corpus entries out of the checkout so
 the subsequent commit-bound evidence emitter can enforce a clean tree.
 
+Release evidence, merged manifests, and detached signing outputs use exclusive
+file creation. A pre-existing output path is a release failure; do not reuse an
+evidence directory or replace an existing record in place.
+
 ## Reproducible local gates
 
 ```sh

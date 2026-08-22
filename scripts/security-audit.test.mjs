@@ -13,6 +13,24 @@ test("independent static security audit has no findings", () => {
   assert.deepEqual(runSecurityAudit(), []);
 });
 
+test("release evidence and signing outputs use exclusive creation", () => {
+  const sourcePaths = [
+    "../scripts/emit-release-gate-evidence.mjs",
+    "../scripts/emit-signed-release-evidence.mjs",
+    "../scripts/merge-release-evidence.mjs",
+    "../scripts/sign-release.mjs",
+  ];
+
+  for (const relativePath of sourcePaths) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /writeFileSync\([\s\S]{0,240}flag:\s*["']wx["']/,
+      `${relativePath} must create security-sensitive outputs exclusively`,
+    );
+  }
+});
+
 test("OPAQUE secret outputs require a zeroizing source copy", () => {
   const source = readFileSync(new URL("../crates/secure-auth/src/lib.rs", import.meta.url), "utf8");
   assert.deepEqual(findOpaqueSecretOutputMismatches(source), []);

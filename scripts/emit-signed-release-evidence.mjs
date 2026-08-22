@@ -172,7 +172,7 @@ function writeEvidence(root, outputPath, record) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  writeFileSync(absolutePath, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(absolutePath, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600, flag: "wx" });
 }
 
 function parseOptions(argumentsList) {

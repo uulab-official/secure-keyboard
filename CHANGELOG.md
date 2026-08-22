@@ -15,6 +15,9 @@ exact release-candidate commit by the release evidence manifest.
 - Fuzz campaigns now run against a temporary corpus copy outside the checkout,
   and the staging helper rejects checkout destinations, so libFuzzer's corpus
   growth cannot invalidate the clean-checkout evidence gate.
+- Release evidence, merged manifests, and detached signing outputs now use
+  exclusive file creation so a pre-existing path or symlink cannot be replaced
+  during release assembly.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.

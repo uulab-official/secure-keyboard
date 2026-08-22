@@ -182,7 +182,7 @@ export function writeMergedEvidence(root, outputPath, manifest) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  writeFileSync(absolutePath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(absolutePath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });
   return absolutePath;
 }
 
