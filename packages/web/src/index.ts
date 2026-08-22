@@ -632,31 +632,35 @@ export function serializeAssertionCredential(credential: WebAuthnCredential): Se
 
 /** Creates a browser environment lazily; importing this package is safe in Node and SSR. */
 export function getDefaultWebAuthnEnvironment(): WebAuthnEnvironment {
-  const browser = globalThis as unknown as {
-    readonly isSecureContext?: boolean;
-    readonly PublicKeyCredential?: unknown;
-    readonly navigator?: {
-      readonly credentials?: {
-        readonly create: (options: unknown) => Promise<unknown>;
-        readonly get: (options: unknown) => Promise<unknown>;
+  try {
+    const browser = globalThis as unknown as {
+      readonly isSecureContext?: boolean;
+      readonly PublicKeyCredential?: unknown;
+      readonly navigator?: {
+        readonly credentials?: {
+          readonly create: (options: unknown) => Promise<unknown>;
+          readonly get: (options: unknown) => Promise<unknown>;
+        };
       };
     };
-  };
-  const container = browser.navigator?.credentials;
-  const credentials: WebAuthnCredentialApi | undefined =
-    container !== undefined &&
-    typeof container.create === "function" &&
-    typeof container.get === "function"
-    ? {
-        create: async (options) => (await container.create(options)) as WebAuthnCredential | null,
-        get: async (options) => (await container.get(options)) as WebAuthnCredential | null,
-      }
-    : undefined;
-  return {
-    isSecureContext: browser.isSecureContext === true,
-    hasPublicKeyCredential: typeof browser.PublicKeyCredential === "function",
-    ...(credentials === undefined ? {} : { credentials }),
-  };
+    const container = browser.navigator?.credentials;
+    const credentials: WebAuthnCredentialApi | undefined =
+      container !== undefined &&
+      typeof container.create === "function" &&
+      typeof container.get === "function"
+      ? {
+          create: async (options) => (await container.create(options)) as WebAuthnCredential | null,
+          get: async (options) => (await container.get(options)) as WebAuthnCredential | null,
+        }
+      : undefined;
+    return {
+      isSecureContext: browser.isSecureContext === true,
+      hasPublicKeyCredential: typeof browser.PublicKeyCredential === "function",
+      ...(credentials === undefined ? {} : { credentials }),
+    };
+  } catch {
+    return { isSecureContext: false, hasPublicKeyCredential: false };
+  }
 }
 
 export function detectWebAuthnSupport(environment = getDefaultWebAuthnEnvironment()): WebAuthnSupport {

@@ -570,6 +570,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /maxEncodedLength\s*=\s*Math\.ceil\(\(maxBytes \* 8\) \/ 6\)[\s\S]{0,220}value\.length\s*>\s*maxEncodedLength/, "WebAuthn base64url decoding must bound encoded length before allocation");
   requireText(findings, "packages/web/src/index.ts", web, /normalizeWebAuthnError/, "WebAuthn browser and credential failures must be normalized before leaving the adapter");
   requireText(findings, "packages/web/src/index.ts", web, /credential-api-failure/, "WebAuthn browser API failures must use a stable generic error code");
+  requireText(findings, "packages/web/src/index.ts", web, /function getDefaultWebAuthnEnvironment\(\)[\s\S]{0,1800}catch\s*\{[\s\S]{0,180}isSecureContext: false/, "WebAuthn environment discovery must fail closed when browser getters throw");
   requireText(findings, "packages/web/src/index.ts", web, /typeof container\.create === "function"[\s\S]{0,100}typeof container\.get === "function"/, "WebAuthn default environment must verify both browser credential methods");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const nodeServer = source("packages/server-node/src/index.ts", findings);

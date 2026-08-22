@@ -123,6 +123,32 @@ describe("WebAuthn support and mode policy", () => {
     }
   });
 
+  it("fails closed when default browser environment getters throw", () => {
+    const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    try {
+      Object.defineProperty(globalThis, "navigator", {
+        configurable: true,
+        value: new Proxy({}, {
+          get() {
+            throw new Error("fixture-only-secret");
+          },
+        }),
+      });
+
+      expect(() => getDefaultWebAuthnEnvironment()).not.toThrow();
+      expect(getDefaultWebAuthnEnvironment()).toEqual({
+        isSecureContext: false,
+        hasPublicKeyCredential: false,
+      });
+    } finally {
+      if (originalNavigator === undefined) {
+        Reflect.deleteProperty(globalThis, "navigator");
+      } else {
+        Object.defineProperty(globalThis, "navigator", originalNavigator);
+      }
+    }
+  });
+
   it("does not silently approve the lower-assurance custom keypad fallback", () => {
     expect(() => assertWebAuthnMode("custom-keypad-fallback")).toThrow(/acknowledgement/i);
     expect(() => assertWebAuthnMode("custom-keypad-fallback", undefined, true)).not.toThrow();

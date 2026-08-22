@@ -7,6 +7,8 @@ The browser adapter accepts server-generated WebAuthn options, converts base64ur
 All WebAuthn binary conversions are bounded to 8 KiB. The decoder rejects an
 encoded value whose decoded size would exceed that limit before allocating the
 output buffer; the encoder and credential serializer apply the same bound.
+Hostile browser-environment getters fail closed as an unavailable passkey
+environment rather than exposing their exception text.
 
 WebAuthn must run in a secure context. A custom browser keypad is intentionally not presented as a secure equivalent: page JavaScript can observe browser input and memory. If a product elects to ship that fallback, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)` and display `getWebFallbackNotice()` to the user/operator.
 

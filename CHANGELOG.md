@@ -50,6 +50,8 @@ exact release-candidate commit by the release evidence manifest.
 - WebAuthn base64url decoding now bounds the encoded length before allocating
   its output buffer, preventing oversized-but-rejected input from creating a
   larger temporary decode allocation.
+- WebAuthn default-environment discovery now fails closed on hostile browser
+  getters instead of propagating their exception text.
 - Normalized browser WebAuthn API rejections and hostile credential-object
   exceptions to stable generic error codes without propagating original
   messages.
