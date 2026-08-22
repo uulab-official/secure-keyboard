@@ -11,7 +11,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: React Native iOS and Android managers now release the native session
   and discard pending configuration whenever a required layout or theme prop
   disappears; static regression gates cover both canonical sources and package
-  copies.
+  copies, while sequential initial layout/theme delivery remains buffered until
+  a complete configuration is available.
 
 ### Server adapters
 

@@ -67,6 +67,8 @@ React Native managers must also fail closed during prop churn: if a required
 layout or theme value is removed after a session was configured, the manager
 must discard pending public configuration, clear its configuration fingerprint,
 and release the native session before accepting a later complete configuration.
+Before the first complete configuration, sequential layout/theme prop delivery
+must remain pending rather than being mistaken for a valid session.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 
