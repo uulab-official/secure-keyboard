@@ -51,6 +51,9 @@ exact release-candidate commit by the release evidence manifest.
 - PostgreSQL rate-limit reads now fail closed on malformed persisted attempt
   counters (zero, negative, or outside the `u32` contract) before applying
   policy arithmetic, matching the Redis adapter's poisoned-counter behavior.
+- PostgreSQL OPAQUE one-time-state consume now atomically removes expired,
+  oversized, and TTL-drifted records before materialization, matching Redis's
+  replay-state retention and poisoned-record behavior.
 - WebAuthn Redis ceremony consumption now rejects and removes keys with a
   missing, expired, or over-bound TTL before reading the record, preventing a
   persisted or recreated replay-state key from bypassing the 15-minute

@@ -16,12 +16,22 @@ const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
 const MAX_POOL_SIZE: u32 = 256;
 const POSTGRES_ONE_TIME_STATE_CONSUME_SQL: &str = r"
-DELETE FROM secure_keypad_opaque_login_states
-WHERE namespace = $1 AND handle_hash = $2 AND expires_at > now()
-RETURNING CASE
-              WHEN octet_length(state) <= $3 THEN state
-              ELSE NULL::bytea
-          END AS state
+WITH removed AS (
+    DELETE FROM secure_keypad_opaque_login_states
+    WHERE namespace = $1 AND handle_hash = $2
+    RETURNING state, expires_at
+)
+SELECT CASE
+           WHEN expires_at > now()
+            AND expires_at <= now() + ($4::double precision * interval '1 millisecond')
+            AND octet_length(state) <= $3
+           THEN state
+           ELSE NULL::bytea
+       END AS state,
+       expires_at > now() AS not_expired,
+       expires_at <= now() + ($4::double precision * interval '1 millisecond') AS within_ttl,
+       octet_length(state) <= $3 AS within_size
+FROM removed
 ";
 /// SQL schema required by [`PostgresOneTimeLoginStateStore`].
 pub const POSTGRES_ONE_TIME_LOGIN_STATE_SCHEMA_SQL: &str = r"
@@ -339,13 +349,27 @@ where
         let row = client
             .query_opt(
                 POSTGRES_ONE_TIME_STATE_CONSUME_SQL,
-                &[&self.namespace, &&handle_hash[..], &max_storage_bytes],
+                &[
+                    &self.namespace,
+                    &&handle_hash[..],
+                    &max_storage_bytes,
+                    &self.ttl_millis,
+                ],
             )
             .map_err(|_| StoreError::Unavailable)?;
         let Some(row) = row else {
             return Ok(None);
         };
         let protected: Option<Vec<u8>> = row.try_get(0).map_err(|_| StoreError::Unavailable)?;
+        let not_expired: bool = row.try_get(1).map_err(|_| StoreError::Unavailable)?;
+        let within_ttl: bool = row.try_get(2).map_err(|_| StoreError::Unavailable)?;
+        let within_size: bool = row.try_get(3).map_err(|_| StoreError::Unavailable)?;
+        if !not_expired {
+            return Ok(None);
+        }
+        if !within_ttl || !within_size {
+            return Err(StoreError::Unavailable);
+        }
         let protected = protected.ok_or(StoreError::Unavailable)?;
         let encoded = self.protector.open(protected)?;
         Ok(Some(decode_bound_state(encoded.to_vec())?))
@@ -377,6 +401,16 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresOneTimeStateConfigE
 #[cfg(test)]
 mod tests {
     use super::POSTGRES_ONE_TIME_STATE_CONSUME_SQL;
+
+    #[test]
+    fn consume_query_removes_expired_and_ttl_drifted_rows_atomically() {
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("WITH removed AS"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL
+            .contains("DELETE FROM secure_keypad_opaque_login_states"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("$4::double precision"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("not_expired"));
+        assert!(POSTGRES_ONE_TIME_STATE_CONSUME_SQL.contains("within_ttl"));
+    }
 
     #[test]
     fn consume_query_bounds_bytes_before_materialization() {
