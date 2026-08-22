@@ -14,7 +14,9 @@ identifiers, protocol errors, or delegate response details.
 The adapter clears the bounded request `Uint8Array` immediately after the
 delegate returns (and clears already-read chunks on size/read failure). This
 reduces residual exposure but cannot erase copies made by the Fetch runtime or
-delegate; JavaScript remains outside the strongest native secret boundary.
+delegate. A delegate must finish consuming the view before returning; the
+buffer is not valid for asynchronous use after that point. JavaScript remains
+outside the strongest native secret boundary.
 
 `transport: "trusted-proxy-tls"` is valid only after the host has independently
 validated the proxy source and forwarded scheme. The adapter never trusts or

@@ -56,6 +56,8 @@ export interface NodeHttpResponse {
  * This adapter intentionally does not implement OPAQUE in JavaScript. The
  * delegate must call the pinned Rust/native reference service and return only
  * the generic HTTP response contract. It must never log or persist `body`.
+ * The delegate must finish consuming `body` before it returns; the adapter
+ * clears that buffer immediately after the returned response is materialized.
  */
 export type OpaqueRouteDelegate = (
   request: NodeHttpRequest,
