@@ -24,7 +24,9 @@ mode is explicitly `headless-host`, and must never be the default for
 authentication. Native/core code still owns the composition buffer; the host
 command contains only a bounded monotonic token and public `keyId`, never a
 label-derived value or accumulated input. Duplicate tokens are ignored and
-older tokens are rejected.
+older tokens are rejected. Updating a command must not recreate an active
+native session or discard its native-owned input; only initial configuration
+may apply a command that arrived before the session was created.
 
 ### Web Mode
 

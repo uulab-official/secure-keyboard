@@ -93,12 +93,26 @@ test("React Native Android bridge bounds defensive public-value conversion", () 
 test("React Native Android bridge converts hostile public maps inside the fail-closed boundary", () => {
   assert.match(SOURCE, /setConfigurationValue\(view, "layout"\) \{ value\?\.toPublicMap\(LAYOUT_KEYS\) \}/);
   assert.match(SOURCE, /setConfigurationValue\(view, "theme"\) \{ value\?\.toPublicMap\(THEME_KEYS\) \}/);
+  assert.match(SOURCE, /value\?\.toPublicMap\(HEADLESS_KEY_PRESS_KEYS\)/);
+  assert.match(SOURCE, /applyStoredHeadlessKeyPress\(view, configuration\)/);
+  assert.match(SOURCE, /if \(replayHeadlessKeyPress \|\| replayInitialHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
+  assert.match(SOURCE, /catch \(_:\s*IllegalArgumentException\) \{[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,240}emitResult\(view, "invalid"\)/);
+});
+
+test("React Native headless commands do not recreate an active native session", () => {
+  const setterStart = SOURCE.indexOf('@ReactProp(name = "headlessKeyPress")');
+  const setterEnd = SOURCE.indexOf('override fun onDropViewInstance', setterStart);
+  assert.ok(setterStart >= 0, "headless command setter must exist");
+  assert.ok(setterEnd > setterStart, "headless command setter must have a bounded source region");
+  const setter = SOURCE.slice(setterStart, setterEnd);
+
+  assert.doesNotMatch(setter, /setConfigurationValue\(/);
+  assert.match(setter, /configuredViews\.containsKey\(view\)/);
+  assert.match(SOURCE, /private fun applyStoredHeadlessKeyPress\([\s\S]{0,260}view\.requestHeadlessKeyPress/);
   assert.match(
     SOURCE,
-    /setConfigurationValue\(view, "headlessKeyPress", replayHeadlessKeyPress = true\) \{[\s\S]{0,120}toPublicMap\(HEADLESS_KEY_PRESS_KEYS\)/,
+    /!configuredViews\.containsKey\(view\)\s*&&\s*configuration\["headlessKeyPress"\] != null/,
   );
-  assert.match(SOURCE, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
-  assert.match(SOURCE, /catch \(_:\s*IllegalArgumentException\) \{[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,240}emitResult\(view, "invalid"\)/);
 });
 
 test("native RN cancel commands reject stale tokens and coalesce replays", () => {

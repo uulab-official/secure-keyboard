@@ -602,7 +602,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_STRING_LENGTH/, "RN Android public bridge conversion must bound string values");
     requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}configureStoredConfiguration\(currentView, replayHeadlessKeyPress = false\)/, "RN Android must restore a lost native session from retained public configuration");
     requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = null/, "RN Android must clear the lifecycle callback during teardown");
-    requireText(findings, file, contents, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/, "RN Android must not replay a stored headless command during lifecycle restoration");
+    requireText(findings, file, contents, /if \(replayHeadlessKeyPress \|\| replayInitialHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/, "RN Android must apply headless commands only on explicit dispatch or initial configuration");
   }
   for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",

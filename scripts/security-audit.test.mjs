@@ -279,7 +279,7 @@ test("all framework adapters restore lifecycle-lost sessions without replaying h
   ]) {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(source, /configureStoredConfiguration\(currentView, replayHeadlessKeyPress = false\)/);
-    assert.match(source, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
+    assert.match(source, /if \(replayHeadlessKeyPress \|\| replayInitialHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
   }
 });
 

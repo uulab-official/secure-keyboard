@@ -29,6 +29,8 @@ exact release-candidate commit by the release evidence manifest.
   fail-closed validation paths across all publishable source copies.
 - Security: direct Android and iOS native views now bound optional public test
   IDs to the same canonical key-ID grammar before creating framework UI.
+- Security: React Native Headless Host commands now reach the existing native
+  session without reinitializing or replaying the public command.
 
 ### Server adapters
 

@@ -99,8 +99,24 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     @ReactProp(name = "headlessKeyPress")
     public fun setHeadlessKeyPress(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "headlessKeyPress", replayHeadlessKeyPress = true) {
+        val publicValue = try {
             value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS)
+        } catch (_: IllegalArgumentException) {
+            pendingConfigurations.remove(view)
+            view.releaseSession()
+            emitResult(view, "invalid")
+            return
+        }
+        val configuration = pendingConfigurations.getOrPut(view) { mutableMapOf() }
+        configuration["headlessKeyPress"] = publicValue
+        val layout = configuration["layout"] as? Map<*, *>
+        val theme = configuration["theme"] as? Map<*, *>
+        if (layout == null || theme == null) return
+
+        if (configuredViews.containsKey(view)) {
+            applyStoredHeadlessKeyPress(view, configuration)
+        } else {
+            configureStoredConfiguration(view, replayHeadlessKeyPress = true)
         }
     }
 
@@ -155,6 +171,8 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         val layout = configuration["layout"] as? Map<*, *>
         val theme = configuration["theme"] as? Map<*, *>
         if (layout == null || theme == null) return
+        val replayInitialHeadlessKeyPress = !configuredViews.containsKey(view) &&
+            configuration["headlessKeyPress"] != null
         try {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
             view.setRendererMode(parsed.mode, parsed.acknowledgeLowerAssurance)
@@ -166,8 +184,24 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
                 view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             }
             configuredViews[view] = true
-            if (replayHeadlessKeyPress) {
+            if (replayHeadlessKeyPress || replayInitialHeadlessKeyPress) {
                 parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
+            }
+        } catch (_: IllegalArgumentException) {
+            pendingConfigurations.remove(view)
+            configuredViews.remove(view)
+            view.releaseSession()
+            emitResult(view, "invalid")
+        }
+    }
+
+    private fun applyStoredHeadlessKeyPress(
+        view: SecureKeypadView,
+        configuration: Map<String, Any?>,
+    ) {
+        try {
+            SecureKeypadBridgeConfigParser.parse(configuration).headlessKeyPress?.let {
+                view.requestHeadlessKeyPress(it.token, it.keyId)
             }
         } catch (_: IllegalArgumentException) {
             pendingConfigurations.remove(view)
