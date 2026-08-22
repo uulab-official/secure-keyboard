@@ -232,7 +232,14 @@ export function encodeBase64Url(value: ArrayBuffer | ArrayBufferView): string {
 
 /** Decodes strict, unpadded base64url supplied by a trusted server boundary. */
 export function decodeBase64Url(value: string, maxBytes = MAX_WEBAUTHN_BINARY_BYTES): Uint8Array {
-  if (typeof value !== "string" || value.length > maxBytes * 2 || !BASE64URL_PATTERN.test(value)) {
+  if (
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 0 ||
+    maxBytes > MAX_WEBAUTHN_BINARY_BYTES ||
+    typeof value !== "string" ||
+    value.length > maxBytes * 2 ||
+    !BASE64URL_PATTERN.test(value)
+  ) {
     throw new WebAuthnClientError("invalid-options", "Base64url WebAuthn data is invalid");
   }
   if (value.length % 4 === 1) {

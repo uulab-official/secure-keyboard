@@ -553,6 +553,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /toNativeAuthenticatorSelection/, "WebAuthn authenticator selection must be allowlisted before browser handoff");
   requireText(findings, "packages/web/src/index.ts", web, /__proto__|constructor|prototype/, "WebAuthn extension copying must reject prototype-pollution keys");
   requireText(findings, "packages/web/src/index.ts", web, /encodedCredentialBinary/, "WebAuthn browser credential output must be bounded before serialization");
+  requireText(findings, "packages/web/src/index.ts", web, /Number\.isSafeInteger\(maxBytes\)[\s\S]{0,180}maxBytes > MAX_WEBAUTHN_BINARY_BYTES/, "WebAuthn base64url decoding must reject unbounded caller-supplied byte limits");
   requireText(findings, "packages/web/src/index.ts", web, /typeof container\.create === "function"[\s\S]{0,100}typeof container\.get === "function"/, "WebAuthn default environment must verify both browser credential methods");
   forbidText(findings, "packages/web/src/index.ts", web, /\b(?:password|pin)\s*[:(]/i, "Web adapter must not expose a password/PIN API");
   const nodeServer = source("packages/server-node/src/index.ts", findings);

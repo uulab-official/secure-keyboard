@@ -74,6 +74,9 @@ exact release-candidate commit by the release evidence manifest.
   LeakSanitizer logs, and dependency metadata inside the final evidence root;
   the staging copier also rejects oversized, over-budget, or over-counted
   untrusted evidence inputs before copying them.
+- The WebAuthn base64url decoder now rejects caller-supplied limits that are
+  non-integral, unbounded, negative, or above the global binary bound before
+  allocating a decode buffer.
 - Added a reviewer-side independent-security-review fragment emitter that
   verifies signed report bytes, review identity, scope, decision, and public
   key binding without accepting private key material.

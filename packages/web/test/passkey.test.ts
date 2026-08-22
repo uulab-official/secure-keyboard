@@ -49,6 +49,13 @@ describe("base64url boundary", () => {
     expect(() => decodeBase64Url("AB")).toThrow(WebAuthnClientError);
     expect(() => decodeBase64Url("AAAA", 2)).toThrow(WebAuthnClientError);
   });
+
+  it("rejects an unbounded or non-integral caller-supplied byte limit", () => {
+    expect(() => decodeBase64Url("AA", Infinity)).toThrow(WebAuthnClientError);
+    expect(() => decodeBase64Url("AA", MAX_WEBAUTHN_BINARY_BYTES + 1)).toThrow(WebAuthnClientError);
+    expect(() => decodeBase64Url("AA", 1.5)).toThrow(WebAuthnClientError);
+    expect(() => decodeBase64Url("AA", -1)).toThrow(WebAuthnClientError);
+  });
 });
 
 describe("WebAuthn support and mode policy", () => {
