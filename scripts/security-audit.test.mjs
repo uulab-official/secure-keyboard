@@ -244,6 +244,17 @@ test("native adapter teardown breaks callback ownership cycles", () => {
   assert.match(androidFlutter, /keypad\.clearBridgeCallbacks\(\)/);
 });
 
+test("release candidate validates the unpublished workspace crate chain through Cargo dry-run publish", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  const releaseGates = readFileSync(new URL("../docs/RELEASE-GATES.md", import.meta.url), "utf8");
+  assert.match(workflow, /cargo publish --locked --workspace --all-features --dry-run --target-dir/);
+  assert.doesNotMatch(workflow, /cargo package --locked --workspace --all-features/);
+  assert.match(releaseGates, /cargo publish --locked --workspace --all-features --dry-run/);
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

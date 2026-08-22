@@ -104,7 +104,7 @@ cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --no-deps
 cargo install cargo-audit --locked --version 0.22.2
 cargo audit
-cargo package --locked --workspace --all-features
+cargo publish --locked --workspace --all-features --dry-run
 pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
@@ -150,6 +150,14 @@ The RN package is tested as a publishable contract with a local type-only seam;
 an application must install and build its chosen React Native version as a
 peer dependency. This keeps the SDK workspace audit from silently inheriting a
 host bundler vulnerability.
+
+The release workflow uses `cargo publish --dry-run` rather than plain
+`cargo package`: Cargo's publish dry-run creates a temporary local registry,
+publishes the unpublished workspace dependency chain in order, and compiles
+each packaged tarball against those exact packaged dependencies. Plain
+`cargo package` resolves path dependencies to whatever same-version crates are
+already in the public registry and can therefore validate the wrong source (or
+fail before the first release of a dependency chain).
 
 For crates.io publication, publish the Rust dependency chain in order after
 the exact commit is tagged: `secure-core`, `secure-auth`,

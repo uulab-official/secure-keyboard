@@ -326,7 +326,7 @@ jobs:
           pnpm --dir packages/react-native pack --pack-destination "$RELEASE_DIR/packages"
           pnpm --dir packages/web pack --pack-destination "$RELEASE_DIR/packages"
           pnpm --dir packages/server-node pack --pack-destination "$RELEASE_DIR/packages"
-          cargo package --locked --workspace --all-features --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
+          cargo publish --locked --workspace --all-features --dry-run --target-dir "$RUNNER_TEMP/secure-keypad-cargo-target"
           cp "$RUNNER_TEMP/secure-keypad-cargo-target/package/"*.crate "$RELEASE_DIR/packages/"
           cp Cargo.lock pnpm-lock.yaml LICENSE-MIT "$RELEASE_DIR/source/"
           cp CHANGELOG.md "$RELEASE_DIR/source/CHANGELOG.md"

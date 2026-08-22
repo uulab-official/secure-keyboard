@@ -1004,7 +1004,7 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /release-signature/, "release gates must require a hashed release-signature artifact");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /independent-review-(?:report|public-key|signature)/, "release gates must bind the reviewer report to a detached signature");
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /--require-trusted-keys/, "release gates must provide a trusted-key validation mode");
-  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /cargo package --locked --workspace --all-features/, "release gates must package-check all feature-gated crates");
+  requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /cargo publish --locked --workspace --all-features --dry-run/, "release gates must publish-check all feature-gated crates through Cargo's temporary registry");
   const thirdPartyNotices = source("docs/THIRD-PARTY-NOTICES.md", findings);
   requireText(findings, "docs/THIRD-PARTY-NOTICES.md", thirdPartyNotices, /playwright.*verification-only/i, "browser verification dependencies must be identified as non-shipped tooling");
   const deviceVerification = source("docs/DEVICE-VERIFICATION.md", findings);
@@ -1157,7 +1157,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /durable_one_time_state/, "release candidate must execute distributed OPAQUE one-time-state interoperability tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo test --locked -p secure-auth-actix/, "release candidate must run the Actix adapter contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm --dir packages\/server-node pack --pack-destination/, "release candidate must package the Node server adapter");
-  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo package --locked --workspace --all-features/, "release candidate must verify all feature-gated crates from the packaged workspace");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cargo publish --locked --workspace --all-features --dry-run/, "release candidate must verify all feature-gated crates from a temporary packaged registry");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /-C "\$RELEASE_DIR" source packages/, "release workflow must sign source and publishable package archives in one tarball");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-ios-ffi\.sha256/, "release workflow must carry the verified iOS FFI checksum into the signed source bundle");
