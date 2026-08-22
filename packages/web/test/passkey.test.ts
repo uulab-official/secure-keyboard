@@ -5,6 +5,7 @@ import {
   WebAuthnClientError,
   assertWebAuthnMode,
   createPasskey,
+  createPasskeyController,
   decodeBase64Url,
   detectWebAuthnSupport,
   encodeBase64Url,
@@ -162,6 +163,61 @@ describe("WebAuthn support and mode policy", () => {
     expect(() => assertWebAuthnMode("unexpected-mode" as never)).toThrow(
       expect.objectContaining({ code: "invalid-mode" }),
     );
+  });
+
+  it("exposes a secret-free state stream for custom passkey UIs", async () => {
+    const api: WebAuthnCredentialApi = {
+      create: async () => ({
+        id: "credential-id",
+        rawId: new Uint8Array([9, 8, 7]).buffer,
+        type: "public-key",
+        response: {
+          clientDataJSON: new Uint8Array([1]).buffer,
+          attestationObject: new Uint8Array([2]).buffer,
+        },
+        getClientExtensionResults: () => ({}),
+      }),
+      get: async () => null,
+    };
+    const controller = createPasskeyController(environment(api));
+    const states: unknown[] = [];
+    const unsubscribe = controller.subscribe((state) => states.push(state));
+
+    const result = await controller.createPasskey(creationOptions);
+
+    expect(result.id).toBe("credential-id");
+    expect(states).toEqual([
+      { phase: "pending", operation: "registration" },
+      { phase: "success", operation: "registration" },
+    ]);
+    expect(controller.getState()).toEqual({ phase: "success", operation: "registration" });
+    expect(controller.getState()).not.toHaveProperty("credential");
+    unsubscribe();
+  });
+
+  it("rejects concurrent passkey operations without changing the pending state", async () => {
+    let release: (() => void) | undefined;
+    const api: WebAuthnCredentialApi = {
+      create: () => new Promise((resolve) => {
+        release = () => resolve(null);
+      }),
+      get: async () => null,
+    };
+    const controller = createPasskeyController(environment(api));
+    const first = controller.createPasskey(creationOptions);
+
+    await expect(controller.getPasskey({ challenge: "AQID" })).rejects.toMatchObject({
+      code: "operation-in-progress",
+    });
+    expect(controller.getState()).toEqual({ phase: "pending", operation: "registration" });
+
+    release?.();
+    await expect(first).rejects.toMatchObject({ code: "no-credential" });
+    expect(controller.getState()).toEqual({
+      phase: "error",
+      operation: "registration",
+      errorCode: "no-credential",
+    });
   });
 
   it("normalizes browser API failures without exposing the original error", async () => {

@@ -2,10 +2,10 @@
 
 The web adapter is passkey-first. It converts server-generated WebAuthn
 options and returns browser ceremony results; it never accepts a password, PIN,
-or keypad secret as an API value. The SDK does not ship a browser DOM keypad.
-If a product builds a custom browser UI around the explicit fallback contract,
-that UI is lower assurance because page JavaScript can observe page input and
-memory.
+or keypad secret as an API value. The SDK does not ship a browser DOM keypad; page JavaScript can observe page input and memory, so a custom browser UI remains lower assurance. For a custom passkey UI, use
+`createPasskeyController()` and render its secret-free lifecycle state. If a
+product builds a custom browser keypad around the explicit fallback
+acknowledgement, that UI is lower assurance for the same reason.
 
 Server-supplied WebAuthn extension objects and browser extension results are
 defensively copied with bounded depth, node count, key count, and string size.
@@ -25,7 +25,8 @@ the browser or serializing it back to the server.
   payloads in analytics, CSP reports, URLs, or client logs.
 - Keep the browser adapter's explicit fallback acknowledgement in the product
   UI and operator documentation. Never silently switch to the custom keypad
-  when WebAuthn is unavailable.
+  when WebAuthn is unavailable. Prefer the passkey controller for custom
+  presentation and preserve its lifecycle-only state contract.
 
 Example baseline header (replace the nonce and API origin per response):
 

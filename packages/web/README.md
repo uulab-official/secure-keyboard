@@ -10,7 +10,26 @@ output buffer; the encoder and credential serializer apply the same bound.
 Hostile browser-environment getters fail closed as an unavailable passkey
 environment rather than exposing their exception text.
 
-WebAuthn must run in a secure context. A custom browser keypad is intentionally not presented as a secure equivalent: page JavaScript can observe browser input and memory. If a product elects to ship that fallback, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)` and display `getWebFallbackNotice()` to the user/operator.
+WebAuthn must run in a secure context. A custom browser keypad is intentionally
+not presented as a secure equivalent: page JavaScript can observe browser input
+and memory. The SDK therefore does not ship a browser DOM keypad or a password/
+PIN input API. For custom passkey UX, use `createPasskeyController()` and render
+only its lifecycle state in the host application:
+
+```ts
+const controller = createPasskeyController();
+const unsubscribe = controller.subscribe((state) => renderPasskey(state));
+
+await controller.createPasskey(serverCreationOptions);
+unsubscribe();
+```
+
+The controller state contains only `idle`, `pending`, `success`, or `error`,
+the public operation kind, and a stable error code. It never contains a
+credential result or user input. If a product independently elects to ship a
+custom browser keypad, call `assertWebAuthnMode("custom-keypad-fallback", environment, true)`
+and display `getWebFallbackNotice()` to the user/operator; that path remains
+lower assurance and is not a Secure Native Mode substitute.
 
 This package is an adapter, not a WebAuthn server. The Rust reference service
 is in `crates/secure-webauthn-example`; it delegates ceremony verification to

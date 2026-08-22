@@ -27,6 +27,7 @@ export type WebAuthnClientErrorCode =
   | "no-credential"
   | "invalid-credential"
   | "credential-api-failure"
+  | "operation-in-progress"
   | "fallback-not-acknowledged";
 
 /** Errors contain stable codes and never include credential bytes or user input. */
@@ -157,6 +158,25 @@ export interface WebAuthnEnvironment {
 export interface WebAuthnSupport {
   readonly available: boolean;
   readonly reason: WebAuthnSupportReason | undefined;
+}
+
+export type PasskeyPresentationOperation = "registration" | "authentication";
+export type PasskeyPresentationPhase = "idle" | "pending" | "success" | "error";
+
+/** UI state contains only lifecycle metadata and a stable error code. */
+export interface PasskeyPresentationState {
+  readonly phase: PasskeyPresentationPhase;
+  readonly operation?: PasskeyPresentationOperation;
+  readonly errorCode?: WebAuthnClientErrorCode;
+}
+
+export interface PasskeyPresentationController {
+  readonly getState: () => PasskeyPresentationState;
+  readonly subscribe: (listener: (state: PasskeyPresentationState) => void) => () => void;
+  readonly createPasskey: (
+    options: WebAuthnCreationOptionsJson,
+  ) => Promise<SerializedRegistrationCredential>;
+  readonly getPasskey: (options: WebAuthnRequestOptionsJson) => Promise<SerializedAssertionCredential>;
 }
 
 export interface SerializedRegistrationCredential {
@@ -728,4 +748,86 @@ export async function getPasskey(
   } catch (error) {
     return normalizeWebAuthnError(error, "credential-api-failure", "WebAuthn credential operation failed");
   }
+}
+
+function presentationState(
+  phase: PasskeyPresentationPhase,
+  operation?: PasskeyPresentationOperation,
+  errorCode?: WebAuthnClientErrorCode,
+): PasskeyPresentationState {
+  const state: {
+    phase: PasskeyPresentationPhase;
+    operation?: PasskeyPresentationOperation;
+    errorCode?: WebAuthnClientErrorCode;
+  } = { phase };
+  if (operation !== undefined) state.operation = operation;
+  if (errorCode !== undefined) state.errorCode = errorCode;
+  return Object.freeze(state);
+}
+
+function presentationError(error: unknown): WebAuthnClientError {
+  if (error instanceof WebAuthnClientError) return error;
+  return new WebAuthnClientError("credential-api-failure", "WebAuthn credential operation failed");
+}
+
+/**
+ * Creates a framework-neutral state controller for custom passkey UIs.
+ * It never accepts or stores password, PIN, keypad, or other secret values.
+ */
+export function createPasskeyController(
+  environment = getDefaultWebAuthnEnvironment(),
+): PasskeyPresentationController {
+  let state = presentationState("idle");
+  const listeners = new Set<(nextState: PasskeyPresentationState) => void>();
+
+  const publish = (nextState: PasskeyPresentationState): void => {
+    state = nextState;
+    for (const listener of [...listeners]) {
+      try {
+        listener(state);
+      } catch {
+        // A host UI listener must not change the WebAuthn result or state machine.
+      }
+    }
+  };
+
+  const run = <T>(
+    operation: PasskeyPresentationOperation,
+    work: () => Promise<T>,
+  ): Promise<T> => {
+    if (state.phase === "pending") {
+      return Promise.reject(
+        new WebAuthnClientError("operation-in-progress", "A passkey operation is already in progress"),
+      );
+    }
+
+    publish(presentationState("pending", operation));
+    return Promise.resolve()
+      .then(work)
+      .then(
+        (result) => {
+          publish(presentationState("success", operation));
+          return result;
+        },
+        (error: unknown) => {
+          const normalized = presentationError(error);
+          publish(presentationState("error", operation, normalized.code));
+          throw normalized;
+        },
+      );
+  };
+
+  return Object.freeze({
+    getState: () => state,
+    subscribe: (listener: (nextState: PasskeyPresentationState) => void): (() => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    createPasskey: (options: WebAuthnCreationOptionsJson) =>
+      run("registration", () => createPasskey(options, environment)),
+    getPasskey: (options: WebAuthnRequestOptionsJson) =>
+      run("authentication", () => getPasskey(options, environment)),
+  });
 }

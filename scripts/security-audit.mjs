@@ -900,6 +900,9 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /WEB_FALLBACK_WARNING_CODE/, "Web fallback warning must be stable");
   requireText(findings, "packages/web/src/index.ts", web, /fallback-not-acknowledged/, "Web fallback must fail closed without acknowledgement");
   requireText(findings, "packages/web/src/index.ts", web, /createPasskey/, "Web adapter must expose passkey-first registration");
+  requireText(findings, "packages/web/src/index.ts", web, /createPasskeyController/, "Web custom passkey UI must use the secret-free state controller");
+  requireText(findings, "packages/web/src/index.ts", web, /operation-in-progress/, "Web passkey UI controller must reject concurrent ceremonies");
+  requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)/, "Web passkey UI controller must normalize unexpected errors");
   requireText(findings, "packages/web/src/index.ts", web, /MAX_WEBAUTHN_EXTENSION_NODES/, "WebAuthn extension JSON must be bounded");
   requireText(findings, "packages/web/src/index.ts", web, /copyBoundedExtensionValue/, "WebAuthn extension JSON must be defensively copied");
   requireText(findings, "packages/web/src/index.ts", web, /toNativeAuthenticatorSelection/, "WebAuthn authenticator selection must be allowlisted before browser handoff");
