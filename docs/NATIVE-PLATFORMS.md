@@ -72,7 +72,7 @@ cargo build --release -p secure-ffi --target aarch64-apple-ios-sim
 ```
 
 For a release artifact, combine the device and simulator libraries into an
-XCFramework. Before CocoaPods evaluates a package, stage a copy beside its
+XCFramework. For a source checkout or custom artifact, stage a copy beside its
 Podspec and pass the source path as `SECURE_KEYPAD_FFI_XCFRAMEWORK`:
 
 ```sh
@@ -88,8 +88,10 @@ cp -R /tmp/secure_ffi.xcframework packages/flutter/ios/secure_ffi.xcframework
 
 The React Native podspec consumes `secure_ffi.xcframework` from its package
 root; the Flutter podspec consumes `ios/secure_ffi.xcframework` from the
-plugin package. CI performs the same staging and parses both Podspecs against
-the result. Absolute paths are used only as validated source inputs, never as
+plugin package. Published packages select these bundled paths without an
+environment variable; an explicit source path remains available for custom
+builds. CI performs the same staging and parses both Podspecs against the
+result. Absolute paths are used only as validated source inputs, never as
 CocoaPods vendored paths.
 
 ## Android

@@ -28,11 +28,23 @@ Pod::Spec.new do |spec|
   ffi_library = ENV['SECURE_KEYPAD_FFI_LIB']
   staged_xcframework = File.join(__dir__, 'secure_ffi.xcframework')
   staged_library = File.join(__dir__, 'libsecure_ffi.a')
-  if ffi_xcframework && Dir.exist?(ffi_xcframework) && Dir.exist?(staged_xcframework)
+  if ffi_xcframework
+    if Dir.exist?(ffi_xcframework) && Dir.exist?(staged_xcframework)
+      spec.vendored_frameworks = 'secure_ffi.xcframework'
+    else
+      raise 'SECURE_KEYPAD_FFI_XCFRAMEWORK must point to an existing artifact matching the staged package XCFramework'
+    end
+  elsif ffi_library
+    if File.file?(ffi_library) && File.file?(staged_library)
+      spec.vendored_libraries = 'libsecure_ffi.a'
+    else
+      raise 'SECURE_KEYPAD_FFI_LIB must point to an existing artifact matching the staged package library'
+    end
+  elsif Dir.exist?(staged_xcframework)
     spec.vendored_frameworks = 'secure_ffi.xcframework'
-  elsif ffi_library && File.file?(ffi_library) && File.file?(staged_library)
+  elsif File.file?(staged_library)
     spec.vendored_libraries = 'libsecure_ffi.a'
   else
-    raise 'SECURE_KEYPAD_FFI_XCFRAMEWORK or SECURE_KEYPAD_FFI_LIB must point to matching secure_ffi artifacts before pod install'
+    raise 'SECURE_KEYPAD_FFI_XCFRAMEWORK or SECURE_KEYPAD_FFI_LIB must be provided, or matching bundled secure_ffi artifacts must be present before pod install'
   end
 end

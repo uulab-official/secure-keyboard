@@ -73,6 +73,8 @@ test("iOS podspecs consume only staged relative FFI artifacts", () => {
     assert.match(contents, /spec\.platforms\s*=\s*\{\s*:ios\s*=>\s*['"]15\.1['"]\s*\}/);
     assert.match(contents, /File\.join\(__dir__, ['"]secure_ffi\.xcframework['"]\)/);
     assert.match(contents, /spec\.vendored_frameworks\s*=\s*['"]secure_ffi\.xcframework['"]/);
+    assert.match(contents, /elsif Dir\.exist\?\(staged_xcframework\)/);
+    assert.match(contents, /elsif File\.file\?\(staged_library\)/);
     assert.doesNotMatch(contents, /spec\.vendored_frameworks\s*=\s*ffi_xcframework/);
   }
 

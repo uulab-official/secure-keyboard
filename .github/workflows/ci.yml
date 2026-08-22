@@ -285,9 +285,14 @@ jobs:
           }
           ''')
           PY
+      - name: Stage bundled Flutter Android FFI artifacts
+        run: |
+          mkdir -p packages/flutter/android/secure_ffi
+          cp -R "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a" packages/flutter/android/secure_ffi/arm64-v8a
+          cp -R "$RUNNER_TEMP/secure-keypad-ffi/x86_64" packages/flutter/android/secure_ffi/x86_64
+          test -s packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a
+          test -s packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a
       - name: Build the Flutter host APK with the native FFI boundary
-        env:
-          SECURE_KEYPAD_FFI_LIB_DIR: ${{ runner.temp }}/secure-keypad-ffi
         working-directory: ${{ runner.temp }}/secure-keypad-flutter-host
         run: |
           flutter pub get
@@ -412,9 +417,16 @@ jobs:
           const styles = StyleSheet.create({ root: { flex: 1 }, keypad: { flex: 1 } });
           ''')
           PY
-      - name: Build the React Native host APK with the native FFI boundary
+      - name: Stage bundled React Native Android FFI artifacts
         env:
-          SECURE_KEYPAD_FFI_LIB_DIR: ${{ runner.temp }}/secure-keypad-ffi
+          RN_PACKAGE_DIR: ${{ runner.temp }}/secure-keypad-react-native-package
+        run: |
+          mkdir -p "$RN_PACKAGE_DIR/android/secure_ffi"
+          cp -R "$RUNNER_TEMP/secure-keypad-ffi/arm64-v8a" "$RN_PACKAGE_DIR/android/secure_ffi/arm64-v8a"
+          cp -R "$RUNNER_TEMP/secure-keypad-ffi/x86_64" "$RN_PACKAGE_DIR/android/secure_ffi/x86_64"
+          test -s "$RN_PACKAGE_DIR/android/secure_ffi/arm64-v8a/libsecure_ffi.a"
+          test -s "$RN_PACKAGE_DIR/android/secure_ffi/x86_64/libsecure_ffi.a"
+      - name: Build the React Native host APK with the native FFI boundary
         working-directory: ${{ runner.temp }}/secure-keypad-react-native-host
         run: |
           npm install --install-links --no-audit --no-fund
@@ -895,8 +907,6 @@ jobs:
           project.write_text(re.sub(r"IPHONEOS_DEPLOYMENT_TARGET = [^;]+;", "IPHONEOS_DEPLOYMENT_TARGET = 15.1;", project.read_text()))
           PY
       - name: Link and compile the React Native iOS host
-        env:
-          SECURE_KEYPAD_FFI_XCFRAMEWORK: ${{ runner.temp }}/secure_ffi.xcframework
         working-directory: ${{ runner.temp }}/secure-keypad-react-native-ios-host
         run: |
           npm install --install-links --no-audit --no-fund
@@ -1091,7 +1101,7 @@ jobs:
           ''')
           PY
           cd ios
-          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" pod install
+          pod install
           xcodebuild -project Pods/Pods.xcodeproj -scheme secure_keypad_flutter \
             -configuration Debug \
             -sdk iphonesimulator \
@@ -1103,8 +1113,7 @@ jobs:
             ONLY_ACTIVE_ARCH=YES \
             build
           cd "$HOST_DIR"
-          SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
-            FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --simulator --no-codesign
+          FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --simulator --no-codesign
           python3 - <<'PY'
           import os
           import re

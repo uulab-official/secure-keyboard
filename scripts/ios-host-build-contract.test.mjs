@@ -52,13 +52,14 @@ test("React Native iOS CI runs a bundled release UI smoke test", () => {
   assert.match(RN_IOS_HOST, /digitOne\.tap\(\)/);
   assert.match(RN_IOS_HOST, /1 characters entered/);
   assert.doesNotMatch(RN_IOS_HOST, /-configuration Debug/);
+  assert.doesNotMatch(RN_IOS_HOST, /SECURE_KEYPAD_FFI_XCFRAMEWORK=.*pod install/);
 });
 
 test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
   assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter create/);
   assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter pub get/);
   assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios/);
-  assert.match(FLUTTER_IOS_HOST, /SECURE_KEYPAD_FFI_XCFRAMEWORK=.*pod install/);
+  assert.doesNotMatch(FLUTTER_IOS_HOST, /SECURE_KEYPAD_FFI_XCFRAMEWORK=.*pod install/);
   assert.match(FLUTTER_IOS_HOST, /xcodebuild -project Pods\/Pods\.xcodeproj -scheme secure_keypad_flutter/);
   assert.match(FLUTTER_IOS_HOST, /SecureKeypadHostSmoke/);
   assert.match(FLUTTER_IOS_HOST, /SecureKeypadConfiguration\.defaultNumeric/);

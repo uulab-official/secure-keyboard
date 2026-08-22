@@ -60,3 +60,23 @@ test("Flutter host artifact contains every supported Android target platform", (
   assert.match(flutterBuildSection, /flutter build apk --debug --target-platform android-arm64,android-x64/);
   assert.doesNotMatch(flutterBuildSection, /target-platform android-arm64\s*\n\s*flutter build apk --debug --target-platform android-x64/);
 });
+
+test("Android host builds exercise the bundled FFI fallback", () => {
+  assert.match(WORKFLOW, /Stage bundled Flutter Android FFI artifacts/);
+  assert.match(WORKFLOW, /packages\/flutter\/android\/secure_ffi\/arm64-v8a/);
+  assert.match(WORKFLOW, /packages\/flutter\/android\/secure_ffi\/x86_64/);
+  assert.match(WORKFLOW, /Stage bundled React Native Android FFI artifacts/);
+  assert.match(WORKFLOW, /RN_PACKAGE_DIR\/android\/secure_ffi\/arm64-v8a/);
+  assert.match(WORKFLOW, /RN_PACKAGE_DIR\/android\/secure_ffi\/x86_64/);
+
+  const flutterBuildSection = WORKFLOW.match(
+    /Build the Flutter host APK with the native FFI boundary[\s\S]*?Emit Flutter Android FFI checksum manifest/,
+  )?.[0];
+  const rnBuildSection = WORKFLOW.match(
+    /Build the React Native host APK with the native FFI boundary[\s\S]*?Emit React Native Android FFI checksum manifest/,
+  )?.[0];
+  assert.ok(flutterBuildSection);
+  assert.ok(rnBuildSection);
+  assert.doesNotMatch(flutterBuildSection, /SECURE_KEYPAD_FFI_LIB_DIR/);
+  assert.doesNotMatch(rnBuildSection, /SECURE_KEYPAD_FFI_LIB_DIR/);
+});

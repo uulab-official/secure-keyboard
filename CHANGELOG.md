@@ -31,6 +31,9 @@ exact release-candidate commit by the release evidence manifest.
   and the verified libraries are included in the publishable React Native npm
   and Flutter package paths, with staging-time byte comparison against the
   signed native source.
+- iOS Podspecs and CI host builds now consume bundled release XCFrameworks by
+  default while retaining validated explicit artifact overrides for source and
+  custom builds; missing or mismatched native inputs still fail closed.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.

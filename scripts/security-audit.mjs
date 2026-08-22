@@ -826,7 +826,7 @@ export function runSecurityAudit() {
     "packages/flutter/ios/secure_keypad_flutter.podspec",
   ]) {
     const contents = source(file, findings);
-    requireText(findings, file, contents, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "iOS package must prefer an explicit FFI XCFramework");
+    requireText(findings, file, contents, /SECURE_KEYPAD_FFI_XCFRAMEWORK/, "iOS package must support an explicit or bundled FFI XCFramework");
     requireText(findings, file, contents, /SECURE_KEYPAD_FFI_LIB/, "iOS package must support a single-platform FFI fallback");
     requireText(findings, file, contents, /raise ['"]SECURE_KEYPAD_FFI_XCFRAMEWORK/, "iOS package must fail closed without FFI artifacts");
   }
@@ -1090,6 +1090,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain dependency metadata[\s\S]{0,400}secure-keypad-dependency-metadata[\s\S]{0,240}retained\/dependency-metadata/, "CI aggregate must retain dependency metadata");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled Flutter Android FFI artifacts/, "Flutter host CI must exercise the bundled Android FFI fallback");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled React Native Android FFI artifacts/, "React Native host CI must exercise the bundled Android FFI fallback");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-simulator-runtime/, "CI must retain iOS Simulator runtime smoke evidence");
   const iosRuntimeSmoke = source("scripts/ios-simulator-runtime-smoke.sh", findings);
