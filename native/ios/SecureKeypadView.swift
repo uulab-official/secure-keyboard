@@ -391,7 +391,6 @@ public class SecureKeypadView: UIView {
         }
         displayLabel.text = protectedPresentation ? "Protected" : ""
         displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: 0, protected: protectedPresentation)
-        lastHeadlessKeyPress = nil
     }
 
     /// Cancels the native session and zeroizes any pending input.

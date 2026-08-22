@@ -32,7 +32,9 @@ The React Native `cancelRequest` prop is a non-negative safe integer command
 token; its first value establishes a baseline, a greater value cancels the
 native session, an equal value is ignored, and a lower value is rejected as a
 stale command. Neither framework controller path transports a secret or
-opaque submission handle.
+opaque submission handle. Headless key-press tokens use the same lifetime
+boundary: their replay floor belongs to the native view instance and survives
+session/lifecycle reconfiguration.
 
 ## Upgrade procedure
 

@@ -285,6 +285,27 @@ test("all framework adapters restore lifecycle-lost sessions without replaying h
   }
 });
 
+test("native headless replay floors survive session release", () => {
+  const nativeViewSources = [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ];
+
+  for (const relativePath of nativeViewSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /releaseSession\(\)\s*\{/);
+    assert.doesNotMatch(
+      source,
+      /releaseSession\(\)\s*\{[\s\S]{0,700}lastHeadlessKeyPress\s*=/,
+      `${relativePath} must retain the headless replay floor across lifecycle release`,
+    );
+  }
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });

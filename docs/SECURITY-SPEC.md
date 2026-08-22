@@ -27,6 +27,9 @@ label-derived value or accumulated input. Duplicate tokens are ignored and
 older tokens are rejected. Updating a command must not recreate an active
 native session or discard its native-owned input; only initial configuration
 may apply a command that arrived before the session was created.
+The replay floor is retained for the lifetime of a native view instance across
+session release, lifecycle recovery, and public reconfiguration; releasing the
+secret-bearing session must not make an older delayed command valid again.
 
 ### Web Mode
 

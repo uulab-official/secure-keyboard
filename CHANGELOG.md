@@ -32,6 +32,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: React Native Headless Host commands now reach the existing native
   session without reinitializing or replaying the public command, while a
   command received before initial configuration is applied once at startup.
+- Security: native Headless Host replay floors now survive session release and
+  lifecycle reconfiguration for the lifetime of each native view, preventing a
+  delayed older command from becoming valid after zeroization.
 
 ### Server adapters
 

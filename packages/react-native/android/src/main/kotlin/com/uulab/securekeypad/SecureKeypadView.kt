@@ -355,7 +355,6 @@ public open class SecureKeypadView @JvmOverloads constructor(
         }
         display.text = ""
         display.contentDescription = "No input"
-        lastHeadlessKeyPress = null
     }
 
     /** Cancels the native session and zeroizes any pending input. */

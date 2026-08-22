@@ -58,8 +58,10 @@ native/core code still owns composition and the input buffer:
 Increment the bounded `token` for each command. Updating `headlessKeyPress`
 delivers that one public command to the existing native session; it does not
 recreate the session or discard previously entered native input. Do not send
-labels, derived values, or accumulated input. Secure Native remains the default
-and should be used when the native renderer is acceptable.
+labels, derived values, or accumulated input. The token replay floor survives
+native session/lifecycle recovery for the lifetime of the native view, so do
+not restart the token sequence while reusing that view. Secure Native remains
+the default and should be used when the native renderer is acceptable.
 
 For native passwords containing letters and symbols, use `inputPolicy: "ascii"`
 with public `ascii-XX` key IDs. The label is presentation-only; browser

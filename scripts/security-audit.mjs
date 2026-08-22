@@ -695,6 +695,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
     requireText(findings, file, contents, /secureKeypadDecodeMaskedState/, "Android native keypad must fail closed when JNI masked-state refresh fails");
+    requireText(findings, file, contents, /lastHeadlessKeyPress/, "Android native keypad must retain a per-view headless replay floor");
+    forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*null/, "Android native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /display\.text\s*=\s*\"\"/, "Android native keypad must clear the visible masked display when releasing a session");
     forbidText(
       findings,
@@ -755,6 +757,8 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "iOS native keypad must reject invalid display-state codes");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
+    requireText(findings, file, contents, /lastHeadlessKeyPress/, "iOS native keypad must retain a per-view headless replay floor");
+    forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
     requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,400}releaseSession\(\)/, "iOS native reconfiguration must clear the old session through its nil-setting release path");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");

@@ -47,6 +47,9 @@ For a fully custom host-rendered keypad, set
 `acknowledgeLowerAssurance: true`, then call `await controller.pressKey("digit-1")`.
 This lower-assurance path lets the host observe public key IDs; it never sends
 labels, derived values, or accumulated input. Secure Native is the default.
+Headless command tokens are monotonic for the lifetime of the native view;
+native session/lifecycle recovery retains the replay floor, so a host must not
+restart its token sequence while reusing the same view instance.
 
 The plugin build is fail-closed. Published release packages contain the
 verified iOS `ios/secure_ffi.xcframework` and Android
