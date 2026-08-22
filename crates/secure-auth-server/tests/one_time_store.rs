@@ -121,3 +121,33 @@ fn bound_and_unbound_handles_cannot_be_consumed_through_the_wrong_contract() {
         Err(StoreError::InvalidIdentifier)
     ));
 }
+
+#[test]
+fn a_type_mismatch_does_not_consume_the_pending_state() {
+    let store = InMemoryOneTimeLoginStore::new(2, Duration::from_secs(60)).unwrap();
+    let unbound = store
+        .insert(ServerLoginStateBytes::from_bytes(b"fixture-unbound").unwrap())
+        .unwrap();
+    let bound = store
+        .insert_bound(
+            BoundLoginState::new(
+                ServerLoginStateBytes::from_bytes(b"fixture-bound").unwrap(),
+                b"fixture-client",
+                b"fixture-server",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+    assert!(matches!(
+        store.take_bound(&unbound),
+        Err(StoreError::StateTypeMismatch)
+    ));
+    assert!(store.take(&unbound).unwrap().is_some());
+
+    assert!(matches!(
+        store.take(&bound),
+        Err(StoreError::StateTypeMismatch)
+    ));
+    assert!(store.take_bound(&bound).unwrap().is_some());
+}

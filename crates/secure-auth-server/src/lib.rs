@@ -119,7 +119,9 @@ pub enum StoreError {
     StateTooLarge,
     /// A public identifier is empty or exceeds its bound.
     InvalidIdentifier,
-    /// The caller used an unbound/bound API with the wrong state type.
+    /// The caller used an unbound/bound API with the wrong state type. The
+    /// pending state is preserved so a correct contract call can still consume
+    /// it atomically.
     StateTypeMismatch,
     /// The process-local lock is poisoned and the store cannot be used safely.
     Unavailable,
@@ -329,15 +331,20 @@ impl InMemoryOneTimeLoginStore {
     ) -> Result<Option<ServerLoginStateBytes>, StoreError> {
         let now = Instant::now();
         let mut entries = self.entries.lock().map_err(|_| StoreError::Unavailable)?;
-        let Some(entry) = entries.remove(handle) else {
+        let Some(entry) = entries.get(handle) else {
             return Ok(None);
         };
         if entry.expires_at <= now {
+            entries.remove(handle);
             return Ok(None);
         }
+        if !matches!(&entry.state, StoredState::Unbound(_)) {
+            return Err(StoreError::StateTypeMismatch);
+        }
+        let entry = entries.remove(handle).ok_or(StoreError::Unavailable)?;
         match entry.state {
             StoredState::Unbound(state) => Ok(Some(state)),
-            StoredState::Bound(_) => Err(StoreError::StateTypeMismatch),
+            StoredState::Bound(_) => unreachable!("state type was checked before removal"),
         }
     }
 
@@ -354,14 +361,19 @@ impl InMemoryOneTimeLoginStore {
     ) -> Result<Option<BoundLoginState>, StoreError> {
         let now = Instant::now();
         let mut entries = self.entries.lock().map_err(|_| StoreError::Unavailable)?;
-        let Some(entry) = entries.remove(handle) else {
+        let Some(entry) = entries.get(handle) else {
             return Ok(None);
         };
         if entry.expires_at <= now {
+            entries.remove(handle);
             return Ok(None);
         }
+        if !matches!(&entry.state, StoredState::Bound(_)) {
+            return Err(StoreError::StateTypeMismatch);
+        }
+        let entry = entries.remove(handle).ok_or(StoreError::Unavailable)?;
         match entry.state {
-            StoredState::Unbound(_) => Err(StoreError::StateTypeMismatch),
+            StoredState::Unbound(_) => unreachable!("state type was checked before removal"),
             StoredState::Bound(state) => Ok(Some(state)),
         }
     }
