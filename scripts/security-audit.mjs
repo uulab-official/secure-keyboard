@@ -1034,6 +1034,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-signed-release-evidence/, "CI must validate signed-release evidence emission");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-independent-review-fragment/, "CI must validate independent-review fragment emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-ci-gate-evidence/, "CI must validate CI gate evidence emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-web-browser-evidence/, "CI must validate web browser evidence emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-ci-release-evidence/, "CI must retain an aggregated release evidence artifact");
