@@ -579,6 +579,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await options\.csrfValidated\(request\)[\s\S]{0,1000}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /transport === \"direct-tls\" \|\| context\.transport === \"trusted-proxy-tls\"/, "Node server adapter must require explicit TLS deployment facts");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /STATUS_CODES = new Set/, "Node server adapter must constrain delegate status codes");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function byteView[\s\S]{0,700}function zeroizeChunk/, "Node server adapter must preserve byte-view ownership and zeroize malformed chunks");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function responseFromDelegate[\s\S]{0,1200}body\.fill\(0\)/, "Node server adapter must zeroize delegate response bytes after copying them");
   forbidText(findings, "packages/server-node/src/index.ts", nodeServer, /X-Forwarded-Proto|x-forwarded-proto/i, "Node server adapter must not parse forwarded transport headers");
   forbidText(findings, "packages/server-node/src/index.ts", nodeServer, /\b(?:password|pin|rawInput|input(?:Value|Text|Bytes))\s*[:(]/i, "Node server adapter must not expose a secret-bearing application API");

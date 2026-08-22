@@ -92,6 +92,33 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("does not copy non-byte stream chunks before rejecting the body", async () => {
+    const delegate = vi.fn();
+    const sourceChunk = new Uint16Array([0x1234, 0xabcd]);
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate,
+    });
+    const incoming = {
+      url: "https://auth.example.test/v1/opaque/login/start",
+      method: "POST",
+      headers: new Headers({ "content-type": "application/json" }),
+      body: new ReadableStream<unknown>({
+        start(controller) {
+          controller.enqueue(sourceChunk);
+          controller.close();
+        },
+      }),
+    } as unknown as Request;
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(503);
+    expect(sourceChunk.every((value) => value === 0)).toBe(true);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
   it("keeps the oversized result deterministic when stream cancellation fails", async () => {
     const delegate = vi.fn();
     const handler = createOpaqueHandler({ deploymentContext: secureContext, csrfValidated: () => true, delegate });

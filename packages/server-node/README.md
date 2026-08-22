@@ -17,7 +17,9 @@ copies the delegate's response `Uint8Array` into the Fetch response and clears
 the delegate-owned response buffer before returning. These controls reduce
 residual exposure but cannot erase copies made by the Fetch runtime or
 delegate. A delegate must finish consuming the request view before returning;
-the request buffer is not valid for asynchronous use after that point.
+the request buffer is not valid for asynchronous use after that point. A
+malformed non-byte stream chunk is rejected before delegation and any supported
+typed-array backing bytes are cleared.
 JavaScript remains outside the strongest native secret boundary.
 
 `transport: "trusted-proxy-tls"` is valid only after the host has independently

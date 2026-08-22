@@ -55,6 +55,8 @@ exact release-candidate commit by the release evidence manifest.
   protocol setup fails.
 - Node transport responses are now byte-only at the TypeScript boundary and
   delegate-owned response buffers are zeroized after copying into `Response`.
+- Node request streams now reject non-byte chunks without creating a detached
+  copy and clear supported typed-array backing bytes before failing closed.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.

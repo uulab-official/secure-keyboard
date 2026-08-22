@@ -93,6 +93,25 @@ function responseHeaders(): Headers {
   return headers;
 }
 
+function byteView(value: unknown): Uint8Array | undefined {
+  if (value instanceof Uint8Array) return value;
+  if (ArrayBuffer.isView(value)) {
+    const bytesPerElement = (value as ArrayBufferView & { BYTES_PER_ELEMENT?: unknown }).BYTES_PER_ELEMENT;
+    if (bytesPerElement !== 1) return undefined;
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  return undefined;
+}
+
+function zeroizeChunk(value: unknown): void {
+  if (ArrayBuffer.isView(value)) {
+    new Uint8Array(value.buffer, value.byteOffset, value.byteLength).fill(0);
+  } else if (value instanceof ArrayBuffer) {
+    new Uint8Array(value).fill(0);
+  }
+}
+
 function genericResponse(status: number, code: "invalid_request" | "temporarily_unavailable"): Response {
   return new Response(responseBody(errorBody(code)), { status, headers: responseHeaders() });
 }
@@ -145,8 +164,17 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
     while (true) {
       const result = await reader.read();
       if (result.done) break;
-      const chunk = result.value;
-      const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+      const bytes = byteView(result.value);
+      if (bytes === undefined) {
+        zeroizeChunk(result.value);
+        try {
+          await reader.cancel();
+        } catch {
+          // The malformed chunk remains authoritative even if cleanup fails.
+        }
+        clearChunks();
+        throw new TypeError("request stream yielded a non-byte chunk");
+      }
       total += bytes.byteLength;
       if (total > limit) {
         try {
