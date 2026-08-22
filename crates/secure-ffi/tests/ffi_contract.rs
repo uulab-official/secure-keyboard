@@ -307,6 +307,50 @@ fn ffi_rejects_aliased_registration_finish_output_without_losing_state() {
 }
 
 #[test]
+fn ffi_rejects_aliased_auth_message_input_and_output_slots() {
+    let mut message: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    let aliased_bytes = (&mut message as *mut *mut SecureKeypadAuthMessage).cast::<u8>();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_new(aliased_bytes, 1, &mut message) },
+        SecureKeypadError::InvalidArgument
+    );
+    assert!(message.is_null());
+}
+
+#[repr(C, align(8))]
+struct AlignedCopyBuffer {
+    bytes: [u8; 16 * 1024],
+}
+
+#[test]
+fn ffi_rejects_aliased_auth_message_output_and_length_slots() {
+    let payload = b"fixture-opaque-message";
+    let mut message: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_new(payload.as_ptr(), payload.len(), &mut message) },
+        SecureKeypadError::Ok
+    );
+
+    let mut storage = AlignedCopyBuffer {
+        bytes: [0u8; 16 * 1024],
+    };
+    let aliased_output_written = storage.bytes.as_mut_ptr().cast::<usize>();
+    assert_eq!(
+        unsafe {
+            secure_keypad_auth_message_copy(
+                message,
+                storage.bytes.as_mut_ptr(),
+                storage.bytes.len(),
+                aliased_output_written,
+            )
+        },
+        SecureKeypadError::InvalidArgument
+    );
+
+    unsafe { secure_keypad_auth_message_free(message) };
+}
+
+#[test]
 fn ascii_constructor_accepts_bounded_policy() {
     let mut session: *mut SecureKeypadSession = ptr::null_mut();
     assert_eq!(

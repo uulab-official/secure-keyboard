@@ -8,7 +8,11 @@
 //! Handles are single-owner and must be used from one native thread at a time.
 
 use core::time::Duration;
-use std::{panic::catch_unwind, panic::AssertUnwindSafe, ptr, slice, str};
+use std::{
+    mem::size_of,
+    panic::{catch_unwind, AssertUnwindSafe},
+    ptr, slice, str,
+};
 
 use secure_auth::{
     client_login_finish_from_native_state, client_login_start_from_submission,
@@ -35,6 +39,42 @@ fn output_slots_alias<A, B, C>(first: *mut A, second: *mut B, third: *mut C) -> 
     pointer_slots_alias(first, second)
         || pointer_slots_alias(first, third)
         || pointer_slots_alias(second, third)
+}
+
+/// Returns whether two caller-provided byte ranges overlap, failing closed on
+/// address arithmetic overflow.
+fn memory_ranges_overlap(
+    first: *const u8,
+    first_length: usize,
+    second: *const u8,
+    second_length: usize,
+) -> bool {
+    if first_length == 0 || second_length == 0 {
+        return false;
+    }
+    let first_start = first as usize;
+    let second_start = second as usize;
+    let Some(first_end) = first_start.checked_add(first_length) else {
+        return true;
+    };
+    let Some(second_end) = second_start.checked_add(second_length) else {
+        return true;
+    };
+    first_start < second_end && second_start < first_end
+}
+
+/// Checks whether a byte input overlaps a typed pointer output slot.
+fn buffer_overlaps_pointer_slot<T>(
+    buffer: *const u8,
+    buffer_length: usize,
+    slot: *const *mut T,
+) -> bool {
+    memory_ranges_overlap(
+        buffer,
+        buffer_length,
+        slot.cast::<u8>(),
+        size_of::<*mut T>(),
+    )
 }
 
 /// ABI version implemented by this linked native library.
@@ -509,9 +549,10 @@ pub unsafe extern "C" fn secure_keypad_session_submit(
 ///
 /// # Safety
 ///
-/// `bytes` must point to a readable buffer of `length` bytes, and `output` must
-/// be a valid writable pointer. The returned handle must be freed exactly once
-/// with [`secure_keypad_auth_message_free`].
+/// `bytes` must point to a readable buffer of `length` bytes that does not
+/// overlap the output slot, and `output` must be a valid writable pointer. The
+/// returned handle must be freed exactly once with
+/// [`secure_keypad_auth_message_free`].
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_auth_message_new(
     bytes: *const u8,
@@ -522,15 +563,18 @@ pub unsafe extern "C" fn secure_keypad_auth_message_new(
         if output.is_null() {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: `output` is checked for null and must be writable.
-        unsafe {
-            *output = ptr::null_mut();
-        }
         if bytes.is_null() || length == 0 {
             return SecureKeypadError::InvalidArgument;
         }
         if length > secure_auth::MAX_MESSAGE_BYTES {
             return SecureKeypadError::MessageTooLarge;
+        }
+        if buffer_overlaps_pointer_slot(bytes, length, output) {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: `output` is checked for null and must be writable.
+        unsafe {
+            *output = ptr::null_mut();
         }
         // SAFETY: The caller contract guarantees the input buffer is readable
         // for exactly `length` bytes during this call.
@@ -575,10 +619,10 @@ pub unsafe extern "C" fn secure_keypad_auth_message_size(
 ///
 /// # Safety
 ///
-/// `message` must be live. `output_written` must be a valid writable pointer.
-/// When the message is non-empty, `output` must point to a writable buffer of
-/// at least `output_length` bytes. The caller must not use the handles
-/// concurrently.
+/// `message` must be live. `output_written` must be a valid writable pointer
+/// that does not overlap the output buffer. When the message is non-empty,
+/// `output` must point to a writable buffer of at least `output_length` bytes.
+/// The caller must not use the handles concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_auth_message_copy(
     message: *const SecureKeypadAuthMessage,
@@ -598,6 +642,14 @@ pub unsafe extern "C" fn secure_keypad_auth_message_copy(
             *output_written = 0;
         }
         if output.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if memory_ranges_overlap(
+            output,
+            output_length,
+            output_written.cast::<u8>(),
+            size_of::<usize>(),
+        ) {
             return SecureKeypadError::InvalidArgument;
         }
         if output_length < bytes.len() {

@@ -485,6 +485,10 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_registration, output_request\)/, "FFI registration start must validate distinct pointer slots before clearing outputs");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slots_alias\(login, output_finalization\)/, "FFI login finish must validate distinct state/output slots before clearing outputs");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /pointer_slots_alias\(registration, output_upload\)/, "FFI registration finish must validate distinct state/output slots before clearing outputs");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn memory_ranges_overlap/, "FFI transport buffers must reject overlapping caller ranges");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn buffer_overlaps_pointer_slot/, "FFI message construction must reject input/output slot overlap");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /buffer_overlaps_pointer_slot\(bytes, length, output\)/, "FFI message construction must validate input bytes before clearing the output slot");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /memory_ranges_overlap\(\s*output,\s*output_length,\s*output_written\.cast::<u8>\(\)/, "FFI message copy must validate output and length-slot overlap");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
   const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);

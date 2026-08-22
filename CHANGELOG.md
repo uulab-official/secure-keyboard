@@ -93,6 +93,8 @@ exact release-candidate commit by the release evidence manifest.
   when a native consumer throws, while preserving transferred ownership.
 - Native OPAQUE login/registration start and finish now reject aliased C ABI
   pointer slots before clearing output slots or consuming opaque handles.
+- Native OPAQUE message construction/copy now rejects overlapping input and
+  output-length buffers before mutating caller-owned transport memory.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

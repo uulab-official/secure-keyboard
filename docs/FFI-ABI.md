@@ -33,6 +33,8 @@ start function must be distinct. The login/registration state slot and its
 finish output slot must also be distinct. The ABI rejects aliased slots before
 clearing or consuming any caller-owned handle, preventing an aliased C output
 from losing an opaque submission, auth state, or newly allocated message.
+Transport message input bytes must not overlap their output handle slot, and a
+message copy destination must not overlap its output-length slot.
 
 `SECURE_KEYPAD_ABI_VERSION = 2` is required for the registration functions.
 Hosts must reject an ABI mismatch before creating a session or accepting a
