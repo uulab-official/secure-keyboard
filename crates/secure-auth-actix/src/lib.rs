@@ -166,7 +166,7 @@ struct WebAuthnAppState<C, S, P, X> {
 }
 
 #[cfg(feature = "webauthn")]
-/// Builds an Actix [`Scope`] for the framework-neutral WebAuthn routes.
+/// Builds an Actix [`Scope`] for the framework-neutral `WebAuthn` routes.
 ///
 /// The host `principal` resolver receives only Actix request metadata and must
 /// resolve the account from the host session. It is called after bounded body
