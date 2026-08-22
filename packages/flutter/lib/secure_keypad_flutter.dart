@@ -259,8 +259,8 @@ class SecureKeypadConfiguration {
     this.inputPolicy = InputPolicy.numeric,
     this.mode = SecureKeypadMode.secureNative,
     this.acknowledgeLowerAssurance = false,
-    this.maxTokens = 4096,
-    this.timeoutMs = 120000,
+    this.maxTokens = 8,
+    this.timeoutMs = 60000,
     this.onMaskedStateChanged,
     this.onResult,
   });

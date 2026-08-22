@@ -20,6 +20,13 @@ void main() {
     },
   );
 
+  test('default session bounds match the native adapter contract', () {
+    final configuration = SecureKeypadConfiguration.defaultNumeric();
+
+    expect(configuration.maxTokens, 8);
+    expect(configuration.timeoutMs, 60000);
+  });
+
   test('default theme supplies the bounded typography required by native rendering', () {
     final theme = SecureKeypadTheme.defaultTheme();
 

@@ -603,6 +603,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_colorPattern/, "Flutter theme colors must be format-validated before bridge serialization");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_isBoundedNumber\(/, "Flutter theme metrics must be range-validated before bridge serialization");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /_isBoundedInteger\(/, "Flutter integer policy and animation bounds must reject invalid values");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /this\.maxTokens\s*=\s*8[\s\S]{0,80}this\.timeoutMs\s*=\s*60000/, "Flutter default session bounds must match the native adapter contract");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /toPlatformCreationParams\(\)\s*\{[\s\S]{0,180}validate\(\)/, "Flutter bridge serialization must fail closed for invalid configuration");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /secureKeypadMaxHeadlessKeyPressToken/, "Flutter headless command tokens must be bounded");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutterContract, /mode == SecureKeypadMode\.headlessHost/, "Flutter must bind headless command access to the acknowledged mode");
