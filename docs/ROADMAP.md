@@ -85,6 +85,7 @@ Status: publishable contract, native source packaging, parity gate, Expo Develop
 - [x] Accept only serializable layout, theme, and policy objects.
 - [x] Add a reproducible CI host-build gate that links the React Native package and Android arm64 Rust FFI library.
 - [x] Add a reproducible CI iOS Simulator host-build gate that links the React Native package and XCFramework.
+- [x] Add a generated React Native iOS Release UI test for masked state and public key-label non-disclosure.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
 - [x] Expose an explicit native `cancel` layout action that clears input without a framework secret channel.
 - [x] Expose masked state events and non-secret native cancel controller commands.

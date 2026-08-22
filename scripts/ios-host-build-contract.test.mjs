@@ -13,6 +13,17 @@ const IOS_BRIDGE_CONFIG = readFileSync(
   `${ROOT}/packages/flutter/ios/Classes/SecureKeypadBridgeConfig.swift`,
   "utf8",
 );
+const RN_VIEW_MANAGER = readFileSync(
+  `${ROOT}/packages/react-native/ios/SecureKeypadViewManager.swift`,
+  "utf8",
+);
+const RN_NATIVE_VIEW_MANAGER = readFileSync(
+  `${ROOT}/native/ios/react-native/SecureKeypadViewManager.swift`,
+  "utf8",
+);
+const RN_HOST_BUILD_START = WORKFLOW.indexOf("Create the React Native iOS host");
+const RN_HOST_BUILD_END = WORKFLOW.indexOf("Create and compile the Flutter iOS host", RN_HOST_BUILD_START);
+const RN_IOS_HOST = WORKFLOW.slice(RN_HOST_BUILD_START, RN_HOST_BUILD_END);
 const HOST_BUILD_START = WORKFLOW.indexOf("Create and compile the Flutter iOS host");
 const HOST_BUILD_END = WORKFLOW.indexOf("Launch the Flutter host in an iOS Simulator", HOST_BUILD_START);
 const FLUTTER_IOS_HOST = WORKFLOW.slice(HOST_BUILD_START, HOST_BUILD_END);
@@ -24,6 +35,23 @@ test("Flutter iOS CI materializes CocoaPods before editing the generated host", 
   assert.notEqual(pubGetIndex, -1);
   assert.notEqual(podfileIndex, -1);
   assert.ok(pubGetIndex < podfileIndex, "flutter pub get must precede Podfile edits");
+});
+
+test("React Native iOS CI runs a bundled release UI smoke test", () => {
+  assert.notEqual(RN_HOST_BUILD_START, -1);
+  assert.notEqual(RN_HOST_BUILD_END, -1);
+  assert.match(RN_IOS_HOST, /getSecureKeypadView\(\)/);
+  assert.match(RN_IOS_HOST, /DEFAULT_NUMERIC_LAYOUT/);
+  assert.match(RN_IOS_HOST, /SecureKeypadHostUITests\/SecureKeypadHostUITests\.swift/);
+  assert.match(RN_IOS_HOST, /com\.apple\.product-type\.bundle\.ui-testing/);
+  assert.match(RN_IOS_HOST, /PRODUCT_NAME.*SecureKeypadHostUITests/);
+  assert.match(RN_IOS_HOST, /scheme\.add_test_target\(ui_target\)/);
+  assert.match(RN_IOS_HOST, /xcodebuild -workspace SecureKeypadHost\.xcworkspace[\s\S]*-configuration Release[\s\S]*test/);
+  assert.match(RN_IOS_HOST, /xcrun simctl list devices available -j/);
+  assert.match(RN_IOS_HOST, /-destination "platform=iOS Simulator,id=\$SIMULATOR_ID"/);
+  assert.match(RN_IOS_HOST, /digitOne\.tap\(\)/);
+  assert.match(RN_IOS_HOST, /1 characters entered/);
+  assert.doesNotMatch(RN_IOS_HOST, /-configuration Debug/);
 });
 
 test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
@@ -79,4 +107,12 @@ test("Flutter iOS UI test stays isolated from CocoaPods test-target linkage", ()
 test("iOS bridge numeric parsing keeps integer zero distinct from Boolean", () => {
   assert.match(IOS_BRIDGE_CONFIG, /CFGetTypeID\(value\) == CFBooleanGetTypeID\(\)/);
   assert.doesNotMatch(IOS_BRIDGE_CONFIG, /guard !\(value is Bool\)/);
+});
+
+test("React Native iOS manager uses a distinct immutable bridge dictionary", () => {
+  for (const source of [RN_VIEW_MANAGER, RN_NATIVE_VIEW_MANAGER]) {
+    assert.match(source, /var config: \[String: Any\]/);
+    assert.match(source, /let configDictionary = config as NSDictionary/);
+    assert.doesNotMatch(source, /let config = config as NSDictionary/);
+  }
 });

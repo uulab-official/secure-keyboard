@@ -11,6 +11,10 @@ exact release-candidate commit by the release evidence manifest.
 - Bound native public layout, theme, label, accessibility, and ABI
   configuration checks across the iOS, Android, React Native, and Flutter
   surfaces.
+- Added a generated React Native iOS Release UI smoke test that taps a numeric
+  key and verifies masked-length accessibility state without exposing the
+  public key identifier; the host build also fixes the Swift bridge dictionary
+  redeclaration that Release-only compilation could conceal.
 - Made Android React Native public-map conversion fail closed: malformed or
   over-budget layout/theme/command maps now release the native session and
   emit only the public `invalid` result instead of escaping as a bridge
