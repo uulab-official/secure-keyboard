@@ -26,6 +26,7 @@ export type WebAuthnClientErrorCode =
   | "invalid-mode"
   | "no-credential"
   | "invalid-credential"
+  | "credential-api-failure"
   | "fallback-not-acknowledged";
 
 /** Errors contain stable codes and never include credential bytes or user input. */
@@ -37,6 +38,15 @@ export class WebAuthnClientError extends Error {
     this.name = "WebAuthnClientError";
     this.code = code;
   }
+}
+
+function normalizeWebAuthnError(
+  error: unknown,
+  code: WebAuthnClientErrorCode,
+  message: string,
+): never {
+  if (error instanceof WebAuthnClientError) throw error;
+  throw new WebAuthnClientError(code, message);
 }
 
 export interface WebAuthnRelyingParty {
@@ -560,51 +570,59 @@ function baseCredential(credential: WebAuthnCredential): Pick<SerializedRegistra
 
 /** Converts a browser registration credential into the server's JSON envelope. */
 export function serializeRegistrationCredential(credential: WebAuthnCredential): SerializedRegistrationCredential {
-  const response = credential.response;
-  if (!isRecord(response) || !isArrayBuffer(response.clientDataJSON) || !isArrayBuffer(response.attestationObject)) {
-    throw new WebAuthnClientError("invalid-credential", "WebAuthn registration response is invalid");
-  }
-  const base = baseCredential(credential);
-  const serializedResponse: SerializedRegistrationCredential["response"] = {
-    clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
-    attestationObject: encodedCredentialBinary(response.attestationObject, "attestationObject"),
-  };
-  if (typeof response.getTransports === "function") {
-    const transports = response.getTransports();
-    if (
-      !Array.isArray(transports) ||
-      transports.length > 5 ||
-      transports.some((transport) => !["ble", "hybrid", "internal", "nfc", "usb"].includes(transport))
-    ) {
-      throw new WebAuthnClientError("invalid-credential", "WebAuthn registration transports are invalid");
+  try {
+    const response = credential.response;
+    if (!isRecord(response) || !isArrayBuffer(response.clientDataJSON) || !isArrayBuffer(response.attestationObject)) {
+      throw new WebAuthnClientError("invalid-credential", "WebAuthn registration response is invalid");
     }
-    return { ...base, response: { ...serializedResponse, transports: [...transports] } };
+    const base = baseCredential(credential);
+    const serializedResponse: SerializedRegistrationCredential["response"] = {
+      clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
+      attestationObject: encodedCredentialBinary(response.attestationObject, "attestationObject"),
+    };
+    if (typeof response.getTransports === "function") {
+      const transports = response.getTransports();
+      if (
+        !Array.isArray(transports) ||
+        transports.length > 5 ||
+        transports.some((transport) => !["ble", "hybrid", "internal", "nfc", "usb"].includes(transport))
+      ) {
+        throw new WebAuthnClientError("invalid-credential", "WebAuthn registration transports are invalid");
+      }
+      return { ...base, response: { ...serializedResponse, transports: [...transports] } };
+    }
+    return { ...base, response: serializedResponse };
+  } catch (error) {
+    return normalizeWebAuthnError(error, "invalid-credential", "WebAuthn credential is invalid");
   }
-  return { ...base, response: serializedResponse };
 }
 
 /** Converts a browser assertion credential into the server's JSON envelope. */
 export function serializeAssertionCredential(credential: WebAuthnCredential): SerializedAssertionCredential {
-  const response = credential.response;
-  if (
-    !isRecord(response) ||
-    !isArrayBuffer(response.clientDataJSON) ||
-    !isArrayBuffer(response.authenticatorData) ||
-    !isArrayBuffer(response.signature) ||
-    !(response.userHandle === null || isArrayBuffer(response.userHandle))
-  ) {
-    throw new WebAuthnClientError("invalid-credential", "WebAuthn assertion response is invalid");
+  try {
+    const response = credential.response;
+    if (
+      !isRecord(response) ||
+      !isArrayBuffer(response.clientDataJSON) ||
+      !isArrayBuffer(response.authenticatorData) ||
+      !isArrayBuffer(response.signature) ||
+      !(response.userHandle === null || isArrayBuffer(response.userHandle))
+    ) {
+      throw new WebAuthnClientError("invalid-credential", "WebAuthn assertion response is invalid");
+    }
+    const base = baseCredential(credential) as Pick<SerializedAssertionCredential, "id" | "rawId" | "type" | "authenticatorAttachment" | "clientExtensionResults">;
+    return {
+      ...base,
+      response: {
+        clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
+        authenticatorData: encodedCredentialBinary(response.authenticatorData, "authenticatorData"),
+        signature: encodedCredentialBinary(response.signature, "signature"),
+        userHandle: response.userHandle === null ? null : encodedCredentialBinary(response.userHandle, "userHandle"),
+      },
+    };
+  } catch (error) {
+    return normalizeWebAuthnError(error, "invalid-credential", "WebAuthn credential is invalid");
   }
-  const base = baseCredential(credential) as Pick<SerializedAssertionCredential, "id" | "rawId" | "type" | "authenticatorAttachment" | "clientExtensionResults">;
-  return {
-    ...base,
-    response: {
-      clientDataJSON: encodedCredentialBinary(response.clientDataJSON, "clientDataJSON"),
-      authenticatorData: encodedCredentialBinary(response.authenticatorData, "authenticatorData"),
-      signature: encodedCredentialBinary(response.signature, "signature"),
-      userHandle: response.userHandle === null ? null : encodedCredentialBinary(response.userHandle, "userHandle"),
-    },
-  };
 }
 
 /** Creates a browser environment lazily; importing this package is safe in Node and SSR. */
@@ -680,9 +698,13 @@ export async function createPasskey(
   environment = getDefaultWebAuthnEnvironment(),
 ): Promise<SerializedRegistrationCredential> {
   assertWebAuthnMode("passkey", environment);
-  const credential = await environment.credentials!.create({ publicKey: toNativeCreationOptions(options) });
-  if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
-  return serializeRegistrationCredential(credential);
+  try {
+    const credential = await environment.credentials!.create({ publicKey: toNativeCreationOptions(options) });
+    if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
+    return serializeRegistrationCredential(credential);
+  } catch (error) {
+    return normalizeWebAuthnError(error, "credential-api-failure", "WebAuthn credential operation failed");
+  }
 }
 
 export async function getPasskey(
@@ -690,7 +712,11 @@ export async function getPasskey(
   environment = getDefaultWebAuthnEnvironment(),
 ): Promise<SerializedAssertionCredential> {
   assertWebAuthnMode("passkey", environment);
-  const credential = await environment.credentials!.get({ publicKey: toNativeRequestOptions(options) });
-  if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
-  return serializeAssertionCredential(credential);
+  try {
+    const credential = await environment.credentials!.get({ publicKey: toNativeRequestOptions(options) });
+    if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
+    return serializeAssertionCredential(credential);
+  } catch (error) {
+    return normalizeWebAuthnError(error, "credential-api-failure", "WebAuthn credential operation failed");
+  }
 }

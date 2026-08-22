@@ -47,6 +47,9 @@ exact release-candidate commit by the release evidence manifest.
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit
   enforced by decoding and credential serialization.
+- Normalized browser WebAuthn API rejections and hostile credential-object
+  exceptions to stable generic error codes without propagating original
+  messages.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.

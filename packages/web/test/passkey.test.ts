@@ -108,6 +108,26 @@ describe("WebAuthn support and mode policy", () => {
       expect.objectContaining({ code: "invalid-mode" }),
     );
   });
+
+  it("normalizes browser API failures without exposing the original error", async () => {
+    const secret = "fixture-only-secret";
+    const api: WebAuthnCredentialApi = {
+      create: async () => {
+        throw new Error(secret);
+      },
+      get: async () => {
+        throw new Error(secret);
+      },
+    };
+
+    await expect(createPasskey(creationOptions, environment(api))).rejects.toMatchObject({
+      code: "credential-api-failure",
+    });
+    await expect(getPasskey({ challenge: "AQID" }, environment(api))).rejects.toMatchObject({
+      code: "credential-api-failure",
+    });
+    await expect(createPasskey(creationOptions, environment(api))).rejects.not.toThrow(secret);
+  });
 });
 
 describe("passkey registration", () => {
@@ -216,6 +236,34 @@ describe("passkey registration", () => {
         getClientExtensionResults: () => ({}),
       }),
     ).toThrow(/registration response is invalid/);
+  });
+
+  it("normalizes hostile credential getters without exposing their error", () => {
+    const credential = new Proxy(
+      {
+        id: "credential-id",
+        rawId: new Uint8Array([1]).buffer,
+        type: "public-key" as const,
+        response: {
+          clientDataJSON: new ArrayBuffer(1),
+          attestationObject: new ArrayBuffer(1),
+        },
+        getClientExtensionResults: () => ({}),
+      },
+      {
+        get(target, property, receiver) {
+          if (property === "id") throw new Error("fixture-only-secret");
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    );
+
+    expect(() => serializeRegistrationCredential(credential as never)).toThrow(
+      expect.objectContaining({ code: "invalid-credential" }),
+    );
+    expect(() => serializeRegistrationCredential(credential as never)).toThrow(
+      expect.not.stringContaining("fixture-only-secret"),
+    );
   });
 
   it("bounds server extension JSON before handing it to the browser", async () => {

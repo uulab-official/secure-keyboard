@@ -201,7 +201,8 @@ bound to gate JSON and fragments before parsing them. The browser evidence
 emitter bounds each browser log to the 32 MiB device-evidence limit, and the
 release signer bounds the signed bundle to 512 MiB and the private-key input
 to 64 KiB. The WebAuthn adapter bounds both directions of base64url conversion
-to 8 KiB before allocation or string expansion. Before any downloaded
+to 8 KiB before allocation or string expansion, and normalizes browser API or
+credential-object exceptions before they leave the adapter. Before any downloaded
 candidate/CI/external root is copied, the
 release-evidence stager rejects individual files over 512 MiB, more than 2 GiB
 combined input, more than 16,384 regular files, more than 16,384 directories,
