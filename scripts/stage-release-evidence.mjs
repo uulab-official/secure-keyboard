@@ -3,8 +3,8 @@ import {
   copyFileSync,
   lstatSync,
   mkdirSync,
+  opendirSync,
   realpathSync,
-  readdirSync,
   statSync,
 } from "node:fs";
 import path from "node:path";
@@ -127,24 +127,29 @@ function walkFiles(
   const directory = relativePath
     ? ensureContained(sourceRoot, relativePath, "release evidence input directory")
     : sourceRoot;
-  const entries = readdirSync(directory, { withFileTypes: true });
   const files = [];
-  for (const entry of entries) {
-    const childPath = relativePath ? path.posix.join(relativePath, entry.name) : entry.name;
-    if (entry.isSymbolicLink()) {
-      throw new Error(`${childPath}: symlinks are not allowed in release evidence inputs`);
-    }
-    if (entry.isDirectory()) {
-      files.push(...walkFiles(sourceRoot, childPath, fileBudget, directoryBudget));
-    } else if (entry.isFile()) {
-      fileBudget.count += 1;
-      if (fileBudget.count > MAX_STAGED_FILE_COUNT) {
-        throw new Error(`staged evidence must not contain more than ${MAX_STAGED_FILE_COUNT} regular files`);
+  const directoryHandle = opendirSync(directory);
+  try {
+    let entry;
+    while ((entry = directoryHandle.readSync()) !== null) {
+      const childPath = relativePath ? path.posix.join(relativePath, entry.name) : entry.name;
+      if (entry.isSymbolicLink()) {
+        throw new Error(`${childPath}: symlinks are not allowed in release evidence inputs`);
       }
-      files.push(childPath);
-    } else {
-      throw new Error(`${childPath}: only regular files are allowed in release evidence inputs`);
+      if (entry.isDirectory()) {
+        files.push(...walkFiles(sourceRoot, childPath, fileBudget, directoryBudget));
+      } else if (entry.isFile()) {
+        fileBudget.count += 1;
+        if (fileBudget.count > MAX_STAGED_FILE_COUNT) {
+          throw new Error(`staged evidence must not contain more than ${MAX_STAGED_FILE_COUNT} regular files`);
+        }
+        files.push(childPath);
+      } else {
+        throw new Error(`${childPath}: only regular files are allowed in release evidence inputs`);
+      }
     }
+  } finally {
+    directoryHandle.closeSync();
   }
   return files.sort();
 }

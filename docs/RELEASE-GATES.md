@@ -199,7 +199,8 @@ release-evidence stager rejects individual files over 512 MiB, more than 2 GiB
 combined input, more than 16,384 regular files, more than 16,384 directories,
 or a path deeper than 64 components. This protects the finalizer from an
 untrusted artifact archive exhausting its workspace or traversal stack before
-the normal manifest bounds can run.
+the normal manifest bounds can run; directory entries are read incrementally
+instead of materializing an untrusted directory listing in one array.
 
 The standalone device-evidence validator also requires `status: "pass"` on
 every platform record; a record with passing test-case fields but a missing or

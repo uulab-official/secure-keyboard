@@ -1250,6 +1250,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_FILE_COUNT/, "release evidence staging must bound untrusted input file count");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_DIRECTORY_COUNT/, "release evidence staging must bound untrusted input directory count");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /MAX_STAGED_PATH_DEPTH/, "release evidence staging must bound untrusted input path depth");
+  requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /opendirSync/, "release evidence staging must stream directory entries instead of materializing untrusted directories");
   requireText(findings, "scripts/stage-release-evidence.mjs", stagedReleaseEvidence, /candidate signed-release evidence is missing/, "release evidence staging must require the candidate signing record");
 
   return findings;

@@ -40,7 +40,9 @@ exact release-candidate commit by the release evidence manifest.
   during release assembly.
 - Release evidence staging now bounds directory count and relative path depth
   in addition to file count and byte budgets, preventing empty or deeply nested
-  untrusted artifact trees from exhausting finalization traversal resources.
+  untrusted artifact trees from exhausting finalization traversal resources;
+  directory entries are streamed during traversal to avoid a large single
+  directory being materialized at once.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.
