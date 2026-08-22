@@ -89,6 +89,8 @@ exact release-candidate commit by the release evidence manifest.
   `platform-security-patch` artifact reviewed independently at release time.
 - Physical-device test claims now bind to declared aggregate/host logs or
   matching categorized artifacts; unbound `pass` claims fail closed.
+- Android RN/Flutter submission routing now closes an unconsumed opaque handle
+  when a native consumer throws, while preserving transferred ownership.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

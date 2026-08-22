@@ -22,3 +22,28 @@ internal fun <T> deliverOrRelease(
         }
     }
 }
+
+/**
+ * Delivers an opaque value and reports whether the callback accepted and
+ * consumed ownership. A callback failure releases an unconsumed value before
+ * rethrowing, while a transferred value is never released twice.
+ */
+internal fun <T> deliverAndReport(
+    value: T,
+    callback: ((T) -> Boolean)?,
+    release: (T) -> Unit,
+    isConsumed: (T) -> Boolean,
+): Boolean {
+    if (callback == null) {
+        release(value)
+        return false
+    }
+    var accepted = false
+    deliverOrRelease(
+        value,
+        { candidate -> accepted = callback(candidate) && isConsumed(candidate) },
+        release,
+        isConsumed,
+    )
+    return accepted
+}

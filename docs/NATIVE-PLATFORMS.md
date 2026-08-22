@@ -131,7 +131,10 @@ Its events contain only masked length/state or non-secret result codes.
 SecureKeypadFlutterPlugin.kt` registers the `secure_keypad/native`
 PlatformView and per-view EventChannel with the same restriction. Add the
 appropriate source set to the host Gradle module and link the matching JNI and
-Rust artifacts for every shipped ABI.
+Rust artifacts for every shipped ABI. The Android submission router uses an
+exception-safe ownership reporter: if a native consumer throws before taking
+the opaque handle, the handle is released exactly once; if ownership was
+transferred, the failure is rethrown without a second release.
 
 Local checks with the Android SDK installed:
 

@@ -72,6 +72,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Add opt-in native CSPRNG input-key randomization while keeping action-key roles and positions stable.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
+- [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
 - [ ] Complete device-level accessibility review and native snapshot tests.
 

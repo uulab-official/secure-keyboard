@@ -485,6 +485,7 @@ export function runSecurityAudit() {
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /deliverAndReport\(submission/, "Android submission routing must use the exception-safe ownership reporter");
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
   const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
@@ -853,6 +854,13 @@ export function runSecurityAudit() {
     androidSubmissionOwnership,
     /catch \(error: Throwable\)[\s\S]*release\(value\)[\s\S]*throw error/,
     "Android submission delivery must release opaque input when a host consumer throws",
+  );
+  requireText(
+    findings,
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt",
+    androidSubmissionOwnership,
+    /internal fun <T> deliverAndReport[\s\S]*deliverOrRelease\(/,
+    "Android submission delivery must report accepted ownership through the exception-safe helper",
   );
 
   for (const mismatch of findNativePackageParityMismatches(ROOT)) {

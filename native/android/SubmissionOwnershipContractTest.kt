@@ -41,4 +41,32 @@ fun main() {
     }
     check(caught) { "a post-transfer consumer failure must remain observable" }
     check(!releasedAfterTransfer) { "a transferred handle must not be released twice" }
+
+    var releasedByReportingHelper = false
+    var reportingHelperCaught = false
+    try {
+        deliverAndReport(
+            13L,
+            { error("consumer failed before transfer") },
+            { releasedByReportingHelper = true },
+            { false },
+        )
+    } catch (_: IllegalStateException) {
+        reportingHelperCaught = true
+    }
+    check(reportingHelperCaught) { "reporting helper must preserve consumer failures" }
+    check(releasedByReportingHelper) { "reporting helper must release an unconsumed handle after failure" }
+
+    var accepted = false
+    val acceptedResult = deliverAndReport(
+        17L,
+        {
+            accepted = true
+            true
+        },
+        { error("accepted submission must not be released") },
+        { true },
+    )
+    check(accepted) { "reporting helper must invoke the native consumer" }
+    check(acceptedResult) { "reporting helper must report consumed ownership" }
 }

@@ -167,7 +167,7 @@ public object SecureKeypadNativeSubmissionRouter {
 
     internal fun deliver(submission: SecureKeypadSubmission): Boolean {
         val current = consumer ?: return false
-        return current(submission) && submission.isConsumed
+        return deliverAndReport(submission, current, SecureKeypadSubmission::close) { it.isConsumed }
     }
 }
 
