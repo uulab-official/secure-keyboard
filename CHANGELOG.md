@@ -43,6 +43,8 @@ exact release-candidate commit by the release evidence manifest.
   untrusted artifact trees from exhausting finalization traversal resources;
   directory entries are streamed during traversal to avoid a large single
   directory being materialized at once.
+- Expanded the native source audit and regression coverage to reject editable
+  Android and iOS text controls in all publishable keypad implementations.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.

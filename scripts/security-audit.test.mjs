@@ -124,6 +124,28 @@ test("native views enforce bounded public layout and theme configuration", () =>
   }
 });
 
+test("native keypad views do not include editable text controls", () => {
+  const androidSources = [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ];
+  for (const relativePath of androidSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /\b(?:EditText|TextInputEditText|AutoCompleteTextView)\b/);
+  }
+
+  const iosSources = [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ];
+  for (const relativePath of iosSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /\b(?:UITextField|UITextView|UISearchBar|UITextInput)\b/);
+  }
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

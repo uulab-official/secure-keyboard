@@ -179,6 +179,12 @@ as well as the fragment merger, apply the same symlink refusal before reading,
 hashing, or writing evidence. A parent directory that is a symlink is rejected
 even when its target remains inside the evidence root.
 
+The source-level security audit rejects editable text controls in every native
+keypad implementation (`EditText`-family Android widgets and
+`UITextField`/`UITextView`-family iOS controls). Native keypad input must remain
+key-ID based and native-owned; adding an ordinary text control is a release
+failure even if the framework bridge still emits only masked events.
+
 The final verifier bounds the top-level manifest and every referenced file
 before parsing or hashing it: the manifest, gate records, and independent-
 review reports are limited to 1 MiB, detached Ed25519 public keys to 1 KiB,

@@ -372,7 +372,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /configureAscii/, "Android native keypad must expose the bounded printable-ASCII policy");
     requireText(findings, file, contents, /secureKeypadDecodeMaskedState/, "Android native keypad must fail closed when JNI masked-state refresh fails");
     requireText(findings, file, contents, /display\.text\s*=\s*\"\"/, "Android native keypad must clear the visible masked display when releasing a session");
-    forbidText(findings, file, contents, /\bEditText\b/, "Android native keypad must not use an editable text widget");
+    forbidText(
+      findings,
+      file,
+      contents,
+      /\b(?:EditText|TextInputEditText|AutoCompleteTextView)\b/,
+      "Android native keypad must not use an editable text widget",
+    );
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
@@ -419,7 +425,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,400}releaseSession\(\)/, "iOS native reconfiguration must clear the old session through its nil-setting release path");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
-    forbidText(findings, file, contents, /\bUITextField\b/, "iOS native keypad must not use an editable text widget");
+    forbidText(
+      findings,
+      file,
+      contents,
+      /\b(?:UITextField|UITextView|UISearchBar|UITextInput)\b/,
+      "iOS native keypad must not use an editable text widget",
+    );
   }
   for (const file of [
     "native/ios/SecureKeypadBridgeConfig.swift",
