@@ -174,6 +174,13 @@ press/mask animation durations and haptic/sound feedback preferences are
 applied by the native renderer; the mask animation operates on bullets only
 and never materializes an input character.
 
+For resistance to coordinate replay or casual shoulder surfing, set
+`randomizeInputKeys: true`. The native renderer shuffles only `input`-role keys
+with the platform CSPRNG when rendering; action keys retain their configured
+roles and positions. No random seed, key order, or input value crosses the
+RN/Flutter bridge. This mitigates observation, but does not protect against a
+compromised device, accessibility service, screen camera, or malicious host.
+
 The application must link the JNI adapter with the Rust `secure-ffi` library
 for every ABI it ships. The CMake file intentionally does not invent a Rust
 library path; the host build must provide the architecture-specific artifact.

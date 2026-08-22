@@ -30,6 +30,11 @@ native event bridge retains a bounded backlog of 32 public events, coalesces
 adjacent masked-state updates, and evicts state before terminal result events.
 The backlog is cleared when the native view is disposed.
 
+Set `KeypadLayout(randomizeInputKeys: true)` when the native renderer should
+randomize input-key positions with the platform CSPRNG. The seed and input
+remain native-only; this option does not protect against a compromised host or
+device.
+
 For host-driven cancellation, pass a `SecureKeypadController` to the widget
 and call `await controller.cancel()`. The controller contains no input and
 uses the per-view native method channel; native code clears and zeroizes the

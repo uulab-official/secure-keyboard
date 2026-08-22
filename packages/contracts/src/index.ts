@@ -31,6 +31,8 @@ export interface KeypadLayout {
   readonly id?: string;
   readonly locale?: string;
   readonly direction?: LayoutDirection;
+  /** Reorders input-role keys natively with a platform CSPRNG at render time. */
+  readonly randomizeInputKeys?: boolean;
   readonly rows: readonly (readonly KeySpec[])[];
   readonly slots?: {
     readonly header?: boolean;
@@ -359,7 +361,7 @@ export function validateLayout(value: unknown): ValidationResult {
   if (!isRecord(value)) {
     return { valid: false, errors: ["layout must be an object"] };
   }
-  if (!hasOnlyKeys(value, ["schemaVersion", "id", "locale", "direction", "rows", "slots"])) {
+  if (!hasOnlyKeys(value, ["schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots"])) {
     errors.push("layout contains an unsupported field");
   }
   if (value.schemaVersion !== 1) errors.push("layout.schemaVersion is unsupported");
@@ -371,6 +373,9 @@ export function validateLayout(value: unknown): ValidationResult {
   }
   if (value.direction !== undefined && value.direction !== "ltr" && value.direction !== "rtl") {
     errors.push("layout.direction is invalid");
+  }
+  if (value.randomizeInputKeys !== undefined && typeof value.randomizeInputKeys !== "boolean") {
+    errors.push("layout.randomizeInputKeys is invalid");
   }
   if (!Array.isArray(value.rows) || value.rows.length < 1 || value.rows.length > 16) {
     errors.push("layout.rows is invalid");

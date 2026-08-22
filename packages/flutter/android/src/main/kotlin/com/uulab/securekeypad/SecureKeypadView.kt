@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.security.SecureRandom
 
 /** Public presentation role. It never contains a secret value. */
 public enum class SecureKeyRole {
@@ -65,6 +66,7 @@ public enum class SecureKeypadSoundFeedback {
 public data class SecureKeypadLayout(
     val rows: List<List<SecureKeySpec>>,
     val direction: SecureKeypadLayoutDirection = SecureKeypadLayoutDirection.LTR,
+    val randomizeInputKeys: Boolean = false,
     val slots: SecureKeypadSlots = SecureKeypadSlots(),
 )
 
@@ -187,6 +189,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     private var lastHeadlessKeyPress: Long? = null
     private var activeLayout: Map<String, SecureKeySpec> = emptyMap()
     private var headlessHostMode = false
+    private val secureRandom = SecureRandom()
 
     /** Called with a native-only submission that the host must close or authenticate natively. */
     public var onSubmit: ((SecureKeypadSubmission) -> Unit)? = null
@@ -407,7 +410,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         )
         display.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, currentTheme.keyFontSizePx)
         display.typeface = secureKeypadTypeface(currentTheme.keyFontWeight)
-        layout.rows.forEach { row ->
+        presentationRows(layout.rows, layout.randomizeInputKeys).forEach { row ->
             val rowView = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_HORIZONTAL
@@ -445,6 +448,27 @@ public open class SecureKeypadView @JvmOverloads constructor(
                 })
             }
             keypad.addView(rowView, LinearLayout.LayoutParams(-1, currentTheme.keyHeightPx + currentTheme.keyGapPx))
+        }
+    }
+
+    /** Reorders only input-role keys; action keys retain their configured positions. */
+    private fun presentationRows(
+        rows: List<List<SecureKeySpec>>,
+        randomizeInputKeys: Boolean,
+    ): List<List<SecureKeySpec>> {
+        if (!randomizeInputKeys) return rows
+        val inputKeys = rows.flatten().filter { it.role == SecureKeyRole.INPUT }.toMutableList()
+        for (index in inputKeys.lastIndex downTo 1) {
+            val swapIndex = secureRandom.nextInt(index + 1)
+            val value = inputKeys[index]
+            inputKeys[index] = inputKeys[swapIndex]
+            inputKeys[swapIndex] = value
+        }
+        var inputIndex = 0
+        return rows.map { row ->
+            row.map { key ->
+                if (key.role == SecureKeyRole.INPUT) inputKeys[inputIndex++] else key
+            }
         }
     }
 

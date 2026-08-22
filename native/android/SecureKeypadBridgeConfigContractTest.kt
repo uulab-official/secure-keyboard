@@ -36,6 +36,7 @@ fun main() {
         @Suppress("UNCHECKED_CAST")
         val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
         layout["direction"] = "rtl"
+        layout["randomizeInputKeys"] = true
         layout["slots"] = mapOf("header" to false, "display" to false, "footer" to true, "error" to false)
         layout["rows"] = listOf(
             listOf(
@@ -58,6 +59,7 @@ fun main() {
     val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
     check(parsed.layout.rows.size == 2)
     check(parsed.layout.direction == SecureKeypadLayoutDirection.RTL)
+    check(parsed.layout.randomizeInputKeys)
     check(!parsed.layout.slots.display)
     check(parsed.layout.rows[0][0].testId == "pin.one")
     check(parsed.theme.keyFontWeight == 600)
@@ -70,6 +72,14 @@ fun main() {
             @Suppress("UNCHECKED_CAST")
             val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
             layout["direction"] = true
+            it["layout"] = layout
+        })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            @Suppress("UNCHECKED_CAST")
+            val layout = (it.getValue("layout") as Map<String, Any?>).toMutableMap()
+            layout["randomizeInputKeys"] = "true"
             it["layout"] = layout
         })
     }.isFailure)

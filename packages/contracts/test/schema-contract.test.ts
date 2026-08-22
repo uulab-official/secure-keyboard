@@ -29,7 +29,13 @@ const exampleTheme = {
 describe("public customization contract", () => {
   it("accepts branded layout and theme data", () => {
     expect(validateLayout(exampleLayout).valid).toBe(true);
+    expect(validateLayout({ ...exampleLayout, randomizeInputKeys: true }).valid).toBe(true);
     expect(validateTheme(exampleTheme).valid).toBe(true);
+  });
+
+  it("requires input-key randomization to be an explicit boolean", () => {
+    expect(validateLayout({ ...exampleLayout, randomizeInputKeys: false }).valid).toBe(true);
+    expect(validateLayout({ ...exampleLayout, randomizeInputKeys: "true" }).valid).toBe(false);
   });
 
   it("accepts only canonical input IDs for the selected native policy", () => {

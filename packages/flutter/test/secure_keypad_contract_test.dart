@@ -46,6 +46,43 @@ void main() {
     expect(configuration.toPlatformCreationParams()['inputPolicy'], 'ascii');
   });
 
+  test('randomized input layout is explicit and remains public configuration only', () {
+    const configuration = SecureKeypadConfiguration(
+      layout: KeypadLayout(
+        schemaVersion: 1,
+        rows: <List<KeySpec>>[
+          <KeySpec>[
+            KeySpec(id: 'digit-1', label: '1', role: KeyRole.input),
+          ],
+        ],
+        randomizeInputKeys: true,
+      ),
+      theme: SecureKeypadTheme(
+        colors: <String, String>{
+          'background': '#101114',
+          'keyBackground': '#23262D',
+          'keyForeground': '#FFFFFF',
+          'keyPressedBackground': '#3B82F6',
+          'keyDisabledBackground': '#4B5563',
+          'error': '#F87171',
+        },
+        metrics: <String, double>{
+          'keyHeight': 56,
+          'keyGap': 8,
+          'keyRadius': 12,
+          'contentPadding': 16,
+        },
+        keyFontSize: 24,
+      ),
+    );
+
+    expect(configuration.validate(), isEmpty);
+    final layout = configuration.toPlatformCreationParams()['layout'] as Map<String, Object?>;
+    expect(layout['randomizeInputKeys'], isTrue);
+    expect(layout.keys, isNot(contains('value')));
+    expect(layout.keys, isNot(contains('password')));
+  });
+
   test('configuration rejects input IDs outside the selected native policy', () {
     final configuration = SecureKeypadConfiguration(
       layout: const KeypadLayout(

@@ -33,6 +33,18 @@ describe("React Native public prop boundary", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("preserves native input-key randomization as public layout metadata", () => {
+    const nativeProps = getSecureKeypadNativeProps({
+      layout: { ...DEFAULT_NUMERIC_LAYOUT, randomizeInputKeys: true },
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+    });
+
+    expect(nativeProps.layout).toMatchObject({ randomizeInputKeys: true });
+    expect(nativeProps).not.toHaveProperty("value");
+    expect(nativeProps).not.toHaveProperty("password");
+  });
+
   it("accepts the native printable-ASCII policy without creating a value prop", () => {
     const result = validateSecureKeypadProps({
       layout: {

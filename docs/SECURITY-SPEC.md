@@ -39,6 +39,7 @@ Consumers may provide:
 - theme tokens for color, typography, spacing, radius, shadows, and states;
 - header, display, footer, error, and action slots;
 - masking style and reveal timing;
+- optional native CSPRNG input-key randomization;
 - animation and haptic policies;
 - locale, direction, accessibility text, and input policy.
 

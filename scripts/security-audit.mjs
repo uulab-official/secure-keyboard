@@ -1025,7 +1025,16 @@ export function runSecurityAudit() {
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy: InputPolicy\.hangul/, "customization guide must cover Hangul native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /inputPolicy=\"ascii\"/, "customization guide must cover printable-ASCII native input");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
+  requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /randomizeInputKeys: true/, "customization guide must cover native input-key randomization");
   forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
+  const contractsSource = source("packages/contracts/src/index.ts", findings);
+  requireText(findings, "packages/contracts/src/index.ts", contractsSource, /randomizeInputKeys\?: boolean/, "layout contract must expose explicit input-key randomization");
+  const randomizationAndroidView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", randomizationAndroidView, /java\.security\.SecureRandom/, "Android input-key randomization must use a platform CSPRNG");
+  requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", randomizationAndroidView, /presentationRows\(layout\.rows, layout\.randomizeInputKeys\)/, "Android renderer must apply the randomization option at render time");
+  const randomizationIosView = source("native/ios/SecureKeypadView.swift", findings);
+  requireText(findings, "native/ios/SecureKeypadView.swift", randomizationIosView, /SystemRandomNumberGenerator/, "iOS input-key randomization must use a platform CSPRNG");
+  requireText(findings, "native/ios/SecureKeypadView.swift", randomizationIosView, /presentationRows\(layout\.rows, randomizeInputKeys: layout\.randomizeInputKeys\)/, "iOS renderer must apply the randomization option at render time");
   const rootPackage = source("package.json", findings);
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");

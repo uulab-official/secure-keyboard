@@ -16,6 +16,7 @@ const brandedNumericLayout: KeypadLayout = {
   schemaVersion: 1,
   id: "acme-pin",
   locale: "en",
+  randomizeInputKeys: true,
   rows: [
     [
       { id: "digit-1", label: "1", role: "input", accessibilityLabel: "One" },
@@ -104,6 +105,8 @@ UI test identifier. Header, footer, and error slots are host-composition
 signals; hosts may render their own public content around the native keypad.
 Bounded animation and haptic/sound feedback tokens are applied natively; mask
 animation affects bullets only and never reveals or stores the entered value.
+`randomizeInputKeys` shuffles input-role positions with a native CSPRNG without
+crossing a seed or accumulated input through the framework.
 
 ## Printable ASCII policy (native only)
 

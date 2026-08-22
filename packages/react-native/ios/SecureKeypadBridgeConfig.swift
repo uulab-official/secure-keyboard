@@ -69,7 +69,7 @@ public struct SecureKeypadBridgeConfiguration {
     }
 
     private static func parseLayout(_ value: NSDictionary) throws -> SecureKeypadLayout {
-        guard onlyKeys(value, ["schemaVersion", "id", "locale", "direction", "rows", "slots"]) else {
+        guard onlyKeys(value, ["schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         guard let schemaVersion = value["schemaVersion"] as? NSNumber, schemaVersion.intValue == 1 else {
@@ -101,6 +101,15 @@ public struct SecureKeypadBridgeConfiguration {
         case "ltr": direction = .ltr
         case "rtl": direction = .rtl
         default: throw SecureKeypadBridgeConfigError.invalid
+        }
+        let randomizeInputKeys: Bool
+        if value.allKeys.contains(where: { ($0 as? String) == "randomizeInputKeys" }) {
+            guard let parsed = Self.boolean(value["randomizeInputKeys"]) else {
+                throw SecureKeypadBridgeConfigError.invalid
+            }
+            randomizeInputKeys = parsed
+        } else {
+            randomizeInputKeys = false
         }
         let slotValues = try Self.optionalMap(value["slots"], allowed: ["header", "display", "footer", "error"])
         if let slotValues, !slotValues.allValues.allSatisfy({ Self.boolean($0) != nil }) {
@@ -167,7 +176,12 @@ public struct SecureKeypadBridgeConfiguration {
             }
             parsedRows.append(parsedRow)
         }
-        return SecureKeypadLayout(rows: parsedRows, direction: direction, slots: slots)
+        return SecureKeypadLayout(
+            rows: parsedRows,
+            direction: direction,
+            randomizeInputKeys: randomizeInputKeys,
+            slots: slots
+        )
     }
 
     private static func parseTheme(_ value: NSDictionary) throws -> SecureKeypadTheme {

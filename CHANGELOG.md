@@ -22,6 +22,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- Added opt-in native CSPRNG input-key randomization via
+  `randomizeInputKeys`; only input-role positions move, while action roles,
+  seeds, and accumulated input remain outside RN/Flutter bridges.
 - Fixed the bounded in-memory one-time login store so a bound/unbound contract
   mismatch returns an error without consuming the pending state; only expiry
   or a successful type-matched take removes it.

@@ -94,6 +94,7 @@ class KeypadLayout {
     this.id,
     this.locale,
     this.direction = LayoutDirection.ltr,
+    this.randomizeInputKeys = false,
     this.header = true,
     this.display = true,
     this.footer = true,
@@ -104,6 +105,8 @@ class KeypadLayout {
   final String? id;
   final String? locale;
   final LayoutDirection direction;
+  /// Lets the native renderer shuffle input-role keys with a CSPRNG.
+  final bool randomizeInputKeys;
   final List<List<KeySpec>> rows;
   final bool header;
   final bool display;
@@ -298,6 +301,7 @@ class SecureKeypadConfiguration {
         if (layout.id != null) 'id': layout.id,
         if (layout.locale != null) 'locale': layout.locale,
         'direction': layout.direction.name,
+        'randomizeInputKeys': layout.randomizeInputKeys,
         'rows': layout.rows
             .map(
               (row) => row
@@ -360,6 +364,9 @@ class SecureKeypadConfiguration {
     }
     if (layout.locale != null && !_localePattern.hasMatch(layout.locale!)) {
       errors.add('layout.locale is invalid');
+    }
+    if (layout.randomizeInputKeys != true && layout.randomizeInputKeys != false) {
+      errors.add('layout.randomizeInputKeys is invalid');
     }
     if (layout.rows.isEmpty || layout.rows.length > 16)
       errors.add('layout.rows is invalid');

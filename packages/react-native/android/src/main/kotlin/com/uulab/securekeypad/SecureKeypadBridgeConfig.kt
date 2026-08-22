@@ -69,7 +69,7 @@ internal object SecureKeypadBridgeConfigParser {
     }
 
     private fun parseLayout(value: Map<*, *>): SecureKeypadLayout {
-        requireKeys(value, "schemaVersion", "id", "locale", "direction", "rows", "slots")
+        requireKeys(value, "schemaVersion", "id", "locale", "direction", "randomizeInputKeys", "rows", "slots")
         require((value["schemaVersion"] as? Number)?.toDouble() == 1.0)
         if (value.containsKey("id")) {
             val id = value["id"] as? String ?: invalid()
@@ -82,6 +82,11 @@ internal object SecureKeypadBridgeConfigParser {
         val direction = when {
             !value.containsKey("direction") || value["direction"] == "ltr" -> SecureKeypadLayoutDirection.LTR
             value["direction"] == "rtl" -> SecureKeypadLayoutDirection.RTL
+            else -> invalid()
+        }
+        val randomizeInputKeys = when {
+            !value.containsKey("randomizeInputKeys") -> false
+            value["randomizeInputKeys"] is Boolean -> value["randomizeInputKeys"] as Boolean
             else -> invalid()
         }
         val slotValues = optionalMap(value["slots"], "header", "display", "footer", "error")
@@ -131,7 +136,7 @@ internal object SecureKeypadBridgeConfigParser {
                 SecureKeySpec(id, label, role, accessibilityLabel, key["testId"] as? String)
             }
         }
-        return SecureKeypadLayout(parsedRows, direction, slots)
+        return SecureKeypadLayout(parsedRows, direction, randomizeInputKeys, slots)
     }
 
     private fun parseTheme(value: Map<*, *>): SecureKeypadTheme {

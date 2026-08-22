@@ -71,15 +71,18 @@ public enum SecureKeypadSoundFeedback {
 public struct SecureKeypadLayout {
     public let rows: [[SecureKeySpec]]
     public let direction: SecureKeypadLayoutDirection
+    public let randomizeInputKeys: Bool
     public let slots: SecureKeypadSlots
 
     public init(
         rows: [[SecureKeySpec]],
         direction: SecureKeypadLayoutDirection = .ltr,
+        randomizeInputKeys: Bool = false,
         slots: SecureKeypadSlots = SecureKeypadSlots()
     ) {
         self.rows = rows
         self.direction = direction
+        self.randomizeInputKeys = randomizeInputKeys
         self.slots = slots
     }
 }
@@ -438,7 +441,7 @@ public class SecureKeypadView: UIView {
         rootContainer.semanticContentAttribute = semanticDirection
         keypadStack.semanticContentAttribute = semanticDirection
         displayLabel.isHidden = !layout.slots.display
-        for row in layout.rows {
+        for row in presentationRows(layout.rows, randomizeInputKeys: layout.randomizeInputKeys) {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
             rowStack.alignment = .fill
@@ -476,6 +479,29 @@ public class SecureKeypadView: UIView {
             }
             rowStack.heightAnchor.constraint(equalToConstant: theme.keyHeight).isActive = true
             keypadStack.addArrangedSubview(rowStack)
+        }
+    }
+
+    /// Reorders only input-role keys; action keys retain their configured positions.
+    private func presentationRows(
+        _ rows: [[SecureKeySpec]],
+        randomizeInputKeys: Bool
+    ) -> [[SecureKeySpec]] {
+        guard randomizeInputKeys else { return rows }
+        var inputKeys = rows.flatMap { $0 }.filter { $0.role == .input }
+        guard inputKeys.count > 1 else { return rows }
+        var generator = SystemRandomNumberGenerator()
+        for index in stride(from: inputKeys.count - 1, through: 1, by: -1) {
+            let swapIndex = Int.random(in: 0...index, using: &generator)
+            inputKeys.swapAt(index, swapIndex)
+        }
+        var inputIndex = 0
+        return rows.map { row in
+            row.map { key in
+                guard key.role == .input else { return key }
+                defer { inputIndex += 1 }
+                return inputKeys[inputIndex]
+            }
         }
     }
 
