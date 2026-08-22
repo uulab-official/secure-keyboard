@@ -164,6 +164,25 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(receivedBody?.every((byte) => byte === 0)).toBe(true);
   });
 
+  it("zeroizes the delegate response buffer after copying it to the Fetch response", async () => {
+    let responseBody: Uint8Array | undefined;
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate: () => {
+        responseBody = new TextEncoder().encode('{"opaque":"sensitive-transport"}');
+        return { status: 200, body: responseBody };
+      },
+    });
+
+    const response = await handler(request('{"protocolVersion":1}'));
+
+    expect(response.status).toBe(200);
+    expect(responseBody).toBeDefined();
+    expect(responseBody?.every((byte) => byte === 0)).toBe(true);
+    expect(await response.text()).toBe('{"opaque":"sensitive-transport"}');
+  });
+
   it("clears stream chunks after copying the bounded request body", async () => {
     const chunk = new TextEncoder().encode('{"protocolVersion":1}');
     const handler = createOpaqueHandler({

@@ -12,11 +12,13 @@ return generic JSON response bytes. Do not log or persist the request body,
 identifiers, protocol errors, or delegate response details.
 
 The adapter clears the bounded request `Uint8Array` immediately after the
-delegate returns (and clears already-read chunks on size/read failure). This
-reduces residual exposure but cannot erase copies made by the Fetch runtime or
-delegate. A delegate must finish consuming the view before returning; the
-buffer is not valid for asynchronous use after that point. JavaScript remains
-outside the strongest native secret boundary.
+delegate returns (and clears already-read chunks on size/read failure). It also
+copies the delegate's response `Uint8Array` into the Fetch response and clears
+the delegate-owned response buffer before returning. These controls reduce
+residual exposure but cannot erase copies made by the Fetch runtime or
+delegate. A delegate must finish consuming the request view before returning;
+the request buffer is not valid for asynchronous use after that point.
+JavaScript remains outside the strongest native secret boundary.
 
 `transport: "trusted-proxy-tls"` is valid only after the host has independently
 validated the proxy source and forwarded scheme. The adapter never trusts or

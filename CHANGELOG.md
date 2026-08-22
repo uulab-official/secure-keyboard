@@ -53,6 +53,8 @@ exact release-candidate commit by the release evidence manifest.
 - Added native FFI coverage for aborted OPAQUE registration flows and clarified
   that validated start calls consume and null the submission pointer even when
   protocol setup fails.
+- Node transport responses are now byte-only at the TypeScript boundary and
+  delegate-owned response buffers are zeroized after copying into `Response`.
 - Final release evidence verification now rejects symlinked gate, artifact,
   signature, and nested device paths even when their targets stay inside the
   evidence root.

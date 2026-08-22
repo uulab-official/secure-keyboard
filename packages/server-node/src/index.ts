@@ -47,7 +47,8 @@ export interface NodeHttpRequest {
 /** Generic response returned by the OPAQUE bridge. */
 export interface NodeHttpResponse {
   readonly status: number;
-  readonly body: string | Uint8Array;
+  /** Response bytes are copied into the Fetch response and then zeroized. */
+  readonly body: Uint8Array;
 }
 
 /**
@@ -176,12 +177,16 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
 }
 
 function responseFromDelegate(value: NodeHttpResponse): Response {
-  if (!STATUS_CODES.has(value.status)) return genericResponse(503, "temporarily_unavailable");
-  const body = typeof value.body === "string" ? encoder.encode(value.body) : value.body;
-  if (!(body instanceof Uint8Array) || body.byteLength > MAX_HTTP_BODY_BYTES) {
-    return genericResponse(503, "temporarily_unavailable");
+  const body = value.body;
+  try {
+    if (!STATUS_CODES.has(value.status)) return genericResponse(503, "temporarily_unavailable");
+    if (!(body instanceof Uint8Array) || body.byteLength > MAX_HTTP_BODY_BYTES) {
+      return genericResponse(503, "temporarily_unavailable");
+    }
+    return new Response(responseBody(body), { status: value.status, headers: responseHeaders() });
+  } finally {
+    if (body instanceof Uint8Array) body.fill(0);
   }
-  return new Response(responseBody(body), { status: value.status, headers: responseHeaders() });
 }
 
 /**

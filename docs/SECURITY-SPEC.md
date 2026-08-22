@@ -117,7 +117,10 @@ validates CSRF before reading the body, bounds streaming input at 128 KiB, and
 emits only the generic response contract and security headers. It is a
 transport bridge, not a JavaScript OPAQUE implementation. Its delegate must
 keep the pinned OPAQUE engine in Rust/native code and must not log, persist, or
-return password/PIN values.
+return password/PIN values. Delegate responses cross the TypeScript boundary
+as bounded `Uint8Array` bytes; the adapter copies them into the Fetch response
+and zeroizes the delegate-owned response buffer before returning. JavaScript
+and Fetch runtime copies remain outside the strongest native secret boundary.
 
 TLS/pinning ownership and compromised-runtime limits are defined in
 `docs/PLATFORM-SECURITY-POLICY.md`; the SDK does not claim to implement
