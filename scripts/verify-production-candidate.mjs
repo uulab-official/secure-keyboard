@@ -32,6 +32,9 @@ function nodeScriptTestFiles() {
  */
 export function buildProductionCandidateCommands({ evidencePath } = {}) {
   const commands = [
+    command("Pinned host toolchains", process.execPath, ["scripts/verify-toolchains.mjs"], {
+      display: "node scripts/verify-toolchains.mjs",
+    }),
     command("Rust formatting", "cargo", ["fmt", "--all", "--", "--check"]),
     command("Rust workspace tests", "cargo", ["test", "--locked", "--workspace", "--all-features"]),
     command("Rust MSRV tests", "cargo", ["+1.88.0", "test", "--locked", "--workspace", "--all-features"]),

@@ -25,6 +25,7 @@ test("dry-run plan contains every deterministic production-candidate gate", () =
   assert.ok(rendered.includes("pnpm -r test"));
   assert.ok(rendered.includes("pnpm -r typecheck"));
   assert.ok(rendered.includes("pnpm -r build"));
+  assert.ok(rendered.includes("node scripts/verify-toolchains.mjs"));
 });
 
 test("production-candidate arguments expose evidence verification without weakening local gates", () => {

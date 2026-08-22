@@ -1150,6 +1150,10 @@ export function runSecurityAudit() {
   requireText(findings, "docs/RELEASE-GATES.md", releaseGates, /cargo publish --locked --workspace --all-features --dry-run/, "release gates must publish-check all feature-gated crates through Cargo's temporary registry");
   const productionCandidateVerifier = source("scripts/verify-production-candidate.mjs", findings);
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /buildProductionCandidateCommands/, "production-candidate verification must expose one deterministic gate plan");
+  const pinnedToolchainVerifier = source("scripts/verify-toolchains.mjs", findings);
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /PINNED_TOOLCHAINS/, "production-candidate verification must enforce pinned host toolchains");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /frameworkVersion and flutterVersion must match/, "Flutter machine-version verification must reject contradictory version fields");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /MAX_VERSION_OUTPUT_BYTES/, "toolchain verification must bound executable version output before parsing");
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /--require-trusted-keys/, "production-candidate evidence mode must use trusted-key release verification");
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /external device, service, CI-provenance, and independent-review evidence is not synthesized/, "production-candidate verification must not synthesize external evidence");
   forbidText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /--skip-(?:security|audit|test|build)/, "production-candidate verification must not expose gate-bypass options");

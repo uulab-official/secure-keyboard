@@ -122,7 +122,14 @@ deterministic source and adapter gates:
 pnpm verify:production-candidate
 ```
 
-It runs the locked Rust workspace and MSRV tests, clippy/docs, dependency
+Before running the functional gates, this command fails closed unless the
+host matches the release toolchain contract: Node `22.13.0`, pnpm `11.19.0`,
+Flutter `3.47.0`, and the bundled Dart `3.13.0`. Flutter's machine-readable
+version fields must agree with one another and are bounded before parsing.
+This prevents a different SDK on `PATH` from producing a misleading local
+candidate result.
+
+It then runs the locked Rust workspace and MSRV tests, clippy/docs, dependency
 audits, native/protocol parity checks, JavaScript package tests/typechecks/
 builds, all repository contract tests, the static security audit, the Web
 browser smoke matrix, and the Flutter analyze/test/publish dry-run checks.
