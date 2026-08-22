@@ -348,7 +348,10 @@ fragment fails the job and cannot become a production claim. The
 `secure-keypad-release` environment must hold the protected
 `SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256` and
 `SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256` values and require its configured
-reviewers.
+reviewers. Before the merger runs, `check-release-fragment-set.mjs` parses the
+staged fragment inputs and requires every canonical release gate exactly once;
+artifact-only fragments remain allowed, while unsupported or duplicate gate
+fragments fail closed.
 
 Before downloading those artifacts, finalization queries the GitHub Actions
 API for all three supplied run IDs. Each run must belong to the current

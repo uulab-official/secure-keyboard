@@ -1205,6 +1205,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /tar --extract --to-stdout/, "release finalization must compare signed source inputs to staged evidence files");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the audited copier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete fragment");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-fragment-set\.mjs/, "release finalization must preflight every canonical release gate fragment");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/merge-release-evidence\.mjs/, "release finalization must merge all evidence fragments before verification");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-evidence\.mjs --require-trusted-keys/, "release finalization must require protected maintainer and reviewer fingerprints");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/, "release finalization must provide the protected maintainer fingerprint");
@@ -1248,6 +1249,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /check:release-version-parity/, "CI must enforce public release version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:stage-release-evidence/, "CI must validate release evidence staging and finalization workflow contracts");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-fragment-set/, "CI must validate the canonical release fragment-set preflight");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:verify-github-run-provenance/, "CI must validate GitHub workflow run provenance enforcement");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:verify-lsan-evidence/, "CI must validate Linux LeakSanitizer evidence enforcement");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");

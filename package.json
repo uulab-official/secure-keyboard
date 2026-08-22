@@ -27,6 +27,7 @@
     "test:emit-signed-release-evidence": "node --test scripts/emit-signed-release-evidence.test.mjs",
     "test:emit-independent-review-fragment": "node --test scripts/emit-independent-review-fragment.test.mjs",
     "test:stage-release-evidence": "node --test scripts/stage-release-evidence.test.mjs",
+    "test:release-fragment-set": "node --test scripts/check-release-fragment-set.test.mjs",
     "test:verify-github-run-provenance": "node --test scripts/verify-github-run-provenance.test.mjs",
     "test:verify-lsan-evidence": "node --test scripts/verify-lsan-evidence.test.mjs",
     "test:device-evidence": "node --test scripts/check-device-evidence.test.mjs",

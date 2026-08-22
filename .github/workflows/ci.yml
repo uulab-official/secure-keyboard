@@ -125,6 +125,7 @@ jobs:
       - run: pnpm test:msrv-contract
       - run: pnpm test:release-candidate-metadata
       - run: pnpm test:stage-release-evidence
+      - run: pnpm test:release-fragment-set
       - run: pnpm test:verify-github-run-provenance
       - run: pnpm test:verify-lsan-evidence
       - run: pnpm test:expo-development-build

@@ -138,7 +138,9 @@ jobs:
           while IFS= read -r -d '' fragment; do
             FRAGMENT_PATHS+=("${fragment:${#EVIDENCE_DIR}+1}")
           done < <(find "$EVIDENCE_DIR/fragments" -type f -name '*.json' -print0 | sort -z)
-          test "${#FRAGMENT_PATHS[@]}" -ge 13
+          node scripts/check-release-fragment-set.mjs \
+            "$EVIDENCE_DIR" \
+            "${FRAGMENT_PATHS[@]}"
           node scripts/merge-release-evidence.mjs \
             "$EVIDENCE_DIR" \
             "release-evidence/release-evidence.json" \

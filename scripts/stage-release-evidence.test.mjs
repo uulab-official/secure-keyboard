@@ -178,6 +178,8 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
   assert.match(workflow, /scripts\/stage-release-evidence\.mjs/);
   assert.match(workflow, /scripts\/emit-signed-release-fragment\.mjs[\s\S]*signed-release/);
+  assert.match(workflow, /scripts\/check-release-fragment-set\.mjs[\s\S]*FRAGMENT_PATHS/);
+  assert.doesNotMatch(workflow, /test "\$\{#FRAGMENT_PATHS\[@\]\}" -ge 13/);
   assert.match(workflow, /scripts\/merge-release-evidence\.mjs/);
   assert.match(workflow, /scripts\/check-release-evidence\.mjs --require-trusted-keys/);
   assert.match(workflow, /SECURE_KEYPAD_RELEASE_PUBLIC_KEY_SHA256/);
