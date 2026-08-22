@@ -453,7 +453,7 @@ test("release candidate workflow runs the staging inspector before archiving", (
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /scripts\/check-release-bundle\.mjs\s+"\$RELEASE_DIR"/);
+  assert.match(workflow, /verifier\/scripts\/check-release-bundle\.mjs\s+"\$RELEASE_DIR"/);
 });
 
 test("release candidate workflow includes the security changelog in the signed source bundle", () => {
