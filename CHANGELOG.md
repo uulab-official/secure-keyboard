@@ -27,6 +27,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: direct iOS native views now enforce the canonical public key-ID
   grammar before allocating UI or a session, matching the bridge and Android
   fail-closed validation paths across all publishable source copies.
+- Security: direct Android and iOS native views now bound optional public test
+  IDs to the same canonical key-ID grammar before creating framework UI.
 
 ### Server adapters
 

@@ -539,6 +539,11 @@ test("native views reject noncanonical input IDs for the selected policy", () =>
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(source, /validateLayout\(layout, policy\)/);
     assert.match(source, /SecureKeyRole\.INPUT[\s\S]{0,240}isCanonicalInputKeyId/);
+    assert.match(
+      source,
+      /key\.testId\?\.matches\(Regex\("\[a-z0-9\]\[a-z0-9\._-\]\{0,63\}"\)\) != false/,
+      `${relativePath} must bound optional native test IDs before UI allocation`,
+    );
   }
 
   const iosSources = [
@@ -554,6 +559,11 @@ test("native views reject noncanonical input IDs for the selected policy", () =>
       source,
       /key\.id\.range\(of: "\^\[a-z0-9\]\[a-z0-9\._-\]\{0,63\}\$", options: \.regularExpression\)/,
       `${relativePath} must enforce the canonical public key-ID grammar before native UI allocation`,
+    );
+    assert.match(
+      source,
+      /key\.testId\?\.range\(of: "\^\[a-z0-9\]\[a-z0-9\._-\]\{0,63\}\$", options: \.regularExpression\) != nil/,
+      `${relativePath} must bound optional native test IDs before UI allocation`,
     );
   }
 });

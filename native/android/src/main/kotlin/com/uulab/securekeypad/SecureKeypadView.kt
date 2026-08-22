@@ -573,6 +573,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
             row.forEach { key ->
                 require(key.id.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}"))) { "invalid public key ID" }
                 require(ids.add(key.id)) { "duplicate public key ID" }
+                require(key.testId?.matches(Regex("[a-z0-9][a-z0-9._-]{0,63}")) != false) {
+                    "invalid public test ID"
+                }
                 if (key.role == SecureKeyRole.INPUT) {
                     require(isCanonicalInputKeyId(key.id, policy)) { "input key ID does not match the selected policy" }
                 }
