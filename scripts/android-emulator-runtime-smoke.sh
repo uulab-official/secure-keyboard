@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-  echo "usage: $0 APK_PATH SCREENSHOT_PATH" >&2
+if [ "$#" -ne 3 ]; then
+  echo "usage: $0 APK_PATH SCREENSHOT_PATH UI_DUMP_PATH" >&2
   exit 64
 fi
 
 APK_PATH="$1"
 SCREENSHOT_PATH="$2"
+UI_DUMP_PATH="$3"
 test -f "$APK_PATH"
 
 aapt_bin="${AAPT:-}"
@@ -26,6 +27,7 @@ package_name="$("$aapt_bin" dump badging "$APK_PATH" | sed -n "s/^package: name=
 test -n "$package_name"
 
 mkdir -p "$(dirname "$SCREENSHOT_PATH")"
+mkdir -p "$(dirname "$UI_DUMP_PATH")"
 adb install -r "$APK_PATH"
 adb shell am force-stop "$package_name"
 launcher_activity="$(adb shell cmd package resolve-activity --brief "$package_name" | tr -d '\r' | awk 'NF { value = $0 } END { print value }')"
@@ -54,6 +56,15 @@ test -s "$SCREENSHOT_PATH"
 # queried or serialized here.
 ui_dump_path="/sdcard/secure_keypad_ui.xml"
 adb shell uiautomator dump "$ui_dump_path" >/dev/null
-ui_dump="$(adb shell cat "$ui_dump_path" | tr -d '\r')"
-printf '%s' "$ui_dump" | grep -Fq 'content-desc="No input"'
-printf '%s' "$ui_dump" | grep -Fq 'content-desc="1"'
+adb shell cat "$ui_dump_path" | tr -d '\r' > "$UI_DUMP_PATH"
+test -s "$UI_DUMP_PATH"
+grep -Fq 'content-desc="No input"' "$UI_DUMP_PATH"
+grep -Fq 'content-desc="1"' "$UI_DUMP_PATH"
+if grep -Fq 'class="android.widget.EditText"' "$UI_DUMP_PATH"; then
+  echo "editable text controls must not exist in the secure keypad hierarchy" >&2
+  exit 1
+fi
+if grep -Fq 'password="true"' "$UI_DUMP_PATH"; then
+  echo "password accessibility nodes must not exist in the secure keypad hierarchy" >&2
+  exit 1
+fi

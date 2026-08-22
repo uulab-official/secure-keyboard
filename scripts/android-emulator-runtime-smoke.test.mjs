@@ -1,11 +1,72 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const WORKFLOW = readFileSync(`${ROOT}/.github/workflows/ci.yml`, "utf8");
 const SMOKE_SCRIPT = readFileSync(`${ROOT}/scripts/android-emulator-runtime-smoke.sh`, "utf8");
+
+function fakeAndroidTools(uiXml) {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-android-smoke-tools-"));
+  const apkPath = join(root, "host.apk");
+  const uiXmlPath = join(root, "source-ui.xml");
+  const aaptPath = join(root, "aapt");
+  const adbPath = join(root, "adb");
+  writeFileSync(apkPath, "fixture-apk\n");
+  writeFileSync(uiXmlPath, uiXml);
+  writeFileSync(
+    aaptPath,
+    "#!/bin/sh\nprintf \"package: name='dev.fake.securekeypad' versionCode='1'\\n\"\n",
+    { mode: 0o700 },
+  );
+  writeFileSync(
+    adbPath,
+    `#!/bin/sh
+set -eu
+case "\${1:-}" in
+  install) exit 0 ;;
+  exec-out) printf 'PNG-fixture\\n' ;;
+  shell)
+    shift
+    case "\${1:-}" in
+      am|cmd) [ "\${1:-}" = am ] && exit 0 || printf '%s/.Main\\n' "\${FAKE_PACKAGE}" ;;
+      pidof) printf '123\\n' ;;
+      uiautomator) exit 0 ;;
+      cat) cat "\${FAKE_UI_XML}" ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  *) exit 0 ;;
+esac
+`,
+    { mode: 0o700 },
+  );
+  chmodSync(aaptPath, 0o700);
+  chmodSync(adbPath, 0o700);
+  return { root, apkPath, uiXmlPath, aaptPath, adbPath };
+}
+
+function runSmokeWithFakeTools(uiXml) {
+  const tools = fakeAndroidTools(uiXml);
+  const screenshotPath = join(tools.root, "out/smoke.png");
+  const dumpPath = join(tools.root, "out/ui.xml");
+  const result = spawnSync("bash", ["-s", tools.apkPath, screenshotPath, dumpPath], {
+    input: SMOKE_SCRIPT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      AAPT: tools.aaptPath,
+      FAKE_PACKAGE: "dev.fake.securekeypad",
+      FAKE_UI_XML: tools.uiXmlPath,
+      PATH: `${tools.root}:${process.env.PATH ?? ""}`,
+    },
+  });
+  return { ...tools, screenshotPath, dumpPath, result };
+}
 
 test("Android RN runtime smoke uses a bundled release APK", () => {
   const rnBuildSection = WORKFLOW.match(
@@ -38,8 +99,14 @@ test("Android runtime smoke starts the resolved launcher activity without monkey
 test("Android runtime smoke verifies the secure native hierarchy without reading input", () => {
   assert.match(SMOKE_SCRIPT, /FLAG_SECURE/);
   assert.match(SMOKE_SCRIPT, /uiautomator dump/);
+  assert.match(SMOKE_SCRIPT, /usage: \$0 APK_PATH SCREENSHOT_PATH UI_DUMP_PATH/);
+  assert.match(SMOKE_SCRIPT, /UI_DUMP_PATH="\$3"/);
+  assert.match(SMOKE_SCRIPT, /adb shell cat "\$ui_dump_path"[^\n]*> "\$UI_DUMP_PATH"/);
+  assert.match(SMOKE_SCRIPT, /test -s "\$UI_DUMP_PATH"/);
   assert.match(SMOKE_SCRIPT, /content-desc="No input"/);
   assert.match(SMOKE_SCRIPT, /content-desc="1"/);
+  assert.match(SMOKE_SCRIPT, /android\.widget\.EditText/);
+  assert.match(SMOKE_SCRIPT, /password="true"/);
   assert.doesNotMatch(SMOKE_SCRIPT, /adb shell input|adb shell[^\n]*(?:getText|password|secret)/i);
 });
 
@@ -49,7 +116,26 @@ test("Android runtime smoke executes the RN release artifact", () => {
   )?.[0];
   assert.ok(runtimeSection, "Android runtime smoke job must exist");
   assert.match(runtimeSection, /react-native\/app-release\.apk/);
+  assert.match(runtimeSection, /react-native-ui\.xml/);
+  assert.match(runtimeSection, /flutter-ui\.xml/);
   assert.doesNotMatch(runtimeSection, /react-native\/app-debug\.apk/);
+});
+
+test("Android runtime smoke writes screenshot and UI dump artifacts with fake host tools", () => {
+  const run = runSmokeWithFakeTools(
+    '<hierarchy><node content-desc="No input"/><node content-desc="1"/></hierarchy>\n',
+  );
+  assert.equal(run.result.status, 0, run.result.stderr);
+  assert.equal(readFileSync(run.screenshotPath, "utf8"), "PNG-fixture\n");
+  assert.match(readFileSync(run.dumpPath, "utf8"), /content-desc="No input"/);
+});
+
+test("Android runtime smoke fails on editable or password accessibility nodes", () => {
+  const run = runSmokeWithFakeTools(
+    '<hierarchy><node content-desc="No input"/><node content-desc="1" class="android.widget.EditText" password="true"/></hierarchy>\n',
+  );
+  assert.equal(run.result.status, 1);
+  assert.match(run.result.stderr, /editable text controls|password accessibility nodes/);
 });
 
 test("Flutter host artifact contains every supported Android target platform", () => {

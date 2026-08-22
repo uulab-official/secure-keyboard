@@ -1096,9 +1096,15 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-web-browser-evidence\.mjs/, "CI must emit a validator-compatible web browser evidence record");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation accessibility contract/, "CI must execute the Android presentation accessibility contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-ui\.xml/, "CI must retain Flutter Android accessibility hierarchy evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-ui\.xml/, "CI must retain React Native Android accessibility hierarchy evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android input-key randomization contract/, "CI must execute the Android input-key randomization contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /SecureKeypadRandomizationContractTest\.kt/, "CI must compile and run the Android input-key randomization contract test");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /web-browser-matrix/, "CI must include a real browser adapter smoke matrix");
+  const androidRuntimeSmokeScript = source("scripts/android-emulator-runtime-smoke.sh", findings);
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmokeScript, /UI_DUMP_PATH/, "Android runtime smoke must retain its accessibility hierarchy dump");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmokeScript, /android\.widget\.EditText/, "Android runtime smoke must reject editable text controls");
+  requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeSmokeScript, /password="true"/, "Android runtime smoke must reject password accessibility nodes");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /playwright install --with-deps/, "CI browser smoke must install its pinned browser runtime explicitly");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:web-browser/, "CI browser smoke must execute the checked-in runtime harness");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-browser-smoke-\$\{\{ matrix\.browser \}\}/, "CI browser smoke must retain per-browser evidence artifacts");

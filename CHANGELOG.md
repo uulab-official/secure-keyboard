@@ -75,6 +75,8 @@ exact release-candidate commit by the release evidence manifest.
   post-command success markers, the pinned nightly toolchain, run budget,
   bounded sizes, SHA-256 digests, and the final retained evidence paths; the
   marker must be the final meaningful log line.
+- Android emulator smoke now retains UIAutomator hierarchy dumps and rejects
+  editable-text or password accessibility nodes for both generated hosts.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

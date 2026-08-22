@@ -486,10 +486,12 @@ jobs:
           script: |
             bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter/app-debug.apk" \
-              "$RUNNER_TEMP/secure-keypad-android-runtime/flutter.png"
+              "$RUNNER_TEMP/secure-keypad-android-runtime/flutter.png" \
+              "$RUNNER_TEMP/secure-keypad-android-runtime/flutter-ui.xml"
             bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/react-native/app-release.apk" \
-              "$RUNNER_TEMP/secure-keypad-android-runtime/react-native.png"
+              "$RUNNER_TEMP/secure-keypad-android-runtime/react-native.png" \
+              "$RUNNER_TEMP/secure-keypad-android-runtime/react-native-ui.xml"
       - name: Upload Android emulator runtime smoke evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

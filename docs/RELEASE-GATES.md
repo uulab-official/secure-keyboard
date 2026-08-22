@@ -569,8 +569,10 @@ a supplemental launch/packaging signal; it does not close the physical-device
 capture, autofill, accessibility, or opaque-handoff gates.
 The Android host jobs additionally build the arm64 and x86_64 native FFI
 variants, and a separate API 35 x86_64 emulator job installs and launches both
-generated host APKs while retaining no-input screenshots. This is also
-supplemental runtime evidence and does not replace the physical Android matrix.
+generated host APKs while retaining no-input screenshots and the corresponding
+UIAutomator XML hierarchy dumps. The smoke rejects editable-text and password
+accessibility nodes before uploading those artifacts. This is also supplemental
+runtime evidence and does not replace the physical Android matrix.
 
 The CI `web-browser-matrix` job runs the checked-in browser smoke harness against
 the exact Playwright dependency in the lockfile on Chromium, Firefox, and
@@ -581,8 +583,9 @@ page's JavaScript memory is confidential or replace a physical authenticator
 and deployed-origin WebAuthn test. Each matrix leg retains its sanitized
 versioned smoke log as a CI artifact, including failed runs.
 
-The CI evidence aggregate also retains the Android emulator and iOS Simulator
-runtime screenshots, the complete fuzz/LeakSanitizer campaign logs, and the
+The CI evidence aggregate also retains the Android emulator screenshots and
+UIAutomator dumps, iOS Simulator runtime screenshots, complete
+fuzz/LeakSanitizer campaign logs, and the
 dependency metadata artifact under `retained/`. These files are copied into
 the final production evidence artifact by the read-only finalizer. They remain
 supporting evidence rather than untrusted JSON claims: gate records contain
