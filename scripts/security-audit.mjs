@@ -327,6 +327,26 @@ export function runSecurityAudit() {
       /guard let layout, let theme else \{[\s\S]{0,240}configuredFingerprint = nil[\s\S]{0,240}releaseSession\(\)/,
       "React Native iOS must release stale sessions when required configuration disappears",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /if fingerprint == configuredFingerprint && hasActiveSession \{/,
+      "React Native iOS must recreate a session after native lifecycle loss",
+    );
+  }
+  for (const file of [
+    "native/ios/SecureKeypadView.swift",
+    "packages/react-native/ios/SecureKeypadView.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(
+      findings,
+      file,
+      contents,
+      /internal var hasActiveSession: Bool \{ session != nil \}/,
+      "React Native iOS native views must expose only bounded session-presence state to their manager",
+    );
   }
 
   for (const file of [

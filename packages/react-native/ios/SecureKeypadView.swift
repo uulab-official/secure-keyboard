@@ -213,6 +213,7 @@ public enum SecureKeypadViewError: Error {
 /// native-only and must not be bridged to JavaScript or Dart.
 public class SecureKeypadView: UIView {
     private var session: OpaquePointer?
+    internal var hasActiveSession: Bool { session != nil }
     private let displayLabel = UILabel()
     private let keypadStack = UIStackView()
     private let rootContainer = UIStackView()

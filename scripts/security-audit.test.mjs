@@ -132,6 +132,24 @@ test("React Native Android preserves initial partial configuration until require
   }
 });
 
+test("React Native iOS recreates a session after native lifecycle loss", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /internal var hasActiveSession: Bool \{ session != nil \}/);
+  }
+
+  for (const relativePath of [
+    "../native/ios/react-native/SecureKeypadViewManager.swift",
+    "../packages/react-native/ios/SecureKeypadViewManager.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /if fingerprint == configuredFingerprint && hasActiveSession \{/);
+  }
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });

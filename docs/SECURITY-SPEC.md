@@ -69,6 +69,10 @@ must discard pending public configuration, clear its configuration fingerprint,
 and release the native session before accepting a later complete configuration.
 Before the first complete configuration, sequential layout/theme prop delivery
 must remain pending rather than being mistaken for a valid session.
+If iOS lifecycle protection has released the native session while public props
+remain unchanged, the manager must detect the missing session and recreate it
+from the same validated public configuration; a matching configuration
+fingerprint alone is not proof that a session is live.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 

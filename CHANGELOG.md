@@ -13,6 +13,9 @@ exact release-candidate commit by the release evidence manifest.
   disappears; static regression gates cover both canonical sources and package
   copies, while sequential initial layout/theme delivery remains buffered until
   a complete configuration is available.
+- Security: React Native iOS now recreates a session when lifecycle protection or
+  native validation has released it even if the public configuration fingerprint
+  is unchanged.
 
 ### Server adapters
 

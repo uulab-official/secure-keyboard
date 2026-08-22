@@ -82,7 +82,7 @@ final class SecureKeypadReactView: SecureKeypadView {
         if let headlessKeyPress { config["headlessKeyPress"] = headlessKeyPress }
         let configDictionary = config as NSDictionary
         let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
-        if fingerprint == configuredFingerprint {
+        if fingerprint == configuredFingerprint && hasActiveSession {
             guard forceHeadlessCommand else { return }
             do {
                 if let command = try SecureKeypadBridgeConfiguration(dictionary: configDictionary).headlessKeyPress {
