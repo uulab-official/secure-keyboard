@@ -79,6 +79,8 @@ test("FFI audit locks opaque object and identifier range alias checks", () => {
   assert.match(securityAudit, /auth_finish_arguments_alias/);
   assert.match(securityAudit, /pointer_slot_overlaps_object/);
   assert.match(securityAudit, /buffer_overlaps_object\\\(client_identifier/);
+  assert.match(securityAudit, /secure_keypad_client_login_finish/);
+  assert.match(securityAudit, /secure_keypad_client_registration_finish/);
 });
 
 test("native presentation snapshots expose only bounded masked state", () => {
