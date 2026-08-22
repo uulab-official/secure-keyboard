@@ -487,6 +487,13 @@ test("trusted-key CLI mode fails closed when protected fingerprints are absent",
   assert.match(result.stderr, /SECURE_KEYPAD_REVIEWER_PUBLIC_KEY_SHA256/);
 });
 
+test("requires the release manifest to use the pinned production toolchains", () => {
+  const evidence = completeEvidence();
+  evidence.toolchains = { ...evidence.toolchains, node: "22.14.0" };
+  const findings = validateReleaseEvidence(evidence);
+  assert.ok(findings.some((finding) => finding.includes("toolchains.node") && finding.includes("22.13.0")));
+});
+
 test("rejects an oversized top-level release manifest before JSON parsing", () => {
   const root = mkdtempSync(join(tmpdir(), "secure-keypad-oversized-release-manifest-"));
   const manifestPath = join(root, "manifest.json");

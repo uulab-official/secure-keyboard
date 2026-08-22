@@ -124,8 +124,10 @@ pnpm verify:production-candidate
 
 Before running the functional gates, this command fails closed unless the
 host matches the release toolchain contract: Node `22.13.0`, pnpm `11.19.0`,
-Flutter `3.47.0`, and the bundled Dart `3.13.0`. Flutter's machine-readable
-version fields must agree with one another and are bounded before parsing.
+Rust/Cargo `1.97.1`, Flutter `3.47.0`, the bundled Dart `3.13.0`, and the
+standalone Dart executable `3.13.0`. Rust, Cargo, and Dart version output is
+bounded and parsed before the commands that use those executables run;
+Flutter's machine-readable version fields must also agree with one another.
 This prevents a different SDK on `PATH` from producing a misleading local
 candidate result.
 
@@ -552,7 +554,9 @@ verification before making a production claim.
 Metadata emission also fails if the checkout became dirty during the build, so
 generated or locally modified files cannot silently enter an exact-SHA bundle.
 
-The manifest requires pinned Rust/Node/Flutter/React Native/NDK versions,
+The manifest requires the exact release versions Rust `1.97.1`, Node `22.13.0`,
+Flutter `3.47.0`, React Native `0.87.0`, and Android NDK `27.1.12297006`;
+the trusted verifier rejects a different toolchain claim. It also requires
 hashed evidence for every required gate, native checksums, an SPDX SBOM, license
 notices, a hashed release bundle, DER public key, and `release-signature`
 artifacts, an independent-review report, reviewer DER public key, and

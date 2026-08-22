@@ -1152,6 +1152,10 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /buildProductionCandidateCommands/, "production-candidate verification must expose one deterministic gate plan");
   const pinnedToolchainVerifier = source("scripts/verify-toolchains.mjs", findings);
   requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /PINNED_TOOLCHAINS/, "production-candidate verification must enforce pinned host toolchains");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /rustcVersionOutput/, "production-candidate verification must inspect the pinned Rust executable");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /cargoVersionOutput/, "production-candidate verification must inspect the pinned Cargo executable");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /dartVersionOutput/, "production-candidate verification must inspect the standalone Dart executable");
+  requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /parseToolchainVersion/, "standalone toolchain output must be parsed before production gates run");
   requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /frameworkVersion and flutterVersion must match/, "Flutter machine-version verification must reject contradictory version fields");
   requireText(findings, "scripts/verify-toolchains.mjs", pinnedToolchainVerifier, /MAX_VERSION_OUTPUT_BYTES/, "toolchain verification must bound executable version output before parsing");
   requireText(findings, "scripts/verify-production-candidate.mjs", productionCandidateVerifier, /--require-trusted-keys/, "production-candidate evidence mode must use trusted-key release verification");
@@ -1600,6 +1604,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /MAX_RELEASE_MANIFEST_BYTES/, "release evidence CLI must bound the top-level manifest before parsing");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_TOOLCHAINS/, "release tooling must enforce the pinned production toolchains");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /must equal/, "release tooling must reject evidence from a different toolchain version");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /http-contract-version-parity/, "release evidence must require the HTTP contract version parity gate");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /opaque-protocol-parity/, "release evidence must require the OPAQUE protocol parity gate");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /native-checksum-android/, "release evidence must require the Android native checksum artifact");

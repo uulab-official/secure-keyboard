@@ -59,6 +59,15 @@ export const REQUIRED_RELEASE_GATES = Object.freeze([
   "signed-release",
 ]);
 
+/** Exact toolchain versions emitted by the pinned production release workflows. */
+export const REQUIRED_RELEASE_TOOLCHAINS = Object.freeze({
+  rust: "1.97.1",
+  node: "22.13.0",
+  flutter: "3.47.0",
+  reactNative: "0.87.0",
+  ndk: "27.1.12297006",
+});
+
 export const DEVICE_RELEASE_GATE_POLICIES = Object.freeze({
   "ios-device-matrix": Object.freeze({ platform: "ios", requirePhysicalDevice: true }),
   "android-device-matrix": Object.freeze({ platform: "android", requirePhysicalDevice: true }),
@@ -213,6 +222,8 @@ export function validateReleaseEvidence(evidence, context = {}) {
     for (const toolchain of requiredToolchains) {
       if (typeof evidence.toolchains[toolchain] !== "string" || evidence.toolchains[toolchain].length === 0) {
         add(findings, `toolchains.${toolchain}`, "must be a non-empty pinned version");
+      } else if (evidence.toolchains[toolchain] !== REQUIRED_RELEASE_TOOLCHAINS[toolchain]) {
+        add(findings, `toolchains.${toolchain}`, `must equal ${REQUIRED_RELEASE_TOOLCHAINS[toolchain]}`);
       }
     }
   }

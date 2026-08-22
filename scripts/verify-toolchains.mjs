@@ -6,6 +6,8 @@ import path from "node:path";
 export const PINNED_TOOLCHAINS = Object.freeze({
   node: "22.13.0",
   pnpm: "11.19.0",
+  rust: "1.97.1",
+  cargo: "1.97.1",
   flutter: "3.47.0",
   dart: "3.13.0",
 });
@@ -42,8 +44,33 @@ export function parseFlutterMachineVersion(output) {
   return { frameworkVersion, flutterVersion, dartSdkVersion };
 }
 
-/** Validates exact Node, pnpm, Flutter, and bundled Dart versions. */
-export function validatePinnedToolchains({ nodeVersion, pnpmVersion, flutterMachineOutput }) {
+const VERSION_PATTERNS = Object.freeze({
+  rustc: /\brustc\s+v?(\d+\.\d+\.\d+)/,
+  cargo: /\bcargo\s+v?(\d+\.\d+\.\d+)/,
+  dart: /\bDart SDK version:\s*v?(\d+\.\d+\.\d+)/,
+});
+
+/** Parses a bounded standalone executable version string. */
+export function parseToolchainVersion(output, executable) {
+  if (typeof output !== "string" || Buffer.byteLength(output, "utf8") > MAX_VERSION_OUTPUT_BYTES) {
+    throw new Error(`${executable} version output is missing or oversized`);
+  }
+  const pattern = VERSION_PATTERNS[executable];
+  if (pattern === undefined) throw new Error(`unsupported toolchain executable: ${executable}`);
+  const match = output.match(pattern);
+  if (match === null) throw new Error(`${executable} version output is not recognized`);
+  return match[1];
+}
+
+/** Validates exact executable and SDK versions used by production-candidate gates. */
+export function validatePinnedToolchains({
+  nodeVersion,
+  pnpmVersion,
+  rustcVersionOutput,
+  cargoVersionOutput,
+  dartVersionOutput,
+  flutterMachineOutput,
+}) {
   const actualNode = versionString(nodeVersion);
   const actualPnpm = versionString(pnpmVersion);
   if (actualNode !== PINNED_TOOLCHAINS.node) {
@@ -51,6 +78,18 @@ export function validatePinnedToolchains({ nodeVersion, pnpmVersion, flutterMach
   }
   if (actualPnpm !== PINNED_TOOLCHAINS.pnpm) {
     throw new Error(`pnpm must be ${PINNED_TOOLCHAINS.pnpm}, found ${actualPnpm ?? "unknown"}`);
+  }
+  const actualRust = parseToolchainVersion(rustcVersionOutput, "rustc");
+  const actualCargo = parseToolchainVersion(cargoVersionOutput, "cargo");
+  const actualDartExecutable = parseToolchainVersion(dartVersionOutput, "dart");
+  if (actualRust !== PINNED_TOOLCHAINS.rust) {
+    throw new Error(`Rust must be ${PINNED_TOOLCHAINS.rust}, found ${actualRust}`);
+  }
+  if (actualCargo !== PINNED_TOOLCHAINS.cargo) {
+    throw new Error(`Cargo must be ${PINNED_TOOLCHAINS.cargo}, found ${actualCargo}`);
+  }
+  if (actualDartExecutable !== PINNED_TOOLCHAINS.dart) {
+    throw new Error(`Dart executable must be ${PINNED_TOOLCHAINS.dart}, found ${actualDartExecutable}`);
   }
   const flutter = parseFlutterMachineVersion(flutterMachineOutput);
   if (flutter.frameworkVersion !== PINNED_TOOLCHAINS.flutter) {
@@ -62,12 +101,14 @@ export function validatePinnedToolchains({ nodeVersion, pnpmVersion, flutterMach
   return {
     node: actualNode,
     pnpm: actualPnpm,
+    rust: actualRust,
+    cargo: actualCargo,
     flutter: flutter.frameworkVersion,
     dart: flutter.dartSdkVersion,
   };
 }
 
-function commandOutput(executable, args) {
+function commandOutput(executable, args, { includeStderr = false } = {}) {
   const result = spawnSync(executable, args, {
     encoding: "utf8",
     maxBuffer: MAX_VERSION_OUTPUT_BYTES,
@@ -77,7 +118,7 @@ function commandOutput(executable, args) {
   if (result.status !== 0) {
     throw new Error(`${executable} ${args.join(" ")} failed with exit code ${result.status ?? "unknown"}`);
   }
-  return result.stdout;
+  return includeStderr ? `${result.stdout}${result.stderr}` : result.stdout;
 }
 
 function main() {
@@ -85,9 +126,14 @@ function main() {
     const versions = validatePinnedToolchains({
       nodeVersion: process.versions.node,
       pnpmVersion: commandOutput("pnpm", ["--version"]),
+      rustcVersionOutput: commandOutput("rustc", ["--version"]),
+      cargoVersionOutput: commandOutput("cargo", ["--version"]),
+      dartVersionOutput: commandOutput("dart", ["--version"], { includeStderr: true }),
       flutterMachineOutput: commandOutput("flutter", ["--version", "--machine"]),
     });
-    console.log(`pinned toolchains verified: node=${versions.node} pnpm=${versions.pnpm} flutter=${versions.flutter} dart=${versions.dart}`);
+    console.log(
+      `pinned toolchains verified: node=${versions.node} pnpm=${versions.pnpm} rust=${versions.rust} cargo=${versions.cargo} flutter=${versions.flutter} dart=${versions.dart}`,
+    );
   } catch (error) {
     console.error(`pinned toolchain verification failed: ${error.message}`);
     process.exitCode = 1;
