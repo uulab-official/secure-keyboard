@@ -22,12 +22,16 @@ end
 local current = redis.call('GET', KEYS[1])
 if current then
   local attempts = tonumber(current)
-  if not attempts then
+  if not attempts or attempts < 1 or attempts ~= math.floor(attempts) then
+    redis.call('DEL', KEYS[1])
+    redis.call('ZREM', KEYS[2], ARGV[4])
     return {-2, 0, 0}
   end
   if attempts >= tonumber(ARGV[1]) then
     local ttl = redis.call('PTTL', KEYS[1])
     if ttl < 1 then
+      redis.call('DEL', KEYS[1])
+      redis.call('ZREM', KEYS[2], ARGV[4])
       return {-2, 0, 0}
     end
     return {0, 0, ttl}
@@ -35,6 +39,8 @@ if current then
   local next_attempts = redis.call('INCR', KEYS[1])
   local ttl = redis.call('PTTL', KEYS[1])
   if ttl < 1 then
+    redis.call('DEL', KEYS[1])
+    redis.call('ZREM', KEYS[2], ARGV[4])
     return {-2, 0, 0}
   end
   return {1, tonumber(ARGV[1]) - next_attempts, ttl}
@@ -280,5 +286,22 @@ mod tests {
         assert!(length_check < get);
         assert!(RATE_LIMIT_SCRIPT.contains("tonumber(ARGV[5])"));
         assert!(RATE_LIMIT_SCRIPT.contains("return {-2, 0, 0}"));
+    }
+
+    #[test]
+    fn rate_limit_script_cleans_poisoned_counter_and_index() {
+        assert!(
+            RATE_LIMIT_SCRIPT
+                .matches("redis.call('DEL', KEYS[1])")
+                .count()
+                >= 3
+        );
+        assert!(
+            RATE_LIMIT_SCRIPT
+                .matches("redis.call('ZREM', KEYS[2], ARGV[4])")
+                .count()
+                >= 3
+        );
+        assert!(RATE_LIMIT_SCRIPT.contains("attempts ~= math.floor(attempts)"));
     }
 }

@@ -243,6 +243,66 @@ fn redis_oversized_counter_is_removed_before_lua_get() {
     assert_eq!(indexed, None);
 }
 
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_poisoned_counter_is_removed_before_increment_or_limited_response() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let policy = RateLimitPolicy::new(2, std::time::Duration::from_secs(30)).unwrap();
+    let limiter = secure_auth_server::RedisRateLimiter::from_insecure_url_for_local_testing(
+        &url, &namespace, 2, 4, policy,
+    )
+    .expect("Redis limiter should construct");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+
+    for (key, value) in [
+        (b"fractional-counter".as_slice(), "1.0"),
+        (b"persistent-limited".as_slice(), "2"),
+    ] {
+        use sha2::{Digest, Sha256};
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let digest = Sha256::digest(key);
+        let mut encoded = String::with_capacity(64);
+        for byte in digest {
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+        let counter_key = format!("{namespace}:ratelimit:v1:key:{encoded}");
+        let index_key = format!("{namespace}:ratelimit:v1:index");
+        redis::cmd("SET")
+            .arg(&counter_key)
+            .arg(value)
+            .query::<()>(&mut inspection)
+            .expect("Redis poisoned counter should be writable for the migration test");
+        redis::cmd("ZADD")
+            .arg(&index_key)
+            .arg(9_999_999_999_999_i64)
+            .arg(&encoded)
+            .query::<()>(&mut inspection)
+            .expect("Redis active-key index seed should succeed");
+
+        assert_eq!(
+            limiter.check(key),
+            Err(secure_auth_server::RateLimitError::Unavailable)
+        );
+        let exists: i64 = redis::cmd("EXISTS")
+            .arg(&counter_key)
+            .query(&mut inspection)
+            .expect("Redis counter existence check should succeed");
+        let indexed: Option<f64> = redis::cmd("ZSCORE")
+            .arg(&index_key)
+            .arg(&encoded)
+            .query(&mut inspection)
+            .expect("Redis active-key index check should succeed");
+        assert_eq!(exists, 0);
+        assert_eq!(indexed, None);
+    }
+}
+
 #[cfg(feature = "postgres-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_POSTGRES_URL and an isolated PostgreSQL service"]
