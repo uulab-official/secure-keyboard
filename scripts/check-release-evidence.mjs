@@ -121,7 +121,7 @@ function isSafeRelativePath(value) {
     value.length > 0 &&
     !path.isAbsolute(value) &&
     !value.includes("\\") &&
-    !value.split("/").includes("..")
+    value.split("/").every((component) => component.length > 0 && component !== "." && component !== "..")
   );
 }
 
@@ -137,7 +137,7 @@ function checkHash(findings, field, value) {
 
 function checkEvidencePath(findings, field, value) {
   if (!isSafeRelativePath(value)) {
-    add(findings, field, "must be a relative, non-parent path");
+    add(findings, field, "must be a canonical relative path without empty, dot, or parent components");
   }
 }
 

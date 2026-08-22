@@ -404,6 +404,21 @@ test("rejects duplicate evidence paths and an unbound signature", () => {
   assert.ok(findings.some((finding) => finding.includes("publicKeyPath") && finding.includes("release-public-key")));
 });
 
+test("rejects non-canonical evidence paths that alias another referenced file", () => {
+  const evidence = completeEvidence();
+  evidence.gates[1].evidencePath = `evidence/./${evidence.gates[1].name}.json`;
+
+  const findings = validateReleaseEvidence(evidence);
+
+  assert.ok(
+    findings.some(
+      (finding) =>
+        finding.includes("gates[1].evidencePath") &&
+        finding.includes("canonical"),
+    ),
+  );
+});
+
 test("binds release evidence to the exact commit and package version", () => {
   const evidence = completeEvidence();
   const findings = validateReleaseEvidence(evidence, {

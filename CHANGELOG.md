@@ -108,6 +108,9 @@ exact release-candidate commit by the release evidence manifest.
   missing, expired, or over-bound TTL before reading the record, preventing a
   persisted or recreated replay-state key from bypassing the 15-minute
   retention contract.
+- Release evidence verification now rejects non-canonical relative paths
+  containing dot, empty, or parent components, preventing multiple manifest
+  strings from aliasing one hashed evidence file.
 - React Native no longer exports an unwrapped native view escape hatch. All
   public usage now goes through the prop allowlist and fail-closed masked-event
   boundary; custom rendering remains available only through the explicitly
