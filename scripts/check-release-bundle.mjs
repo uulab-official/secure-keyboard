@@ -40,6 +40,7 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/secure-keypad.sbom.spdx.json",
   "source/secure-keypad-ios-ffi.sha256",
   "source/secure-keypad-android-ffi.sha256",
+  "source/secure-keypad-android-ffi.commit",
   "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "source/native-artifacts/android/x86_64/libsecure_ffi.a",
   "source/release-candidate-metadata.json",
@@ -78,7 +79,9 @@ const IOS_PACKAGE_XCFRAMEWORK_ARCHIVE_PREFIX = "package/secure_ffi.xcframework";
 const IOS_PACKAGE_LIBRARY_SOURCE = "source/packages/flutter/ios/libsecure_ffi.a";
 const IOS_PACKAGE_LIBRARY_ARCHIVE = "package/libsecure_ffi.a";
 const IOS_FFI_CHECKSUM_MANIFEST = "source/secure-keypad-ios-ffi.sha256";
+const ANDROID_FFI_COMMIT = "source/secure-keypad-android-ffi.commit";
 const MAX_NATIVE_CHECKSUM_MANIFEST_BYTES = 1 * 1024 * 1024;
+const MAX_NATIVE_COMMIT_BINDING_BYTES = 64;
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -113,7 +116,7 @@ function readBoundedChecksumManifest(absolutePath, relativePath, findings) {
   }
 }
 
-function validateAndroidFfiChecksum(root, findings) {
+function validateAndroidFfiChecksum(root, findings, metadata) {
   const relativeManifest = "source/secure-keypad-android-ffi.sha256";
   const manifestPath = regularFile(root, relativeManifest, findings);
   if (!manifestPath) return;
@@ -156,6 +159,24 @@ function validateAndroidFfiChecksum(root, findings) {
   }
   for (const requiredPath of ANDROID_FFI_CHECKSUM_ENTRIES) {
     if (!seen.has(requiredPath)) findings.push(`${relativeManifest}: missing checksum for ${requiredPath}`);
+  }
+
+  const commitPath = regularFile(root, ANDROID_FFI_COMMIT, findings);
+  if (!commitPath || !metadata || !COMMIT.test(String(metadata.commit))) return;
+  let commitContents;
+  try {
+    const stat = lstatSync(commitPath);
+    if (stat.size > MAX_NATIVE_COMMIT_BINDING_BYTES) {
+      findings.push(`${ANDROID_FFI_COMMIT}: must not exceed ${MAX_NATIVE_COMMIT_BINDING_BYTES} bytes`);
+      return;
+    }
+    commitContents = readFileSync(commitPath, "utf8");
+  } catch (error) {
+    findings.push(`${ANDROID_FFI_COMMIT}: cannot be read (${error.message})`);
+    return;
+  }
+  if (commitContents !== `${metadata.commit}\n`) {
+    findings.push(`${ANDROID_FFI_COMMIT}: must contain the release candidate commit followed by one newline`);
   }
 }
 
@@ -558,7 +579,7 @@ export function checkReleaseStaging(root) {
   const metadata = readJson(root, "source/release-candidate-metadata.json", findings);
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);
-  validateAndroidFfiChecksum(root, findings);
+  validateAndroidFfiChecksum(root, findings, validatedMetadata);
   if (validatedMetadata?.packageVersion) {
     const archiveEntryMap = validateNpmArchives(root, validatedMetadata.packageVersion, findings);
     validateIosFfiChecksum(root, validatedMetadata.packageVersion, findings, archiveEntryMap, validatedMetadata);

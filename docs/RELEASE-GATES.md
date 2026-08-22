@@ -45,9 +45,11 @@ compares published React Native iOS XCFramework files and fallback library
 bytes with the signed Flutter source package, and compares Android package
 bytes with the signed Android native source, so a package that silently falls
 back to an unverified or altered external library cannot pass the release
-contract. It also parses the iOS checksum manifest, rejects unsafe or duplicate
-paths, and recomputes every listed checksum including the immutable artifact
-commit binding. Native checksum manifests are bounded to 1 MiB before parsing.
+contract. It also parses both native checksum manifests, rejects unsafe or
+duplicate paths, recomputes every listed checksum, and verifies the exact
+Android `secure-keypad-android-ffi.commit` file against the candidate metadata
+commit. Native checksum manifests and the Android commit binding are bounded
+before parsing.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
 contains the staged Flutter iOS artifacts, every version-matched npm/crate
@@ -313,11 +315,13 @@ The release-candidate artifact also contains
 `fragments/candidate-artifacts.json`. It hashes the native iOS and Android FFI
 checksum manifests, SPDX SBOM, and third-party notices; these are the required
 `native-checksum`, `native-checksum-android`, `sbom`, and `license-notices`
-artifact entries in the final manifest. Both native checksum manifests are
-copied into `source/` before the deterministic tarball is created, so the
-signed source bundle and final evidence refer to the same verified native
-inputs. The Android manifest uses the final signed-source paths and can be
-verified directly from the archive root with `sha256sum -c`.
+artifact entries in the final manifest. Both native checksum manifests and the
+Android commit binding are copied into `source/` before the deterministic
+tarball is created, so the signed source bundle and final evidence refer to
+the same verified native inputs. The Android manifest uses the final
+signed-source paths and can be verified directly from the archive root with
+`sha256sum -c`; staging and finalization also check that its commit file equals
+the candidate metadata commit.
 
 For a browser-only evidence root, the checked-in web emitter accepts the three
 sanitized Playwright logs and creates the validator-compatible matrix record:

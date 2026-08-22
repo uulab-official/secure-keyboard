@@ -27,18 +27,18 @@ exact release-candidate commit by the release evidence manifest.
   enrollment race, and conflicts use the generic invalid-request response.
 - Release candidates now build, commit-bind, checksum-verify, and sign the
   Android `arm64-v8a` and `x86_64` FFI libraries alongside the iOS artifacts;
-  the final Android checksum manifest is a required release-evidence artifact,
-  and the verified libraries are included in the publishable React Native npm
-  and Flutter package paths, with staging-time byte comparison against the
-  signed native source.
+  the final Android checksum manifest and its exact `secure-keypad-android-ffi.commit`
+  binding are required signed-source inputs, and the verified libraries are
+  included in the publishable React Native npm and Flutter package paths, with
+  staging-time byte comparison against the signed native source.
 - iOS Podspecs and CI host builds now consume bundled release XCFrameworks by
   default while retaining explicit source/custom artifact overrides only when
   their SHA-256 content matches the staged package artifact; missing or
   mismatched native inputs still fail closed. Release staging also compares the
   published React Native iOS and Android FFI bytes against signed source
-  package artifacts and verifies the iOS checksum manifest against the exact
-  package bytes and release commit; both native checksum manifests are bounded
-  to 1 MiB before parsing.
+  package artifacts and verifies both native checksum manifests against the
+  exact package bytes and release commit; both manifests and the Android commit
+  binding are bounded before parsing.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.
@@ -113,7 +113,8 @@ exact release-candidate commit by the release evidence manifest.
   independent-review evidence fails closed.
 - Release candidates now carry commit-bound artifact fragments for the iOS and
   Android FFI checksums, SPDX SBOM, and third-party notices; both verified
-  native checksum manifests are included inside the signed source bundle.
+  native checksum manifests and the Android native commit binding are included
+  inside the signed source bundle.
 - Final evidence assembly now rechecks the signed tar entry contract,
   candidate checksum manifest, and byte equality of signed source evidence
   before accepting downloaded external inputs.

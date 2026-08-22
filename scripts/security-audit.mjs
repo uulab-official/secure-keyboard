@@ -1011,6 +1011,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-ios-ffi\.sha256/, "release workflow must carry the verified iOS FFI checksum into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-android-ffi\.sha256/, "release workflow must carry the verified Android FFI checksum into the signed source bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cp \"\$ANDROID_FFI_DIR\/secure-keypad-android-ffi\.commit\"/, "release workflow must carry the Android FFI commit binding into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum-android/, "release workflow must evidence the Android native checksum artifact");
@@ -1031,6 +1032,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-bundle\.mjs/, "release finalization must inspect the downloaded candidate staging contract");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/check-release-archive\.mjs/, "release finalization must inspect the downloaded signed archive contract");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /sha256sum -c secure-keypad-release\.sha256/, "release finalization must verify the candidate artifact checksum manifest");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /source\/secure-keypad-android-ffi\.commit/, "release finalization must compare the Android FFI commit binding inside the signed archive");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /tar --extract --to-stdout/, "release finalization must compare signed source inputs to staged evidence files");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/stage-release-evidence\.mjs/, "release finalization must stage untrusted artifact roots through the audited copier");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /scripts\/emit-signed-release-fragment\.mjs/, "release finalization must convert signed-release evidence into a complete fragment");
@@ -1220,6 +1222,9 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /MAX_NATIVE_CHECKSUM_MANIFEST_BYTES/, "release staging must bound native checksum manifest materialization");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-android-ffi\.sha256/, "release staging must require the verified Android FFI checksum manifest");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validateAndroidFfiChecksum/, "release staging must verify the Android FFI checksum manifest against signed-source paths");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /source\/secure-keypad-android-ffi\.commit/, "release staging must retain the Android FFI commit binding in the signed source bundle");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /must contain the release candidate commit followed by one newline/, "release staging must verify the Android FFI commit binding content");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /MAX_NATIVE_COMMIT_BINDING_BYTES/, "release staging must bound Android FFI commit binding materialization");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checksum does not match/, "release staging must reject Android FFI checksum mismatches");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the verified Android arm64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release staging must require the verified Android x86_64 FFI library");
@@ -1234,6 +1239,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-bundle\.mjs\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive");
   const releaseArchiveCheck = source("scripts/check-release-archive.mjs", findings);
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /validateReleaseArchiveEntries/, "release tooling must inspect the signed archive entry contract");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-android-ffi\.commit/, "signed archive validation must require the Android FFI commit binding");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /-tvzf/, "signed archive validation must inspect tar entry types");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /must not contain symbolic links/, "signed archive validation must reject symbolic links");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /only regular files and directories/, "signed archive validation must reject non-regular entries");

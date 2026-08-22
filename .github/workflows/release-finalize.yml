@@ -99,6 +99,7 @@ jobs:
           for signed_source in \
             source/secure-keypad-ios-ffi.sha256 \
             source/secure-keypad-android-ffi.sha256 \
+            source/secure-keypad-android-ffi.commit \
             source/secure-keypad.sbom.spdx.json \
             source/THIRD-PARTY-NOTICES.md; do
             tar --extract --to-stdout --file "$CANDIDATE_DIR/secure-keypad-release.tar.gz" "$signed_source" \

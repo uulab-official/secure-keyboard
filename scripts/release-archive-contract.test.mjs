@@ -14,6 +14,7 @@ const REQUIRED_ENTRIES = [
   "source/release-candidate-metadata.json",
   "source/secure-keypad.sbom.spdx.json",
   "source/secure-keypad-android-ffi.sha256",
+  "source/secure-keypad-android-ffi.commit",
   "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "source/native-artifacts/android/x86_64/libsecure_ffi.a",
   "source/packages/flutter/pubspec.yaml",
@@ -37,6 +38,14 @@ const REQUIRED_ENTRIES = [
 
 test("signed release archive must include every staged package and source contract", () => {
   assert.deepEqual(validateReleaseArchiveEntries(REQUIRED_ENTRIES), []);
+});
+
+test("signed release archive requires the Android FFI commit binding", () => {
+  const entries = REQUIRED_ENTRIES.filter(
+    (entry) => entry !== "source/secure-keypad-android-ffi.commit",
+  );
+  const findings = validateReleaseArchiveEntries(entries);
+  assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.commit")));
 });
 
 test("signed release archive checker reads the actual tarball entry list", () => {

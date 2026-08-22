@@ -96,6 +96,7 @@ function createValidStaging() {
       .map(([relativePath, contents]) => `${createHash("sha256").update(contents).digest("hex")}  ${relativePath.slice("source/".length)}`)
       .join("\n") + "\n",
   );
+  writeFile(root, "source/secure-keypad-android-ffi.commit", `${commit}\n`);
   writeFile(root, "source/packages/flutter/pubspec.yaml", "name: secure_keypad_flutter\nversion: 0.1.0\n");
   writeFile(root, "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n");
   writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
@@ -334,6 +335,39 @@ test("release staging verifies the Android FFI checksum against signed-source pa
   }
 });
 
+test("release staging requires the Android FFI commit binding", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/secure-keypad-android-ffi.commit"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.commit")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging rejects an Android FFI commit binding for another release", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/secure-keypad-android-ffi.commit", `${"b".repeat(40)}\n`);
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.commit")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging bounds the Android FFI commit binding", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/secure-keypad-android-ffi.commit", `${"a".repeat(65)}\n`);
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.commit") && finding.includes("must not exceed")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release staging requires the packaged Flutter Android FFI libraries", () => {
   const root = createValidStaging();
   try {
@@ -429,6 +463,7 @@ test("release candidate signs staged package archives and publishable native FFI
   assert.match(workflow, /native-android-artifacts:/);
   assert.match(workflow, /name: secure-keypad-release-android-ffi/);
   assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
+  assert.match(workflow, /source\/secure-keypad-android-ffi\.commit/);
   assert.match(workflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/react-native\/android\/secure_ffi\/arm64-v8a/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/x86_64" packages\/react-native\/android\/secure_ffi\/x86_64/);

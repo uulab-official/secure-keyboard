@@ -73,6 +73,17 @@ test("native host ABI expectations stay synchronized with the FFI header", () =>
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
 
+test("release bundle audit covers Android FFI commit binding", () => {
+  const releaseBundleAudit = readFileSync(
+    new URL("./check-release-bundle.mjs", import.meta.url),
+    "utf8",
+  );
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(releaseBundleAudit, /source\/secure-keypad-android-ffi\.commit/);
+  assert.match(releaseBundleAudit, /MAX_NATIVE_COMMIT_BINDING_BYTES/);
+  assert.match(securityAudit, /MAX_NATIVE_COMMIT_BINDING_BYTES/);
+});
+
 test("security specification describes the shipped ABI v2 registration boundary", () => {
   const specification = readFileSync(
     new URL("../docs/SECURITY-SPEC.md", import.meta.url),

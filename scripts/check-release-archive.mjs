@@ -23,6 +23,7 @@ const REQUIRED_SOURCE_ENTRIES = Object.freeze([
   "source/release-candidate-metadata.json",
   "source/secure-keypad.sbom.spdx.json",
   "source/secure-keypad-android-ffi.sha256",
+  "source/secure-keypad-android-ffi.commit",
   "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "source/native-artifacts/android/x86_64/libsecure_ffi.a",
   "source/packages/flutter/pubspec.yaml",
