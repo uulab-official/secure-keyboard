@@ -30,9 +30,7 @@ fun main() {
         "protected=true",
     ).joinToString("\n")
     check(secureKeypadSecuritySnapshot(length = 3, protected = true, displayState = 1) == protectedSnapshot)
-    check(runCatching {
-        secureKeypadSecuritySnapshot(length = 3, protected = false, displayState = 4)
-    }.isFailure)
+    check(secureKeypadSecuritySnapshot(length = 3, protected = false, displayState = 4) == null)
     check(secureKeypadDecodeMaskedState(Long.MIN_VALUE) == null)
     check(secureKeypadDecodeMaskedState((3L shl 32) or 1L) == (3 to 1))
     check(secureKeypadMonotonicCommandDecision(null, 0) == SecureKeypadCommandDecision.ACCEPT)
