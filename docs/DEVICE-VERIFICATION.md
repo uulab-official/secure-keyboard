@@ -91,6 +91,9 @@ Each platform release run should produce one JSON record containing:
   physical native release record must additionally classify unique artifacts as
   `screen-capture`, `background-snapshot`, `accessibility-report`,
   `autofill-clipboard-report`, `crash-report-review`, and `native-checksum`.
+  The native checksum must be the exact candidate iOS or Android checksum
+  manifest; final release verification rejects a device record from a
+  different native binary.
 
 The record validator rejects secret-bearing field names (including sentinel
 values, raw input bytes, and credential byte fields), absolute/parent paths,

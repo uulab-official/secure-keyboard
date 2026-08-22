@@ -253,7 +253,11 @@ test cases, and categorized artifacts; one framework's device run cannot satisfy
 the native gate. `web-browser-matrix` is revalidated as a Web record. The verifier
 also revalidates nested log and artifact digests
 inside those device records, so changing a screenshot, report,
-or sanitized log invalidates the release gate.
+or sanitized log invalidates the release gate. For native records, the nested
+`native-checksum` digest must additionally equal the candidate
+`native-checksum` artifact for iOS or `native-checksum-android` artifact for
+Android; a physical run using a different native binary cannot satisfy the
+release gate.
 
 Nested device files also undergo a byte-level preflight for the canonical
 disposable sentinel `secure-keypad-test-sentinel-7f2c4e` and common

@@ -86,6 +86,7 @@ test("release bundle audit covers Android FFI commit binding", () => {
     securityAudit,
     /must use a distinct public key from the maintainer release signature/,
   );
+  assert.match(securityAudit, /verifyNativeChecksumBinding/);
 });
 
 test("security specification describes the shipped ABI v2 registration boundary", () => {

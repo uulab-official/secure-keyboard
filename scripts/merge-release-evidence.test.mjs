@@ -37,6 +37,10 @@ const PHYSICAL_ARTIFACT_KINDS = [
   "crash-report-review",
   "native-checksum",
 ];
+const NATIVE_CHECKSUM_BYTES = Object.freeze({
+  ios: Buffer.from("candidate ios native checksum\n", "utf8"),
+  android: Buffer.from("candidate android native checksum\n", "utf8"),
+});
 
 function baseContext() {
   return {
@@ -68,7 +72,10 @@ function writeDeviceGateEvidence(
   const artifacts = (isWeb ? [{ kind: "browser-report" }] : PHYSICAL_ARTIFACT_KINDS.map((kind) => ({ kind }))).map(
     ({ kind }, index) => {
       const artifactPath = `device/${gate.name}-${index}.bin`;
-      const bytes = Buffer.from(`${gate.name}:${kind}\n`, "utf8");
+      const bytes =
+        kind === "native-checksum" && platform !== "web"
+          ? NATIVE_CHECKSUM_BYTES[platform]
+          : Buffer.from(`${gate.name}:${kind}\n`, "utf8");
       writeFileSync(join(root, artifactPath), bytes);
       return { kind, path: artifactPath, sha256: createHash("sha256").update(bytes).digest("hex") };
     },
@@ -306,8 +313,8 @@ test("CLI assembles and verifies a signed evidence root", () => {
   }
 
   const artifacts = [
-    { kind: "native-checksum", path: "artifacts/native.sha256", bytes: Buffer.from("native") },
-    { kind: "native-checksum-android", path: "artifacts/native-android.sha256", bytes: Buffer.from("android native") },
+    { kind: "native-checksum", path: "artifacts/native.sha256", bytes: NATIVE_CHECKSUM_BYTES.ios },
+    { kind: "native-checksum-android", path: "artifacts/native-android.sha256", bytes: NATIVE_CHECKSUM_BYTES.android },
     { kind: "sbom", path: "artifacts/sbom.json", bytes: Buffer.from("sbom") },
     { kind: "license-notices", path: "artifacts/notices.md", bytes: Buffer.from("notices") },
     { kind: "release-bundle", path: "artifacts/release.tar.gz", bytes: releaseBytes },

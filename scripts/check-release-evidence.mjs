@@ -29,6 +29,10 @@ const MAX_GATE_EVIDENCE_BYTES = 1 * 1024 * 1024;
 const MAX_RELEASE_ARTIFACT_BYTES = 512 * 1024 * 1024;
 const MAX_PUBLIC_KEY_BYTES = 1_024;
 const ED25519_SIGNATURE_BYTES = 64;
+const NATIVE_CHECKSUM_ARTIFACT_BY_PLATFORM = Object.freeze({
+  ios: "native-checksum",
+  android: "native-checksum-android",
+});
 
 /**
  * Gates that must be independently evidenced before a public release claim.
@@ -486,7 +490,24 @@ function readBoundedManifest(filePath) {
   return readFileSync(filePath);
 }
 
-function verifyGateEvidenceRecord(findings, root, field, gate) {
+function verifyNativeChecksumBinding(findings, field, gate, record, artifacts) {
+  const candidateKind = NATIVE_CHECKSUM_ARTIFACT_BY_PLATFORM[record.platform];
+  if (candidateKind === undefined || !Array.isArray(record.artifacts) || !Array.isArray(artifacts)) return;
+
+  const deviceChecksum = record.artifacts.find((artifact) => isRecord(artifact) && artifact.kind === "native-checksum");
+  const candidateChecksum = artifacts.find((artifact) => isRecord(artifact) && artifact.kind === candidateKind);
+  if (!isRecord(deviceChecksum) || !isRecord(candidateChecksum)) return;
+
+  if (deviceChecksum.sha256 !== candidateChecksum.sha256) {
+    add(
+      findings,
+      `${field}.device.native-checksum`,
+      `${gate.name} native-checksum must match the candidate ${candidateKind} artifact`,
+    );
+  }
+}
+
+function verifyGateEvidenceRecord(findings, root, field, gate, artifacts) {
   if (!isSafeRelativePath(gate.evidencePath) || !COMMIT.test(String(gate.commit))) return;
   const absolutePath = containedFilePath(findings, root, field, gate.evidencePath);
   if (!absolutePath) return;
@@ -574,6 +595,7 @@ function verifyGateEvidenceRecord(findings, root, field, gate) {
   for (const finding of verifyDeviceEvidenceFiles(record, root)) {
     add(findings, `${field}.device.files`, finding);
   }
+  verifyNativeChecksumBinding(findings, field, gate, record, artifacts);
 }
 
 function verifyDetachedSignature(findings, evidence, root, fieldName) {
@@ -788,7 +810,7 @@ export function verifyReleaseEvidenceFiles(evidence, root) {
       gate.sha256,
       MAX_GATE_EVIDENCE_BYTES,
     );
-    verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate);
+    verifyGateEvidenceRecord(findings, root, `gates[${index}]`, gate, evidence.artifacts);
   }
   for (const [index, artifact] of evidence.artifacts.entries()) {
     if (!isRecord(artifact)) continue;

@@ -98,7 +98,7 @@ function completeEvidence() {
   };
 }
 
-function writeDeviceGateEvidence(root, gate, platform) {
+function writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes) {
   const isWeb = platform === "web";
   const directory = join(root, "device");
   mkdirSync(directory, { recursive: true });
@@ -108,7 +108,10 @@ function writeDeviceGateEvidence(root, gate, platform) {
   const artifacts = (isWeb ? [{ kind: "browser-report" }] : PHYSICAL_ARTIFACT_KINDS.map((kind) => ({ kind }))).map(
     ({ kind }, index) => {
       const artifactPath = `device/${gate.name}-${index}.bin`;
-      const bytes = Buffer.from(`${gate.name}:${kind}\n`, "utf8");
+      const bytes =
+        kind === "native-checksum" && nativeChecksumBytes !== undefined
+          ? nativeChecksumBytes
+          : Buffer.from(`${gate.name}:${kind}\n`, "utf8");
       writeFileSync(join(root, artifactPath), bytes);
       return {
         kind,
@@ -203,10 +206,14 @@ function writeCompleteEvidenceFixture(root) {
     "android-device-matrix": "android",
     "web-browser-matrix": "web",
   };
+  const nativeChecksumBytes = {
+    ios: Buffer.from("candidate ios native checksum\n", "utf8"),
+    android: Buffer.from("candidate android native checksum\n", "utf8"),
+  };
   for (const gate of evidence.gates) {
     const platform = platformByGate[gate.name];
     if (platform) {
-      writeDeviceGateEvidence(root, gate, platform);
+      writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes[platform]);
     } else {
       const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(
@@ -245,6 +252,12 @@ function writeCompleteEvidenceFixture(root) {
     } else if (artifact.kind === "independent-review-signature") {
       writeFileSync(join(root, artifact.path), reviewSignature);
       artifact.sha256 = createHash("sha256").update(reviewSignature).digest("hex");
+    } else if (artifact.kind === "native-checksum") {
+      writeFileSync(join(root, artifact.path), nativeChecksumBytes.ios);
+      artifact.sha256 = createHash("sha256").update(nativeChecksumBytes.ios).digest("hex");
+    } else if (artifact.kind === "native-checksum-android") {
+      writeFileSync(join(root, artifact.path), nativeChecksumBytes.android);
+      artifact.sha256 = createHash("sha256").update(nativeChecksumBytes.android).digest("hex");
     } else {
       writeFileSync(join(root, artifact.path), payload);
       artifact.sha256 = sha256;
@@ -480,6 +493,10 @@ test("verifies every referenced release evidence and artifact digest", () => {
   );
   const reviewSignature = sign(null, reviewPayload, reviewPrivateKey);
 
+  const nativeChecksumBytes = {
+    ios: Buffer.from("candidate ios native checksum\n", "utf8"),
+    android: Buffer.from("candidate android native checksum\n", "utf8"),
+  };
   for (const gate of evidence.gates) {
     mkdirSync(join(root, "evidence"), { recursive: true });
     const platformByGate = {
@@ -488,7 +505,8 @@ test("verifies every referenced release evidence and artifact digest", () => {
       "web-browser-matrix": "web",
     };
     if (platformByGate[gate.name]) {
-      writeDeviceGateEvidence(root, gate, platformByGate[gate.name]);
+      const platform = platformByGate[gate.name];
+      writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes[platform]);
     } else {
       const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(
@@ -526,6 +544,12 @@ test("verifies every referenced release evidence and artifact digest", () => {
     } else if (artifact.kind === "independent-review-signature") {
       writeFileSync(join(root, artifact.path), reviewSignature);
       artifact.sha256 = createHash("sha256").update(reviewSignature).digest("hex");
+    } else if (artifact.kind === "native-checksum") {
+      writeFileSync(join(root, artifact.path), nativeChecksumBytes.ios);
+      artifact.sha256 = createHash("sha256").update(nativeChecksumBytes.ios).digest("hex");
+    } else if (artifact.kind === "native-checksum-android") {
+      writeFileSync(join(root, artifact.path), nativeChecksumBytes.android);
+      artifact.sha256 = createHash("sha256").update(nativeChecksumBytes.android).digest("hex");
     } else {
       writeFileSync(join(root, artifact.path), payload);
       artifact.sha256 = sha256;
@@ -543,6 +567,32 @@ test("verifies every referenced release evidence and artifact digest", () => {
   writeFileSync(join(root, evidence.artifacts[0].path), Buffer.from("tampered", "utf8"));
   const findings = verifyReleaseEvidenceFiles(evidence, root);
   assert.ok(findings.some((finding) => finding.includes("artifacts[0].sha256")));
+});
+
+test("rejects a physical native checksum that is not the candidate checksum artifact", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-native-checksum-binding-"));
+  const evidence = writeCompleteEvidenceFixture(root);
+  const iosGate = evidence.gates.find(({ name }) => name === "ios-device-matrix");
+  const iosRecordPath = join(root, iosGate.evidencePath);
+  const iosRecord = JSON.parse(readFileSync(iosRecordPath, "utf8"));
+  const checksum = iosRecord.artifacts.find(({ kind }) => kind === "native-checksum");
+  const mismatchedBytes = Buffer.from("different native checksum\n", "utf8");
+  writeFileSync(join(root, checksum.path), mismatchedBytes);
+  checksum.sha256 = createHash("sha256").update(mismatchedBytes).digest("hex");
+  const iosRecordBytes = Buffer.from(`${JSON.stringify(iosRecord)}\n`, "utf8");
+  writeFileSync(iosRecordPath, iosRecordBytes);
+  iosGate.sha256 = createHash("sha256").update(iosRecordBytes).digest("hex");
+
+  const findings = verifyReleaseEvidenceFiles(evidence, root);
+
+  assert.ok(
+    findings.some(
+      (finding) =>
+        finding.includes("ios-device-matrix") &&
+        finding.includes("native-checksum") &&
+        finding.includes("candidate"),
+    ),
+  );
 });
 
 test("rejects symlinked evidence artifacts even when the target stays inside the evidence root", () => {

@@ -117,6 +117,8 @@ exact release-candidate commit by the release evidence manifest.
   inside the signed source bundle.
 - Final evidence verification now rejects an independent-review signature that
   reuses the maintainer release public key.
+- Final evidence verification now binds each physical native record's checksum
+  manifest to the matching candidate iOS or Android native artifact.
 - Final evidence assembly now rechecks the signed tar entry contract,
   candidate checksum manifest, and byte equality of signed source evidence
   before accepting downloaded external inputs.
