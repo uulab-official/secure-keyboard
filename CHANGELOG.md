@@ -22,6 +22,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- OPAQUE HTTP credential persistence is now create-only: an existing account
+  credential cannot be replaced by a replayed registration upload or an
+  enrollment race, and conflicts use the generic invalid-request response.
 - Added opt-in native CSPRNG input-key randomization via
   `randomizeInputKeys`; only input-role positions move, while action roles,
   seeds, and accumulated input remain outside RN/Flutter bridges.

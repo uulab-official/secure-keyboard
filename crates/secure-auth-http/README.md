@@ -35,7 +35,11 @@ as a CSRF token.
 The embedding server still owns certificate policy, proxy source allowlisting,
 request authentication, account creation authorization, rate limiting, and
 application session tokens. Registration finish in particular must be
-protected by the application's account-enrollment policy.
+protected by the application's account-enrollment policy. Its
+`CredentialRepository::create` implementation must also be an atomic
+create-only operation: an existing credential must return
+`RepositoryError::AlreadyExists` and never be replaced. The route maps that
+conflict to the generic invalid-request response.
 
 ```rust,no_run
 let response = router.handle(request, HttpDeploymentContext::trusted_proxy_tls());

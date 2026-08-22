@@ -146,6 +146,7 @@ Status: OPAQUE engine, verified HTTP/JSON route contract, deployment baseline, N
 - [x] Add a bounded one-time reference store with TTL, capacity, and state-size tests.
 - [x] Add feature-gated Redis/PostgreSQL OPAQUE one-time state adapters with hashed handles, bounded versioned records, AES-256-GCM authenticated encryption using a host-supplied `OpaqueStateKey`, TLS-first constructors, atomic consume, and isolated service tests.
 - [x] Add transport-neutral registration orchestration that returns protected credential files.
+- [x] Make HTTP credential persistence create-only and reject registration replay or enrollment races without replacing an existing credential.
 - [x] Add transport-neutral server orchestration with identifier-bound finalization.
 - [x] Add a framework-neutral WebAuthn HTTP/JSON route contract with bounded bodies, generic errors, and host-principal binding.
 - [x] Add a mandatory TLS/proxy-limit deployment context and Nginx/Caddy HTTP deployment baseline.

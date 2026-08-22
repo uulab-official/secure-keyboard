@@ -103,6 +103,13 @@ key. It rejects an empty or oversized identifier before finishing the OPAQUE
 upload or invoking the credential repository; the identifier is never treated
 as protocol secret material.
 
+The credential repository operation is create-only: it must atomically reject
+an existing identifier instead of replacing its credential file. This makes a
+replayed registration upload or an enrollment race fail closed at the storage
+boundary. The route maps an existing-record conflict to the same generic
+`invalid_request` response; the host still must authorize account creation and
+must not expose registration finish as an account-replacement endpoint.
+
 The HTTP route contract requires an explicit deployment context proving TLS,
 pre-buffering body limits, and connection/read limits. Use the trusted-proxy
 variant only after the host validates the proxy source and forwarded scheme;
@@ -129,6 +136,8 @@ covered by a downgrade regression test.
 - constant-time proof checks and generic external authentication errors;
 - key rotation with an explicit supported-version window and downgrade tests;
 - protected storage for server setup and credential files;
+- atomic create-only credential persistence that cannot replace an existing
+  account credential during registration;
 - redaction of payloads, identifiers, and protocol errors from logs and traces.
 - short TTL and atomic consume/delete for serialized server login state;
 

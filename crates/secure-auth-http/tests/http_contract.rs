@@ -114,14 +114,24 @@ impl CredentialRepository for FixtureRepository {
         self.entries
             .lock()
             .map_err(|_| RepositoryError::Unavailable)
-            .map(|mut entries| entries.remove(identifier))
+            .map(|entries| {
+                entries
+                    .get(identifier)
+                    .map(|credential| CredentialFile::from_bytes(credential.as_bytes()))
+                    .transpose()
+                    .expect("fixture credential must remain valid")
+            })
     }
 
-    fn store(&self, identifier: &[u8], credential: CredentialFile) -> Result<(), RepositoryError> {
-        self.entries
+    fn create(&self, identifier: &[u8], credential: CredentialFile) -> Result<(), RepositoryError> {
+        let mut entries = self
+            .entries
             .lock()
-            .map_err(|_| RepositoryError::Unavailable)?
-            .insert(identifier.to_vec(), credential);
+            .map_err(|_| RepositoryError::Unavailable)?;
+        if entries.contains_key(identifier) {
+            return Err(RepositoryError::AlreadyExists);
+        }
+        entries.insert(identifier.to_vec(), credential);
         Ok(())
     }
 }
@@ -497,6 +507,155 @@ fn registration_finish_stores_credential_without_returning_file_bytes() {
         .body
         .windows(b"fixture-only-secret".len())
         .any(|window| window == b"fixture-only-secret"));
+}
+
+#[test]
+fn registration_finish_never_overwrites_an_existing_credential() {
+    let (setup, existing_credential) = registered_fixture();
+    let service = ServerAuthService::new(
+        setup,
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let repository = FixtureRepository::with(CREDENTIAL_ID, existing_credential);
+    let router = HttpAuthRouter::new(service, repository);
+
+    let finish_body =
+        registration_upload_body(&router, b"replacement-fixture-secret", "fixture-user");
+
+    let finish_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/finish",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            body: &finish_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+
+    assert_eq!(finish_response.status, 400);
+    assert_eq!(finish_response.body, br#"{"error":"invalid_request"}"#);
+
+    assert_login_with_password(&router, PASSWORD);
+}
+
+fn registration_upload_body(
+    router: &HttpAuthRouter<InMemoryOneTimeLoginStore, FixtureRepository>,
+    password: &[u8],
+    identifier: &str,
+) -> Vec<u8> {
+    let (state, request) = client_registration_start(password).unwrap();
+    let request_envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationRequest,
+        CIPHER_SUITE_ID,
+        &request,
+    )
+    .unwrap();
+    let start_body = serde_json::to_vec(&RegistrationStartBody {
+        identifier,
+        envelope: &request_envelope,
+    })
+    .unwrap();
+    let start_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/registration/start",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            body: &start_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+    assert_eq!(start_response.status, 200);
+    let start: RegistrationStartResponse = serde_json::from_slice(&start_response.body).unwrap();
+    let response_message = start
+        .envelope
+        .into_message(AuthMessageKind::RegistrationResponse, CIPHER_SUITE_ID)
+        .unwrap();
+    let (upload, _) =
+        client_registration_finish(state, password, &response_message, CLIENT_ID, SERVER_ID)
+            .unwrap();
+    let upload_envelope = AuthEnvelope::new(
+        AuthMessageKind::RegistrationUpload,
+        CIPHER_SUITE_ID,
+        &upload,
+    )
+    .unwrap();
+    serde_json::to_vec(&RegistrationFinishBody {
+        identifier,
+        envelope: &upload_envelope,
+    })
+    .unwrap()
+}
+
+fn assert_login_with_password(
+    router: &HttpAuthRouter<InMemoryOneTimeLoginStore, FixtureRepository>,
+    password: &[u8],
+) {
+    let (client_state, login_request) = client_login_start(password).unwrap();
+    let login_envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialRequest,
+        CIPHER_SUITE_ID,
+        &login_request,
+    )
+    .unwrap();
+    let login_start_body = serde_json::to_vec(&LoginStartBody {
+        credential_identifier: "fixture-user",
+        client_identifier: "fixture-client",
+        server_identifier: "fixture-server",
+        envelope: &login_envelope,
+    })
+    .unwrap();
+    let login_start_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/start",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            body: &login_start_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+    assert_eq!(login_start_response.status, 200);
+    let login_start: LoginStartResponse =
+        serde_json::from_slice(&login_start_response.body).unwrap();
+    let response_message = login_start
+        .envelope
+        .into_message(AuthMessageKind::CredentialResponse, CIPHER_SUITE_ID)
+        .unwrap();
+    let (finalization, _) = client_login_finish(
+        client_state,
+        password,
+        &response_message,
+        CLIENT_ID,
+        SERVER_ID,
+    )
+    .unwrap();
+    let finalization_envelope = AuthEnvelope::new(
+        AuthMessageKind::CredentialFinalization,
+        CIPHER_SUITE_ID,
+        &finalization,
+    )
+    .unwrap();
+    let login_finish_body = serde_json::to_vec(&LoginFinishBody {
+        handle: &login_start.handle,
+        envelope: &finalization_envelope,
+    })
+    .unwrap();
+    let login_finish_response = router.handle(
+        HttpRequest {
+            method: "POST",
+            path: "/v1/opaque/login/finish",
+            content_type: Some("application/json"),
+            csrf_validated: true,
+            body: &login_finish_body,
+        },
+        HttpDeploymentContext::direct_tls(),
+    );
+    assert_eq!(login_finish_response.status, 200);
+    assert_eq!(login_finish_response.body, AUTHENTICATED_RESPONSE);
 }
 
 #[test]

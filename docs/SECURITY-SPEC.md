@@ -146,5 +146,6 @@ The server rejects unsupported versions and prevents downgrade. UI package versi
 3. Numeric and Hangul composition have deterministic, cross-platform test vectors.
 4. Theme/layout changes do not change the protocol or memory boundary.
 5. Logs, analytics, crash reports, screenshots, and background snapshots contain no secret values in the test matrix.
-6. Server integration has replay, downgrade, rate-limit, and version-compatibility tests.
+6. Server integration has replay, downgrade, rate-limit, version-compatibility,
+   and create-only credential-enrollment tests.
 7. The README contains a threat model and an explicit limitation statement before the first release.

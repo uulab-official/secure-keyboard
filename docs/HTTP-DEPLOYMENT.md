@@ -12,7 +12,9 @@ not optional. The host must apply these controls before calling a route:
    the host session before buffering or dispatching JSON;
 6. bind registration and login routes to the application's authenticated
    session/account policy;
-7. use a distributed atomic ceremony store and rate limiter when more than one
+7. make credential enrollment create-only at the repository boundary; do not
+   allow registration finish to replace an existing credential;
+8. use a distributed atomic ceremony store and rate limiter when more than one
    application instance can receive a request.
 
 After these checks, pass `HttpDeploymentContext::direct_tls()` or

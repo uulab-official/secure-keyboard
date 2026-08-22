@@ -222,14 +222,17 @@ pub trait CredentialRepository {
     /// cannot safely serve the lookup.
     fn load(&self, identifier: &[u8]) -> Result<Option<CredentialFile>, RepositoryError>;
 
-    /// Stores a newly completed credential file under a public identifier.
-    /// Implementations must encrypt or access-control the file at rest.
+    /// Creates a credential file under a public identifier without replacing
+    /// an existing record. Implementations must enforce this create-only
+    /// operation atomically with the uniqueness check, and must encrypt or
+    /// access-control the file at rest.
     ///
     /// # Errors
     ///
-    /// Returns a repository error when protected persistence is unavailable
-    /// or rejects the identifier.
-    fn store(&self, identifier: &[u8], credential: CredentialFile) -> Result<(), RepositoryError>;
+    /// Returns a repository error when protected persistence is unavailable,
+    /// rejects the identifier, or already contains a credential for it. The
+    /// create-only check must be atomic with persistence.
+    fn create(&self, identifier: &[u8], credential: CredentialFile) -> Result<(), RepositoryError>;
 }
 
 /// Stable repository failure classes. Internal database errors must be mapped
@@ -240,6 +243,10 @@ pub enum RepositoryError {
     Unavailable,
     /// The repository rejected the bounded public identifier.
     InvalidIdentifier,
+    /// A credential already exists for the public identifier. The route maps
+    /// this to the same generic invalid-request response as other enrollment
+    /// conflicts.
+    AlreadyExists,
 }
 
 /// Framework-neutral OPAQUE HTTP route handler.
@@ -331,7 +338,7 @@ where
         };
         if let Err(error) = self
             .repository
-            .store(request.identifier.as_bytes(), credential)
+            .create(request.identifier.as_bytes(), credential)
         {
             return repository_error_response(error);
         }
@@ -462,7 +469,9 @@ fn auth_error_response(error: ServerAuthError) -> HttpResponse {
 fn repository_error_response(error: RepositoryError) -> HttpResponse {
     let code = match error {
         RepositoryError::Unavailable => PublicAuthCode::TemporarilyUnavailable,
-        RepositoryError::InvalidIdentifier => PublicAuthCode::InvalidRequest,
+        RepositoryError::InvalidIdentifier | RepositoryError::AlreadyExists => {
+            PublicAuthCode::InvalidRequest
+        }
     };
     error_response(
         match code {

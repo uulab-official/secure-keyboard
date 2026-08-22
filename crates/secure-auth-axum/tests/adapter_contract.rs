@@ -24,7 +24,7 @@ impl CredentialRepository for EmptyRepository {
         Ok(None)
     }
 
-    fn store(
+    fn create(
         &self,
         _identifier: &[u8],
         _credential: secure_auth::CredentialFile,
