@@ -38,7 +38,11 @@ function successMarker(target) {
 
 function hasSuccessMarker(bytes, target) {
   const lines = bytes.toString("utf8").split(/\r?\n/);
-  return lines.includes(successMarker(target));
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim().length === 0) continue;
+    return lines[index] === successMarker(target);
+  }
+  return false;
 }
 
 function add(findings, field, message) {

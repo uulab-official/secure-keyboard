@@ -123,6 +123,25 @@ test("rejects a missing target, a missing success marker, and a path outside the
   assert.doesNotThrow(() => verifyLsanEvidenceFiles(missingPath, logRoot, { pathPrefix: LOG_PREFIX }));
 });
 
+test("rejects a success marker that is not the final meaningful log line", () => {
+  const logRoot = createLogs();
+  writeFileSync(
+    join(logRoot, "auth_envelope-lsan.log"),
+    `${MARKER("auth_envelope")}\nlate sanitizer output\n`,
+  );
+  assert.throws(
+    () =>
+      buildLsanGateEvidence({
+        logRoot,
+        commit: COMMIT,
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-22T00:00:00.000Z",
+        pathPrefix: LOG_PREFIX,
+      }),
+    /missing the exact success marker/,
+  );
+});
+
 test("CI records the success marker only after each LSAN command and preserves the bound record", () => {
   for (const target of LSAN_TARGETS) {
     assert.match(

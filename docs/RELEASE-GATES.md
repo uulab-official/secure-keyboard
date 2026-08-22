@@ -539,8 +539,8 @@ the command exits successfully. `scripts/emit-lsan-gate-evidence.mjs` records
 the pinned nightly toolchain, `--sanitizer=leak`, 10,000-run budget, byte count,
 and SHA-256 digest for all four logs. The final verifier then requires those
 records to resolve to `retained/fuzz-logs/<target>-lsan.log` and rechecks the
-raw bytes and exact success marker; a sanitized `job-fuzz` label alone cannot
-close this gate.
+raw bytes and exact success marker as the final meaningful log line; a
+sanitized `job-fuzz` label alone cannot close this gate.
 
 Device execution follows `docs/DEVICE-VERIFICATION.md`. Host compilation alone
 does not close screenshot, background, autofill, clipboard, accessibility, or
