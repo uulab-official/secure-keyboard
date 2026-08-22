@@ -68,6 +68,7 @@ function completeEvidence() {
     })),
     artifacts: [
       { kind: "native-checksum", path: "artifacts/native.sha256", sha256: SHA256 },
+      { kind: "native-checksum-android", path: "artifacts/native-android.sha256", sha256: SHA256 },
       { kind: "sbom", path: "artifacts/secure-keypad.sbom.spdx.json", sha256: SHA256 },
       { kind: "license-notices", path: "artifacts/THIRD-PARTY-NOTICES.md", sha256: SHA256 },
       { kind: "release-bundle", path: "artifacts/secure-keypad-release.tar.gz", sha256: SHA256 },
@@ -267,7 +268,10 @@ test("rejects missing production gates and release artifacts", () => {
     (gate) => gate.name !== "linux-leak-sanitizer" && gate.name !== "independent-security-review",
   );
   evidence.artifacts = evidence.artifacts.filter(
-    (artifact) => artifact.kind !== "sbom" && artifact.kind !== "release-signature",
+    (artifact) =>
+      artifact.kind !== "native-checksum-android" &&
+      artifact.kind !== "sbom" &&
+      artifact.kind !== "release-signature",
   );
 
   const findings = validateReleaseEvidence(evidence);
@@ -275,6 +279,7 @@ test("rejects missing production gates and release artifacts", () => {
   assert.ok(findings.some((finding) => finding.includes("linux-leak-sanitizer")));
   assert.ok(findings.some((finding) => finding.includes("independent-security-review")));
   assert.ok(findings.some((finding) => finding.includes("sbom")));
+  assert.ok(findings.some((finding) => finding.includes("native-checksum-android")));
   assert.ok(findings.some((finding) => finding.includes("release-signature")));
 });
 

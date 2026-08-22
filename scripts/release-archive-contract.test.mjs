@@ -13,6 +13,9 @@ import {
 const REQUIRED_ENTRIES = [
   "source/release-candidate-metadata.json",
   "source/secure-keypad.sbom.spdx.json",
+  "source/secure-keypad-android-ffi.sha256",
+  "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
+  "source/native-artifacts/android/x86_64/libsecure_ffi.a",
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
   "source/packages/flutter/ios/libsecure_ffi.a",

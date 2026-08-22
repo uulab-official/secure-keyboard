@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -84,6 +85,18 @@ function createValidStaging() {
     packages: [{ name: "secure-core", SPDXID: "SPDXRef-secure-core" }],
   }));
   writeFile(root, "source/secure-keypad-ios-ffi.sha256", "native checksum fixture\n");
+  const androidLibraries = {
+    "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a": "arm64 fixture\n",
+    "source/native-artifacts/android/x86_64/libsecure_ffi.a": "x86_64 fixture\n",
+  };
+  for (const [relativePath, contents] of Object.entries(androidLibraries)) writeFile(root, relativePath, contents);
+  writeFile(
+    root,
+    "source/secure-keypad-android-ffi.sha256",
+    Object.entries(androidLibraries)
+      .map(([relativePath, contents]) => `${createHash("sha256").update(contents).digest("hex")}  ${relativePath.slice("source/".length)}`)
+      .join("\n") + "\n",
+  );
   writeFile(root, "source/packages/flutter/pubspec.yaml", "name: secure_keypad_flutter\nversion: 0.1.0\n");
   writeFile(root, "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist", "<plist/>\n");
   writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
@@ -236,6 +249,34 @@ test("release staging requires the verified native FFI checksum manifest", () =>
   }
 });
 
+test("release staging requires the verified Android FFI checksum and libraries", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/secure-keypad-android-ffi.sha256"));
+    rmSync(path.join(root, "source/native-artifacts/android/x86_64/libsecure_ffi.a"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.sha256")));
+    assert.ok(findings.some((finding) => finding.includes("source/native-artifacts/android/x86_64/libsecure_ffi.a")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging verifies the Android FFI checksum against signed-source paths", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(
+      root,
+      "source/secure-keypad-android-ffi.sha256",
+      `${"0".repeat(64)}  native-artifacts/android/arm64-v8a/libsecure_ffi.a\n`,
+    );
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-android-ffi.sha256")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("release candidate workflow runs the staging inspector before archiving", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
@@ -261,13 +302,13 @@ test("release candidate workflow includes public security documents in the signe
   assert.match(workflow, /cp\s+SECURITY\.md\s+"\$RELEASE_DIR\/source\/SECURITY\.md"/);
 });
 
-test("release candidate signs staged package archives and publishable iOS FFI artifacts", () => {
+test("release candidate signs staged package archives and publishable native FFI artifacts", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
     "utf8",
   );
   assert.match(workflow, /native-ios-artifacts:/);
-  assert.match(workflow, /needs:\s*native-ios-artifacts/);
+  assert.match(workflow, /needs:\s*\[native-ios-artifacts,\s*native-android-artifacts\]/);
   assert.match(workflow, /name: secure-keypad-release-ios-ffi/);
   assert.match(workflow, /actions\/download-artifact@[0-9a-f]{40}[\s\S]*?secure-keypad-release-ios-ffi/);
   assert.match(workflow, /shasum -a 256 -c/);
@@ -277,6 +318,10 @@ test("release candidate signs staged package archives and publishable iOS FFI ar
   assert.match(workflow, /packages\/react-native\/secure_ffi\.xcframework/);
   assert.match(workflow, /packages\/flutter\/ios\/secure_ffi\.xcframework/);
   assert.match(workflow, /source\/secure-keypad-ios-ffi\.sha256/);
+  assert.match(workflow, /native-android-artifacts:/);
+  assert.match(workflow, /name: secure-keypad-release-android-ffi/);
+  assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
+  assert.match(workflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/);
   assert.match(workflow, /emit-release-artifact-fragment\.mjs/);
   assert.match(workflow, /scripts\/check-release-archive\.mjs/);
   assert.match(workflow, /-C "\$RELEASE_DIR" source packages/);

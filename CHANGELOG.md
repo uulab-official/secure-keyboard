@@ -25,6 +25,9 @@ exact release-candidate commit by the release evidence manifest.
 - OPAQUE HTTP credential persistence is now create-only: an existing account
   credential cannot be replaced by a replayed registration upload or an
   enrollment race, and conflicts use the generic invalid-request response.
+- Release candidates now build, commit-bind, checksum-verify, and sign the
+  Android `arm64-v8a` and `x86_64` FFI libraries alongside the iOS artifacts;
+  the final Android checksum manifest is a required release-evidence artifact.
 - Clarified that OPAQUE credential repository reads are persistent copies; a
   login must not delete the reusable credential record while one-time protocol
   state remains consumable exactly once.
@@ -97,9 +100,9 @@ exact release-candidate commit by the release evidence manifest.
 - Added an exclusive, regular-file-only release-evidence staging helper and a
   signed-release fragment converter so missing physical-device, sanitizer, or
   independent-review evidence fails closed.
-- Release candidates now carry a commit-bound artifact fragment for the native
-  FFI checksum, SPDX SBOM, and third-party notices; the verified iOS FFI
-  checksum is included inside the signed source bundle.
+- Release candidates now carry commit-bound artifact fragments for the iOS and
+  Android FFI checksums, SPDX SBOM, and third-party notices; both verified
+  native checksum manifests are included inside the signed source bundle.
 - Final evidence assembly now rechecks the signed tar entry contract,
   candidate checksum manifest, and byte equality of signed source evidence
   before accepting downloaded external inputs.

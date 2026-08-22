@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -38,6 +39,9 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/THIRD-PARTY-NOTICES.md",
   "source/secure-keypad.sbom.spdx.json",
   "source/secure-keypad-ios-ffi.sha256",
+  "source/secure-keypad-android-ffi.sha256",
+  "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
+  "source/native-artifacts/android/x86_64/libsecure_ffi.a",
   "source/release-candidate-metadata.json",
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
@@ -48,6 +52,10 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/docs/ROADMAP.md",
 ]);
 const SECRET_KEY = /password|passphrase|secret|private|plaintext|rawInput|input(?:Value|Text|Bytes)|credential(?:Value|Bytes)/i;
+const ANDROID_FFI_CHECKSUM_ENTRIES = Object.freeze([
+  "native-artifacts/android/arm64-v8a/libsecure_ffi.a",
+  "native-artifacts/android/x86_64/libsecure_ffi.a",
+]);
 
 function regularFile(root, relativePath, findings) {
   const absolutePath = path.join(root, relativePath);
@@ -65,6 +73,57 @@ function regularFile(root, relativePath, findings) {
   } catch {
     findings.push(`${relativePath}: required release file is missing`);
     return undefined;
+  }
+}
+
+function validateAndroidFfiChecksum(root, findings) {
+  const relativeManifest = "source/secure-keypad-android-ffi.sha256";
+  const manifestPath = regularFile(root, relativeManifest, findings);
+  if (!manifestPath) return;
+
+  let contents;
+  try {
+    contents = readFileSync(manifestPath, "utf8");
+  } catch (error) {
+    findings.push(`${relativeManifest}: cannot be read (${error.message})`);
+    return;
+  }
+
+  const seen = new Set();
+  const lines = contents.split(/\r?\n/).filter((line) => line.length > 0);
+  if (lines.length !== ANDROID_FFI_CHECKSUM_ENTRIES.length) {
+    findings.push(`${relativeManifest}: must contain exactly one checksum for each supported Android FFI library`);
+  }
+  for (const line of lines) {
+    const match = line.match(/^([a-f0-9]{64})  ([^\r\n]+)$/);
+    if (!match) {
+      findings.push(`${relativeManifest}: contains a malformed checksum line`);
+      continue;
+    }
+    const [, expectedHash, relativePath] = match;
+    if (path.posix.isAbsolute(relativePath) || relativePath.includes("\\") || relativePath.split("/").includes("..")) {
+      findings.push(`${relativeManifest}: checksum path must be relative and non-parent`);
+      continue;
+    }
+    if (!ANDROID_FFI_CHECKSUM_ENTRIES.includes(relativePath)) {
+      findings.push(`${relativeManifest}: unexpected Android FFI checksum path ${relativePath}`);
+      continue;
+    }
+    if (seen.has(relativePath)) {
+      findings.push(`${relativeManifest}: duplicate Android FFI checksum path ${relativePath}`);
+      continue;
+    }
+    seen.add(relativePath);
+    const sourceRelativePath = path.posix.join("source", relativePath);
+    const absolutePath = regularFile(root, sourceRelativePath, findings);
+    if (!absolutePath) continue;
+    const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
+    if (actualHash !== expectedHash) {
+      findings.push(`${relativeManifest}: checksum does not match ${sourceRelativePath}`);
+    }
+  }
+  for (const requiredPath of ANDROID_FFI_CHECKSUM_ENTRIES) {
+    if (!seen.has(requiredPath)) findings.push(`${relativeManifest}: missing checksum for ${requiredPath}`);
   }
 }
 
@@ -277,6 +336,7 @@ export function checkReleaseStaging(root) {
   const metadata = readJson(root, "source/release-candidate-metadata.json", findings);
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);
+  validateAndroidFfiChecksum(root, findings);
   if (validatedMetadata?.packageVersion) {
     validateNpmArchives(root, validatedMetadata.packageVersion, findings);
     validateRustArchives(root, validatedMetadata.packageVersion, findings);

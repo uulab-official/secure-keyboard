@@ -28,8 +28,15 @@ test("candidate metadata binds the exact checkout and final evidence contract", 
   assert.deepEqual(metadata.requiredFinalGates, REQUIRED_RELEASE_GATES);
   assert.equal(metadata.claim, "candidate-only");
   assert.equal(metadata.finalVerifier.workflow, ".github/workflows/release-finalize.yml");
-  assert.deepEqual(metadata.candidateArtifacts.slice(-3), [
+  assert.deepEqual(
+    metadata.candidateArtifacts.find(({ kind }) => kind === "native-checksum"),
     { kind: "native-checksum", path: "source/secure-keypad-ios-ffi.sha256" },
+  );
+  assert.deepEqual(
+    metadata.candidateArtifacts.find(({ kind }) => kind === "native-checksum-android"),
+    { kind: "native-checksum-android", path: "source/secure-keypad-android-ffi.sha256" },
+  );
+  assert.deepEqual(metadata.candidateArtifacts.slice(-2), [
     { kind: "license-notices", path: "source/THIRD-PARTY-NOTICES.md" },
     { kind: "checksums", path: "secure-keypad-release.sha256" },
   ]);

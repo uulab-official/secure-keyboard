@@ -966,7 +966,8 @@ export function runSecurityAudit() {
   }
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /runs-on:\s*ubuntu-24\.04/, "release workflow must use the repository-pinned runner image");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-ios-artifacts:/, "release workflow must build publishable iOS FFI artifacts in a separate pinned job");
-  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:\s*\n\s*needs:\s*native-ios-artifacts/, "release bundle must depend on the verified iOS FFI artifact job");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-android-artifacts:/, "release workflow must build publishable Android FFI artifacts in a separate pinned job");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:\s*\n\s*needs:\s*\[native-ios-artifacts,\s*native-android-artifacts\]/, "release bundle must depend on both verified native FFI artifact jobs");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release bundle must download the immutable iOS FFI artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /find \. -type f ! -name secure-keypad-ios-ffi\.sha256/, "iOS FFI checksum generation must include the commit binding while excluding only the manifest itself");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /shasum -a 256 -c secure-keypad-ios-ffi\.sha256/, "release bundle must verify the downloaded iOS FFI checksum manifest");
@@ -974,6 +975,11 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cat "\$IOS_FFI_DIR\/secure-keypad-ios-ffi\.commit"\)" = "\$RELEASE_REF/, "release bundle must reject an iOS FFI artifact from another commit");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/react-native\/secure_ffi\.xcframework/, "release bundle must stage the verified React Native iOS XCFramework");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/flutter\/ios\/libsecure_ffi\.a/, "release bundle must stage the verified Flutter iOS static library");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /name:\s*secure-keypad-release-android-ffi/, "release bundle must download the verified Android FFI artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /sha256sum -c secure-keypad-android-ffi\.sha256/, "release bundle must verify the downloaded Android FFI checksum manifest");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-android-ffi\.commit/, "release bundle must bind the downloaded Android FFI artifact to the requested commit");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/, "release bundle must stage the verified Android arm64 FFI library");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release bundle must stage the verified Android x86_64 FFI library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:[\s\S]{0,260}environment:\s*secure-keypad-release/, "release signing must run behind the protected release environment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_SIGNING_KEY_PEM/, "release workflow must require a protected signing key");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /trap\s+'rm -f "\$KEY_FILE"'\s+EXIT/, "release workflow must remove the temporary signing key on every exit path");
@@ -997,8 +1003,10 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /-C "\$RELEASE_DIR" source packages/, "release workflow must sign source and publishable package archives in one tarball");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-archive\.mjs/, "release workflow must inspect the exact signed tarball contents");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-ios-ffi\.sha256/, "release workflow must carry the verified iOS FFI checksum into the signed source bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-android-ffi\.sha256/, "release workflow must carry the verified Android FFI checksum into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum-android/, "release workflow must evidence the Android native checksum artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /license-notices/, "release workflow must evidence the license notices artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
@@ -1160,6 +1168,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /MAX_RELEASE_MANIFEST_BYTES/, "release evidence CLI must bound the top-level manifest before parsing");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /readBoundedManifest/, "release evidence CLI must use the bounded manifest reader");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /REQUIRED_RELEASE_GATES/, "release tooling must enumerate mandatory production evidence gates");
+  requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /native-checksum-android/, "release evidence must require the Android native checksum artifact");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /gate\.commit/, "release evidence must bind every gate to the manifest commit");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /independent-security-review/, "release evidence must require an independent security review");
   requireText(findings, "scripts/check-release-evidence.mjs", releaseEvidenceCheck, /signed-release/, "release evidence must require signed release evidence");
@@ -1197,6 +1206,11 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checkReleaseStaging/, "release tooling must inspect the exact staging input before archiving");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad\.sbom\.spdx\.json/, "release staging must require the SPDX SBOM");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-ios-ffi\.sha256/, "release staging must require the verified native FFI checksum manifest");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /secure-keypad-android-ffi\.sha256/, "release staging must require the verified Android FFI checksum manifest");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /validateAndroidFfiChecksum/, "release staging must verify the Android FFI checksum manifest against signed-source paths");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /checksum does not match/, "release staging must reject Android FFI checksum mismatches");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/, "release staging must require the verified Android arm64 FFI library");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /native-artifacts\/android\/x86_64\/libsecure_ffi\.a/, "release staging must require the verified Android x86_64 FFI library");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /only regular files are allowed in release staging/, "release staging must reject non-regular filesystem entries");

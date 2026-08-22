@@ -71,8 +71,11 @@ test("release workflows publish and consume the candidate artifact fragment", ()
     "utf8",
   );
   assert.match(candidateWorkflow, /secure-keypad-ios-ffi\.sha256/);
+  assert.match(candidateWorkflow, /secure-keypad-android-ffi\.sha256/);
+  assert.match(candidateWorkflow, /secure-keypad-release-android-ffi/);
   assert.match(candidateWorkflow, /emit-release-artifact-fragment\.mjs/);
   assert.match(candidateWorkflow, /native-checksum/);
+  assert.match(candidateWorkflow, /native-checksum-android/);
   assert.match(candidateWorkflow, /license-notices/);
   assert.match(finalWorkflow, /secure-keypad-release-candidate/);
   assert.match(finalWorkflow, /fragments/);

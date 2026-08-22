@@ -273,6 +273,7 @@ export function validateReleaseEvidence(evidence, context = {}) {
   }
   for (const requiredArtifact of [
     "native-checksum",
+    "native-checksum-android",
     "sbom",
     "license-notices",
     "release-bundle",

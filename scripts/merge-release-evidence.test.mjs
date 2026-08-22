@@ -115,6 +115,7 @@ function completeFragments() {
   }));
   const artifacts = [
     { kind: "native-checksum", path: "artifacts/native.sha256", sha256: SHA256 },
+    { kind: "native-checksum-android", path: "artifacts/native-android.sha256", sha256: SHA256 },
     { kind: "sbom", path: "artifacts/sbom.json", sha256: SHA256 },
     { kind: "license-notices", path: "artifacts/notices.md", sha256: SHA256 },
     { kind: "release-bundle", path: "artifacts/release.tar.gz", sha256: SHA256 },
@@ -173,7 +174,7 @@ test("merges split gates, artifacts, and signature into a complete manifest", ()
 
   assert.deepEqual(validateReleaseEvidence(merged), []);
   assert.equal(merged.gates.length, REQUIRED_RELEASE_GATES.length);
-  assert.equal(merged.artifacts.length, 9);
+  assert.equal(merged.artifacts.length, 10);
   assert.equal(merged.signature.algorithm, "ed25519");
   assert.equal(merged.independentReview.algorithm, "ed25519");
 });
@@ -305,6 +306,7 @@ test("CLI assembles and verifies a signed evidence root", () => {
 
   const artifacts = [
     { kind: "native-checksum", path: "artifacts/native.sha256", bytes: Buffer.from("native") },
+    { kind: "native-checksum-android", path: "artifacts/native-android.sha256", bytes: Buffer.from("android native") },
     { kind: "sbom", path: "artifacts/sbom.json", bytes: Buffer.from("sbom") },
     { kind: "license-notices", path: "artifacts/notices.md", bytes: Buffer.from("notices") },
     { kind: "release-bundle", path: "artifacts/release.tar.gz", bytes: releaseBytes },

@@ -70,8 +70,76 @@ jobs:
           path: ${{ runner.temp }}/secure-keypad-release-ios-ffi
           if-no-files-found: error
 
+  native-android-artifacts:
+    name: Build release Android FFI artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+      RELEASE_REF: ${{ inputs.ref }}
+      ANDROID_NDK_VERSION: 27.1.12297006
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Require immutable release commit
+        run: |
+          test -n "$RELEASE_REF"
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release ref must be a 40-character lowercase commit SHA"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$RELEASE_REF"
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+      - name: Build release FFI libraries for supported Android ABIs
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT"
+          ANDROID_NDK_ROOT="$SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          if [ ! -d "$ANDROID_NDK_ROOT" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+            test -n "$SDKMANAGER"
+            yes | "$SDKMANAGER" "ndk;$ANDROID_NDK_VERSION"
+          fi
+          test -d "$ANDROID_NDK_ROOT"
+          NDK_BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$NDK_BIN/aarch64-linux-android24-clang"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android24-clang"
+          cargo build --locked --release -p secure-ffi --target aarch64-linux-android
+          mkdir -p "$ANDROID_FFI_DIR/arm64-v8a"
+          cp target/aarch64-linux-android/release/libsecure_ffi.a \
+            "$ANDROID_FFI_DIR/arm64-v8a/libsecure_ffi.a"
+          test -x "$NDK_BIN/x86_64-linux-android24-clang"
+          export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$NDK_BIN/x86_64-linux-android24-clang"
+          cargo build --locked --release -p secure-ffi --target x86_64-linux-android
+          mkdir -p "$ANDROID_FFI_DIR/x86_64"
+          cp target/x86_64-linux-android/release/libsecure_ffi.a \
+            "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
+          test -s "$ANDROID_FFI_DIR/arm64-v8a/libsecure_ffi.a"
+          test -s "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
+      - name: Bind and checksum release Android FFI artifacts
+        run: |
+          printf '%s\n' "$RELEASE_REF" > "$ANDROID_FFI_DIR/secure-keypad-android-ffi.commit"
+          (
+            cd "$ANDROID_FFI_DIR"
+            sha256sum arm64-v8a/libsecure_ffi.a x86_64/libsecure_ffi.a
+          ) > "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256"
+          cat "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-keypad-release-android-ffi
+          path: ${{ runner.temp }}/secure-keypad-release-android-ffi
+          if-no-files-found: error
+
   bundle:
-    needs: native-ios-artifacts
+    needs: [native-ios-artifacts, native-android-artifacts]
     name: Build and sign release candidate bundle
     runs-on: ubuntu-24.04
     environment: secure-keypad-release
@@ -79,6 +147,7 @@ jobs:
     env:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
       IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+      ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
     services:
       redis:
         image: redis:7.2-alpine
@@ -134,6 +203,10 @@ jobs:
         with:
           name: secure-keypad-release-ios-ffi
           path: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-release-android-ffi
+          path: ${{ runner.temp }}/secure-keypad-release-android-ffi
       - name: Verify and stage publishable iOS FFI artifacts
         env:
           IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
@@ -153,6 +226,19 @@ jobs:
           cp "$IOS_FFI_DIR/react-native/libsecure_ffi.a" packages/react-native/libsecure_ffi.a
           cp -R "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework" packages/flutter/ios/secure_ffi.xcframework
           cp "$IOS_FFI_DIR/flutter/ios/libsecure_ffi.a" packages/flutter/ios/libsecure_ffi.a
+      - name: Verify release Android FFI artifacts
+        env:
+          ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          test -s "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256"
+          (
+            cd "$ANDROID_FFI_DIR"
+            sha256sum -c secure-keypad-android-ffi.sha256
+          )
+          test "$(cat "$ANDROID_FFI_DIR/secure-keypad-android-ffi.commit")" = "$RELEASE_REF"
+          test -s "$ANDROID_FFI_DIR/arm64-v8a/libsecure_ffi.a"
+          test -s "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
       - name: Run release source gates
         run: |
           cargo fmt --all -- --check
@@ -231,6 +317,17 @@ jobs:
           cp SECURITY.md "$RELEASE_DIR/source/SECURITY.md"
           cp "$RELEASE_DIR/secure-keypad.sbom.spdx.json" "$RELEASE_DIR/source/secure-keypad.sbom.spdx.json"
           cp "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256" "$RELEASE_DIR/source/secure-keypad-ios-ffi.sha256"
+          cp "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256" "$RELEASE_DIR/source/secure-keypad-android-ffi.sha256"
+          mkdir -p "$RELEASE_DIR/source/native-artifacts/android"
+          cp -R "$ANDROID_FFI_DIR/arm64-v8a" "$RELEASE_DIR/source/native-artifacts/android/arm64-v8a"
+          cp -R "$ANDROID_FFI_DIR/x86_64" "$RELEASE_DIR/source/native-artifacts/android/x86_64"
+          test -s "$RELEASE_DIR/source/native-artifacts/android/arm64-v8a/libsecure_ffi.a"
+          test -s "$RELEASE_DIR/source/native-artifacts/android/x86_64/libsecure_ffi.a"
+          (
+            cd "$RELEASE_DIR/source"
+            sha256sum native-artifacts/android/arm64-v8a/libsecure_ffi.a \
+              native-artifacts/android/x86_64/libsecure_ffi.a
+          ) > "$RELEASE_DIR/source/secure-keypad-android-ffi.sha256"
           mkdir -p "$RELEASE_DIR/source/packages"
           cp -R packages/flutter "$RELEASE_DIR/source/packages/flutter"
           cp -R docs "$RELEASE_DIR/source/docs"
@@ -277,6 +374,7 @@ jobs:
             "$RELEASE_DIR" \
             "fragments/candidate-artifacts.json" \
             --artifact native-checksum=source/secure-keypad-ios-ffi.sha256 \
+            --artifact native-checksum-android=source/secure-keypad-android-ffi.sha256 \
             --artifact sbom=source/secure-keypad.sbom.spdx.json \
             --artifact license-notices=source/THIRD-PARTY-NOTICES.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

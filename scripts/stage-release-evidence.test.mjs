@@ -170,6 +170,7 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /sha256sum -c secure-keypad-release\.sha256/);
   assert.match(workflow, /tar --extract --to-stdout/);
   assert.match(workflow, /secure-keypad-ios-ffi\.sha256/);
+  assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
   assert.match(workflow, /scripts\/stage-release-evidence\.mjs/);
   assert.match(workflow, /scripts\/emit-signed-release-fragment\.mjs[\s\S]*signed-release/);
   assert.match(workflow, /scripts\/merge-release-evidence\.mjs/);

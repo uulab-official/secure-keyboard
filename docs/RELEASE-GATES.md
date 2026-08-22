@@ -32,9 +32,12 @@ The staging scan also rejects every non-regular filesystem entry, including
 FIFOs, device nodes, sockets, and symlinks, before the archive is created.
 
 The release job builds the iOS FFI XCFramework and device static library on the
-pinned macOS runner, publishes them through a checksum-verified workflow
-artifact bound to the requested commit, and stages them into both publishable
-mobile packages before packing.
+pinned macOS runner, and builds the Android `arm64-v8a` and `x86_64` static
+libraries on the pinned Ubuntu runner. Each native artifact set is published
+through a checksum-verified workflow artifact bound to the requested commit.
+The iOS artifacts are staged into both publishable mobile packages; the
+verified Android libraries are retained under the signed source bundle for
+reproducible host integration.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
 contains the staged Flutter iOS artifacts, every version-matched npm/crate
@@ -297,12 +300,14 @@ tarball. This prevents a separately downloaded evidence file from silently
 replacing the signed source input.
 
 The release-candidate artifact also contains
-`fragments/candidate-artifacts.json`. It hashes the native iOS FFI checksum
-manifest, SPDX SBOM, and third-party notices; these are the required
-`native-checksum`, `sbom`, and `license-notices` artifact entries in the final
-manifest. The iOS FFI checksum is copied into `source/` before the deterministic
-tarball is created, so the signed source bundle and final evidence refer to the
-same verified native input.
+`fragments/candidate-artifacts.json`. It hashes the native iOS and Android FFI
+checksum manifests, SPDX SBOM, and third-party notices; these are the required
+`native-checksum`, `native-checksum-android`, `sbom`, and `license-notices`
+artifact entries in the final manifest. Both native checksum manifests are
+copied into `source/` before the deterministic tarball is created, so the
+signed source bundle and final evidence refer to the same verified native
+inputs. The Android manifest uses the final signed-source paths and can be
+verified directly from the archive root with `sha256sum -c`.
 
 For a browser-only evidence root, the checked-in web emitter accepts the three
 sanitized Playwright logs and creates the validator-compatible matrix record:
