@@ -44,6 +44,8 @@ jobs:
       CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
       CI_RUN_ID: ${{ inputs.ci-run-id }}
       EXTERNAL_EVIDENCE_RUN_ID: ${{ inputs.external-evidence-run-id }}
+      EXTERNAL_EVIDENCE_ARTIFACT: ${{ inputs.external-evidence-artifact }}
+      EXTERNAL_EVIDENCE_WORKFLOW: ${{ inputs.external-evidence-workflow }}
       CANDIDATE_DIR: ${{ runner.temp }}/secure-keypad-candidate
       CI_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-ci-evidence
       EXTERNAL_EVIDENCE_DIR: ${{ runner.temp }}/secure-keypad-external-evidence
@@ -73,6 +75,8 @@ jobs:
               exit 1
             fi
           done
+          test "$EXTERNAL_EVIDENCE_WORKFLOW" = ".github/workflows/external-release-evidence.yml"
+          test "$EXTERNAL_EVIDENCE_ARTIFACT" = "secure-keypad-external-release-evidence"
           test "$(git rev-parse HEAD)" = "$RELEASE_REF"
           test -n "$TRUSTED_VERIFIER_REF"
           if ! [[ "$TRUSTED_VERIFIER_REF" =~ ^[0-9a-f]{40}$ ]]; then
@@ -88,7 +92,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_API_URL: ${{ github.api_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          EXTERNAL_EVIDENCE_WORKFLOW: ${{ inputs.external-evidence-workflow }}
         run: |
           node "$GITHUB_WORKSPACE/verifier/scripts/verify-github-run-provenance.mjs" \
             "$GITHUB_REPOSITORY" "$RELEASE_REF" \
@@ -112,7 +115,7 @@ jobs:
       - name: Download physical-device and independent-review evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: ${{ inputs.external-evidence-artifact }}
+          name: ${{ env.EXTERNAL_EVIDENCE_ARTIFACT }}
           run-id: ${{ inputs.external-evidence-run-id }}
           github-token: ${{ github.token }}
           path: ${{ env.EXTERNAL_EVIDENCE_DIR }}

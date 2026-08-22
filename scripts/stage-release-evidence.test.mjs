@@ -166,6 +166,11 @@ test("release finalization workflow downloads immutable evidence inputs and runs
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.candidate-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.ci-run-id \}\}/);
   assert.match(workflow, /run-id:\s*\$\{\{ inputs\.external-evidence-run-id \}\}/);
+  assert.match(
+    workflow,
+    /test "\$EXTERNAL_EVIDENCE_WORKFLOW" = "\.github\/workflows\/external-release-evidence\.yml"/,
+  );
+  assert.match(workflow, /test "\$EXTERNAL_EVIDENCE_ARTIFACT" = "secure-keypad-external-release-evidence"/);
   assert.match(workflow, /TRUSTED_VERIFIER_REF:\s*\$\{\{ vars\.SECURE_KEYPAD_TRUSTED_VERIFIER_REF \}\}/);
   assert.match(workflow, /path:\s*verifier/);
   assert.match(workflow, /git -C verifier rev-parse HEAD/);

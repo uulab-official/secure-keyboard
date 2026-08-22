@@ -52,6 +52,12 @@ func secureKeypadShouldProtectPresentation(applicationIsActive: Bool, screenIsCa
     !applicationIsActive || screenIsCaptured
 }
 
+/// Returns whether a detached native view may recreate its session.
+/// A view without a window must never retain a newly recreated input session.
+func secureKeypadShouldReconfigureSession(hasWindow: Bool, sessionIsNil: Bool, protected: Bool) -> Bool {
+    hasWindow && sessionIsNil && !protected
+}
+
 /// Returns whether a native masked length is safe to render.
 func secureKeypadIsValidRenderedLength(_ length: Int) -> Bool {
     (0...secureKeypadMaxRenderedLength).contains(length)

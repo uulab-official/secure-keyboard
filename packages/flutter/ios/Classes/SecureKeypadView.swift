@@ -614,7 +614,11 @@ public class SecureKeypadView: UIView {
     }
 
     private func requestSessionReconfigurationIfNeeded() {
-        guard session == nil, !protectedPresentation else { return }
+        guard secureKeypadShouldReconfigureSession(
+            hasWindow: window != nil,
+            sessionIsNil: session == nil,
+            protected: protectedPresentation
+        ) else { return }
         onSessionNeedsReconfiguration?()
     }
 

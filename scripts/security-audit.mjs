@@ -1362,6 +1362,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /ci-run-id:/, "release finalization must identify the CI evidence run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /external-evidence-run-id:/, "release finalization must identify the external evidence run");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /external-evidence-workflow:/, "release finalization must identify the external evidence workflow path");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /test "\$EXTERNAL_EVIDENCE_WORKFLOW" = "\.github\/workflows\/external-release-evidence\.yml"/, "release finalization must accept evidence only from the canonical external evidence workflow");
+  requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /test "\$EXTERNAL_EVIDENCE_ARTIFACT" = "secure-keypad-external-release-evidence"/, "release finalization must download only the canonical external evidence artifact");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions:\s*read/, "release finalization must use read-only artifact permissions");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /contents:\s*read/, "release finalization must use read-only repository permissions");
   requireText(findings, ".github/workflows/release-finalize.yml", releaseFinalizeWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release finalization must download immutable artifacts through a pinned action");
