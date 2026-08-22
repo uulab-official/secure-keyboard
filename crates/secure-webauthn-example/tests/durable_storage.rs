@@ -1,4 +1,7 @@
+#[cfg(any(feature = "redis-backend", feature = "postgres-backend"))]
 use secure_webauthn_example::{CeremonyKind, CeremonyStateStore};
+
+#[cfg(feature = "redis-backend")]
 use std::fmt::Write as _;
 
 #[cfg(feature = "postgres-backend")]
