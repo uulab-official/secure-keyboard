@@ -10,6 +10,9 @@ Mobile Secure Native Mode keeps input handling in the native/core layer and expo
 
 Read the [threat model](docs/THREAT-MODEL.md), [security specification](docs/SECURITY-SPEC.md), and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
+Use the [production-readiness handoff](docs/PRODUCTION-READINESS.md) to
+assemble external CI, device, signing, and independent-review evidence without
+turning missing evidence into a release claim.
 Use the [independent review packet](docs/INDEPENDENT-REVIEW-PACKET.md) to
 hand the exact candidate, evidence, and signing requirements to an external
 reviewer.
