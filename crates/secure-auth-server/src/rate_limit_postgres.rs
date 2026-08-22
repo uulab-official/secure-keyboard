@@ -255,9 +255,9 @@ where
             )
             .map_err(|_| RateLimitError::Unavailable)?;
         if let Some(row) = row {
-            let attempts: i64 = row.get(0);
+            let attempts = validate_persisted_attempts(row.get(0))?;
             let retry_millis: i64 = row.get(1);
-            if attempts >= i64::from(self.policy.max_attempts()) {
+            if attempts >= self.policy.max_attempts() {
                 let retry_after = retry_after(retry_millis)?;
                 transaction
                     .commit()
@@ -280,9 +280,7 @@ where
                 remaining: self
                     .policy
                     .max_attempts()
-                    .checked_sub(
-                        u32::try_from(next_attempts).map_err(|_| RateLimitError::Unavailable)?,
-                    )
+                    .checked_sub(next_attempts)
                     .ok_or(RateLimitError::Unavailable)?,
             });
         }
@@ -320,6 +318,13 @@ where
             remaining: self.policy.max_attempts() - 1,
         })
     }
+}
+
+fn validate_persisted_attempts(attempts: i64) -> Result<u32, RateLimitError> {
+    if attempts < 1 {
+        return Err(RateLimitError::Unavailable);
+    }
+    u32::try_from(attempts).map_err(|_| RateLimitError::Unavailable)
 }
 
 fn policy_window_millis(policy: RateLimitPolicy) -> Result<i64, PostgresRateLimitConfigError> {
@@ -363,7 +368,25 @@ fn validate_namespace(namespace: &str) -> Result<(), PostgresRateLimitConfigErro
 
 #[cfg(test)]
 mod tests {
-    use super::POSTGRES_RATE_LIMIT_SCHEMA_SQL;
+    use super::{validate_persisted_attempts, POSTGRES_RATE_LIMIT_SCHEMA_SQL};
+    use crate::RateLimitError;
+
+    #[test]
+    fn malformed_persisted_attempts_fail_closed_before_rate_limit_math() {
+        assert_eq!(validate_persisted_attempts(1), Ok(1));
+        assert_eq!(
+            validate_persisted_attempts(0),
+            Err(RateLimitError::Unavailable)
+        );
+        assert_eq!(
+            validate_persisted_attempts(-1),
+            Err(RateLimitError::Unavailable)
+        );
+        assert_eq!(
+            validate_persisted_attempts(i64::from(u32::MAX) + 1),
+            Err(RateLimitError::Unavailable)
+        );
+    }
 
     #[test]
     fn schema_enforces_the_application_namespace_contract() {
