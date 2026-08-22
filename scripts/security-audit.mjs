@@ -1003,6 +1003,12 @@ export function runSecurityAudit() {
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /does not ship a browser DOM keypad[\s\S]{0,300}(?:page-script|memory)/, "security specification must not imply that the Web package provides native-like browser secret isolation");
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /@secure-keypad\/server-node[\s\S]{0,500}is a\s+transport bridge/, "security specification must define the Node adapter as a transport bridge");
   requireText(findings, "docs/SECURITY-SPEC.md", securitySpec, /Native renderers must revalidate all public layout and theme data/, "security specification must require native configuration revalidation");
+  const threatModel = source("docs/THREAT-MODEL.md", findings);
+  requireText(findings, "docs/THREAT-MODEL.md", threatModel, /## Assets/, "threat model must enumerate protected assets");
+  requireText(findings, "docs/THREAT-MODEL.md", threatModel, /## Trust boundaries/, "threat model must define trust boundaries");
+  requireText(findings, "docs/THREAT-MODEL.md", threatModel, /## Adversaries/, "threat model must define adversaries and out-of-scope compromises");
+  requireText(findings, "docs/THREAT-MODEL.md", threatModel, /## Residual risk and operator duties/, "threat model must assign residual risk to operators");
+  requireText(findings, "docs/THREAT-MODEL.md", threatModel, /independent-review signature/, "threat model must require independently signed release evidence");
   const roadmap = source("docs/ROADMAP.md", findings);
   requireText(findings, "docs/ROADMAP.md", roadmap, /product-owned custom web UI fallback[\s\S]{0,180}does not ship a browser DOM keypad/, "roadmap must distinguish the product-owned Web fallback from an SDK DOM keypad");
   requireText(findings, "schema/layout.schema.json", layoutSchema, /"x-maxUtf8Bytes"\s*:\s*16/, "layout schema must declare the UTF-8 key-label byte bound");

@@ -103,7 +103,7 @@ function createValidStaging() {
   writeFile(root, "source/packages/flutter/ios/libsecure_ffi.a", "arm64 fixture\n");
   writeFile(root, "source/packages/flutter/android/secure_ffi/arm64-v8a/libsecure_ffi.a", "arm64 fixture\n");
   writeFile(root, "source/packages/flutter/android/secure_ffi/x86_64/libsecure_ffi.a", "x86_64 fixture\n");
-  for (const document of ["SECURITY-SPEC.md", "PLATFORM-SECURITY-POLICY.md", "RELEASE-GATES.md", "ROADMAP.md"]) {
+  for (const document of ["SECURITY-SPEC.md", "THREAT-MODEL.md", "PLATFORM-SECURITY-POLICY.md", "RELEASE-GATES.md", "ROADMAP.md"]) {
     writeFile(root, `source/docs/${document}`, `# ${document}\n`);
   }
   writeFile(root, "source/docs/PLATFORM-SUPPORT.json", `${JSON.stringify(PLATFORM_SUPPORT_POLICY, null, 2)}\n`);
@@ -177,6 +177,17 @@ test("release staging requires the security changelog", () => {
     rmSync(path.join(root, "source/CHANGELOG.md"));
     const findings = checkReleaseStaging(root);
     assert.ok(findings.some((finding) => finding.includes("CHANGELOG.md")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging requires the threat model", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/docs/THREAT-MODEL.md"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("source/docs/THREAT-MODEL.md")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -8,7 +8,7 @@ This project is under active development. It is not a security certification and
 
 Mobile Secure Native Mode keeps input handling in the native/core layer and exposes only key IDs, masked state, and authentication results to framework code. An opt-in Headless Host Mode is available for custom RN/Flutter rendering, but it is lower assurance because the host observes each public key ID and must explicitly acknowledge that trade-off. Web applications should prefer WebAuthn/passkeys; a web keypad cannot make a browser page's JavaScript memory a trusted security boundary.
 
-Read the [security specification](docs/SECURITY-SPEC.md) and [roadmap](docs/ROADMAP.md) before integrating the SDK.
+Read the [threat model](docs/THREAT-MODEL.md), [security specification](docs/SECURITY-SPEC.md), and [roadmap](docs/ROADMAP.md) before integrating the SDK.
 Use the [release gates](docs/RELEASE-GATES.md) to distinguish verified checks from remaining production blockers, and review the [MASVS/MASTG evidence map](docs/MASVS-MAPPING.md) before an independent assessment.
 Use the [independent review packet](docs/INDEPENDENT-REVIEW-PACKET.md) to
 hand the exact candidate, evidence, and signing requirements to an external
