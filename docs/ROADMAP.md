@@ -72,10 +72,11 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Revalidate native layout cardinality, UTF-8 label byte bounds, and finite theme bounds before UI/session allocation.
 - [x] Add opt-in native CSPRNG input-key randomization while keeping action-key roles and positions stable.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
+- [x] Add deterministic iOS/Android security-facing presentation snapshots for masked and protected states.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
-- [ ] Complete device-level accessibility review and native snapshot tests.
+- [ ] Complete device-level accessibility review and physical UI snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.
 

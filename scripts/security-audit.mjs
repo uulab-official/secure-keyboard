@@ -209,6 +209,20 @@ export function runSecurityAudit() {
   const httpContractParity = source("scripts/check-http-contract-version-parity.mjs", findings);
   requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /HTTP_CONTRACT_VERSION_SOURCES/, "HTTP contract parity tooling must enumerate every version declaration");
   requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /findHttpContractVersionMismatches/, "HTTP contract parity tooling must fail on missing or mismatched declarations");
+  for (const file of [
+    "native/ios/SecureKeypadPresentation.swift",
+    "packages/react-native/ios/SecureKeypadPresentation.swift",
+    "packages/flutter/ios/Classes/SecureKeypadPresentation.swift",
+    "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+  ]) {
+    const presentation = source(file, findings);
+    requireText(findings, file, presentation, /secureKeypadSecuritySnapshot/, "native presentation must expose a bounded security snapshot contract");
+    requireText(findings, file, presentation, /maskedDisplay/, "native presentation snapshots must contain masked display state only");
+    requireText(findings, file, presentation, /accessibility/, "native presentation snapshots must contain bounded accessibility state");
+    forbidText(findings, file, presentation, /\b(?:password|rawInput|onChangeText)\s*[:(=]/i, "native presentation snapshots must not contain secret-bearing fields");
+  }
   const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
@@ -1143,7 +1157,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /emit-web-browser-evidence\.mjs/, "CI must emit a validator-compatible web browser evidence record");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:device-evidence/, "CI must validate the machine-readable device evidence contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:platform-support/, "CI must validate the platform support policy contract");
-  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation accessibility contract/, "CI must execute the Android presentation accessibility contract");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android presentation snapshot contract/, "CI must execute the Android presentation snapshot contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-ui\.xml/, "CI must retain Flutter Android accessibility hierarchy evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-ui\.xml/, "CI must retain React Native Android accessibility hierarchy evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Android input-key randomization contract/, "CI must execute the Android input-key randomization contract");

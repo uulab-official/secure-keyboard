@@ -108,6 +108,16 @@ test("native CI executes the Android input-key randomization contract", () => {
   assert.match(workflow, /secure-keypad-randomization-contract\.jar/);
 });
 
+test("native CI executes the deterministic presentation snapshot contracts", () => {
+  const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+  const workflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+  assert.match(workflow, /Swift presentation snapshot contract/);
+  assert.match(workflow, /native\/ios\/SecureKeypadPresentationContractTest\.swift/);
+  assert.match(workflow, /Android presentation snapshot contract/);
+  assert.match(workflow, /native\/android\/SecureKeypadPresentationContractTest\.kt/);
+  assert.match(workflow, /secure-keypad-presentation-contract\.jar/);
+});
+
 test("iOS podspecs reject explicit FFI artifacts that differ from the staged bundle", () => {
   const root = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
   const rubyHarness = `

@@ -87,3 +87,20 @@ func secureKeypadAccessibilityLabel(length: Int, protected: Bool) -> String {
     }
     return length == 0 ? "No input" : "\(length) characters entered"
 }
+
+/// Returns a deterministic security-facing presentation snapshot.
+///
+/// The snapshot contains only the public display state, masked presentation,
+/// accessibility announcement, and protection bit. It is suitable for native
+/// contract tests and never accepts or serializes the entered value.
+func secureKeypadSecuritySnapshot(length: Int, protected: Bool, displayState: UInt32) -> String? {
+    guard secureKeypadIsValidRenderedLength(length), secureKeypadIsValidDisplayState(displayState) else {
+        return nil
+    }
+    return [
+        "displayState=\(secureKeypadDisplayStateName(displayState))",
+        "maskedDisplay=\(secureKeypadMaskedDisplayText(length: length, protected: protected))",
+        "accessibility=\(secureKeypadAccessibilityLabel(length: length, protected: protected))",
+        "protected=\(protected)",
+    ].joined(separator: "\n")
+}

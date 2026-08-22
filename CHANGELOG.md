@@ -28,6 +28,10 @@ exact release-candidate commit by the release evidence manifest.
   and the Node/TypeScript bridge must declare the same version in both CI and
   release-candidate source gates; this is independent from the OPAQUE
   `protocolVersion` carried inside the authentication envelope.
+- Added deterministic iOS and Android native presentation snapshot contracts
+  covering display state, masked text, accessibility text, and protected state;
+  the snapshots reject invalid display codes and contain no secret-bearing
+  input field.
 
 ### Security
 

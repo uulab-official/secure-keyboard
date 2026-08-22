@@ -562,7 +562,10 @@ sanitized `job-fuzz` label alone cannot close this gate.
 Device execution follows `docs/DEVICE-VERIFICATION.md`. Host compilation alone
 does not close screenshot, background, autofill, clipboard, accessibility, or
 native opaque-handoff gates; physical-device evidence and an independent
-reviewer sign-off are required.
+reviewer sign-off are required. The native-platform CI job additionally runs
+deterministic iOS/Android presentation snapshots for masked/protected display
+and accessibility state; those snapshots strengthen source/runtime regression
+coverage but do not replace physical-device review.
 
 ## Artifact and platform gates
 

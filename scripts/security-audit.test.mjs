@@ -73,6 +73,24 @@ test("native host ABI expectations stay synchronized with the FFI header", () =>
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
 
+test("native presentation snapshots expose only bounded masked state", () => {
+  const presentationSources = [
+    "../native/ios/SecureKeypadPresentation.swift",
+    "../packages/react-native/ios/SecureKeypadPresentation.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadPresentation.swift",
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadPresentation.kt",
+  ];
+  for (const relativePath of presentationSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /secureKeypadSecuritySnapshot/);
+    assert.match(source, /maskedDisplay/);
+    assert.match(source, /accessibility/);
+    assert.doesNotMatch(source, /\b(?:password|rawInput|onChangeText)\s*[:(=]/i);
+  }
+});
+
 test("release bundle audit covers Android FFI commit binding", () => {
   const releaseBundleAudit = readFileSync(
     new URL("./check-release-bundle.mjs", import.meta.url),

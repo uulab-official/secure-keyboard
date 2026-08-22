@@ -16,6 +16,23 @@ fun main() {
     check(secureKeypadDisplayStateName(0) == "empty")
     check(secureKeypadDisplayStateName(3) == "cancelled")
     check(secureKeypadDisplayStateName(4) == "invalid")
+    val activeSnapshot = listOf(
+        "displayState=masked",
+        "maskedDisplay=•••",
+        "accessibility=3 characters entered",
+        "protected=false",
+    ).joinToString("\n")
+    check(secureKeypadSecuritySnapshot(length = 3, protected = false, displayState = 1) == activeSnapshot)
+    val protectedSnapshot = listOf(
+        "displayState=masked",
+        "maskedDisplay=Protected",
+        "accessibility=Protected",
+        "protected=true",
+    ).joinToString("\n")
+    check(secureKeypadSecuritySnapshot(length = 3, protected = true, displayState = 1) == protectedSnapshot)
+    check(runCatching {
+        secureKeypadSecuritySnapshot(length = 3, protected = false, displayState = 4)
+    }.isFailure)
     check(secureKeypadDecodeMaskedState(Long.MIN_VALUE) == null)
     check(secureKeypadDecodeMaskedState((3L shl 32) or 1L) == (3 to 1))
     check(secureKeypadMonotonicCommandDecision(null, 0) == SecureKeypadCommandDecision.ACCEPT)

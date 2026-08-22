@@ -51,3 +51,16 @@ internal fun secureKeypadAccessibilityLabel(length: Int, protected: Boolean = fa
     if (protected) return "Protected"
     return if (length == 0) "No input" else "$length characters entered"
 }
+
+/** Returns a deterministic security-facing presentation snapshot. */
+internal fun secureKeypadSecuritySnapshot(length: Int, protected: Boolean = false, displayState: Int): String? {
+    if (length !in 0..SECURE_KEYPAD_MAX_RENDERED_LENGTH || !secureKeypadIsValidDisplayState(displayState)) {
+        return null
+    }
+    return listOf(
+        "displayState=${secureKeypadDisplayStateName(displayState)}",
+        "maskedDisplay=${secureKeypadMaskedDisplayText(length, protected)}",
+        "accessibility=${secureKeypadAccessibilityLabel(length, protected)}",
+        "protected=$protected",
+    ).joinToString("\n")
+}

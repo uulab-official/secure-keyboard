@@ -684,7 +684,7 @@ jobs:
             pod ipc spec packages/react-native/SecureKeypadReactNative.podspec >/tmp/secure-keypad-rn-podspec.json
           SECURE_KEYPAD_FFI_XCFRAMEWORK="$RUNNER_TEMP/secure_ffi.xcframework" \
             pod ipc spec packages/flutter/ios/secure_keypad_flutter.podspec >/tmp/secure-keypad-flutter-podspec.json
-      - name: Swift presentation contract
+      - name: Swift presentation snapshot contract
         run: |
           swiftc -warnings-as-errors \
             native/ios/SecureKeypadPresentation.swift \
@@ -731,7 +731,7 @@ jobs:
             native/android/SubmissionOwnershipContractTest.kt \
             -include-runtime -d /tmp/secure-keypad-submission-contract.jar
           java -jar /tmp/secure-keypad-submission-contract.jar
-      - name: Android presentation accessibility contract
+      - name: Android presentation snapshot contract
         run: |
           KOTLINC_BIN="$(command -v kotlinc || true)"
           if [ -z "$KOTLINC_BIN" ]; then

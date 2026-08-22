@@ -155,9 +155,13 @@ state codes outside `empty`/`masked`/`submitted`/`cancelled` release the session
 and emit an internal error instead of being mapped to `empty`. The standalone
 `native/android/SecureKeypadPresentationContractTest.kt` checks empty/masked/
 protected announcements and rejects lengths outside the native 4,096-token
-display bound without requiring an Android runtime. The equivalent iOS helper
-and `SecureKeypadPresentationContractTest.swift` apply the same bound before
-allocating masked text.
+display bound without requiring an Android runtime. Both native contract tests
+also compare a deterministic security-facing presentation snapshot containing
+only display state, masked text, accessibility text, and the protection bit;
+invalid display codes produce no snapshot. The equivalent iOS helper and
+`SecureKeypadPresentationContractTest.swift` apply the same bound before
+allocating masked text. These snapshots are source/runtime contract evidence,
+not a substitute for physical-device VoiceOver/TalkBack or screenshot review.
 
 The ownership contract is also executable without Android:
 

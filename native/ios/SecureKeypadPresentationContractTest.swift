@@ -29,6 +29,29 @@ struct SecureKeypadPresentationContractTest {
         precondition(secureKeypadDisplayStateName(0) == "empty")
         precondition(secureKeypadDisplayStateName(3) == "cancelled")
         precondition(secureKeypadDisplayStateName(4) == "invalid")
+        let activeSnapshot = [
+            "displayState=masked",
+            "maskedDisplay=•••",
+            "accessibility=3 characters entered",
+            "protected=false",
+        ].joined(separator: "\n")
+        precondition(secureKeypadSecuritySnapshot(
+            length: 3,
+            protected: false,
+            displayState: 1
+        ) == activeSnapshot)
+        let protectedSnapshot = [
+            "displayState=masked",
+            "maskedDisplay=Protected",
+            "accessibility=Protected",
+            "protected=true",
+        ].joined(separator: "\n")
+        precondition(secureKeypadSecuritySnapshot(
+            length: 3,
+            protected: true,
+            displayState: 1
+        ) == protectedSnapshot)
+        precondition(secureKeypadSecuritySnapshot(length: 3, protected: false, displayState: 4) == nil)
         precondition(secureKeypadMonotonicCommandDecision(previous: nil, requestId: 0) == .accept)
         precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 5) == .accept)
         precondition(secureKeypadMonotonicCommandDecision(previous: 4, requestId: 4) == .ignore)
