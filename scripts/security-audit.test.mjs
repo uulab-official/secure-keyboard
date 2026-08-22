@@ -113,7 +113,7 @@ test("independent security audit covers the production-candidate gate aggregator
   const audit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(audit, /scripts\/verify-production-candidate\.mjs/);
   assert.match(audit, /scripts\/check-clean-checkout\.mjs/);
-  assert.match(audit, /secure-keypad-flutter-pubspec/);
+  assert.match(audit, /generated_path in packages\\\/flutter/);
   assert.match(audit, /--require-trusted-keys/);
   assert.match(audit, /external device, service, CI-provenance, and independent-review evidence is not synthesized/);
 });
@@ -127,12 +127,15 @@ test("CI checkout steps do not persist GitHub credentials into candidate worktre
   );
 });
 
-test("release candidate moves generated Flutter lock state outside the checkout", () => {
+test("release candidate moves all generated Flutter state outside the checkout", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/release-candidate.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mv packages\/flutter\/pubspec\.lock \"\$RUNNER_TEMP\/secure-keypad-flutter-pubspec\.lock\"/);
+  assert.match(
+    workflow,
+    /for generated_path in packages\/flutter\/\.dart_tool packages\/flutter\/build packages\/flutter\/pubspec\.lock/,
+  );
 });
 
 test("React Native does not publish an unwrapped native view escape hatch", () => {
