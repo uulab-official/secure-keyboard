@@ -260,9 +260,12 @@ fn redis_ceremony_ttl_drift_is_removed_before_materialization() {
         let _ = write!(over_bound_handle_hex, "{byte:02x}");
     }
     let over_bound_key = format!("{namespace}:webauthn:v1:authentication:{over_bound_handle_hex}");
+    // Redis PTTL decreases between PEXPIRE and the consume script. Use a
+    // margin larger than one millisecond so the drift remains over-bound when
+    // the script reads it, even on a busy CI worker.
     let over_bound_ttl = u64::try_from(secure_webauthn_example::MAX_CEREMONY_TTL.as_millis())
         .expect("ceremony TTL should fit Redis millisecond precision")
-        + 1;
+        + 1_000;
     redis::cmd("PEXPIRE")
         .arg(&over_bound_key)
         .arg(over_bound_ttl)

@@ -406,6 +406,9 @@ exact release-candidate commit by the release evidence manifest.
 - Durable Redis service gates now inject oversized legacy ceremony, OPAQUE
   state, credential, and rate-limit values and verify pre-materialization
   fail-closed cleanup against the live backend.
+- Stabilized the live Redis WebAuthn TTL-drift evidence test with a scheduler
+  margin larger than Redis's millisecond countdown, avoiding a false pass when
+  an over-bound key reaches the consume script exactly at the configured limit.
 - Release evidence tests now cover rejection of under-specified CI gate
   records before digest and signature verification is treated as sufficient.
 - Standalone device evidence validation now requires an explicit top-level
