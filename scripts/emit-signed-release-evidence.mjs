@@ -216,6 +216,19 @@ function currentPackageVersion() {
   return packageJson.version;
 }
 
+function resolveIdentity(values) {
+  const hasExplicitCommit = values["--commit"] !== undefined;
+  const hasExplicitPackageVersion = values["--package-version"] !== undefined;
+  if (hasExplicitCommit !== hasExplicitPackageVersion) {
+    throw new Error("commit and package-version must be supplied together");
+  }
+  const commit = hasExplicitCommit ? values["--commit"] : currentCommit();
+  const packageVersion = hasExplicitPackageVersion ? values["--package-version"] : currentPackageVersion();
+  validateCommit(commit);
+  validatePackageVersion(packageVersion);
+  return { commit, packageVersion };
+}
+
 function writeEvidence(root, outputPath, record) {
   if (!isSafeRelativePath(outputPath)) throw new Error("outputPath must be a safe relative path");
   const realRoot = realpathSync(root);
@@ -251,8 +264,11 @@ function parseOptions(argumentsList) {
   for (let index = 0; index < argumentsList.length; index += 1) {
     const option = argumentsList[index];
     const value = argumentsList[index + 1];
-    if (!["--bundle", "--signature", "--public-key"].includes(option) || typeof value !== "string") {
-      throw new Error("options must use --bundle, --signature, and --public-key");
+    if (
+      !["--bundle", "--signature", "--public-key", "--commit", "--package-version"].includes(option) ||
+      typeof value !== "string"
+    ) {
+      throw new Error("options must use --bundle, --signature, --public-key, --commit, and --package-version");
     }
     if (values[option]) throw new Error(`${option} must be specified once`);
     values[option] = value;
@@ -261,6 +277,7 @@ function parseOptions(argumentsList) {
   if (!values["--bundle"] || !values["--signature"] || !values["--public-key"]) {
     throw new Error("bundle, signature, and public-key paths are required");
   }
+  resolveIdentity(values);
   return values;
 }
 
@@ -268,7 +285,7 @@ function main() {
   const [rootArgument, outputPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !outputPath) {
     console.error(
-      "usage: node scripts/emit-signed-release-evidence.mjs <evidence-root> <evidence-json> --bundle <relative-path> --signature <relative-path> --public-key <relative-path>",
+      "usage: node scripts/emit-signed-release-evidence.mjs <evidence-root> <evidence-json> --bundle <relative-path> --signature <relative-path> --public-key <relative-path> [--commit <sha> --package-version <version>]",
     );
     process.exitCode = 64;
     return;
@@ -276,10 +293,11 @@ function main() {
   try {
     const root = realpathSync(path.resolve(process.cwd(), rootArgument));
     const values = parseOptions(options);
+    const identity = resolveIdentity(values);
     const record = buildSignedReleaseEvidence({
       root,
-      commit: currentCommit(),
-      packageVersion: currentPackageVersion(),
+      commit: identity.commit,
+      packageVersion: identity.packageVersion,
       bundlePath: values["--bundle"],
       signaturePath: values["--signature"],
       publicKeyPath: values["--public-key"],

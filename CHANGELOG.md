@@ -105,6 +105,10 @@ exact release-candidate commit by the release evidence manifest.
   candidate, CI, and external evidence runs to match the repository, release
   commit, expected workflow path, and `completed`/`success` status before any
   artifact is downloaded.
+- Release-candidate staging, archive validation, and signed-release evidence
+  emission now execute from the immutable trusted verifier checkout; the
+  verifier receives the candidate commit and package version explicitly so it
+  cannot accidentally bind evidence to its own checkout.
 - Linux LeakSanitizer release evidence now binds all four target logs to
   post-command success markers, the pinned nightly toolchain, run budget,
   bounded sizes, SHA-256 digests, and the final retained evidence paths; the

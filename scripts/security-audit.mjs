@@ -1228,6 +1228,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-signed-release-evidence/, "release candidate must test signed-release evidence emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-independent-review-fragment/, "release candidate must test independent-review fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/emit-signed-release-evidence\.mjs[\s\S]{0,500}--commit "\$RELEASE_REF"[\s\S]{0,160}--package-version "\$CANDIDATE_PACKAGE_VERSION"/, "release candidate signed evidence must bind to the candidate commit and package version");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/release-candidate-metadata\.mjs/, "release candidate must embed immutable candidate metadata in the signed bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /release-candidate-metadata\.json/, "release candidate must retain the candidate metadata record");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /services:/, "release candidate must provide isolated durable backend services");
@@ -1243,6 +1244,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-android-ffi\.sha256/, "release workflow must carry the verified Android FFI checksum into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cp \"\$ANDROID_FFI_DIR\/secure-keypad-android-ffi\.commit\"/, "release workflow must carry the Android FFI commit binding into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/emit-release-artifact-fragment\.mjs[\s\S]{0,400}--commit "\$RELEASE_REF"[\s\S]{0,160}--package-version "\$CANDIDATE_PACKAGE_VERSION"/, "release artifact evidence must bind to the candidate commit and package version");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum-android/, "release workflow must evidence the Android native checksum artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /license-notices/, "release workflow must evidence the license notices artifact");
@@ -1551,7 +1553,7 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /THIRD-PARTY-NOTICES\.md/, "release staging must require third-party notices");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /private signing material/, "release staging must reject private signing material");
   requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /only regular files are allowed in release staging/, "release staging must reject non-regular filesystem entries");
-  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/check-release-bundle\.mjs\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/check-release-bundle\.mjs\"\s+\"\$RELEASE_DIR\"/, "release workflow must inspect staging before creating the signed archive with the trusted verifier");
   const releaseArchiveCheck = source("scripts/check-release-archive.mjs", findings);
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /validateReleaseArchiveEntries/, "release tooling must inspect the signed archive entry contract");
   requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-android-ffi\.commit/, "signed archive validation must require the Android FFI commit binding");

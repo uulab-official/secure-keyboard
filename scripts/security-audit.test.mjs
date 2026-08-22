@@ -302,6 +302,24 @@ test("release candidate executes every standalone release contract and copies cr
   );
 });
 
+test("release candidate runs artifact validation and evidence emission from the trusted verifier checkout", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/release-candidate.yml", import.meta.url),
+    "utf8",
+  );
+  for (const script of [
+    "check-release-bundle.mjs",
+    "check-release-archive.mjs",
+    "emit-signed-release-evidence.mjs",
+    "emit-release-artifact-fragment.mjs",
+  ]) {
+    assert.match(workflow, new RegExp(`node \\\"\\$GITHUB_WORKSPACE/verifier/scripts/${script}\\\"`));
+    assert.doesNotMatch(workflow, new RegExp(`node scripts/${script}`));
+  }
+  assert.match(workflow, /--commit \"\$RELEASE_REF\"/);
+  assert.match(workflow, /--package-version \"\$CANDIDATE_PACKAGE_VERSION\"/);
+});
+
 test("native views reject noncanonical input IDs for the selected policy", () => {
   const androidSources = [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",

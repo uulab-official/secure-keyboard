@@ -93,6 +93,10 @@ test("artifact fragment CLI reads bounded files and writes an exclusive JSON out
         EMIT_SCRIPT,
         root,
         "fragments/candidate-artifacts.json",
+        "--commit",
+        "a".repeat(40),
+        "--package-version",
+        "0.1.0",
         "--artifact",
         "native-checksum=source/native.sha256",
       ],
@@ -106,11 +110,50 @@ test("artifact fragment CLI reads bounded files and writes an exclusive JSON out
     assert.equal(
       spawnSync(
         process.execPath,
-        [EMIT_SCRIPT, root, "fragments/candidate-artifacts.json", "--artifact", "native-checksum=source/native.sha256"],
+        [
+          EMIT_SCRIPT,
+          root,
+          "fragments/candidate-artifacts.json",
+          "--commit",
+          "a".repeat(40),
+          "--package-version",
+          "0.1.0",
+          "--artifact",
+          "native-checksum=source/native.sha256",
+        ],
         { cwd: REPOSITORY_ROOT, encoding: "utf8" },
       ).status,
       1,
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact fragment CLI accepts an explicit candidate identity from a trusted verifier checkout", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "secure-keypad-explicit-artifact-identity-"));
+  try {
+    mkdirSync(path.join(root, "source"), { recursive: true });
+    writeFileSync(path.join(root, "source/native.sha256"), "native\n");
+    const result = spawnSync(
+      process.execPath,
+      [
+        EMIT_SCRIPT,
+        root,
+        "fragments/candidate-artifacts.json",
+        "--commit",
+        "b".repeat(40),
+        "--package-version",
+        "9.9.9-rc.1",
+        "--artifact",
+        "native-checksum=source/native.sha256",
+      ],
+      { cwd: REPOSITORY_ROOT, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const fragment = JSON.parse(readFileSync(path.join(root, "fragments/candidate-artifacts.json"), "utf8"));
+    assert.equal(fragment.commit, "b".repeat(40));
+    assert.equal(fragment.packageVersion, "9.9.9-rc.1");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

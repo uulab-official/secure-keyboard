@@ -28,7 +28,13 @@ function writeSignedArtifacts(root) {
   return { bundle, signature, publicKeyDer };
 }
 
-function runEmitter(root) {
+function runEmitter(root, identity = { commit: "a".repeat(40), packageVersion: "0.1.0" }) {
+  const identityArguments = [
+    "--commit",
+    identity.commit,
+    "--package-version",
+    identity.packageVersion,
+  ];
   return spawnSync(
     process.execPath,
     [
@@ -41,10 +47,26 @@ function runEmitter(root) {
       "artifacts/release.sig",
       "--public-key",
       "artifacts/release.pub.der",
+      ...identityArguments,
     ],
     { cwd: REPOSITORY_ROOT, encoding: "utf8" },
   );
 }
+
+test("emits evidence for an explicit candidate identity from a trusted verifier checkout", () => {
+  const root = mkdtempSync(join(tmpdir(), "secure-keypad-explicit-signed-release-identity-"));
+  writeSignedArtifacts(root);
+
+  const result = runEmitter(root, {
+    commit: "b".repeat(40),
+    packageVersion: "9.9.9-rc.1",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const record = JSON.parse(readFileSync(join(root, "evidence/signed-release.json"), "utf8"));
+  assert.equal(record.commit, "b".repeat(40));
+  assert.equal(record.packageVersion, "9.9.9-rc.1");
+});
 
 function runFragmentEmitter(root) {
   return spawnSync(

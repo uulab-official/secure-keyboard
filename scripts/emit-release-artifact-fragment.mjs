@@ -145,6 +145,18 @@ function currentPackageVersion() {
   return packageJson.version;
 }
 
+function resolveIdentity(values) {
+  const hasExplicitCommit = values.commit !== undefined;
+  const hasExplicitPackageVersion = values.packageVersion !== undefined;
+  if (hasExplicitCommit !== hasExplicitPackageVersion) {
+    throw new Error("commit and package-version must be supplied together");
+  }
+  const commit = hasExplicitCommit ? values.commit : currentCommit();
+  const packageVersion = hasExplicitPackageVersion ? values.packageVersion : currentPackageVersion();
+  validateIdentity(commit, packageVersion);
+  return { commit, packageVersion };
+}
+
 function writeFragment(root, outputPath, fragment) {
   if (!isSafeRelativePath(outputPath)) throw new Error("output path must be safe and relative");
   const absolutePath = path.resolve(root, outputPath);
@@ -175,11 +187,20 @@ function writeFragment(root, outputPath, fragment) {
 
 function parseOptions(argumentsList) {
   const artifacts = [];
+  const identity = {};
   for (let index = 0; index < argumentsList.length; index += 1) {
-    if (argumentsList[index] !== "--artifact" || typeof argumentsList[index + 1] !== "string") {
-      throw new Error("options must use --artifact kind=relative-path");
+    const option = argumentsList[index];
+    const value = argumentsList[index + 1];
+    if ((option === "--commit" || option === "--package-version") && typeof value === "string") {
+      if (identity[option] !== undefined) throw new Error(`${option} must be specified once`);
+      identity[option] = value;
+      index += 1;
+      continue;
     }
-    const specification = argumentsList[index + 1];
+    if (option !== "--artifact" || typeof value !== "string") {
+      throw new Error("options must use --artifact, --commit, and --package-version");
+    }
+    const specification = value;
     const separator = specification.indexOf("=");
     if (separator <= 0 || separator === specification.length - 1) {
       throw new Error("artifact option must use --artifact kind=relative-path");
@@ -187,27 +208,38 @@ function parseOptions(argumentsList) {
     artifacts.push({ kind: specification.slice(0, separator), path: specification.slice(separator + 1) });
     index += 1;
   }
-  return artifacts;
+  if (identity["--commit"] !== undefined || identity["--package-version"] !== undefined) {
+    return {
+      artifacts,
+      ...resolveIdentity({
+        commit: identity["--commit"],
+        packageVersion: identity["--package-version"],
+      }),
+    };
+  }
+  return { artifacts };
 }
 
 function main() {
   const [rootArgument, outputPath, ...options] = process.argv.slice(2);
   if (!rootArgument || !outputPath || options.length === 0) {
     console.error(
-      "usage: node scripts/emit-release-artifact-fragment.mjs <evidence-root> <fragment-json> --artifact kind=relative-path...",
+      "usage: node scripts/emit-release-artifact-fragment.mjs <evidence-root> <fragment-json> [--commit <sha> --package-version <version>] --artifact kind=relative-path...",
     );
     process.exitCode = 64;
     return;
   }
   try {
     const root = realpathSync(path.resolve(process.cwd(), rootArgument));
-    const artifactInputs = parseOptions(options).map((artifact) => ({
+    const parsed = parseOptions(options);
+    const artifactInputs = parsed.artifacts.map((artifact) => ({
       ...artifact,
       bytes: readFileSync(containedFile(root, artifact.path)),
     }));
+    const identity = resolveIdentity(parsed);
     const fragment = buildReleaseArtifactFragment({
-      commit: currentCommit(),
-      packageVersion: currentPackageVersion(),
+      commit: identity.commit,
+      packageVersion: identity.packageVersion,
       artifacts: artifactInputs,
     });
     writeFragment(root, outputPath, fragment);

@@ -150,6 +150,7 @@ jobs:
       RELEASE_DIR: ${{ runner.temp }}/secure-keypad-release
       IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
       ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+      RELEASE_REF: ${{ inputs.ref }}
       TRUSTED_VERIFIER_REF: ${{ vars.SECURE_KEYPAD_TRUSTED_VERIFIER_REF }}
     services:
       redis:
@@ -374,10 +375,10 @@ jobs:
           cp -R docs "$RELEASE_DIR/source/docs"
           cp docs/THIRD-PARTY-NOTICES.md "$RELEASE_DIR/source/THIRD-PARTY-NOTICES.md"
           node scripts/release-candidate-metadata.mjs "$RELEASE_DIR/source/release-candidate-metadata.json"
-          node scripts/check-release-bundle.mjs "$RELEASE_DIR"
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-bundle.mjs" "$RELEASE_DIR"
           tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
             -czf "$RELEASE_DIR/secure-keypad-release.tar.gz" -C "$RELEASE_DIR" source packages
-          node scripts/check-release-archive.mjs "$RELEASE_DIR/secure-keypad-release.tar.gz"
+          node "$GITHUB_WORKSPACE/verifier/scripts/check-release-archive.mjs" "$RELEASE_DIR/secure-keypad-release.tar.gz"
       - name: Sign release bundle with the protected maintainer key
         env:
           RELEASE_SIGNING_KEY_PEM: ${{ secrets.RELEASE_SIGNING_KEY_PEM }}
@@ -403,17 +404,23 @@ jobs:
           cat "$RELEASE_DIR/secure-keypad-release.sha256"
       - name: Emit signed-release evidence
         run: |
-          node scripts/emit-signed-release-evidence.mjs \
+          CANDIDATE_PACKAGE_VERSION="$(node -e 'const fs = require("node:fs"); const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(metadata.packageVersion);' "$RELEASE_DIR/source/release-candidate-metadata.json")"
+          node "$GITHUB_WORKSPACE/verifier/scripts/emit-signed-release-evidence.mjs" \
             "$RELEASE_DIR" \
             "evidence/signed-release.json" \
             --bundle secure-keypad-release.tar.gz \
             --signature secure-keypad-release.sig \
-            --public-key secure-keypad-release.pub.der
+            --public-key secure-keypad-release.pub.der \
+            --commit "$RELEASE_REF" \
+            --package-version "$CANDIDATE_PACKAGE_VERSION"
       - name: Emit candidate public artifact fragment
         run: |
-          node scripts/emit-release-artifact-fragment.mjs \
+          CANDIDATE_PACKAGE_VERSION="$(node -e 'const fs = require("node:fs"); const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(metadata.packageVersion);' "$RELEASE_DIR/source/release-candidate-metadata.json")"
+          node "$GITHUB_WORKSPACE/verifier/scripts/emit-release-artifact-fragment.mjs" \
             "$RELEASE_DIR" \
             "fragments/candidate-artifacts.json" \
+            --commit "$RELEASE_REF" \
+            --package-version "$CANDIDATE_PACKAGE_VERSION" \
             --artifact native-checksum=source/secure-keypad-ios-ffi.sha256 \
             --artifact native-checksum-android=source/secure-keypad-android-ffi.sha256 \
             --artifact sbom=source/secure-keypad.sbom.spdx.json \
