@@ -146,6 +146,98 @@ fn redis_ceremony_state_is_atomic_and_one_time() {
 #[cfg(feature = "redis-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_ceremony_ttl_drift_is_removed_before_materialization() {
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let store = if url.starts_with("rediss://") {
+        secure_webauthn_example::RedisWebAuthnStore::from_url(
+            &url,
+            &namespace,
+            2,
+            secure_webauthn_example::WebAuthnStateKey::generate(),
+        )
+    } else {
+        secure_webauthn_example::RedisWebAuthnStore::from_insecure_url_for_local_testing(
+            &url, &namespace, 2,
+        )
+    }
+    .expect("Redis store should construct");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    let pending_index = format!("{namespace}:webauthn:v1:pending");
+
+    let missing_ttl_handle = store
+        .insert(
+            CeremonyKind::Authentication,
+            uuid::Uuid::new_v4(),
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .expect("Redis insert should succeed");
+    let mut missing_ttl_handle_hex = String::with_capacity(64);
+    for byte in missing_ttl_handle.as_bytes() {
+        let _ = write!(missing_ttl_handle_hex, "{byte:02x}");
+    }
+    let missing_ttl_key =
+        format!("{namespace}:webauthn:v1:authentication:{missing_ttl_handle_hex}");
+    redis::cmd("PERSIST")
+        .arg(&missing_ttl_key)
+        .query::<()>(&mut inspection)
+        .expect("Redis PERSIST should succeed");
+    assert!(matches!(
+        store.take(CeremonyKind::Authentication, &missing_ttl_handle),
+        Err(secure_webauthn_example::CeremonyStoreError::Unavailable)
+    ));
+    let missing_exists: i64 = redis::cmd("EXISTS")
+        .arg(&missing_ttl_key)
+        .query(&mut inspection)
+        .expect("Redis missing-TTL key check should succeed");
+    let missing_pending: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis missing-TTL pending index check should succeed");
+    assert_eq!(missing_exists, 0);
+    assert_eq!(missing_pending, 0);
+
+    let over_bound_handle = store
+        .insert(
+            CeremonyKind::Authentication,
+            uuid::Uuid::new_v4(),
+            br#"{"version":1,"state":{}}"#,
+            std::time::Duration::from_secs(30),
+        )
+        .expect("Redis second insert should succeed");
+    let mut over_bound_handle_hex = String::with_capacity(64);
+    for byte in over_bound_handle.as_bytes() {
+        let _ = write!(over_bound_handle_hex, "{byte:02x}");
+    }
+    let over_bound_key = format!("{namespace}:webauthn:v1:authentication:{over_bound_handle_hex}");
+    redis::cmd("PEXPIRE")
+        .arg(&over_bound_key)
+        .arg(secure_webauthn_example::MAX_CEREMONY_TTL.as_millis() as u64 + 1)
+        .query::<()>(&mut inspection)
+        .expect("Redis over-bound PEXPIRE should succeed");
+    assert!(matches!(
+        store.take(CeremonyKind::Authentication, &over_bound_handle),
+        Err(secure_webauthn_example::CeremonyStoreError::Unavailable)
+    ));
+    let over_bound_exists: i64 = redis::cmd("EXISTS")
+        .arg(&over_bound_key)
+        .query(&mut inspection)
+        .expect("Redis over-bound key check should succeed");
+    let over_bound_pending: i64 = redis::cmd("ZCARD")
+        .arg(&pending_index)
+        .query(&mut inspection)
+        .expect("Redis over-bound pending index check should succeed");
+    assert_eq!(over_bound_exists, 0);
+    assert_eq!(over_bound_pending, 0);
+}
+
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
 fn redis_oversized_ceremony_value_is_removed_before_materialization() {
     let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
     let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());

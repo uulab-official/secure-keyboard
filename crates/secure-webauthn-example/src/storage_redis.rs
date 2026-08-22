@@ -4,8 +4,8 @@ use crate::{
         CeremonyState, CeremonyStateStore, CeremonyStoreError, CredentialStore,
         CredentialStoreError, WebAuthnStateKey, WebAuthnStateProtector,
     },
-    MAX_CEREMONY_STATE_BYTES, MAX_CREDENTIALS_PER_USER, MAX_CREDENTIAL_RECORD_BYTES,
-    MAX_PENDING_CEREMONIES, MAX_PROTECTED_CEREMONY_RECORD_BYTES,
+    MAX_CEREMONY_STATE_BYTES, MAX_CEREMONY_TTL, MAX_CREDENTIALS_PER_USER,
+    MAX_CREDENTIAL_RECORD_BYTES, MAX_PENDING_CEREMONIES, MAX_PROTECTED_CEREMONY_RECORD_BYTES,
 };
 use r2d2::{Pool, PooledConnection};
 use redis::Script;
@@ -18,6 +18,7 @@ use zeroize::Zeroizing;
 const HANDLE_ATTEMPTS: usize = 8;
 const MAX_NAMESPACE_BYTES: usize = 64;
 const PENDING_INDEX_SUFFIX: &str = "pending";
+const MAX_CEREMONY_TTL_MILLIS: u64 = MAX_CEREMONY_TTL.as_secs() * 1_000;
 const INSERT_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
@@ -40,6 +41,12 @@ const CONSUME_SCRIPT: &str = r"
 local time = redis.call('TIME')
 local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
 redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', now_ms)
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl < 1 or ttl > tonumber(ARGV[3]) then
+  redis.call('DEL', KEYS[1])
+  redis.call('ZREM', KEYS[2], KEYS[1])
+  return {-2, false}
+end
 local length = redis.call('STRLEN', KEYS[1])
 if length > tonumber(ARGV[2]) then
   redis.call('DEL', KEYS[1])
@@ -264,6 +271,7 @@ impl CeremonyStateStore for RedisWebAuthnStore {
             .key(key)
             .key(self.pending_index_key())
             .arg(MAX_PROTECTED_CEREMONY_RECORD_BYTES)
+            .arg(MAX_CEREMONY_TTL_MILLIS)
             .invoke(&mut *connection)
             .map_err(|_| CeremonyStoreError::Unavailable)?;
         let encoded = match status {
@@ -500,5 +508,18 @@ mod tests {
         assert!(length_check < get);
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
         assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
+    }
+
+    #[test]
+    fn ceremony_consume_rejects_missing_or_drifted_ttl_before_length_materialization() {
+        let ttl_check = CONSUME_SCRIPT
+            .find("PTTL")
+            .expect("ceremony consume must validate the Redis key TTL");
+        let length_check = CONSUME_SCRIPT
+            .find("STRLEN")
+            .expect("ceremony consume must check length");
+        assert!(ttl_check < length_check);
+        assert!(CONSUME_SCRIPT.contains("ttl < 1"));
+        assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[3])"));
     }
 }

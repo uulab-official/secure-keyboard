@@ -61,10 +61,13 @@ The backend must:
 5. bind and verify the account principal before response parsing; and
 6. map malformed, expired, or unavailable records to generic server errors.
 
-The Redis adapter uses a server-side atomic `STRLEN`-before-`GET`/delete
+The Redis adapter uses a server-side atomic `PTTL`/`STRLEN`-before-`GET`/delete
 consume script and an atomic `SET NX PX`/pending-index capacity script. The
-pending sorted set is cleaned by expiry score and the consumed key is removed
-from the index. A legacy or corrupted ceremony value larger than
+consume script deletes a key whose TTL is missing, expired, or longer than the
+15-minute ceremony bound before inspecting its value; this prevents a
+persisted/recreated key from becoming replay state outside the retention
+policy. The pending sorted set is cleaned by expiry score and the consumed key
+is removed from the index. A legacy or corrupted ceremony value larger than
 `MAX_PROTECTED_CEREMONY_RECORD_BYTES` is deleted from both locations without
 being materialized in the client. For PostgreSQL, the adapter serializes
 namespace inserts, deletes expired rows, enforces the pending-row bound, and

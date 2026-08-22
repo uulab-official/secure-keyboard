@@ -826,7 +826,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /validate_backend_ttl\(ttl\)/, "Redis WebAuthn storage must validate ceremony TTLs before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.seal\(encoded\.as_slice\(\)\)/, "Redis WebAuthn storage must encrypt ceremony records before persistence");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /protector\.open\(encoded\)/, "Redis WebAuthn storage must authenticate ceremony records after retrieval");
-  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /CONSUME_SCRIPT[\s\S]{0,700}STRLEN[\s\S]{0,260}'GET'/, "Redis WebAuthn ceremony consumption must bound record bytes before GET");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /CONSUME_SCRIPT[\s\S]{0,520}PTTL[\s\S]{0,220}tonumber\(ARGV\[3\]\)[\s\S]{0,220}STRLEN/, "Redis WebAuthn ceremony consumption must reject missing or drifted TTLs before materialization");
+  requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /CONSUME_SCRIPT[\s\S]{0,900}STRLEN[\s\S]{0,260}'GET'/, "Redis WebAuthn ceremony consumption must bound record bytes before GET");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /MAX_PROTECTED_CEREMONY_RECORD_BYTES/, "Redis WebAuthn ceremony consumption must use the encrypted-record bound");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /const BOUNDED_CREDENTIAL_GET_SCRIPT: &str/, "Redis credential reads must use a dedicated bounded retrieval script");
   requireText(findings, "crates/secure-webauthn-example/src/storage_redis.rs", webauthnRedis, /BOUNDED_CREDENTIAL_GET_SCRIPT[\s\S]{0,240}STRLEN[\s\S]{0,240}'GET'/, "Redis credential reads must check STRLEN before GET");
@@ -887,6 +888,7 @@ export function runSecurityAudit() {
   const durableRateLimitTest = source("crates/secure-auth-server/tests/durable_rate_limit.rs", findings);
   requireText(findings, "crates/secure-auth-server/tests/durable_rate_limit.rs", durableRateLimitTest, /redis_oversized_counter_is_removed_before_lua_get/, "durable Redis rate-limit tests must verify oversized counters are removed before Lua GET");
   const durableWebAuthnTest = source("crates/secure-webauthn-example/tests/durable_storage.rs", findings);
+  requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_ceremony_ttl_drift_is_removed_before_materialization/, "durable WebAuthn Redis tests must verify missing and over-bound ceremony TTLs are removed before materialization");
   requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_ceremony_value_is_removed_before_materialization/, "durable WebAuthn Redis tests must verify oversized ceremony values are removed before materialization");
   requireText(findings, "crates/secure-webauthn-example/tests/durable_storage.rs", durableWebAuthnTest, /redis_oversized_credential_value_fails_closed_before_json_decode/, "durable WebAuthn Redis tests must verify oversized credentials fail closed before JSON decoding");
   const redisRateLimit = source("crates/secure-auth-server/src/rate_limit_redis.rs", findings);

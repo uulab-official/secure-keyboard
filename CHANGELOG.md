@@ -35,6 +35,10 @@ exact release-candidate commit by the release evidence manifest.
 
 ### Security
 
+- WebAuthn Redis ceremony consumption now rejects and removes keys with a
+  missing, expired, or over-bound TTL before reading the record, preventing a
+  persisted or recreated replay-state key from bypassing the 15-minute
+  retention contract.
 - React Native no longer exports an unwrapped native view escape hatch. All
   public usage now goes through the prop allowlist and fail-closed masked-event
   boundary; custom rendering remains available only through the explicitly
