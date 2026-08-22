@@ -1085,6 +1085,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-evidence/, "CI must validate the complete release evidence manifest contract");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:stage-release-evidence/, "CI must validate release evidence staging and finalization workflow contracts");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:verify-github-run-provenance/, "CI must validate GitHub workflow run provenance enforcement");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:verify-lsan-evidence/, "CI must validate Linux LeakSanitizer evidence enforcement");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:merge-release-evidence/, "CI must validate release evidence fragment merging");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-release-gate-evidence/, "CI must validate release evidence fragment emission");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:emit-signed-release-evidence/, "CI must validate signed-release evidence emission");
@@ -1266,6 +1267,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /test:release-archive/, "CI must execute the signed archive contract test");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:stage-release-evidence/, "release candidate must execute release evidence staging and finalization workflow contract tests");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:verify-github-run-provenance/, "release candidate must execute GitHub workflow run provenance contract tests");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:verify-lsan-evidence/, "release candidate must execute Linux LeakSanitizer evidence contract tests");
   const releaseEvidenceMerge = source("scripts/merge-release-evidence.mjs", findings);
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /mergeReleaseEvidence/, "release tooling must merge evidence fragments through one policy function");
   requireText(findings, "scripts/merge-release-evidence.mjs", releaseEvidenceMerge, /duplicate release gate|duplicate release artifact/, "release evidence merging must reject duplicate claims");
@@ -1280,6 +1282,14 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"test:emit-native-device-evidence"/, "the workspace must expose the native device evidence emitter test");
   requireText(findings, "package.json", rootPackage, /"test:emit-independent-review-fragment"/, "the workspace must expose the independent review fragment emitter test");
   requireText(findings, "package.json", rootPackage, /"test:stage-release-evidence"/, "the workspace must expose the release evidence staging test");
+  requireText(findings, "package.json", rootPackage, /"test:verify-lsan-evidence"/, "the workspace must expose the Linux LeakSanitizer evidence test");
+  const lsanVerifier = source("scripts/verify-lsan-evidence.mjs", findings);
+  requireText(findings, "scripts/verify-lsan-evidence.mjs", lsanVerifier, /SECURE_KEYPAD_LSAN_RESULT/, "LSAN evidence must require an explicit success marker");
+  requireText(findings, "scripts/verify-lsan-evidence.mjs", lsanVerifier, /createHash\("sha256"\)/, "LSAN evidence must bind every raw log with a SHA-256 digest");
+  requireText(findings, "scripts/verify-lsan-evidence.mjs", lsanVerifier, /MAX_LSAN_LOG_BYTES/, "LSAN evidence must bound raw campaign logs");
+  const lsanEmitter = source("scripts/emit-lsan-gate-evidence.mjs", findings);
+  requireText(findings, "scripts/emit-lsan-gate-evidence.mjs", lsanEmitter, /buildReleaseGateFragment/, "LSAN evidence must emit a commit-bound release fragment");
+  requireText(findings, "scripts/emit-lsan-gate-evidence.mjs", lsanEmitter, /currentCommit/, "LSAN evidence must derive the commit from a clean checkout");
   const releaseEvidenceEmitter = source("scripts/emit-release-gate-evidence.mjs", findings);
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /currentCommit/, "release evidence emitter must derive the commit from the checkout");
   requireText(findings, "scripts/emit-release-gate-evidence.mjs", releaseEvidenceEmitter, /"status",\s*"--porcelain/, "release evidence emitter must require a clean checkout");

@@ -533,7 +533,13 @@ job, never in a production configuration.
 The Linux fuzz job also runs all four targets under Rust's leak sanitizer.
 The local macOS arm64 runner cannot execute that sanitizer because the target
 does not support it; therefore a green Linux CI result is required before the
-memory/leak gate can be closed.
+memory/leak gate can be closed. Each target log receives a marker only after
+the command exits successfully. `scripts/emit-lsan-gate-evidence.mjs` records
+the pinned nightly toolchain, `--sanitizer=leak`, 10,000-run budget, byte count,
+and SHA-256 digest for all four logs. The final verifier then requires those
+records to resolve to `retained/fuzz-logs/<target>-lsan.log` and rechecks the
+raw bytes and exact success marker; a sanitized `job-fuzz` label alone cannot
+close this gate.
 
 Device execution follows `docs/DEVICE-VERIFICATION.md`. Host compilation alone
 does not close screenshot, background, autofill, clipboard, accessibility, or

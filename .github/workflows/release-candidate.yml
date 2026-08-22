@@ -277,6 +277,7 @@ jobs:
           pnpm test:release-candidate-metadata
           pnpm test:stage-release-evidence
           pnpm test:verify-github-run-provenance
+          pnpm test:verify-lsan-evidence
           pnpm test:emit-release-artifact-fragment
           pnpm test:expo-development-build
           pnpm test:emit-release-gate-evidence

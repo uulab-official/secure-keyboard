@@ -71,6 +71,9 @@ exact release-candidate commit by the release evidence manifest.
   candidate, CI, and external evidence runs to match the repository, release
   commit, expected workflow path, and `completed`/`success` status before any
   artifact is downloaded.
+- Linux LeakSanitizer release evidence now binds all four target logs to
+  post-command success markers, the pinned nightly toolchain, run budget,
+  bounded sizes, SHA-256 digests, and the final retained evidence paths.
 - Expanded the native source audit and regression coverage to reject editable
   Android and iOS text controls in all publishable keypad implementations.
 - Bounded the WebAuthn public base64url encoder to the same 8 KiB binary limit

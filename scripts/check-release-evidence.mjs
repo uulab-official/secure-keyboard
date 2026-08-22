@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validateDeviceEvidence, verifyDeviceEvidenceFiles } from "./check-device-evidence.mjs";
+import { validateLsanEvidenceRecord, verifyLsanEvidenceFiles } from "./verify-lsan-evidence.mjs";
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -572,6 +573,18 @@ function verifyGateEvidenceRecord(findings, root, field, gate, artifacts, toolch
           "CI gate checks must include one complete owning job or command group",
         );
       }
+    }
+  }
+
+  if (gate.name === "linux-leak-sanitizer") {
+    for (const finding of validateLsanEvidenceRecord(record, {
+      expectedCommit: gate.commit,
+      expectedGate: gate.name,
+    })) {
+      add(findings, `${field}.lsan`, finding);
+    }
+    for (const finding of verifyLsanEvidenceFiles(record, root)) {
+      add(findings, `${field}.lsan.files`, finding);
     }
   }
 

@@ -21,6 +21,7 @@ import {
   verifyReleaseEvidenceFiles,
   validateReleaseEvidence,
 } from "./check-release-evidence.mjs";
+import { buildLsanGateEvidence, LSAN_RUNS, LSAN_TARGETS } from "./verify-lsan-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
 const REVIEW_SHA256 = "c".repeat(64);
@@ -214,6 +215,24 @@ function writeCompleteEvidenceFixture(root) {
     const platform = platformByGate[gate.name];
     if (platform) {
       writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes[platform]);
+    } else if (gate.name === "linux-leak-sanitizer") {
+      const logRoot = join(root, "retained/fuzz-logs");
+      mkdirSync(logRoot, { recursive: true });
+      for (const target of LSAN_TARGETS) {
+        writeFileSync(
+          join(logRoot, `${target}-lsan.log`),
+          `cargo fuzz run ${target} --sanitizer=leak\nSECURE_KEYPAD_LSAN_RESULT target=${target} toolchain=nightly-2026-08-19 sanitizer=leak runs=${LSAN_RUNS} status=pass\n`,
+        );
+      }
+      const record = buildLsanGateEvidence({
+        logRoot,
+        commit,
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-21T00:00:00.000Z",
+      });
+      const gatePayload = Buffer.from(JSON.stringify(record), "utf8");
+      writeFileSync(join(root, gate.evidencePath), gatePayload);
+      gate.sha256 = createHash("sha256").update(gatePayload).digest("hex");
     } else {
       const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(
@@ -507,6 +526,24 @@ test("verifies every referenced release evidence and artifact digest", () => {
     if (platformByGate[gate.name]) {
       const platform = platformByGate[gate.name];
       writeDeviceGateEvidence(root, gate, platform, nativeChecksumBytes[platform]);
+    } else if (gate.name === "linux-leak-sanitizer") {
+      const logRoot = join(root, "retained/fuzz-logs");
+      mkdirSync(logRoot, { recursive: true });
+      for (const target of LSAN_TARGETS) {
+        writeFileSync(
+          join(logRoot, `${target}-lsan.log`),
+          `cargo fuzz run ${target} --sanitizer=leak\nSECURE_KEYPAD_LSAN_RESULT target=${target} toolchain=nightly-2026-08-19 sanitizer=leak runs=${LSAN_RUNS} status=pass\n`,
+        );
+      }
+      const record = buildLsanGateEvidence({
+        logRoot,
+        commit: evidence.commit,
+        runner: "ubuntu-24.04",
+        recordedAt: "2026-08-21T00:00:00.000Z",
+      });
+      const gatePayload = Buffer.from(JSON.stringify(record), "utf8");
+      writeFileSync(join(root, gate.evidencePath), gatePayload);
+      gate.sha256 = createHash("sha256").update(gatePayload).digest("hex");
     } else {
       const ciChecks = CI_RELEASE_GATE_CHECKS[gate.name];
       const gatePayload = Buffer.from(

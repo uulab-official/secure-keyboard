@@ -117,6 +117,7 @@ jobs:
       - run: pnpm test:release-candidate-metadata
       - run: pnpm test:stage-release-evidence
       - run: pnpm test:verify-github-run-provenance
+      - run: pnpm test:verify-lsan-evidence
       - run: pnpm test:expo-development-build
       - run: pnpm test:emit-release-gate-evidence
       - run: pnpm test:emit-ci-gate-evidence
@@ -548,12 +549,16 @@ jobs:
           set -euo pipefail
           cargo +nightly-2026-08-19 fuzz run auth_envelope "$FUZZ_CORPUS_ROOT/auth_envelope" --sanitizer=leak -- -runs=10000 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-lsan.log"
+          printf '%s\n' 'SECURE_KEYPAD_LSAN_RESULT target=auth_envelope toolchain=nightly-2026-08-19 sanitizer=leak runs=10000 status=pass' >> "$RUNNER_TEMP/secure-keypad-fuzz-logs/auth_envelope-lsan.log"
           cargo +nightly-2026-08-19 fuzz run core_sequence "$FUZZ_CORPUS_ROOT/core_sequence" --sanitizer=leak -- -runs=10000 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-lsan.log"
+          printf '%s\n' 'SECURE_KEYPAD_LSAN_RESULT target=core_sequence toolchain=nightly-2026-08-19 sanitizer=leak runs=10000 status=pass' >> "$RUNNER_TEMP/secure-keypad-fuzz-logs/core_sequence-lsan.log"
           cargo +nightly-2026-08-19 fuzz run ffi_sequence "$FUZZ_CORPUS_ROOT/ffi_sequence" --sanitizer=leak -- -runs=10000 -max_len=4096 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-lsan.log"
+          printf '%s\n' 'SECURE_KEYPAD_LSAN_RESULT target=ffi_sequence toolchain=nightly-2026-08-19 sanitizer=leak runs=10000 status=pass' >> "$RUNNER_TEMP/secure-keypad-fuzz-logs/ffi_sequence-lsan.log"
           cargo +nightly-2026-08-19 fuzz run webauthn_state "$FUZZ_CORPUS_ROOT/webauthn_state" --sanitizer=leak -- -runs=10000 -max_len=131073 \
             2>&1 | tee "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-lsan.log"
+          printf '%s\n' 'SECURE_KEYPAD_LSAN_RESULT target=webauthn_state toolchain=nightly-2026-08-19 sanitizer=leak runs=10000 status=pass' >> "$RUNNER_TEMP/secure-keypad-fuzz-logs/webauthn_state-lsan.log"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -572,16 +577,12 @@ jobs:
             --check core_sequence \
             --check ffi_sequence \
             --check webauthn_state
-          node scripts/emit-ci-gate-evidence.mjs \
+          node scripts/emit-lsan-gate-evidence.mjs \
+            "$RUNNER_TEMP/secure-keypad-fuzz-logs" \
             "$RUNNER_TEMP/secure-keypad-ci-evidence" \
-            linux-leak-sanitizer \
             "ci/linux-leak-sanitizer.json" \
             "fragments/linux-leak-sanitizer.json" \
-            --runner ubuntu-24.04 \
-            --check auth_envelope \
-            --check core_sequence \
-            --check ffi_sequence \
-            --check webauthn_state
+            --runner ubuntu-24.04
       - uses: actions/upload-artifact@ea165f8f65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -1255,6 +1256,11 @@ jobs:
         with:
           name: secure-keypad-fuzz-logs
           path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/fuzz-logs
+      - name: Retain commit-bound fuzz gate records
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-ci-gate-fuzz
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence
       - name: Retain dependency metadata
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -1283,9 +1289,6 @@ jobs:
             --runner ci-aggregate --check job-durable-backends
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" fuzz-stability \
             "ci/fuzz-stability-aggregate.json" "fragments/fuzz-stability-aggregate.json" \
-            --runner ci-aggregate --check job-fuzz
-          node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" linux-leak-sanitizer \
-            "ci/linux-leak-sanitizer-aggregate.json" "fragments/linux-leak-sanitizer-aggregate.json" \
             --runner ci-aggregate --check job-fuzz
       - name: Emit web browser CI release evidence
         run: |

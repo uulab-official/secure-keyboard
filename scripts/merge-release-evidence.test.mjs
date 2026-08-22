@@ -13,6 +13,7 @@ import {
   validateReleaseEvidence,
 } from "./check-release-evidence.mjs";
 import { mergeReleaseEvidence, writeMergedEvidence } from "./merge-release-evidence.mjs";
+import { buildLsanGateEvidence, LSAN_RUNS, LSAN_TARGETS } from "./verify-lsan-evidence.mjs";
 
 const SHA256 = "a".repeat(64);
 const REVIEW_SHA256 = "c".repeat(64);
@@ -302,6 +303,24 @@ test("CLI assembles and verifies a signed evidence root", () => {
   for (const gate of gates) {
     if (platformByGate[gate.name]) {
       writeDeviceGateEvidence(root, gate, platformByGate[gate]);
+    } else if (gate.name === "linux-leak-sanitizer") {
+      const logRoot = join(root, "retained/fuzz-logs");
+      mkdirSync(logRoot, { recursive: true });
+      for (const target of LSAN_TARGETS) {
+        writeFileSync(
+          join(logRoot, `${target}-lsan.log`),
+          `cargo fuzz run ${target} --sanitizer=leak\nSECURE_KEYPAD_LSAN_RESULT target=${target} toolchain=nightly-2026-08-19 sanitizer=leak runs=${LSAN_RUNS} status=pass\n`,
+        );
+      }
+      const record = buildLsanGateEvidence({
+        logRoot,
+        commit,
+        runner: "ci-aggregate",
+        recordedAt: "2026-08-21T00:00:00.000Z",
+      });
+      const gateEvidenceBytes = Buffer.from(JSON.stringify(record), "utf8");
+      writeFileSync(join(root, gate.evidencePath), gateEvidenceBytes);
+      gate.sha256 = hash(gateEvidenceBytes);
     } else {
       const gateEvidenceBytes = Buffer.from(
         JSON.stringify(gateEvidence(gate.name, commit)),
