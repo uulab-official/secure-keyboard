@@ -199,31 +199,40 @@ public struct SecureKeypadBridgeConfiguration {
               let keyFontWeight = fontWeight(typography["keyFontWeight"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
-        if let animation = try Self.optionalMap(value["animation"], allowed: ["pressDurationMs", "maskRevealDurationMs"]) {
+        let animation = try Self.optionalMap(value["animation"], allowed: ["pressDurationMs", "maskRevealDurationMs"])
+        var pressDurationMs = 80
+        var maskRevealDurationMs = 0
+        if let animation {
             if animation.allKeys.contains(where: { ($0 as? String) == "pressDurationMs" }) {
                 guard let duration = boundedInteger(animation["pressDurationMs"], minimum: 0, maximum: 500) else {
                     throw SecureKeypadBridgeConfigError.invalid
                 }
-                _ = duration
+                pressDurationMs = duration
             }
             if animation.allKeys.contains(where: { ($0 as? String) == "maskRevealDurationMs" }) {
                 guard let duration = boundedInteger(animation["maskRevealDurationMs"], minimum: 0, maximum: 2_000) else {
                     throw SecureKeypadBridgeConfigError.invalid
                 }
-                _ = duration
+                maskRevealDurationMs = duration
             }
         }
-        if let feedback = try Self.optionalMap(value["feedback"], allowed: ["haptic", "sound"]) {
+        let feedback = try Self.optionalMap(value["feedback"], allowed: ["haptic", "sound"])
+        var hapticFeedback = SecureKeypadHapticFeedback.light
+        var soundFeedback = SecureKeypadSoundFeedback.none
+        if let feedback {
             if feedback.allKeys.contains(where: { ($0 as? String) == "haptic" }) {
                 guard let haptic = feedback["haptic"] as? String,
-                      ["none", "light", "medium", "heavy"].contains(haptic) else {
+                      let parsedHaptic = Self.hapticFeedback(haptic) else {
                     throw SecureKeypadBridgeConfigError.invalid
                 }
+                hapticFeedback = parsedHaptic
             }
             if feedback.allKeys.contains(where: { ($0 as? String) == "sound" }) {
-                guard let sound = feedback["sound"] as? String, ["none", "click"].contains(sound) else {
+                guard let sound = feedback["sound"] as? String,
+                      let parsedSound = Self.soundFeedback(sound) else {
                     throw SecureKeypadBridgeConfigError.invalid
                 }
+                soundFeedback = parsedSound
             }
         }
         var theme = SecureKeypadTheme()
@@ -237,6 +246,10 @@ public struct SecureKeypadBridgeConfiguration {
         theme.contentPadding = CGFloat(contentPadding)
         theme.keyFontSize = CGFloat(keyFontSize)
         theme.keyFontWeight = keyFontWeight
+        theme.pressDuration = TimeInterval(pressDurationMs) / 1_000
+        theme.maskRevealDuration = TimeInterval(maskRevealDurationMs) / 1_000
+        theme.hapticFeedback = hapticFeedback
+        theme.soundFeedback = soundFeedback
         return theme
     }
 
@@ -285,6 +298,24 @@ public struct SecureKeypadBridgeConfiguration {
         case 500: return .medium
         case 600: return .semibold
         case 700: return .bold
+        default: return nil
+        }
+    }
+
+    private static func hapticFeedback(_ value: String) -> SecureKeypadHapticFeedback? {
+        switch value {
+        case "none": return SecureKeypadHapticFeedback.none
+        case "light": return SecureKeypadHapticFeedback.light
+        case "medium": return SecureKeypadHapticFeedback.medium
+        case "heavy": return SecureKeypadHapticFeedback.heavy
+        default: return nil
+        }
+    }
+
+    private static func soundFeedback(_ value: String) -> SecureKeypadSoundFeedback? {
+        switch value {
+        case "none": return SecureKeypadSoundFeedback.none
+        case "click": return SecureKeypadSoundFeedback.click
         default: return nil
         }
     }

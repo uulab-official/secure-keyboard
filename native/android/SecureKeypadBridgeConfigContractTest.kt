@@ -49,6 +49,11 @@ fun main() {
             listOf(mapOf("id" to "submit", "label" to "Continue", "role" to "submit")),
         )
         it["layout"] = layout
+        @Suppress("UNCHECKED_CAST")
+        val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+        theme["animation"] = mapOf("pressDurationMs" to 120, "maskRevealDurationMs" to 300)
+        theme["feedback"] = mapOf("haptic" to "heavy", "sound" to "click")
+        it["theme"] = theme
     }
     val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
     check(parsed.layout.rows.size == 2)
@@ -56,6 +61,10 @@ fun main() {
     check(!parsed.layout.slots.display)
     check(parsed.layout.rows[0][0].testId == "pin.one")
     check(parsed.theme.keyFontWeight == 600)
+    check(parsed.theme.pressDurationMs == 120L)
+    check(parsed.theme.maskRevealDurationMs == 300L)
+    check(parsed.theme.hapticFeedback == SecureKeypadHapticFeedback.HEAVY)
+    check(parsed.theme.soundFeedback == SecureKeypadSoundFeedback.CLICK)
     check(runCatching {
         SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
             @Suppress("UNCHECKED_CAST")
@@ -69,6 +78,14 @@ fun main() {
             @Suppress("UNCHECKED_CAST")
             val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
             theme["typography"] = mapOf("keyFontSize" to 24, "keyFontWeight" to "0600")
+            it["theme"] = theme
+        })
+    }.isFailure)
+    check(runCatching {
+        SecureKeypadBridgeConfigParser.parse(validConfiguration().also {
+            @Suppress("UNCHECKED_CAST")
+            val theme = (it.getValue("theme") as Map<String, Any?>).toMutableMap()
+            theme["feedback"] = mapOf("haptic" to true)
             it["theme"] = theme
         })
     }.isFailure)

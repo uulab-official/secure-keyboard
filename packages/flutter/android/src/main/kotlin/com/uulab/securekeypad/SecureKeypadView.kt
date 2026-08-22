@@ -9,6 +9,8 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.SoundEffectConstants
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
@@ -47,6 +49,18 @@ public data class SecureKeypadSlots(
     val error: Boolean = true,
 )
 
+public enum class SecureKeypadHapticFeedback {
+    NONE,
+    LIGHT,
+    MEDIUM,
+    HEAVY,
+}
+
+public enum class SecureKeypadSoundFeedback {
+    NONE,
+    CLICK,
+}
+
 /** A serializable row-based presentation layout. */
 public data class SecureKeypadLayout(
     val rows: List<List<SecureKeySpec>>,
@@ -66,6 +80,10 @@ public data class SecureKeypadTheme(
     val keyFontSizePx: Float = 24f,
     val keyFontWeight: Int = 600,
     val contentPaddingPx: Int = 16,
+    val pressDurationMs: Long = 80L,
+    val maskRevealDurationMs: Long = 0L,
+    val hapticFeedback: SecureKeypadHapticFeedback = SecureKeypadHapticFeedback.LIGHT,
+    val soundFeedback: SecureKeypadSoundFeedback = SecureKeypadSoundFeedback.NONE,
 )
 
 private enum class SecureKeypadInputPolicy {
@@ -404,6 +422,21 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     background = keyBackground()
                     tag = key.testId ?: key.id
                     importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> view.animate()
+                                .scaleX(0.98f)
+                                .scaleY(0.98f)
+                                .setDuration(currentTheme.pressDurationMs)
+                                .start()
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> view.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(currentTheme.pressDurationMs)
+                                .start()
+                        }
+                        false
+                    }
                     setOnClickListener { activate(key) }
                 }
                 rowView.addView(button, LinearLayout.LayoutParams(0, currentTheme.keyHeightPx, 1f).apply {
@@ -417,6 +450,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     private fun activate(key: SecureKeySpec) {
         if (sessionHandle == 0L) return
+        performFeedback()
         var status = 0
         when (key.role) {
             SecureKeyRole.INPUT -> status = SecureKeypadNative.sessionPressKey(sessionHandle, key.id)
@@ -467,9 +501,33 @@ public open class SecureKeypadView @JvmOverloads constructor(
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
             return
         }
-        display.text = secureKeypadMaskedDisplayText(length)
+        val maskedText = secureKeypadMaskedDisplayText(length)
+        display.animate().cancel()
+        if (currentTheme.maskRevealDurationMs == 0L) {
+            display.alpha = 1f
+            display.text = maskedText
+        } else {
+            display.alpha = 0f
+            display.text = maskedText
+            display.animate()
+                .alpha(1f)
+                .setDuration(currentTheme.maskRevealDurationMs)
+                .start()
+        }
         display.contentDescription = secureKeypadAccessibilityLabel(length)
         onMaskedStateChanged?.invoke(length, displayState)
+    }
+
+    private fun performFeedback() {
+        when (currentTheme.hapticFeedback) {
+            SecureKeypadHapticFeedback.NONE -> Unit
+            SecureKeypadHapticFeedback.LIGHT -> performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+            SecureKeypadHapticFeedback.MEDIUM -> performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            SecureKeypadHapticFeedback.HEAVY -> performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+        if (currentTheme.soundFeedback == SecureKeypadSoundFeedback.CLICK) {
+            playSoundEffect(SoundEffectConstants.CLICK)
+        }
     }
 
     private fun validateLayout(layout: SecureKeypadLayout, policy: SecureKeypadInputPolicy) {
@@ -514,7 +572,14 @@ public open class SecureKeypadView @JvmOverloads constructor(
         require(theme.keyFontSizePx.isFinite() && theme.keyFontSizePx in 10f..72f) {
             "key font size is outside the supported range"
         }
+        require(theme.keyFontWeight in setOf(400, 500, 600, 700)) {
+            "key font weight is outside the supported range"
+        }
         require(theme.contentPaddingPx in 0..80) { "content padding is outside the supported range" }
+        require(theme.pressDurationMs in 0L..500L) { "press duration is outside the supported range" }
+        require(theme.maskRevealDurationMs in 0L..2_000L) {
+            "mask reveal duration is outside the supported range"
+        }
     }
 }
 

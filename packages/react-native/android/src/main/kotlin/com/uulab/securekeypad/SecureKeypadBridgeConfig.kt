@@ -150,19 +150,33 @@ internal object SecureKeypadBridgeConfigParser {
         color(colors, "error")
         val keyFontSize = number(typography["keyFontSize"] ?: invalid(), 10f, 72f)
         val keyFontWeight = fontWeight(typography["keyFontWeight"] ?: invalid())
-        optionalMap(value["animation"], "pressDurationMs", "maskRevealDurationMs")?.let {
-            if (it.containsKey("pressDurationMs")) boundedInteger(it["pressDurationMs"], 0L, 500L)
-            if (it.containsKey("maskRevealDurationMs")) boundedInteger(it["maskRevealDurationMs"], 0L, 2_000L)
+        val animation = optionalMap(value["animation"], "pressDurationMs", "maskRevealDurationMs")
+        val pressDurationMs = animation?.let {
+            if (it.containsKey("pressDurationMs")) boundedInteger(it["pressDurationMs"], 0L, 500L) else 80L
+        } ?: 80L
+        val maskRevealDurationMs = animation?.let {
+            if (it.containsKey("maskRevealDurationMs")) boundedInteger(it["maskRevealDurationMs"], 0L, 2_000L) else 0L
+        } ?: 0L
+        val feedback = optionalMap(value["feedback"], "haptic", "sound")
+        val hapticValue = when {
+            feedback == null || !feedback.containsKey("haptic") -> "light"
+            else -> feedback["haptic"] as? String ?: invalid()
         }
-        optionalMap(value["feedback"], "haptic", "sound")?.let {
-            if (it.containsKey("haptic")) {
-                val haptic = it["haptic"] as? String ?: invalid()
-                require(haptic in setOf("none", "light", "medium", "heavy"))
-            }
-            if (it.containsKey("sound")) {
-                val sound = it["sound"] as? String ?: invalid()
-                require(sound in setOf("none", "click"))
-            }
+        val hapticFeedback = when (hapticValue) {
+            "none" -> SecureKeypadHapticFeedback.NONE
+            "light" -> SecureKeypadHapticFeedback.LIGHT
+            "medium" -> SecureKeypadHapticFeedback.MEDIUM
+            "heavy" -> SecureKeypadHapticFeedback.HEAVY
+            else -> invalid()
+        }
+        val soundValue = when {
+            feedback == null || !feedback.containsKey("sound") -> "none"
+            else -> feedback["sound"] as? String ?: invalid()
+        }
+        val soundFeedback = when (soundValue) {
+            "none" -> SecureKeypadSoundFeedback.NONE
+            "click" -> SecureKeypadSoundFeedback.CLICK
+            else -> invalid()
         }
         return SecureKeypadTheme(
             backgroundColor = color(colors, "background"),
@@ -175,6 +189,10 @@ internal object SecureKeypadBridgeConfigParser {
             keyFontSizePx = keyFontSize,
             keyFontWeight = keyFontWeight,
             contentPaddingPx = contentPadding.toInt(),
+            pressDurationMs = pressDurationMs,
+            maskRevealDurationMs = maskRevealDurationMs,
+            hapticFeedback = hapticFeedback,
+            soundFeedback = soundFeedback,
         ).also {
             require(contentPadding >= 0f)
         }

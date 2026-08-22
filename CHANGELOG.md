@@ -61,6 +61,9 @@ exact release-candidate commit by the release evidence manifest.
   and Flutter instead of silently discarding those customization fields.
 - Native renderers now apply the public key font weight consistently on iOS and
   Android, including framework-package mirrors.
+- Native renderers now apply bounded press/mask animations and haptic/sound
+  feedback preferences without moving input values across the framework
+  boundary.
 - Android color parsing now rejects signed and non-hex text so native validation
   matches the shared RN/Flutter color contract exactly.
 - Bounded the Flutter native event backlog, coalesced masked-state updates,

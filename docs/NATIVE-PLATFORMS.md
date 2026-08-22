@@ -169,7 +169,10 @@ honors `slots.display` by showing or collapsing the native masked display.
 `slots.header`, `slots.footer`, and `slots.error` are host-composition signals:
 they reserve surrounding content for the framework/native host and never carry
 input. A key's optional `testId` becomes a native UI test identifier (or view
-tag); it is public metadata only and is not used as an input value.
+tag); it is public metadata only and is not used as an input value. Bounded
+press/mask animation durations and haptic/sound feedback preferences are
+applied by the native renderer; the mask animation operates on bullets only
+and never materializes an input character.
 
 The application must link the JNI adapter with the Rust `secure-ffi` library
 for every ABI it ships. The CMake file intentionally does not invent a Rust

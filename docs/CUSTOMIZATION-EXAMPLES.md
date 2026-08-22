@@ -102,6 +102,8 @@ never an input-value channel.
 collapses the native masked display, and `testId` is forwarded only as a native
 UI test identifier. Header, footer, and error slots are host-composition
 signals; hosts may render their own public content around the native keypad.
+Bounded animation and haptic/sound feedback tokens are applied natively; mask
+animation affects bullets only and never reveals or stores the entered value.
 
 ## Printable ASCII policy (native only)
 
