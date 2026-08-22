@@ -28,6 +28,10 @@ OPAQUE functions can turn that submission into registration/login request and
 upload/finalization message handles for a native HTTP client; they never expose
 a password, export key, or derived client session key. Registration and login
 both stay inside the native boundary. The C ABI does not itself perform HTTP.
+The submission, client-state, and request output slots passed to either native
+start function must be distinct. The ABI rejects aliased slots before clearing
+or consuming any caller-owned handle, preventing an aliased C output from
+losing an opaque submission or one of the newly allocated handles.
 
 `SECURE_KEYPAD_ABI_VERSION = 2` is required for the registration functions.
 Hosts must reject an ABI mismatch before creating a session or accepting a

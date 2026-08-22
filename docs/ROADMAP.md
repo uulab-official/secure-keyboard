@@ -39,6 +39,7 @@ Status: core contract complete
 - [x] Add explicit buffer clearing and a no-secret-API test harness.
 - [x] Add the monotonic inactivity timeout policy.
 - [x] Add the native FFI boundary with explicit ownership and null-safety rules.
+- [x] Reject aliased C ABI ownership/output slots before clearing or consuming opaque handles.
 
 Exit criteria: core, authentication, FFI, and header-contract tests pass and the public API cannot return the accumulated secret.
 

@@ -479,6 +479,9 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /SECURE_KEYPAD_ABI_VERSION UINT32_C\(2\)/, "C ABI must version the native registration handoff");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_start/, "C ABI must expose native-only registration handoff");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_finish/, "C ABI must expose native-only registration completion");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn output_slots_alias/, "FFI auth-start functions must reject aliased ownership/output slots");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_login, output_request\)/, "FFI login start must validate distinct pointer slots before clearing outputs");
+  requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /output_slots_alias\(submission, output_registration, output_request\)/, "FFI registration start must validate distinct pointer slots before clearing outputs");
   forbidText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "C ABI must not define a secret getter");
 
   const iosNativeView = source("native/ios/SecureKeypadView.swift", findings);

@@ -22,6 +22,18 @@ const MAX_PUBLIC_ID_BYTES: usize = 256;
 const MAX_TOKENS: u32 = secure_core::MAX_INPUT_TOKENS as u32;
 const MAX_TIMEOUT_MS: u64 = 86_400_000;
 
+/// Rejects aliased caller-owned pointer slots before any output is reset.
+///
+/// C callers can otherwise alias an input ownership slot with an output slot,
+/// causing a successful native operation to lose a handle or overwrite an
+/// unrelated result. The ABI requires all slots to be distinct.
+fn output_slots_alias<A, B, C>(first: *mut A, second: *mut B, third: *mut C) -> bool {
+    let first = first.cast::<()>();
+    let second = second.cast::<()>();
+    let third = third.cast::<()>();
+    first == second || first == third || second == third
+}
+
 /// ABI version implemented by this linked native library.
 pub const SECURE_KEYPAD_ABI_VERSION: u32 = 2;
 
@@ -627,9 +639,10 @@ pub unsafe extern "C" fn secure_keypad_auth_message_free(message: *mut SecureKey
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_login` and
-/// `output_request` must be valid writable pointers. Once the pointer and
-/// output arguments pass validation, the submission is consumed on entry and
-/// the caller's pointer is set to null even when the protocol operation fails.
+/// `output_request` must be valid, distinct writable pointers. Once the
+/// pointer and output arguments pass validation, the submission is consumed on
+/// entry and the caller's pointer is set to null even when the protocol
+/// operation fails.
 /// All handles are single-owner and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_login_start(
@@ -639,6 +652,9 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if submission.is_null() || output_login.is_null() || output_request.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if output_slots_alias(submission, output_login, output_request) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: All output pointers are checked for null and must be writable.
@@ -681,9 +697,10 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_registration`
-/// and `output_request` must be valid writable pointers. Once the pointer and
-/// output arguments pass validation, the submission is consumed on entry and
-/// the caller's pointer is set to null even when the protocol operation fails.
+/// and `output_request` must be valid, distinct writable pointers. Once the
+/// pointer and output arguments pass validation, the submission is consumed on
+/// entry and the caller's pointer is set to null even when the protocol
+/// operation fails.
 /// All handles are single-owner and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_registration_start(
@@ -693,6 +710,9 @@ pub unsafe extern "C" fn secure_keypad_client_registration_start(
 ) -> SecureKeypadError {
     contain_panic(|| {
         if submission.is_null() || output_registration.is_null() || output_request.is_null() {
+            return SecureKeypadError::InvalidArgument;
+        }
+        if output_slots_alias(submission, output_registration, output_request) {
             return SecureKeypadError::InvalidArgument;
         }
         // SAFETY: All output pointers are checked for null and must be writable.

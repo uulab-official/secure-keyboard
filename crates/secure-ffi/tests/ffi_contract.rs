@@ -100,6 +100,115 @@ fn ffi_rejects_null_and_invalid_public_key_inputs() {
 }
 
 #[test]
+fn ffi_rejects_aliased_login_output_slots_without_consuming_submission() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(2, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    let key = b"digit-1";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Ok
+    );
+    let mut submission: *mut SecureKeypadSubmission = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, &mut submission) },
+        SecureKeypadError::Ok
+    );
+    unsafe { secure_keypad_session_free(session) };
+    let original_submission = submission;
+
+    let aliased_login_output = (&mut submission as *mut *mut SecureKeypadSubmission)
+        .cast::<*mut SecureKeypadClientLogin>();
+    let mut request: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_login_start(&mut submission, aliased_login_output, &mut request)
+        },
+        SecureKeypadError::InvalidArgument
+    );
+    assert_eq!(submission, original_submission);
+    assert!(request.is_null());
+
+    unsafe { secure_keypad_submission_free(submission) };
+}
+
+#[test]
+fn ffi_rejects_aliased_login_request_output_without_leaking_handles() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(2, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    let key = b"digit-1";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Ok
+    );
+    let mut submission: *mut SecureKeypadSubmission = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, &mut submission) },
+        SecureKeypadError::Ok
+    );
+    unsafe { secure_keypad_session_free(session) };
+    let original_submission = submission;
+
+    let mut login: *mut SecureKeypadClientLogin = ptr::null_mut();
+    let aliased_request_output =
+        (&mut login as *mut *mut SecureKeypadClientLogin).cast::<*mut SecureKeypadAuthMessage>();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_login_start(&mut submission, &mut login, aliased_request_output)
+        },
+        SecureKeypadError::InvalidArgument
+    );
+    assert_eq!(submission, original_submission);
+    assert!(login.is_null());
+
+    unsafe { secure_keypad_submission_free(submission) };
+}
+
+#[test]
+fn ffi_rejects_aliased_registration_output_slots_without_consuming_submission() {
+    let mut session: *mut SecureKeypadSession = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_new_numeric(2, 60_000, &mut session) },
+        SecureKeypadError::Ok
+    );
+    let key = b"digit-1";
+    assert_eq!(
+        unsafe { secure_keypad_session_press_key(session, key.as_ptr(), key.len()) },
+        SecureKeypadError::Ok
+    );
+    let mut submission: *mut SecureKeypadSubmission = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_session_submit(session, &mut submission) },
+        SecureKeypadError::Ok
+    );
+    unsafe { secure_keypad_session_free(session) };
+    let original_submission = submission;
+
+    let mut registration: *mut SecureKeypadClientRegistration = ptr::null_mut();
+    let aliased_request_output = (&mut registration as *mut *mut SecureKeypadClientRegistration)
+        .cast::<*mut SecureKeypadAuthMessage>();
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_registration_start(
+                &mut submission,
+                &mut registration,
+                aliased_request_output,
+            )
+        },
+        SecureKeypadError::InvalidArgument
+    );
+    assert_eq!(submission, original_submission);
+    assert!(registration.is_null());
+
+    unsafe { secure_keypad_submission_free(submission) };
+}
+
+#[test]
 fn ascii_constructor_accepts_bounded_policy() {
     let mut session: *mut SecureKeypadSession = ptr::null_mut();
     assert_eq!(
