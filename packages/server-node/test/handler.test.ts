@@ -192,6 +192,23 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(chunk.every((byte) => byte === 0)).toBe(true);
   });
 
+  it("zeroizes the request buffer when the delegate fails", async () => {
+    let receivedBody: Uint8Array | undefined;
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate: ({ body }) => {
+        receivedBody = body;
+        throw new Error("delegate failure");
+      },
+    });
+
+    const response = await handler(request('{"protocolVersion":1}'));
+
+    expect(response.status).toBe(503);
+    expect(receivedBody?.every((byte) => byte === 0)).toBe(true);
+  });
+
   it("does not trust forwarded headers and rejects delegate failures generically", async () => {
     const delegate = vi.fn(() => {
       throw new Error("secret-bearing internal failure");
