@@ -26,5 +26,8 @@ test("Flutter layout randomization survives the Dart-to-native creation boundary
   const source = readFileSync(`${PACKAGE_ROOT}/lib/secure_keypad_flutter.dart`, "utf8");
   assert.match(source, /final bool randomizeInputKeys;/);
   assert.match(source, /'randomizeInputKeys': layout\.randomizeInputKeys/);
-  assert.match(source, /layout\.randomizeInputKeys != true && layout\.randomizeInputKeys != false/);
+  assert.match(
+    source,
+    /layout\.randomizeInputKeys\s*!=\s*true\s*&&\s*layout\.randomizeInputKeys\s*!=\s*false/,
+  );
 });
