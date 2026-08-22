@@ -395,7 +395,12 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (visibility != View.VISIBLE) zeroizeSessionForLifecycleLoss()
+        if (visibility == View.VISIBLE) {
+            requireSecureWindow()
+            if (sessionHandle == 0L) onSessionNeedsReconfiguration?.invoke()
+        } else {
+            zeroizeSessionForLifecycleLoss()
+        }
     }
 
     private fun zeroizeSessionForLifecycleLoss() {

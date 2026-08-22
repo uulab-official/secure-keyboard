@@ -334,6 +334,13 @@ export function runSecurityAudit() {
       /if fingerprint == configuredFingerprint && hasActiveSession \{/,
       "React Native iOS must recreate a session after native lifecycle loss",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /onSessionNeedsReconfiguration = \{ \[weak self\] in self\?\.configureIfReady\(\) \}/,
+      "React Native iOS must receive a native lifecycle reconfiguration callback",
+    );
   }
   for (const file of [
     "native/ios/SecureKeypadView.swift",
@@ -346,6 +353,27 @@ export function runSecurityAudit() {
       contents,
       /internal var hasActiveSession: Bool \{ session != nil \}/,
       "React Native iOS native views must expose only bounded session-presence state to their manager",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /internal var onSessionNeedsReconfiguration: \(\(\) -> Void\)\? = nil/,
+      "iOS native views must expose only a non-secret lifecycle reconfiguration callback",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /didBecomeActiveNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/,
+      "iOS native views must request reconfiguration after application lifecycle restoration",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /capturedDidChangeNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/,
+      "iOS native views must request reconfiguration after screen-capture protection clears",
     );
   }
 
@@ -451,8 +479,27 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /require\(key in allowedKeys\)/, "RN Android must reject unknown keys before reading bridge values");
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_NODES/, "RN Android public bridge conversion must bound aggregate nodes");
     requireText(findings, file, contents, /MAX_PUBLIC_BRIDGE_STRING_LENGTH/, "RN Android public bridge conversion must bound string values");
-    requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}setConfigurationValue\(currentView, "layout"/, "RN Android must restore a lost native session from retained public configuration");
+    requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}configureStoredConfiguration\(currentView, replayHeadlessKeyPress = false\)/, "RN Android must restore a lost native session from retained public configuration");
     requireText(findings, file, contents, /view\.onSessionNeedsReconfiguration = null/, "RN Android must clear the lifecycle callback during teardown");
+    requireText(findings, file, contents, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/, "RN Android must not replay a stored headless command during lifecycle restoration");
+  }
+  for (const file of [
+    "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /activeConfiguration/, "Flutter iOS must retain only public configuration for lifecycle restoration");
+    requireText(findings, file, contents, /onSessionNeedsReconfiguration = \{[\s\S]{0,220}replayHeadlessKeyPress: false/, "Flutter iOS must restore a lost native session without replaying a headless command");
+  }
+  for (const file of [
+    "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ]) {
+    const contents = source(file, findings);
+    requireText(findings, file, contents, /activeConfiguration/, "Flutter Android must retain only public configuration for lifecycle restoration");
+    requireText(findings, file, contents, /keypad\.onSessionNeedsReconfiguration = \{[\s\S]{0,220}replayHeadlessKeyPress = false/, "Flutter Android must restore a lost native session without replaying a headless command");
+    requireText(findings, file, contents, /keypad\.onSessionNeedsReconfiguration = null/, "Flutter Android must clear the lifecycle callback during teardown");
+    requireText(findings, file, contents, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}configuration\.headlessKeyPress\?\.let/, "Flutter Android must not replay a stored headless command during lifecycle restoration");
   }
   for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
@@ -507,6 +554,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
+    requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/, "Android native keypad must request reconfiguration after visibility restoration");
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
     requireText(findings, file, contents, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");

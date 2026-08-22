@@ -45,6 +45,7 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
     private let controlChannel: FlutterMethodChannel
     private var eventSink: FlutterEventSink?
     private var pendingEvents: [[String: Any]] = []
+    private var activeConfiguration: SecureKeypadBridgeConfiguration?
 
     init(frame: CGRect, viewId: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
         keypad = SecureKeypadView(frame: frame)
@@ -68,6 +69,10 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             default:
                 result(FlutterMethodNotImplemented)
             }
+        }
+        keypad.onSessionNeedsReconfiguration = { [weak self] in
+            guard let self, let configuration = self.activeConfiguration else { return }
+            self.applyConfiguration(configuration, replayHeadlessKeyPress: false)
         }
 
         keypad.onMaskedStateChanged = { [weak self] length, displayState in
@@ -108,39 +113,8 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
             emit(["type": "result", "code": "invalid"])
             return
         }
-        do {
-            keypad.setRendererMode(
-                mode: config.mode,
-                acknowledgeLowerAssurance: config.acknowledgeLowerAssurance
-            )
-            if config.inputPolicy == "hangul" {
-                try keypad.configureHangul(
-                    layout: config.layout,
-                    theme: config.theme,
-                    maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
-                )
-            } else if config.inputPolicy == "ascii" {
-                try keypad.configureAscii(
-                    layout: config.layout,
-                    theme: config.theme,
-                    maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
-                )
-            } else {
-                try keypad.configureNumeric(
-                    layout: config.layout,
-                    theme: config.theme,
-                    maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
-                )
-            }
-            if let command = config.headlessKeyPress {
-                keypad.requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
-            }
-        } catch {
-            emit(["type": "result", "code": "error"])
-        }
+        activeConfiguration = config
+        applyConfiguration(config, replayHeadlessKeyPress: true)
     }
 
     func view() -> UIView {
@@ -200,6 +174,45 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
         }
         keypad.requestHeadlessKeyPress(requestId: Int64(tokenValue), keyId: keyId)
         result(nil)
+    }
+
+    private func applyConfiguration(
+        _ config: SecureKeypadBridgeConfiguration,
+        replayHeadlessKeyPress: Bool
+    ) {
+        do {
+            keypad.setRendererMode(
+                mode: config.mode,
+                acknowledgeLowerAssurance: config.acknowledgeLowerAssurance
+            )
+            if config.inputPolicy == "hangul" {
+                try keypad.configureHangul(
+                    layout: config.layout,
+                    theme: config.theme,
+                    maxTokens: config.maxTokens,
+                    timeoutMs: config.timeoutMs
+                )
+            } else if config.inputPolicy == "ascii" {
+                try keypad.configureAscii(
+                    layout: config.layout,
+                    theme: config.theme,
+                    maxTokens: config.maxTokens,
+                    timeoutMs: config.timeoutMs
+                )
+            } else {
+                try keypad.configureNumeric(
+                    layout: config.layout,
+                    theme: config.theme,
+                    maxTokens: config.maxTokens,
+                    timeoutMs: config.timeoutMs
+                )
+            }
+            if replayHeadlessKeyPress, let command = config.headlessKeyPress {
+                keypad.requestHeadlessKeyPress(requestId: command.token, keyId: command.keyId)
+            }
+        } catch {
+            emit(["type": "result", "code": "error"])
+        }
     }
 
     deinit {

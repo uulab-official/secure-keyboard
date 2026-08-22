@@ -214,6 +214,7 @@ public enum SecureKeypadViewError: Error {
 public class SecureKeypadView: UIView {
     private var session: OpaquePointer?
     internal var hasActiveSession: Bool { session != nil }
+    internal var onSessionNeedsReconfiguration: (() -> Void)? = nil
     private let displayLabel = UILabel()
     private let keypadStack = UIStackView()
     private let rootContainer = UIStackView()
@@ -240,6 +241,7 @@ public class SecureKeypadView: UIView {
         onSubmit = nil
         onError = nil
         onMaskedStateChanged = nil
+        onSessionNeedsReconfiguration = nil
     }
 
     public override init(frame: CGRect) {
@@ -267,6 +269,7 @@ public class SecureKeypadView: UIView {
             releaseSession()
         }
         refreshProtectionState()
+        requestSessionReconfigurationIfNeeded()
     }
 
     /// Starts a numeric Secure Native session and renders the supplied layout.
@@ -601,11 +604,18 @@ public class SecureKeypadView: UIView {
         })
         notificationTokens.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.refreshProtectionState()
+            self?.requestSessionReconfigurationIfNeeded()
         })
         notificationTokens.append(center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             self?.refreshProtectionState()
+            self?.requestSessionReconfigurationIfNeeded()
         })
         refreshProtectionState()
+    }
+
+    private func requestSessionReconfigurationIfNeeded() {
+        guard session == nil, !protectedPresentation else { return }
+        onSessionNeedsReconfiguration?()
     }
 
     private func handleWillResignActive() {

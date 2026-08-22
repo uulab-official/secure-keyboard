@@ -77,6 +77,7 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Add deterministic iOS/Android security-facing presentation snapshots for masked and protected states.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
+- [x] Restore lifecycle-lost sessions for RN and Flutter adapters from retained public configuration across iOS activation/window transitions and Android focus/visibility transitions without replaying Headless Host commands.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
 - [ ] Complete device-level accessibility review and physical UI snapshot tests.
 
@@ -100,7 +101,7 @@ Status: publishable contract, native source packaging, parity gate, Expo Develop
 - [x] Bound the Android RN public configuration conversion with allowlisted keys and aggregate/depth limits before native parsing.
 - [x] Release stale React Native native sessions when required layout/theme configuration disappears, with canonical-source and package-copy audit parity.
 - [x] Recreate React Native iOS sessions after lifecycle/native-state loss even when the public configuration fingerprint is unchanged.
-- [x] Recreate React Native Android sessions after window-focus zeroization without carrying input state across the lifecycle callback.
+- [x] Recreate React Native Android sessions after window-focus/visibility zeroization without carrying input state or replaying a Headless Host command across the lifecycle callback.
 - [x] Provide Expo development-build support; document that Expo Go cannot host the custom native security layer.
 - [x] Add an opt-in lower-assurance Headless Host Mode with explicit acknowledgement, monotonic public key-ID commands, and prominent documentation.
 
@@ -126,6 +127,7 @@ Status: publishable contract, native PlatformView package, parity gate, reproduc
 - [x] Publish the canonical Dart library entrypoint and exclude generated build state from pub.dev archives.
 - [x] Add supplemental Android x86_64 emulator launch evidence for the generated React Native and Flutter hosts.
 - [x] Compile Flutter registration in generated supported host apps and verify simulator/emulator behavior; physical-device verification remains a separate release gate.
+- [x] Recreate Flutter iOS/Android sessions after native lifecycle loss using retained public configuration without replaying Headless Host commands.
 - [x] Provide examples for numeric PIN, printable-ASCII password, Hangul password, and branded themes.
 
 Exit criteria: Flutter consumers have parity with the RN secure/native contract.

@@ -161,6 +161,10 @@ test("React Native Android recreates a session after window lifecycle loss", () 
       source,
       /if \(hasWindowFocus\) \{[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,240}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/,
     );
+    assert.match(
+      source,
+      /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/,
+    );
   }
 
   for (const relativePath of [
@@ -168,8 +172,58 @@ test("React Native Android recreates a session after window lifecycle loss", () 
     "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
   ]) {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
-    assert.match(source, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}setConfigurationValue\(currentView, "layout"/);
+    assert.match(source, /view\.onSessionNeedsReconfiguration = \{[\s\S]{0,240}configureStoredConfiguration\(currentView, replayHeadlessKeyPress = false\)/);
     assert.match(source, /view\.onSessionNeedsReconfiguration = null/);
+  }
+});
+
+test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /internal var onSessionNeedsReconfiguration: \(\(\) -> Void\)\? = nil/);
+    assert.match(source, /didBecomeActiveNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/);
+    assert.match(source, /capturedDidChangeNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/);
+    assert.match(source, /onSessionNeedsReconfiguration = nil/);
+  }
+
+  for (const relativePath of [
+    "../native/ios/react-native/SecureKeypadViewManager.swift",
+    "../packages/react-native/ios/SecureKeypadViewManager.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /onSessionNeedsReconfiguration = \{ \[weak self\] in self\?\.configureIfReady\(\) \}/);
+  }
+
+  for (const relativePath of [
+    "../native/ios/flutter/SecureKeypadFlutterPlugin.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /activeConfiguration/);
+    assert.match(source, /onSessionNeedsReconfiguration = \{ \[weak self\] in[\s\S]{0,220}applyConfiguration\([\s\S]{0,180}replayHeadlessKeyPress: false/);
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /activeConfiguration/);
+    assert.match(source, /keypad\.onSessionNeedsReconfiguration = \{[\s\S]{0,220}replayHeadlessKeyPress = false/);
+    assert.match(source, /keypad\.onSessionNeedsReconfiguration = null/);
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /configureStoredConfiguration\(currentView, replayHeadlessKeyPress = false\)/);
+    assert.match(source, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
   }
 });
 

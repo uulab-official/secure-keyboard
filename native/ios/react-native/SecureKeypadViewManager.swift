@@ -28,6 +28,7 @@ final class SecureKeypadReactView: SecureKeypadView {
     }
 
     private func installBridgeCallbacks() {
+        onSessionNeedsReconfiguration = { [weak self] in self?.configureIfReady() }
         onMaskedStateChanged = { [weak self] length, displayState in
             self?.onMaskedStateChange?([
                 "length": length,
@@ -79,7 +80,7 @@ final class SecureKeypadReactView: SecureKeypadView {
             "maxTokens": maxTokens,
             "timeoutMs": timeoutMs,
         ]
-        if let headlessKeyPress { config["headlessKeyPress"] = headlessKeyPress }
+        if forceHeadlessCommand, let headlessKeyPress { config["headlessKeyPress"] = headlessKeyPress }
         let configDictionary = config as NSDictionary
         let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
         if fingerprint == configuredFingerprint && hasActiveSession {

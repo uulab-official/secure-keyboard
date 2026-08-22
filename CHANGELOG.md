@@ -19,6 +19,10 @@ exact release-candidate commit by the release evidence manifest.
 - Security: React Native Android now requests fail-closed session recreation
   from retained public configuration after window-focus zeroization, using a
   callback that carries no input state.
+- Security: all RN and Flutter native adapters now restore lifecycle-lost
+  sessions from retained public configuration on iOS application/window and
+  Android focus/visibility restoration; one-time Headless Host commands are
+  never replayed during that recovery.
 
 ### Server adapters
 

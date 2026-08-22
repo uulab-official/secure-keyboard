@@ -33,10 +33,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             val weakView = WeakReference(view)
             view.onSessionNeedsReconfiguration = {
                 val currentView = weakView.get()
-                val layout = currentView?.let { pendingConfigurations[it]?.get("layout") }
-                if (currentView != null && layout != null) {
-                    setConfigurationValue(currentView, "layout", layout)
-                }
+                if (currentView != null) configureStoredConfiguration(currentView, replayHeadlessKeyPress = false)
             }
             view.onMaskedStateChanged = { length, displayState ->
                 emitState(view, length, displayState)
@@ -102,7 +99,9 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     @ReactProp(name = "headlessKeyPress")
     public fun setHeadlessKeyPress(view: SecureKeypadView, value: ReadableMap?) {
-        setConfigurationValue(view, "headlessKeyPress") { value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS) }
+        setConfigurationValue(view, "headlessKeyPress", replayHeadlessKeyPress = true) {
+            value?.toPublicMap(HEADLESS_KEY_PRESS_KEYS)
+        }
     }
 
     override fun onDropViewInstance(view: SecureKeypadView) {
@@ -123,7 +122,12 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         setConfigurationValue(view, key) { value }
     }
 
-    private fun setConfigurationValue(view: SecureKeypadView, key: String, valueProvider: () -> Any?) {
+    private fun setConfigurationValue(
+        view: SecureKeypadView,
+        key: String,
+        replayHeadlessKeyPress: Boolean = false,
+        valueProvider: () -> Any?,
+    ) {
         val value = try {
             valueProvider()
         } catch (_: IllegalArgumentException) {
@@ -143,6 +147,14 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             }
             return
         }
+        configureStoredConfiguration(view, replayHeadlessKeyPress)
+    }
+
+    private fun configureStoredConfiguration(view: SecureKeypadView, replayHeadlessKeyPress: Boolean) {
+        val configuration = pendingConfigurations[view] ?: return
+        val layout = configuration["layout"] as? Map<*, *>
+        val theme = configuration["theme"] as? Map<*, *>
+        if (layout == null || theme == null) return
         try {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
             view.setRendererMode(parsed.mode, parsed.acknowledgeLowerAssurance)
@@ -154,7 +166,9 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
                 view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             }
             configuredViews[view] = true
-            parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
+            if (replayHeadlessKeyPress) {
+                parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
+            }
         } catch (_: IllegalArgumentException) {
             pendingConfigurations.remove(view)
             configuredViews.remove(view)

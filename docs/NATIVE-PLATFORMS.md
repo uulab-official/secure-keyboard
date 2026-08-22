@@ -21,6 +21,13 @@ color and metric maps use exact key sets and validate every color value, so
 missing or malformed fields fail closed instead of receiving platform-specific
 defaults.
 
+When iOS releases the session during an inactive, captured, or detached-window
+transition, the native view requests its adapter to reapply retained public
+configuration after protection clears. The callback carries no input state.
+React Native and Flutter adapters retain only the validated public
+configuration and deliberately do not replay a stored Headless Host command
+during lifecycle recovery; a fresh monotonic host command is required.
+
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
 versioned public layout/theme dictionaries and exports masked state/result

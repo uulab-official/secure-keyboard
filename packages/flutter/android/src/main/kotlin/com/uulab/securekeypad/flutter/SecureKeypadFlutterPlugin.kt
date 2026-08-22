@@ -51,6 +51,7 @@ private class SecureKeypadFlutterPlatformView(
     private val controlChannel = MethodChannel(messenger, "secure_keypad/control/$viewId")
     private var eventSink: EventChannel.EventSink? = null
     private val pendingEvents = ArrayDeque<Map<String, Any?>>()
+    private var activeConfiguration: com.uulab.securekeypad.SecureKeypadBridgeConfiguration? = null
 
     init {
         eventChannel.setStreamHandler(this)
@@ -63,6 +64,9 @@ private class SecureKeypadFlutterPlatformView(
                 "pressKey" -> requestHeadlessKeyPress(call.arguments, result)
                 else -> result.notImplemented()
             }
+        }
+        keypad.onSessionNeedsReconfiguration = {
+            activeConfiguration?.let { applyConfiguration(it, replayHeadlessKeyPress = false) }
         }
         keypad.onMaskedStateChanged = { length, displayState ->
             emit(
@@ -85,36 +89,15 @@ private class SecureKeypadFlutterPlatformView(
                 emit(mapOf("type" to "result", "code" to "error"))
             }
         }
-        try {
-            val configuration = SecureKeypadBridgeConfigParser.parse(args as? Map<*, *> ?: invalid())
-            keypad.setRendererMode(configuration.mode, configuration.acknowledgeLowerAssurance)
-            if (configuration.inputPolicy == "hangul") {
-                keypad.configureHangul(
-                    configuration.layout,
-                    configuration.theme,
-                    configuration.maxTokens,
-                    configuration.timeoutMs,
-                )
-            } else if (configuration.inputPolicy == "ascii") {
-                keypad.configureAscii(
-                    configuration.layout,
-                    configuration.theme,
-                    configuration.maxTokens,
-                    configuration.timeoutMs,
-                )
-            } else {
-                keypad.configureNumeric(
-                    configuration.layout,
-                    configuration.theme,
-                    configuration.maxTokens,
-                    configuration.timeoutMs,
-                )
-            }
-            configuration.headlessKeyPress?.let {
-                keypad.requestHeadlessKeyPress(it.token, it.keyId)
-            }
+        val configuration = try {
+            SecureKeypadBridgeConfigParser.parse(args as? Map<*, *> ?: invalid())
         } catch (_: IllegalArgumentException) {
             emit(mapOf("type" to "result", "code" to "invalid"))
+            null
+        }
+        if (configuration != null) {
+            activeConfiguration = configuration
+            applyConfiguration(configuration, replayHeadlessKeyPress = true)
         }
     }
 
@@ -123,6 +106,7 @@ private class SecureKeypadFlutterPlatformView(
     override fun dispose() {
         eventChannel.setStreamHandler(null)
         controlChannel.setMethodCallHandler(null)
+        keypad.onSessionNeedsReconfiguration = null
         keypad.clearBridgeCallbacks()
         keypad.releaseSession()
         eventSink = null
@@ -184,6 +168,42 @@ private class SecureKeypadFlutterPlatformView(
         }
         keypad.requestHeadlessKeyPress(tokenValue.toLong(), keyId)
         result.success(null)
+    }
+
+    private fun applyConfiguration(
+        configuration: com.uulab.securekeypad.SecureKeypadBridgeConfiguration,
+        replayHeadlessKeyPress: Boolean,
+    ) {
+        try {
+            keypad.setRendererMode(configuration.mode, configuration.acknowledgeLowerAssurance)
+            if (configuration.inputPolicy == "hangul") {
+                keypad.configureHangul(
+                    configuration.layout,
+                    configuration.theme,
+                    configuration.maxTokens,
+                    configuration.timeoutMs,
+                )
+            } else if (configuration.inputPolicy == "ascii") {
+                keypad.configureAscii(
+                    configuration.layout,
+                    configuration.theme,
+                    configuration.maxTokens,
+                    configuration.timeoutMs,
+                )
+            } else {
+                keypad.configureNumeric(
+                    configuration.layout,
+                    configuration.theme,
+                    configuration.maxTokens,
+                    configuration.timeoutMs,
+                )
+            }
+            if (replayHeadlessKeyPress) {
+                configuration.headlessKeyPress?.let { keypad.requestHeadlessKeyPress(it.token, it.keyId) }
+            }
+        } catch (_: IllegalArgumentException) {
+            emit(mapOf("type" to "result", "code" to "error"))
+        }
     }
 
     private companion object {
