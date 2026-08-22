@@ -142,17 +142,20 @@ function genericResponse(
   return new Response(responseBody(errorBody(code)), { status, headers: responseHeaders() });
 }
 
-function isReady(context: NodeDeploymentContext): boolean {
+function isReady(context: NodeDeploymentContext): number | undefined {
   try {
-    return (
+    if (
       (context.transport === "direct-tls" || context.transport === "trusted-proxy-tls") &&
       Number.isSafeInteger(context.upstreamBodyLimitBytes) &&
       context.upstreamBodyLimitBytes > 0 &&
       context.upstreamBodyLimitBytes <= MAX_HTTP_BODY_BYTES &&
       context.connectionLimitsEnforced
-    );
+    ) {
+      return context.upstreamBodyLimitBytes;
+    }
+    return undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -263,13 +266,26 @@ function responseFromDelegate(value: NodeHttpResponse): Response {
  */
 export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (request: Request) => Promise<Response> {
   return async (request) => {
-    if (!isReady(options.deploymentContext)) return genericResponse(400, "invalid_request");
+    const upstreamBodyLimitBytes = isReady(options.deploymentContext);
+    if (upstreamBodyLimitBytes === undefined) return genericResponse(400, "invalid_request");
 
-    const path = routePath(request);
-    if (path === undefined) return genericResponse(404, "invalid_request");
-    if (request.method !== "POST") return genericResponse(405, "invalid_request");
-    if (!isJsonContentType(request.headers.get("content-type"))) {
-      return genericResponse(415, "invalid_request");
+    let path: (typeof OPAQUE_ROUTE_PATHS)[number] | undefined;
+    let contentType: string | null;
+    try {
+      path = routePath(request);
+      if (path === undefined) return genericResponse(404, "invalid_request");
+      if (request.method !== "POST") return genericResponse(405, "invalid_request");
+      contentType = request.headers.get("content-type");
+      if (!isJsonContentType(contentType)) {
+        return genericResponse(415, "invalid_request");
+      }
+      const declaredLength = declaredBodyLength(request);
+      if (declaredLength === "invalid") return genericResponse(400, "invalid_request");
+      if (declaredLength !== undefined && declaredLength > upstreamBodyLimitBytes) {
+        return genericResponse(413, "invalid_request");
+      }
+    } catch {
+      return genericResponse(503, "temporarily_unavailable");
     }
 
     let csrfPassed = false;
@@ -292,15 +308,9 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     if (rateLimitDecision === "rate-limited") return genericResponse(429, "rate_limited");
     if (rateLimitDecision !== "allowed") return genericResponse(503, "temporarily_unavailable");
 
-    const declaredLength = declaredBodyLength(request);
-    if (declaredLength === "invalid") return genericResponse(400, "invalid_request");
-    if (declaredLength !== undefined && declaredLength > options.deploymentContext.upstreamBodyLimitBytes) {
-      return genericResponse(413, "invalid_request");
-    }
-
     let body: Uint8Array;
     try {
-      body = await readBoundedBody(request, options.deploymentContext.upstreamBodyLimitBytes);
+      body = await readBoundedBody(request, upstreamBodyLimitBytes);
     } catch (error) {
       if (isBodyTooLargeError(error)) return genericResponse(413, "invalid_request");
       return genericResponse(503, "temporarily_unavailable");
@@ -311,7 +321,7 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
         {
           method: "POST",
           path,
-          contentType: request.headers.get("content-type") ?? JSON_CONTENT_TYPE,
+          contentType: contentType ?? JSON_CONTENT_TYPE,
           csrfValidated: true,
           body,
         },

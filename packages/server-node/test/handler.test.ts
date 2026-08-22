@@ -127,6 +127,65 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("normalizes hostile request metadata accessors without exposing their traps", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const incoming = new Proxy(
+      {
+        url: "https://auth.example.test/v1/opaque/login/start",
+        body: null,
+      },
+      {
+        get(target, property, receiver) {
+          if (property === "method") throw hostileError;
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    ) as unknown as Request;
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(503);
+    await expect(response.text()).resolves.not.toContain(secret);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("uses one validated body-limit snapshot for the whole request", async () => {
+    let bodyLimitReads = 0;
+    const changingContext = Object.defineProperty({ ...secureContext }, "upstreamBodyLimitBytes", {
+      configurable: false,
+      enumerable: true,
+      get: () => (bodyLimitReads++ < 4 ? MAX_HTTP_BODY_BYTES : 1),
+    }) as NodeDeploymentContext;
+    const delegate = vi.fn(() => ({ status: 200, body: new TextEncoder().encode('{"ok":true}') }));
+    const handler = createOpaqueHandler({
+      deploymentContext: changingContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
+
+    const response = await handler(request("{}"));
+
+    expect(response.status).toBe(200);
+    expect(delegate).toHaveBeenCalledOnce();
+    expect(bodyLimitReads).toBe(4);
+  });
+
   it("fails closed before reading a body when transport is not ready", async () => {
     const delegate = vi.fn();
     const handler = createOpaqueHandler({
