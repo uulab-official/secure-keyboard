@@ -6,7 +6,7 @@ package must not silently update the authentication suite.
 
 | Surface | Current release contract | Compatibility rule |
 |---|---|---|
-| Rust toolchain | `rust-toolchain.toml` (`1.97.1`) | Build the Rust core/FFI and native host integration from the same commit. The WebAuthn example remains compatible with workspace MSRV `1.85`. |
+| Rust toolchain | `rust-toolchain.toml` (`1.97.1`); workspace MSRV `1.88` | Build the Rust core/FFI and native host integration from the same commit. The locked dependency graph and CI MSRV job are required to remain compatible with Rust `1.88`. |
 | Native session defaults | 8 input tokens; 60-second monotonic inactivity timeout | RN and Flutter use the same bounded defaults when the host omits overrides. A host may choose a smaller or larger value only within the native `1..=4096` token and `1ms..=24h` timeout contract. |
 | C ABI | `SECURE_KEYPAD_ABI_VERSION = 2`; `secure_keypad_abi_version()` | A native host must compare the linked library's `secure_keypad_abi_version()` with the header constant and reject an ABI mismatch before creating a session. The shipped iOS view and Android JNI bridge perform this check and fail closed. Version 2 adds native-only OPAQUE registration handoff; version 1 hosts cannot claim registration memory-safety coverage. |
 | OPAQUE | `opaque-ke = 4.0.1`; suite `opaque-ke-4.0.1-ristretto255-tripledh-sha512-argon2` | Pin the protocol version, suite, and server key ID. Rotation may allow only the explicitly configured active/previous key window. |

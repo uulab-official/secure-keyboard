@@ -33,6 +33,12 @@ exact release-candidate commit by the release evidence manifest.
   the snapshots reject invalid display codes and contain no secret-bearing
   input field.
 
+### Compatibility
+
+- Raised the declared workspace MSRV from Rust 1.85 to 1.88 to match the
+  locked Actix, URL/ICU, and time dependency graph; CI and release-candidate
+  source gates now compile the full all-features workspace with Rust 1.88.
+
 ### Security
 
 - WebAuthn Redis ceremony consumption now rejects and removes keys with a

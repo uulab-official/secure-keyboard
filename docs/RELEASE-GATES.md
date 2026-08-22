@@ -96,6 +96,7 @@ only: cryptographic processing remains in the pinned Rust/native delegate.
 ```sh
 cargo fmt --all -- --check
 cargo test --locked --workspace --all-features
+cargo +1.88.0 test --locked --workspace --all-features
 cargo test --locked -p secure-webauthn-example
 cargo test --locked -p secure-webauthn-example --test storage_contract
 cargo test --locked -p secure-auth-axum --all-features

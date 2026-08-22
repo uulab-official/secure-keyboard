@@ -187,6 +187,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
         with:
           components: rustfmt, clippy
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.88.0 MSRV
+        with:
+          toolchain: 1.88.0
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 11.19.0
@@ -252,6 +255,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo test --locked --workspace --all-features
+          cargo +1.88.0 test --locked --workspace --all-features
           cargo test --locked -p secure-auth-actix --all-features
           SECURE_KEYPAD_REDIS_URL=redis://127.0.0.1:6379 \
           SECURE_KEYPAD_POSTGRES_URL='host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres' \
@@ -278,6 +282,7 @@ jobs:
           pnpm test:release-evidence
           pnpm test:release-bundle
           pnpm test:release-archive
+          pnpm test:msrv-contract
           pnpm test:release-candidate-metadata
           pnpm test:stage-release-evidence
           pnpm test:verify-github-run-provenance
