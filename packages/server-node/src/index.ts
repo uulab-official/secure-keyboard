@@ -1,4 +1,4 @@
-/** Version of the Node/TypeScript server transport contract. */
+/** Must match `secure_auth_http::HTTP_CONTRACT_VERSION` in the Rust route. */
 export const NODE_SERVER_CONTRACT_VERSION = 1 as const;
 
 /** Maximum raw JSON body accepted before the host OPAQUE delegate runs. */

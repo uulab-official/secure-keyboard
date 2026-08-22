@@ -22,6 +22,12 @@ use zeroize::Zeroize;
 
 /// Exact API prefix used by the reference routes.
 pub const API_PREFIX: &str = "/v1/opaque";
+/// Version of the framework-neutral HTTP/JSON route contract.
+///
+/// The Node/TypeScript transport bridge is checked against this value by the
+/// repository's release parity gate. It is independent from the OPAQUE
+/// protocol version carried inside [`AuthEnvelope`].
+pub const HTTP_CONTRACT_VERSION: u16 = 1;
 /// Maximum request body accepted by the route boundary.
 pub const MAX_HTTP_BODY_BYTES: usize = MAX_JSON_BODY_BYTES;
 /// JSON content type emitted by every response.

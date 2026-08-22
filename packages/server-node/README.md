@@ -5,6 +5,12 @@ Secure Keypad OPAQUE HTTP contract. It accepts a Web Fetch `Request`, validates
 TLS/deployment facts, CSRF/origin policy, route/method/media type, and the
 128 KiB body bound before calling a host-supplied delegate.
 
+`NODE_SERVER_CONTRACT_VERSION = 1` must match
+`secure_auth_http::HTTP_CONTRACT_VERSION`. Run
+`pnpm test:http-contract-version-parity` and
+`pnpm check:http-contract-version-parity` when changing either transport
+implementation; the same checks are mandatory release gates.
+
 The delegate is the cryptographic boundary. This package does not implement
 OPAQUE in JavaScript and must be connected to the pinned Rust reference
 service/native bridge. It receives only the bounded protocol body and must

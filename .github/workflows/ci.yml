@@ -107,6 +107,8 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm test:native-parity
       - run: pnpm check:native-parity
+      - run: pnpm test:http-contract-version-parity
+      - run: pnpm check:http-contract-version-parity
       - run: pnpm test:ios-host-build-contract
       - run: pnpm test:flutter-package-publish-contract
       - run: pnpm test:release-version-parity

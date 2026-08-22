@@ -101,6 +101,8 @@ pnpm install --frozen-lockfile
 pnpm audit --audit-level high
 pnpm test:native-parity
 pnpm check:native-parity
+pnpm test:http-contract-version-parity
+pnpm check:http-contract-version-parity
 pnpm test:release-version-parity
 pnpm check:release-version-parity
 pnpm test:release-evidence

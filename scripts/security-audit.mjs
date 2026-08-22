@@ -203,8 +203,12 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth/src/lib.rs", authDebug, /field\("payload_len", &self\.payload\.len\(\)\)/, "OPAQUE transport Debug may expose payload length only");
   forbidText(findings, "crates/secure-auth/src/lib.rs", authDebug, /#\[derive\(Debug,\s*Serialize\)\][\s\S]{0,120}pub struct AuthEnvelope/, "OPAQUE transport must not derive Debug over its payload");
   const httpContract = source("crates/secure-auth-http/src/lib.rs", findings);
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub const HTTP_CONTRACT_VERSION:\s*u16\s*=\s*1/, "framework-neutral HTTP routes must declare the pinned contract version");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /csrf_validated:\s*bool/, "framework-neutral OPAQUE requests must carry an explicit CSRF verdict");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", httpContract, /pub fn validate_content_length/, "HTTP adapters must share the strict Content-Length validator");
+  const httpContractParity = source("scripts/check-http-contract-version-parity.mjs", findings);
+  requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /HTTP_CONTRACT_VERSION_SOURCES/, "HTTP contract parity tooling must enumerate every version declaration");
+  requireText(findings, "scripts/check-http-contract-version-parity.mjs", httpContractParity, /findHttpContractVersionMismatches/, "HTTP contract parity tooling must fail on missing or mismatched declarations");
   const axumAdapter = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /csrf:\s*Arc</, "Axum adapters must retain a host CSRF callback");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axumAdapter, /invalid_request_response\(403\)/, "Axum adapters must reject failed CSRF validation before body buffering");
@@ -987,6 +991,8 @@ export function runSecurityAudit() {
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /GETDEL/, "distributed backend guide must require atomic delete-and-return");
   requireText(findings, "docs/DISTRIBUTED-BACKENDS.md", distributedGuide, /RateLimiter::check/, "distributed backend guide must require atomic rate-limit checks");
   const ciWorkflow = source(".github/workflows/ci.yml", findings);
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:http-contract-version-parity/, "CI must test HTTP contract version parity");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm check:http-contract-version-parity/, "CI must check HTTP contract version parity");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /dtolnay\/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5/, "CI Rust jobs must use the repository-pinned toolchain revision");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/react-native\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the React Native Podspec");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cp -R "\$RUNNER_TEMP\/secure_ffi\.xcframework" packages\/flutter\/ios\/secure_ffi\.xcframework/, "iOS native CI must stage the XCFramework before parsing the Flutter Podspec");
@@ -999,6 +1005,8 @@ export function runSecurityAudit() {
     });
   }
   const releaseWorkflow = source(".github/workflows/release-candidate.yml", findings);
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm test:http-contract-version-parity/, "release candidates must test HTTP contract version parity");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /pnpm check:http-contract-version-parity/, "release candidates must check HTTP contract version parity");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /ref:\s*\n\s*description:[^\n]*40-character commit SHA[\s\S]{0,180}required:\s*true/, "release workflow must require an immutable commit input");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /RELEASE_REF:\s*\$\{\{\s*inputs\.ref\s*\}\}/, "release workflow must validate the requested immutable commit ref");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /\[\[\s*\"\$RELEASE_REF\"\s*=~\s*\^\[0-9a-f\]\{40\}\$\s*\]\]/, "release workflow must reject mutable or malformed release refs");
@@ -1210,6 +1218,8 @@ export function runSecurityAudit() {
   requireText(findings, "native/ios/SecureKeypadView.swift", randomizationIosView, /SystemRandomNumberGenerator/, "iOS input-key randomization must use a platform CSPRNG");
   requireText(findings, "native/ios/SecureKeypadView.swift", randomizationIosView, /presentationRows\(layout\.rows, randomizeInputKeys: layout\.randomizeInputKeys\)/, "iOS renderer must apply the randomization option at render time");
   const rootPackage = source("package.json", findings);
+  requireText(findings, "package.json", rootPackage, /"test:http-contract-version-parity"/, "the workspace must expose the HTTP contract parity test");
+  requireText(findings, "package.json", rootPackage, /"check:http-contract-version-parity"/, "the workspace must expose the HTTP contract parity check");
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");

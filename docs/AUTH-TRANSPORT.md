@@ -14,6 +14,15 @@ serverKeyId
 payload
 ```
 
+The framework-neutral HTTP/JSON transport has its own contract version,
+`HTTP_CONTRACT_VERSION = 1`. This is deliberately separate from the OPAQUE
+`protocolVersion` inside `AuthEnvelope`: changing HTTP routing, request
+validation, or response-shape guarantees must not be confused with changing
+the cryptographic protocol. The Node/TypeScript transport bridge declares the
+same value as `NODE_SERVER_CONTRACT_VERSION`; `pnpm test:http-contract-version-parity`
+and `pnpm check:http-contract-version-parity` fail if either declaration is
+missing or differs.
+
 The typed message kinds are `RegistrationRequest`, `RegistrationResponse`,
 `RegistrationUpload`, `CredentialRequest`, `CredentialResponse`, and
 `CredentialFinalization`. `ServerAuthService` provides registration start and

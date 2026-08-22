@@ -3,6 +3,11 @@
 Framework-neutral HTTP/JSON route contract for the Secure Keypad OPAQUE
 server service.
 
+This route contract is versioned independently from the OPAQUE protocol:
+`HTTP_CONTRACT_VERSION = 1`. The Node/TypeScript bridge must expose the same
+value, and the repository parity test/check run in CI and release-candidate
+gates before the adapters are published.
+
 The adapter accepts only `POST` requests with an `application/json` media type
 and a body no larger than 128 KiB. It provides these routes:
 

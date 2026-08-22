@@ -23,6 +23,11 @@ exact release-candidate commit by the release evidence manifest.
   malformed, overflowing, signed, comma-joined, invalid-byte, and duplicate
   `Content-Length` values now fail closed before request-body buffering, while
   valid declarations above the configured limit retain the 413 response.
+- Added a machine-checked HTTP transport contract version parity gate. The
+  framework-neutral Rust route is canonical at `HTTP_CONTRACT_VERSION = 1`,
+  and the Node/TypeScript bridge must declare the same version in both CI and
+  release-candidate source gates; this is independent from the OPAQUE
+  `protocolVersion` carried inside the authentication envelope.
 
 ### Security
 
