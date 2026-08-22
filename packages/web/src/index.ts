@@ -43,7 +43,19 @@ export class WebAuthnClientError extends Error {
 }
 
 function isAbortError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+  try {
+    return typeof error === "object" && error !== null && (error as { readonly name?: unknown }).name === "AbortError";
+  } catch {
+    return false;
+  }
+}
+
+function isWebAuthnClientError(error: unknown): error is WebAuthnClientError {
+  try {
+    return error instanceof WebAuthnClientError;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeWebAuthnError(
@@ -51,7 +63,7 @@ function normalizeWebAuthnError(
   code: WebAuthnClientErrorCode,
   message: string,
 ): never {
-  if (error instanceof WebAuthnClientError) throw error;
+  if (isWebAuthnClientError(error)) throw error;
   if (isAbortError(error)) {
     throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
   }

@@ -35,6 +35,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: native Headless Host replay floors now survive session release and
   lifecycle reconfiguration for the lifetime of each native view, preventing a
   delayed older command from becoming valid after zeroization.
+- Security: WebAuthn browser failures from hostile exception objects are now
+  normalized through trap-tolerant checks, preventing raw browser error text or
+  proxy-thrown values from escaping the adapter.
 
 ### Server adapters
 

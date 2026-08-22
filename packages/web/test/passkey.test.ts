@@ -266,6 +266,40 @@ describe("WebAuthn support and mode policy", () => {
     });
     await expect(createPasskey(creationOptions, environment(api))).rejects.not.toThrow(secret);
   });
+
+  it("normalizes hostile browser error objects without invoking secret-bearing traps", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        has: () => {
+          throw new Error(secret);
+        },
+        get: () => {
+          throw new Error(secret);
+        },
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const api: WebAuthnCredentialApi = {
+      create: async () => {
+        throw hostileError;
+      },
+      get: async () => {
+        throw hostileError;
+      },
+    };
+
+    await expect(createPasskey(creationOptions, environment(api))).rejects.toMatchObject({
+      code: "credential-api-failure",
+    });
+    await expect(getPasskey({ challenge: "AQID" }, environment(api))).rejects.toMatchObject({
+      code: "credential-api-failure",
+    });
+    await expect(createPasskey(creationOptions, environment(api))).rejects.not.toThrow(secret);
+  });
 });
 
 describe("passkey registration", () => {

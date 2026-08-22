@@ -924,6 +924,8 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /new AbortController\(\)/, "Web passkey UI cancellation must use an abortable browser ceremony");
   requireText(findings, "packages/web/src/index.ts", web, /\| \"aborted\"/, "Web aborted ceremonies must use a stable error code");
   requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)/, "Web passkey UI controller must normalize unexpected errors");
+  requireText(findings, "packages/web/src/index.ts", web, /function isAbortError\(error: unknown\)[\s\S]{0,300}\btry\s*\{[\s\S]{0,300}\}\s*catch\s*\{/, "WebAuthn abort detection must tolerate hostile exception objects");
+  requireText(findings, "packages/web/src/index.ts", web, /function isWebAuthnClientError\(error: unknown\)[\s\S]{0,300}\btry\s*\{[\s\S]{0,300}\}\s*catch\s*\{/, "WebAuthn client-error detection must tolerate hostile exception objects");
   requireText(findings, "packages/web/src/index.ts", web, /MAX_WEBAUTHN_EXTENSION_NODES/, "WebAuthn extension JSON must be bounded");
   requireText(findings, "packages/web/src/index.ts", web, /copyBoundedExtensionValue/, "WebAuthn extension JSON must be defensively copied");
   requireText(findings, "packages/web/src/index.ts", web, /toNativeAuthenticatorSelection/, "WebAuthn authenticator selection must be allowlisted before browser handoff");
