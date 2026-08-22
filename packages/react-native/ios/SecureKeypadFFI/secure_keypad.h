@@ -51,9 +51,11 @@ typedef struct secure_keypad_masked_state {
  * No function in this header returns accumulated secret bytes. The submission
  * handle is native-owned and must be passed to a native authentication layer
  * or released with secure_keypad_submission_free(). Handles are single-owner
- * and must not be used concurrently. Byte buffers and output objects passed
- * to an operation must not overlap its opaque handle object or another output
- * slot; violations return SECURE_KEYPAD_INVALID_ARGUMENT.
+ * and must not be used concurrently. Byte buffers and pointer-sized output
+ * slots passed to an operation must not overlap a live opaque handle object;
+ * output slots must not overlap one another, and finish identifier buffers
+ * must not overlap any live handle or pointer slot. Violations return
+ * SECURE_KEYPAD_INVALID_ARGUMENT.
  */
 
 secure_keypad_error_t secure_keypad_session_new_numeric(

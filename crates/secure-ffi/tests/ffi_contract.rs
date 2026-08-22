@@ -323,6 +323,50 @@ fn ffi_rejects_aliased_login_finish_output_without_losing_state() {
 }
 
 #[test]
+fn ffi_rejects_identifier_buffers_that_overlap_the_response_object() {
+    let mut submission = submitted_numeric_submission();
+    let mut login: *mut SecureKeypadClientLogin = ptr::null_mut();
+    let mut request: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_client_login_start(&mut submission, &mut login, &mut request) },
+        SecureKeypadError::Ok
+    );
+    let original_login = login;
+
+    let payload = b"fixture-opaque-message";
+    let mut response: *mut SecureKeypadAuthMessage = ptr::null_mut();
+    assert_eq!(
+        unsafe { secure_keypad_auth_message_new(payload.as_ptr(), payload.len(), &mut response) },
+        SecureKeypadError::Ok
+    );
+    let overlapping_identifier = response.cast::<u8>();
+    let mut finalization: *mut SecureKeypadAuthMessage = ptr::null_mut();
+
+    assert_eq!(
+        unsafe {
+            secure_keypad_client_login_finish(
+                &mut login,
+                response,
+                overlapping_identifier,
+                1,
+                b"server".as_ptr(),
+                6,
+                &mut finalization,
+            )
+        },
+        SecureKeypadError::InvalidArgument
+    );
+    assert_eq!(login, original_login);
+    assert!(finalization.is_null());
+
+    unsafe {
+        secure_keypad_client_login_free(login);
+        secure_keypad_auth_message_free(request);
+        secure_keypad_auth_message_free(response);
+    }
+}
+
+#[test]
 fn ffi_rejects_aliased_registration_finish_output_without_losing_state() {
     let mut submission = submitted_numeric_submission();
     let mut registration: *mut SecureKeypadClientRegistration = ptr::null_mut();

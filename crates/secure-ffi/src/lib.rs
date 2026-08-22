@@ -30,9 +30,14 @@ const MAX_TIMEOUT_MS: u64 = 86_400_000;
 ///
 /// C callers can otherwise alias an input ownership slot with an output slot,
 /// causing a successful native operation to lose a handle or overwrite an
-/// unrelated result. The ABI requires all slots to be distinct.
+/// unrelated result. The ABI requires all slots to be non-overlapping.
 fn pointer_slots_alias<A, B>(first: *mut A, second: *mut B) -> bool {
-    first.cast::<()>() == second.cast::<()>()
+    memory_ranges_overlap(
+        first.cast::<u8>(),
+        size_of::<*mut A>(),
+        second.cast::<u8>(),
+        size_of::<*mut B>(),
+    )
 }
 
 fn output_slots_alias<A, B, C>(first: *mut A, second: *mut B, third: *mut C) -> bool {
@@ -90,6 +95,51 @@ fn pointer_slot_overlaps_object<T, U>(slot: *const *mut T, object: *const U) -> 
         object.cast::<u8>(),
         size_of::<U>(),
     )
+}
+
+struct AuthFinishArguments<T> {
+    input_slot: *mut *mut T,
+    input_object: *const T,
+    response: *const SecureKeypadAuthMessage,
+    client_identifier: *const u8,
+    client_identifier_len: usize,
+    server_identifier: *const u8,
+    server_identifier_len: usize,
+    output: *mut *mut SecureKeypadAuthMessage,
+}
+
+/// Rejects aliasing among live OPAQUE finish arguments before ownership is
+/// consumed or an output slot is reset.
+fn auth_finish_arguments_alias<T>(arguments: AuthFinishArguments<T>) -> bool {
+    let AuthFinishArguments {
+        input_slot,
+        input_object,
+        response,
+        client_identifier,
+        client_identifier_len,
+        server_identifier,
+        server_identifier_len,
+        output,
+    } = arguments;
+    pointer_slots_alias(input_slot, output)
+        || pointer_slot_overlaps_object(input_slot, input_object)
+        || pointer_slot_overlaps_object(input_slot, response)
+        || pointer_slot_overlaps_object(output, input_object)
+        || pointer_slot_overlaps_object(output, response)
+        || memory_ranges_overlap(
+            input_object.cast::<u8>(),
+            size_of::<T>(),
+            response.cast::<u8>(),
+            size_of::<SecureKeypadAuthMessage>(),
+        )
+        || buffer_overlaps_pointer_slot(client_identifier, client_identifier_len, input_slot)
+        || buffer_overlaps_pointer_slot(client_identifier, client_identifier_len, output)
+        || buffer_overlaps_pointer_slot(server_identifier, server_identifier_len, input_slot)
+        || buffer_overlaps_pointer_slot(server_identifier, server_identifier_len, output)
+        || buffer_overlaps_object(client_identifier, client_identifier_len, input_object)
+        || buffer_overlaps_object(client_identifier, client_identifier_len, response)
+        || buffer_overlaps_object(server_identifier, server_identifier_len, input_object)
+        || buffer_overlaps_object(server_identifier, server_identifier_len, response)
 }
 
 /// ABI version implemented by this linked native library.
@@ -734,7 +784,8 @@ pub unsafe extern "C" fn secure_keypad_auth_message_free(message: *mut SecureKey
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_login` and
-/// `output_request` must be valid, distinct writable pointers. Once the
+/// `output_request` must be valid, distinct writable pointers that do not
+/// overlap the live submission object. Once the
 /// pointer and output arguments pass validation, the submission is consumed on
 /// entry and the caller's pointer is set to null even when the protocol
 /// operation fails.
@@ -752,16 +803,22 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
         if output_slots_alias(submission, output_login, output_request) {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: All output pointers are checked for null and must be writable.
-        unsafe {
-            *output_login = ptr::null_mut();
-            *output_request = ptr::null_mut();
-        }
         // SAFETY: `submission` is checked and must point to a live submission
         // handle owned by the caller.
         let submission_pointer = unsafe { *submission };
         if submission_pointer.is_null() {
             return SecureKeypadError::InvalidArgument;
+        }
+        if pointer_slot_overlaps_object(submission, submission_pointer)
+            || pointer_slot_overlaps_object(output_login, submission_pointer)
+            || pointer_slot_overlaps_object(output_request, submission_pointer)
+        {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: All output pointers are checked for null and must be writable.
+        unsafe {
+            *output_login = ptr::null_mut();
+            *output_request = ptr::null_mut();
         }
         // Mark the caller's handle consumed before any protocol operation.
         unsafe {
@@ -792,7 +849,8 @@ pub unsafe extern "C" fn secure_keypad_client_login_start(
 /// # Safety
 ///
 /// `submission` must point to a live submission pointer and `output_registration`
-/// and `output_request` must be valid, distinct writable pointers. Once the
+/// and `output_request` must be valid, distinct writable pointers that do not
+/// overlap the live submission object. Once the
 /// pointer and output arguments pass validation, the submission is consumed on
 /// entry and the caller's pointer is set to null even when the protocol
 /// operation fails.
@@ -810,16 +868,22 @@ pub unsafe extern "C" fn secure_keypad_client_registration_start(
         if output_slots_alias(submission, output_registration, output_request) {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: All output pointers are checked for null and must be writable.
-        unsafe {
-            *output_registration = ptr::null_mut();
-            *output_request = ptr::null_mut();
-        }
         // SAFETY: `submission` is checked and must point to a live submission
         // handle owned by the caller.
         let submission_pointer = unsafe { *submission };
         if submission_pointer.is_null() {
             return SecureKeypadError::InvalidArgument;
+        }
+        if pointer_slot_overlaps_object(submission, submission_pointer)
+            || pointer_slot_overlaps_object(output_registration, submission_pointer)
+            || pointer_slot_overlaps_object(output_request, submission_pointer)
+        {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: All output pointers are checked for null and must be writable.
+        unsafe {
+            *output_registration = ptr::null_mut();
+            *output_request = ptr::null_mut();
         }
         // Mark the caller's handle consumed before any protocol operation.
         unsafe {
@@ -891,9 +955,10 @@ pub unsafe extern "C" fn secure_keypad_client_registration_free(
 ///
 /// `login` must point to a live login pointer and is consumed on entry;
 /// `response` must be a live message handle; identifier buffers must be
-/// readable for their declared lengths; and `output_finalization` must be a
-/// valid writable pointer distinct from `login`. All pointers must remain
-/// valid for this call and must not be used concurrently.
+/// readable for their declared lengths and must not overlap a live handle or
+/// pointer slot; and `output_finalization` must be a valid writable pointer
+/// distinct from `login` and all live objects. All pointers must remain valid
+/// for this call and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_login_finish(
     login: *mut *mut SecureKeypadClientLogin,
@@ -911,14 +976,26 @@ pub unsafe extern "C" fn secure_keypad_client_login_finish(
         if pointer_slots_alias(login, output_finalization) {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: The output pointer is checked for null and must be writable.
-        unsafe {
-            *output_finalization = ptr::null_mut();
-        }
         // SAFETY: `login` is checked and must point to a live owned handle.
         let login_pointer = unsafe { *login };
         if login_pointer.is_null() {
             return SecureKeypadError::InvalidArgument;
+        }
+        if auth_finish_arguments_alias(AuthFinishArguments {
+            input_slot: login,
+            input_object: login_pointer,
+            response,
+            client_identifier,
+            client_identifier_len,
+            server_identifier,
+            server_identifier_len,
+            output: output_finalization,
+        }) {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The output pointer is checked for null and must be writable.
+        unsafe {
+            *output_finalization = ptr::null_mut();
         }
         unsafe {
             *login = ptr::null_mut();
@@ -968,9 +1045,10 @@ pub unsafe extern "C" fn secure_keypad_client_login_finish(
 ///
 /// `registration` must point to a live registration pointer and is consumed on
 /// entry; `response` must be a live message handle; identifier buffers must be
-/// readable for their declared lengths; and `output_upload` must be a valid
-/// writable pointer distinct from `registration`. All pointers must remain
-/// valid for this call and must not be used concurrently.
+/// readable for their declared lengths and must not overlap a live handle or
+/// pointer slot; and `output_upload` must be a valid writable pointer distinct
+/// from `registration` and all live objects. All pointers must remain valid for
+/// this call and must not be used concurrently.
 #[no_mangle]
 pub unsafe extern "C" fn secure_keypad_client_registration_finish(
     registration: *mut *mut SecureKeypadClientRegistration,
@@ -988,14 +1066,26 @@ pub unsafe extern "C" fn secure_keypad_client_registration_finish(
         if pointer_slots_alias(registration, output_upload) {
             return SecureKeypadError::InvalidArgument;
         }
-        // SAFETY: The output pointer is checked for null and must be writable.
-        unsafe {
-            *output_upload = ptr::null_mut();
-        }
         // SAFETY: `registration` is checked and must point to a live owned handle.
         let registration_pointer = unsafe { *registration };
         if registration_pointer.is_null() {
             return SecureKeypadError::InvalidArgument;
+        }
+        if auth_finish_arguments_alias(AuthFinishArguments {
+            input_slot: registration,
+            input_object: registration_pointer,
+            response,
+            client_identifier,
+            client_identifier_len,
+            server_identifier,
+            server_identifier_len,
+            output: output_upload,
+        }) {
+            return SecureKeypadError::InvalidArgument;
+        }
+        // SAFETY: The output pointer is checked for null and must be writable.
+        unsafe {
+            *output_upload = ptr::null_mut();
         }
         unsafe {
             *registration = ptr::null_mut();
@@ -1032,4 +1122,26 @@ pub unsafe extern "C" fn secure_keypad_client_registration_finish(
         }
         SecureKeypadError::Ok
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{output_slots_alias, pointer_slot_overlaps_object};
+
+    #[test]
+    fn output_slots_reject_partial_pointer_range_overlap() {
+        let first = 0x1000usize as *mut *mut u8;
+        let second = 0x1004usize as *mut *mut u16;
+        let third = 0x2000usize as *mut *mut u32;
+
+        assert!(output_slots_alias(first, second, third));
+    }
+
+    #[test]
+    fn output_slot_rejects_overlap_with_a_live_object_range() {
+        let slot = 0x2000usize as *const *mut u8;
+        let object = 0x2004usize as *const [u8; 16];
+
+        assert!(pointer_slot_overlaps_object(slot, object));
+    }
 }
