@@ -237,6 +237,44 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("normalizes hostile body-reader errors without exposing their traps", async () => {
+    const secret = "fixture-only-secret";
+    const hostileError = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error(secret);
+        },
+      },
+    );
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
+    const incoming = {
+      url: "https://auth.example.test/v1/opaque/login/start",
+      method: "POST",
+      headers: new Headers({ "content-type": "application/json" }),
+      body: {
+        getReader: () => ({
+          read: async () => {
+            throw hostileError;
+          },
+          releaseLock: () => undefined,
+        }),
+      },
+    } as unknown as Request;
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(503);
+    await expect(response.text()).resolves.not.toContain(secret);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
   it("delegates only the bounded raw protocol body and applies fixed security headers", async () => {
     let received: NodeHttpRequest | undefined;
     const handler = createOpaqueHandler({

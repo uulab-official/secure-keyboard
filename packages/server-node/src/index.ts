@@ -92,6 +92,14 @@ const encoder = new TextEncoder();
 
 class BodyTooLargeError extends Error {}
 
+function isBodyTooLargeError(error: unknown): boolean {
+  try {
+    return error instanceof BodyTooLargeError;
+  } catch {
+    return false;
+  }
+}
+
 function errorBody(code: "invalid_request" | "rate_limited" | "temporarily_unavailable"): Uint8Array {
   return encoder.encode(JSON.stringify({ error: code }));
 }
@@ -290,7 +298,7 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     try {
       body = await readBoundedBody(request, options.deploymentContext.upstreamBodyLimitBytes);
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return genericResponse(413, "invalid_request");
+      if (isBodyTooLargeError(error)) return genericResponse(413, "invalid_request");
       return genericResponse(503, "temporarily_unavailable");
     }
 

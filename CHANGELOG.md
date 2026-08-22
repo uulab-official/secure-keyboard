@@ -52,6 +52,9 @@ exact release-candidate commit by the release evidence manifest.
   neutral Rust, Axum, and Actix OPAQUE routes. Rate-limited requests receive a
   generic 429 response; omitted, unavailable, or malformed admission decisions
   cannot reach JSON parsing or the cryptographic delegate.
+- Security: the Node transport now normalizes hostile request body-reader
+  exceptions without allowing proxy-thrown values to escape its generic error
+  boundary.
 - Added the compile-tested `secure-auth-actix` server adapter. It validates
   host CSRF/origin state before buffering, applies Actix's bounded payload
   collector, preserves generic OPAQUE errors/security headers, and leaves TLS,
