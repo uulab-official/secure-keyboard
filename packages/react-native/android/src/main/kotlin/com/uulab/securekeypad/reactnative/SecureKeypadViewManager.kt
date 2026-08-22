@@ -23,6 +23,7 @@ import java.util.WeakHashMap
 @ReactModule(name = SecureKeypadViewManager.NAME)
 public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
     private val pendingConfigurations = WeakHashMap<SecureKeypadView, MutableMap<String, Any?>>()
+    private val configuredViews = WeakHashMap<SecureKeypadView, Boolean>()
 
     override fun getName(): String = NAME
 
@@ -97,6 +98,7 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
 
     override fun onDropViewInstance(view: SecureKeypadView) {
         pendingConfigurations.remove(view)
+        configuredViews.remove(view)
         view.clearBridgeCallbacks()
         view.releaseSession()
         super.onDropViewInstance(view)
@@ -125,8 +127,10 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         val layout = configuration["layout"] as? Map<*, *>
         val theme = configuration["theme"] as? Map<*, *>
         if (layout == null || theme == null) {
-            pendingConfigurations.remove(view)
-            view.releaseSession()
+            if (configuredViews.remove(view) != null) {
+                pendingConfigurations.remove(view)
+                view.releaseSession()
+            }
             return
         }
         try {
@@ -139,9 +143,11 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             } else {
                 view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
             }
+            configuredViews[view] = true
             parsed.headlessKeyPress?.let { view.requestHeadlessKeyPress(it.token, it.keyId) }
         } catch (_: IllegalArgumentException) {
             pendingConfigurations.remove(view)
+            configuredViews.remove(view)
             view.releaseSession()
             emitResult(view, "invalid")
         }

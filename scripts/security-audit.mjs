@@ -311,7 +311,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /if \(layout == null \|\| theme == null\) \{[\s\S]{0,240}pendingConfigurations\.remove\(view\)[\s\S]{0,240}view\.releaseSession\(\)/,
+      /if \(layout == null \|\| theme == null\) \{\s*if \(configuredViews\.remove\(view\) != null\) \{[\s\S]{0,360}pendingConfigurations\.remove\(view\)[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,120}\}\s*return/,
       "React Native Android must release stale sessions when required configuration disappears",
     );
   }

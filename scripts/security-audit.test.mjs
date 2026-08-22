@@ -117,6 +117,21 @@ test("native framework managers release stale sessions when required configurati
   }
 });
 
+test("React Native Android preserves initial partial configuration until required props complete", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /private val configuredViews = WeakHashMap<SecureKeypadView, Boolean>\(\)/);
+    assert.match(
+      source,
+      /if \(layout == null \|\| theme == null\) \{\s*if \(configuredViews\.remove\(view\) != null\) \{[\s\S]{0,360}pendingConfigurations\.remove\(view\)[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,120}\}\s*return/,
+    );
+    assert.match(source, /configuredViews\[view\] = true/);
+  }
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
