@@ -259,8 +259,8 @@ export function getSecureKeypadNativeProps(props: SecureKeypadProps): SecureKeyp
   };
 }
 
-/** Lazily resolves the unwrapped native component for low-level host integration. */
-export function getSecureKeypadNativeView(): SecureKeypadNativeComponent {
+/** Lazily resolves the native component for the internal security wrapper. */
+function resolveSecureKeypadNativeView(): SecureKeypadNativeComponent {
   const reactNative = require("react-native") as typeof import("react-native");
   return reactNative.requireNativeComponent<SecureKeypadProps>(SECURE_KEYPAD_NATIVE_VIEW_NAME);
 }
@@ -274,7 +274,7 @@ let secureKeypadComponent: SecureKeypadNativeComponent | undefined;
  */
 export function getSecureKeypadView(): SecureKeypadNativeComponent {
   if (secureKeypadComponent !== undefined) return secureKeypadComponent;
-  const NativeView = getSecureKeypadNativeView();
+  const NativeView = resolveSecureKeypadNativeView();
   const react = require("react") as {
     createElement: (type: SecureKeypadNativeComponent, props: Record<string, unknown>) => unknown;
     forwardRef: (render: (props: SecureKeypadProps, ref: unknown) => unknown) => SecureKeypadNativeComponent;

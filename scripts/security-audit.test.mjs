@@ -60,6 +60,14 @@ test("CI exercises every release evidence emitter contract", () => {
   assert.match(workflow, /pnpm test:emit-native-device-evidence/);
 });
 
+test("React Native does not publish an unwrapped native view escape hatch", () => {
+  const source = readFileSync(new URL("../packages/react-native/src/index.ts", import.meta.url), "utf8");
+  const guide = readFileSync(new URL("../packages/react-native/README.md", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /export function getSecureKeypadNativeView/);
+  assert.match(source, /function resolveSecureKeypadNativeView/);
+  assert.doesNotMatch(guide, /getSecureKeypadNativeView|unwrapped escape hatch/);
+});
+
 test("security policy provides a private vulnerability reporting channel", () => {
   const policy = readFileSync(new URL("../SECURITY.md", import.meta.url), "utf8");
   assert.match(policy, /github\.com\/uulab-official\/secure-keyboard\/security\/advisories\/new/);

@@ -719,7 +719,8 @@ export function runSecurityAudit() {
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /hasExactKeys/, "React Native bridge event wrappers must reject unexpected outer fields");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeProps/, "React Native must allowlist props before native serialization");
   requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /nativeProps = getSecureKeypadNativeProps\(props\);[\s\S]{0,500}return null/, "React Native must fail closed before creating a native view for invalid props");
-  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /getSecureKeypadNativeView/, "React Native low-level native view access must be explicitly named");
+  requireText(findings, "packages/react-native/src/index.ts", reactNativeContract, /function resolveSecureKeypadNativeView/, "React Native native view resolution must remain internal to the security wrapper");
+  forbidText(findings, "packages/react-native/src/index.ts", reactNativeContract, /export function getSecureKeypadNativeView/, "React Native must not publish an unwrapped native view escape hatch");
   const reactNativePackage = source("packages/react-native/package.json", findings);
   requireText(findings, "packages/react-native/package.json", reactNativePackage, /"app\.plugin"\s*:\s*"\.\/app\.plugin\.js"/, "React Native must expose its Expo config plugin");
   const expoPlugin = source("packages/react-native/app.plugin.js", findings);
