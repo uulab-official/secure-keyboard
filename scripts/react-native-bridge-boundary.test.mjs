@@ -93,7 +93,11 @@ test("React Native Android bridge bounds defensive public-value conversion", () 
 test("React Native Android bridge converts hostile public maps inside the fail-closed boundary", () => {
   assert.match(SOURCE, /setConfigurationValue\(view, "layout"\) \{ value\?\.toPublicMap\(LAYOUT_KEYS\) \}/);
   assert.match(SOURCE, /setConfigurationValue\(view, "theme"\) \{ value\?\.toPublicMap\(THEME_KEYS\) \}/);
-  assert.match(SOURCE, /setConfigurationValue\(view, "headlessKeyPress"\) \{ value\?\.toPublicMap\(HEADLESS_KEY_PRESS_KEYS\) \}/);
+  assert.match(
+    SOURCE,
+    /setConfigurationValue\(view, "headlessKeyPress", replayHeadlessKeyPress = true\) \{[\s\S]{0,120}toPublicMap\(HEADLESS_KEY_PRESS_KEYS\)/,
+  );
+  assert.match(SOURCE, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}parsed\.headlessKeyPress\?\.let/);
   assert.match(SOURCE, /catch \(_:\s*IllegalArgumentException\) \{[\s\S]{0,240}view\.releaseSession\(\)[\s\S]{0,240}emitResult\(view, "invalid"\)/);
 });
 
