@@ -49,6 +49,7 @@ if value then
   redis.call('ZREM', KEYS[2], ARGV[1])
 end
 if not value then
+  redis.call('ZREM', KEYS[2], ARGV[1])
   return {0, false}
 end
 return {1, value}
@@ -307,5 +308,21 @@ mod tests {
         assert!(length_check < get);
         assert!(CONSUME_SCRIPT.contains("tonumber(ARGV[2])"));
         assert!(CONSUME_SCRIPT.contains("return {-2, false}"));
+    }
+
+    #[test]
+    fn consume_removes_a_stale_index_when_the_state_key_is_missing() {
+        let missing_value = CONSUME_SCRIPT
+            .find("if not value then")
+            .expect("opaque consume must handle a missing state key");
+        let cleanup = CONSUME_SCRIPT[missing_value..]
+            .find("redis.call('ZREM', KEYS[2], ARGV[1])")
+            .expect("missing opaque state must release its pending-index slot");
+        assert!(
+            cleanup
+                < CONSUME_SCRIPT[missing_value..]
+                    .find("return {0, false}")
+                    .unwrap()
+        );
     }
 }

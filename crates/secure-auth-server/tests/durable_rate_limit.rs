@@ -303,6 +303,48 @@ fn redis_poisoned_counter_is_removed_before_increment_or_limited_response() {
     }
 }
 
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires SECURE_KEYPAD_REDIS_URL and an isolated Redis service"]
+fn redis_missing_counter_releases_active_key_capacity() {
+    use sha2::{Digest, Sha256};
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").expect("Redis URL is required");
+    let namespace = format!("ci{}", uuid::Uuid::new_v4().simple());
+    let policy = RateLimitPolicy::new(2, std::time::Duration::from_secs(30)).unwrap();
+    let limiter = secure_auth_server::RedisRateLimiter::from_insecure_url_for_local_testing(
+        &url, &namespace, 2, 1, policy,
+    )
+    .expect("Redis limiter should construct");
+    let key = b"evicted-counter";
+    let digest = {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let digest = Sha256::digest(key);
+        let mut encoded = String::with_capacity(64);
+        for byte in digest {
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+        encoded
+    };
+    let index_key = format!("{namespace}:ratelimit:v1:index");
+    let mut inspection = redis::Client::open(url.as_str())
+        .expect("Redis inspection client should construct")
+        .get_connection()
+        .expect("Redis inspection connection should succeed");
+    redis::cmd("ZADD")
+        .arg(&index_key)
+        .arg(9_999_999_999_999_i64)
+        .arg(&digest)
+        .query::<()>(&mut inspection)
+        .expect("Redis stale active-key index seed should succeed");
+
+    assert_eq!(
+        limiter.check(key),
+        Ok(RateLimitDecision::Allowed { remaining: 1 })
+    );
+}
+
 #[cfg(feature = "postgres-backend")]
 #[test]
 #[ignore = "requires SECURE_KEYPAD_POSTGRES_URL and an isolated PostgreSQL service"]

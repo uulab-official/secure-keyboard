@@ -45,6 +45,7 @@ if current then
   end
   return {1, tonumber(ARGV[1]) - next_attempts, ttl}
 end
+redis.call('ZREM', KEYS[2], ARGV[4])
 if redis.call('ZCARD', KEYS[2]) >= tonumber(ARGV[2]) then
   return {-1, 0, 0}
 end
@@ -303,5 +304,16 @@ mod tests {
                 >= 3
         );
         assert!(RATE_LIMIT_SCRIPT.contains("attempts ~= math.floor(attempts)"));
+    }
+
+    #[test]
+    fn rate_limit_script_releases_a_stale_index_when_the_counter_is_missing() {
+        let capacity = RATE_LIMIT_SCRIPT
+            .find("redis.call('ZCARD', KEYS[2])")
+            .expect("rate-limit script must enforce active-key capacity");
+        let cleanup = RATE_LIMIT_SCRIPT[..capacity]
+            .rfind("redis.call('ZREM', KEYS[2], ARGV[4])")
+            .expect("missing counter must release its active-key slot");
+        assert!(cleanup < capacity);
     }
 }

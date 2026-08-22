@@ -53,6 +53,9 @@ operation must:
 `STRLEN`-before-`GET` and `GETDEL`-equivalent read-and-delete semantics; do not
 issue a separate `GET` followed by `DEL`. An oversized legacy value is deleted
 from both the state key and pending index without being returned to the client.
+If the state key has disappeared before consume (for example after an
+eviction), the same script removes its stale pending-index member so a missing
+key cannot reserve capacity until the original TTL expires.
 PostgreSQL-style stores should use `DELETE ... WHERE key = $1 AND expires_at >
 now() RETURNING value` inside a single atomic operation. The built-in
 PostgreSQL adapter does this and also uses an advisory lock for insert
@@ -86,6 +89,8 @@ The reference crate includes feature-gated implementations:
   explicitly named local-test constructor. The counter path checks a fixed
   32-byte representation bound before `GET`; an oversized or malformed legacy
   counter is removed from the counter and active-key index and fails closed.
+  If Redis has evicted the counter while its sorted-set member remains, the
+  script removes that stale member before enforcing active-key capacity.
 - `PostgresRateLimiter` uses a namespace advisory transaction lock, deletes
   expired rows before counting, and updates/inserts the hashed key in the same
   transaction. Its migration is exported as

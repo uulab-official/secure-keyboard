@@ -209,6 +209,53 @@ fn redis_oversized_state_is_removed_before_materialization() {
     assert_eq!(pending_count, 0);
 }
 
+#[cfg(feature = "redis-backend")]
+#[test]
+#[ignore = "requires an isolated Redis service"]
+fn redis_missing_state_releases_pending_index_capacity() {
+    use secure_auth_server::{
+        BoundOneTimeLoginStateStore, LoginStateHandle, RedisOneTimeLoginStateStore,
+    };
+    use sha2::{Digest, Sha256};
+
+    let url = std::env::var("SECURE_KEYPAD_REDIS_URL").unwrap();
+    let namespace = format!("opaque-test-{}", uuid::Uuid::new_v4().simple());
+    let store = RedisOneTimeLoginStateStore::from_insecure_url_for_local_testing(
+        &url,
+        &namespace,
+        2,
+        1,
+        Duration::from_secs(30),
+        fixture_key(),
+    )
+    .unwrap();
+    let handle = LoginStateHandle::generate();
+    let handle_hash: String = {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let digest = Sha256::digest(handle.as_bytes());
+        let mut encoded = String::with_capacity(64);
+        for byte in digest {
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+        encoded
+    };
+    let pending_index = format!("{namespace}:opaque:v1:login:pending");
+    let mut inspection = redis::Client::open(url.as_str())
+        .unwrap()
+        .get_connection()
+        .unwrap();
+    redis::cmd("ZADD")
+        .arg(&pending_index)
+        .arg(9_999_999_999_999_i64)
+        .arg(&handle_hash)
+        .query::<()>(&mut inspection)
+        .unwrap();
+
+    assert!(store.take_bound(&handle).unwrap().is_none());
+    assert!(store.insert_bound(fixture_state()).is_ok());
+}
+
 #[cfg(feature = "postgres-backend")]
 #[test]
 #[ignore = "requires an isolated PostgreSQL service"]

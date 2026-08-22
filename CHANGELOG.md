@@ -70,6 +70,9 @@ exact release-candidate commit by the release evidence manifest.
   durable protection format to v2; legacy unbound v1 records are rejected.
 - Made the PostgreSQL ciphertext-size schema upgrade atomic and fail closed on
   malformed or tampered ceremony records.
+- Redis one-time-state and rate-limit scripts now remove stale active-index
+  members when their backing keys are missing, preventing eviction or partial
+  cleanup from reserving capacity until the original TTL expires.
 - Device and browser evidence emitters and file verifiers now reject empty
   logs or artifacts before a release gate can hash them as valid evidence.
 - Release evidence file verification now rejects empty gate and artifact files
