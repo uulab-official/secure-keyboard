@@ -210,6 +210,23 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(await response.text()).toBe('{"opaque":"sensitive-transport"}');
   });
 
+  it("zeroizes malformed delegate response typed-array buffers before rejecting", async () => {
+    const responseWords = new Uint16Array([0x1234, 0xabcd]);
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      csrfValidated: () => true,
+      delegate: () => ({
+        status: 200,
+        body: responseWords as unknown as Uint8Array,
+      }),
+    });
+
+    const response = await handler(request('{"protocolVersion":1}'));
+
+    expect(response.status).toBe(503);
+    expect(responseWords.every((word) => word === 0)).toBe(true);
+  });
+
   it("clears stream chunks after copying the bounded request body", async () => {
     const chunk = new TextEncoder().encode('{"protocolVersion":1}');
     const handler = createOpaqueHandler({

@@ -54,7 +54,8 @@ exact release-candidate commit by the release evidence manifest.
   that validated start calls consume and null the submission pointer even when
   protocol setup fails.
 - Node transport responses are now byte-only at the TypeScript boundary and
-  delegate-owned response buffers are zeroized after copying into `Response`.
+  delegate-owned response buffers, including malformed typed-array buffers,
+  are zeroized after copying into `Response` or before fail-closed rejection.
 - Node request streams now reject non-byte chunks without creating a detached
   copy and clear supported typed-array backing bytes before failing closed.
 - Final release evidence verification now rejects symlinked gate, artifact,

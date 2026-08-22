@@ -205,15 +205,18 @@ async function readBoundedBody(request: Request, limit: number): Promise<Uint8Ar
 }
 
 function responseFromDelegate(value: NodeHttpResponse): Response {
-  const body = value.body;
+  const candidate = value as unknown as { readonly status?: unknown; readonly body?: unknown } | null;
+  const body = candidate !== null && typeof candidate === "object" ? candidate.body : undefined;
   try {
-    if (!STATUS_CODES.has(value.status)) return genericResponse(503, "temporarily_unavailable");
+    if (candidate === null || typeof candidate.status !== "number" || !STATUS_CODES.has(candidate.status)) {
+      return genericResponse(503, "temporarily_unavailable");
+    }
     if (!(body instanceof Uint8Array) || body.byteLength > MAX_HTTP_BODY_BYTES) {
       return genericResponse(503, "temporarily_unavailable");
     }
-    return new Response(responseBody(body), { status: value.status, headers: responseHeaders() });
+    return new Response(responseBody(body), { status: candidate.status, headers: responseHeaders() });
   } finally {
-    if (body instanceof Uint8Array) body.fill(0);
+    zeroizeChunk(body);
   }
 }
 
