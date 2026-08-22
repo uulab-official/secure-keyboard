@@ -30,7 +30,8 @@ evidence.
 
 The release job builds the iOS FFI XCFramework and device static library on the
 pinned macOS runner, publishes them through a checksum-verified workflow
-artifact, and stages them into both publishable mobile packages before packing.
+artifact bound to the requested commit, and stages them into both publishable
+mobile packages before packing.
 The signed tarball contains both `source/` and `packages/`; immediately before
 signing, `node scripts/check-release-archive.mjs` verifies that the tarball
 contains the staged Flutter iOS artifacts and every version-matched npm/crate

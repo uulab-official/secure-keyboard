@@ -246,6 +246,8 @@ test("release candidate signs staged package archives and publishable iOS FFI ar
   assert.match(workflow, /name: secure-keypad-release-ios-ffi/);
   assert.match(workflow, /actions\/download-artifact@[0-9a-f]{40}[\s\S]*?secure-keypad-release-ios-ffi/);
   assert.match(workflow, /shasum -a 256 -c/);
+  assert.match(workflow, /secure-keypad-ios-ffi\.commit/);
+  assert.match(workflow, /cat "\$IOS_FFI_DIR\/secure-keypad-ios-ffi\.commit"/);
   assert.match(workflow, /packages\/react-native\/secure_ffi\.xcframework/);
   assert.match(workflow, /packages\/flutter\/ios\/secure_ffi\.xcframework/);
   assert.match(workflow, /scripts\/check-release-archive\.mjs/);

@@ -930,6 +930,8 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:\s*\n\s*needs:\s*native-ios-artifacts/, "release bundle must depend on the verified iOS FFI artifact job");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /actions\/download-artifact@[0-9a-f]{40}/, "release bundle must download the immutable iOS FFI artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /shasum -a 256 -c secure-keypad-ios-ffi\.sha256/, "release bundle must verify the downloaded iOS FFI checksum manifest");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-ios-ffi\.commit/, "release bundle must bind the downloaded iOS FFI artifact to the requested commit");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cat "\$IOS_FFI_DIR\/secure-keypad-ios-ffi\.commit"\)" = "\$RELEASE_REF/, "release bundle must reject an iOS FFI artifact from another commit");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/react-native\/secure_ffi\.xcframework/, "release bundle must stage the verified React Native iOS XCFramework");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /packages\/flutter\/ios\/libsecure_ffi\.a/, "release bundle must stage the verified Flutter iOS static library");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /bundle:[\s\S]{0,260}environment:\s*secure-keypad-release/, "release signing must run behind the protected release environment");

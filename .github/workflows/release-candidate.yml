@@ -18,14 +18,13 @@ jobs:
     timeout-minutes: 30
     env:
       IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+      RELEASE_REF: ${{ inputs.ref }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
       - name: Require immutable release commit
-        env:
-          RELEASE_REF: ${{ inputs.ref }}
         run: |
           test -n "$RELEASE_REF"
           if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
@@ -57,6 +56,7 @@ jobs:
           cp target/aarch64-apple-ios/release/libsecure_ffi.a "$IOS_FFI_DIR/react-native/libsecure_ffi.a"
           cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework"
           cp target/aarch64-apple-ios/release/libsecure_ffi.a "$IOS_FFI_DIR/flutter/ios/libsecure_ffi.a"
+          printf '%s\n' "$RELEASE_REF" > "$IOS_FFI_DIR/secure-keypad-ios-ffi.commit"
           (
             cd "$IOS_FFI_DIR"
             find react-native flutter -type f -print0 \
@@ -136,12 +136,14 @@ jobs:
       - name: Verify and stage publishable iOS FFI artifacts
         env:
           IOS_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-ios-ffi
+          RELEASE_REF: ${{ inputs.ref }}
         run: |
           test -s "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256"
           (
             cd "$IOS_FFI_DIR"
             shasum -a 256 -c secure-keypad-ios-ffi.sha256
           )
+          test "$(cat "$IOS_FFI_DIR/secure-keypad-ios-ffi.commit")" = "$RELEASE_REF"
           test -s "$IOS_FFI_DIR/react-native/secure_ffi.xcframework/Info.plist"
           test -s "$IOS_FFI_DIR/react-native/libsecure_ffi.a"
           test -s "$IOS_FFI_DIR/flutter/ios/secure_ffi.xcframework/Info.plist"
