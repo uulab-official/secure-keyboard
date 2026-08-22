@@ -42,5 +42,5 @@ test("durable runner executes every ignored interoperability suite and cleans up
   assert.match(RUNNER, /durable_one_time_state -- --ignored --nocapture/);
   assert.match(RUNNER, /SECURE_KEYPAD_REDIS_URL=redis:\/\/127\.0\.0\.1:6379/);
   assert.match(RUNNER, /SECURE_KEYPAD_POSTGRES_URL=/);
-  assert.doesNotMatch(RUNNER, /docker compose[^\n]*down[^\n]*--volumes/);
+  assert.match(RUNNER, /docker compose[^\n]*down[^\n]*--volumes/);
 });

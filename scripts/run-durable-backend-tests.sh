@@ -14,7 +14,10 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 cleanup() {
-  docker compose -f "$COMPOSE_FILE" down --remove-orphans
+  # This compose file owns ephemeral test services only. Remove anonymous
+  # database volumes as well so a rerun cannot inherit migration or replay
+  # state from an interrupted campaign.
+  docker compose -f "$COMPOSE_FILE" down --remove-orphans --volumes
 }
 trap cleanup EXIT
 

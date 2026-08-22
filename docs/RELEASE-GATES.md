@@ -677,6 +677,13 @@ same-key multi-instance consume, and retention through the maximum state TTL.
 Plaintext Redis/`NoTls` constructors are allowed only in that isolated test
 job, never in a production configuration.
 
+For local execution, `pnpm test:durable-backends` uses the same loopback-only,
+digest-pinned Compose services and removes the test containers and anonymous
+volumes on exit. This keeps a failed or interrupted campaign from carrying
+replay, rate-limit, or migration state into the next run. The command remains
+an interoperability check, not production evidence; the protected CI job must
+produce the release-bound record.
+
 The Linux fuzz job also runs all four targets under Rust's leak sanitizer.
 The local macOS arm64 runner cannot execute that sanitizer because the target
 does not support it; therefore a green Linux CI result is required before the

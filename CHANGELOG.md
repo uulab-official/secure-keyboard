@@ -17,6 +17,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: external independent-review evidence now uses the same structured
   finding validator as the final trusted release verifier, rejecting malformed
   signed findings before an evidence artifact can be uploaded.
+- The local durable-backend runner now removes its ephemeral Compose volumes on
+  exit, preventing interrupted Redis/PostgreSQL campaigns from carrying replay,
+  rate-limit, or migration state into a later run.
 - Security: bound direct `secure-core` public key-ID construction and policy
   resolution to the same 64-byte contract enforced by native adapters.
 - Security: React Native iOS and Android managers now release the native session
