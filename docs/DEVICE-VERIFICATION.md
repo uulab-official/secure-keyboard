@@ -28,10 +28,12 @@ supplement the matrix but cannot replace those checks.
 
 The iOS CI host job additionally installs and launches the generated React
 Native and Flutter hosts in an available Simulator and uploads screenshots.
-Both generated hosts also run a Release UI test that taps one numeric key and
-asserts masked-length state while rejecting the public key label. This catches
-packaging, launch, and basic masked-rendering regressions only; it is not
-physical-device evidence and does not replace the matrix above.
+Both generated hosts also run a Release UI test that taps one numeric key,
+asserts masked-length state while rejecting the public key label, backgrounds
+and reactivates the app, and requires the post-recovery public state to be
+empty. This catches packaging, launch, masked-rendering, and wrapper lifecycle
+recovery regressions only; it is not physical-device evidence and does not
+replace the matrix above.
 
 The Android CI host jobs additionally build arm64 and x86_64 FFI variants. A
 separate API 35 x86_64 emulator job installs and launches both generated host

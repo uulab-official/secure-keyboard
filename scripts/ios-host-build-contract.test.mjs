@@ -56,6 +56,19 @@ test("React Native iOS CI runs a bundled release UI smoke test", () => {
   assert.doesNotMatch(RN_IOS_HOST, /SECURE_KEYPAD_FFI_XCFRAMEWORK=.*pod install/);
 });
 
+test("React Native and Flutter iOS UI smokes verify lifecycle recovery clears input", () => {
+  for (const [framework, section] of [
+    ["React Native", RN_IOS_HOST],
+    ["Flutter", FLUTTER_IOS_HOST],
+  ]) {
+    assert.match(section, /XCUIDevice\.shared\.press\(\.home\)/, `${framework} UI smoke must background the app`);
+    assert.match(section, /app\.activate\(\)/, `${framework} UI smoke must reactivate the app`);
+    assert.match(section, /let emptyState = app\.descendants\(matching: \.any\)\["No input"\]/, `${framework} UI smoke must locate the empty public state`);
+    assert.match(section, /XCTAssertTrue\(emptyState\.waitForExistence\(timeout: \d+\)\)/, `${framework} UI smoke must wait for recovery`);
+    assert.match(section, /XCTAssertFalse\(app\.descendants\(matching: \.any\)\["1 characters entered"\]\.exists\)/, `${framework} UI smoke must reject replayed input`);
+  }
+});
+
 test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
   assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter create/);
   assert.match(FLUTTER_IOS_HOST, /FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter pub get/);

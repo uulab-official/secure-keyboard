@@ -1144,6 +1144,12 @@ jobs:
                   let maskedState = app.descendants(matching: .any)["1 characters entered"]
                   XCTAssertTrue(maskedState.waitForExistence(timeout: 5))
                   XCTAssertFalse(app.staticTexts["digit-1"].exists)
+
+                  XCUIDevice.shared.press(.home)
+                  app.activate()
+                  let emptyState = app.descendants(matching: .any)["No input"]
+                  XCTAssertTrue(emptyState.waitForExistence(timeout: 5))
+                  XCTAssertFalse(app.descendants(matching: .any)["1 characters entered"].exists)
               }
           }
           """
@@ -1575,7 +1581,13 @@ jobs:
               let maskedState = app.descendants(matching: .any)["1 characters entered"]
               XCTAssertTrue(maskedState.waitForExistence(timeout: 3))
               XCTAssertFalse(app.staticTexts["digit-1"].exists)
-            }
+
+              XCUIDevice.shared.press(.home)
+              app.activate()
+              let emptyState = app.descendants(matching: .any)["No input"]
+              XCTAssertTrue(emptyState.waitForExistence(timeout: 5))
+              XCTAssertFalse(app.descendants(matching: .any)["1 characters entered"].exists)
+              }
           }
           ''')
           PY

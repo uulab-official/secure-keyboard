@@ -6,6 +6,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Verification: generated React Native and Flutter iOS Release UI smokes now
+  background and reactivate the app after a public key tap, requiring an empty
+  post-recovery state so wrapper lifecycle recovery cannot replay input.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.
