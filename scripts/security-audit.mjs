@@ -1758,6 +1758,15 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter build apk --release --target-platform android-arm64,android-x64/, "Flutter host artifact must bundle every supported Android target platform in a release APK");
   forbidText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter build apk --debug/, "Flutter host release evidence must not use a debug APK");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-flutter-host\/build\/app\/outputs\/flutter-apk\/app-release\.apk/, "Flutter host artifact upload must retain the release APK");
+  const flutterIosHostStart = ciWorkflow.indexOf("Create and compile the Flutter iOS host");
+  const flutterIosHostEnd = ciWorkflow.indexOf("Upload iOS Simulator runtime smoke evidence", flutterIosHostStart);
+  const flutterIosHost = flutterIosHostStart >= 0 && flutterIosHostEnd > flutterIosHostStart
+    ? ciWorkflow.slice(flutterIosHostStart, flutterIosHostEnd)
+    : "";
+  requireText(findings, ".github/workflows/ci.yml", flutterIosHost, /flutter build ios --release --simulator --no-codesign/, "Flutter iOS host must use a Release simulator build");
+  requireText(findings, ".github/workflows/ci.yml", flutterIosHost, /xcodebuild -project Pods\/Pods\.xcodeproj -scheme secure_keypad_flutter[\s\S]*-configuration Release[\s\S]*build/, "Flutter iOS plugin must build in Release configuration");
+  requireText(findings, ".github/workflows/ci.yml", flutterIosHost, /xcodebuild -workspace "\$HOST_DIR\/ios\/Runner\.xcworkspace"[\s\S]*-configuration Release[\s\S]*test/, "Flutter iOS UI smoke must execute the Release host");
+  forbidText(findings, ".github/workflows/ci.yml", flutterIosHost, /-configuration Debug/, "Flutter iOS host release evidence must not use a Debug configuration");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /--version 0\.87\.0/, "CI must pin the React Native host-build version");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /cargo build --locked --release -p secure-ffi/, "native host gates must use the locked Rust dependency graph");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /-runs=1000000/, "CI must retain the extended fuzz stability campaign");

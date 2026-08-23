@@ -78,7 +78,10 @@ test("Flutter iOS CI uses the Flutter 3.47 build output contract", () => {
   assert.match(FLUTTER_IOS_HOST, /SecureKeypadHostSmoke/);
   assert.match(FLUTTER_IOS_HOST, /SecureKeypadConfiguration\.defaultNumeric/);
   assert.doesNotMatch(FLUTTER_IOS_HOST, /Flutter Demo Home Page/);
-  assert.match(FLUTTER_IOS_HOST, /flutter build ios --simulator --no-codesign/);
+  assert.match(FLUTTER_IOS_HOST, /flutter build ios --release --simulator --no-codesign/);
+  assert.match(FLUTTER_IOS_HOST, /xcodebuild -project Pods\/Pods\.xcodeproj -scheme secure_keypad_flutter[\s\S]*-configuration Release[\s\S]*build/);
+  assert.match(FLUTTER_IOS_HOST, /xcodebuild -workspace "\$HOST_DIR\/ios\/Runner\.xcworkspace"[\s\S]*-configuration Release[\s\S]*test/);
+  assert.doesNotMatch(FLUTTER_IOS_HOST, /-configuration Debug/);
   assert.doesNotMatch(FLUTTER_IOS_HOST, /--build-dir/);
   assert.match(FLUTTER_IOS_HOST, /config\.build_settings\['ARCHS'\]\s*=\s*'arm64'/);
   assert.match(FLUTTER_IOS_HOST, /config\.build_settings\['ONLY_ACTIVE_ARCH'\]\s*=\s*'YES'/);
@@ -105,7 +108,7 @@ test("Flutter iOS PlatformView preserves standard creation arguments", () => {
 
 test("Flutter iOS UI test stays isolated from CocoaPods test-target linkage", () => {
   const flutterBuildIndex = FLUTTER_IOS_HOST.indexOf(
-    "flutter build ios --simulator --no-codesign",
+    "flutter build ios --release --simulator --no-codesign",
   );
   const postBuildIsolationIndex = FLUTTER_IOS_HOST.indexOf(
     'project = Path(os.environ["HOST_DIR"]) / "ios/Runner.xcodeproj/project.pbxproj"',

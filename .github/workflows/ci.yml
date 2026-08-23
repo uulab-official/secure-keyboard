@@ -1594,7 +1594,7 @@ jobs:
           cd ios
           pod install
           xcodebuild -project Pods/Pods.xcodeproj -scheme secure_keypad_flutter \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             BUILD_DIR="$HOST_DIR/build/ios" \
@@ -1604,7 +1604,7 @@ jobs:
             ONLY_ACTIVE_ARCH=YES \
             build
           cd "$HOST_DIR"
-          FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --simulator --no-codesign
+          FLUTTER_SWIFT_PACKAGE_MANAGER=false flutter build ios --release --simulator --no-codesign
           python3 - <<'PY'
           import os
           import re
@@ -1673,7 +1673,7 @@ jobs:
           test -n "$SIMULATOR_ID"
           xcodebuild -workspace "$HOST_DIR/ios/Runner.xcworkspace" \
             -scheme Runner \
-            -configuration Debug \
+            -configuration Release \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             BUILD_DIR="$HOST_DIR/build/ios" \
             OBJROOT="$HOST_DIR/build/ios" \

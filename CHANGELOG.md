@@ -15,6 +15,8 @@ exact release-candidate commit by the release evidence manifest.
 - Verification: the Flutter Android host smoke now builds and uploads a
   multi-ABI Release APK, so lifecycle and capture-boundary evidence does not
   come from a debug-only artifact.
+- Verification: the Flutter iOS host build and UI smoke now use Release
+  configuration for the plugin, simulator app, and lifecycle test.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

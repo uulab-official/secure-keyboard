@@ -27,7 +27,8 @@ autofill services, and VoiceOver/TalkBack behavior. Simulators/emulators may
 supplement the matrix but cannot replace those checks.
 
 The iOS CI host job additionally installs and launches the generated React
-Native and Flutter hosts in an available Simulator and uploads screenshots.
+Native and Flutter Release hosts in an available Simulator and uploads
+screenshots.
 Both generated hosts also run a Release UI test that taps one numeric key,
 asserts masked-length state while rejecting the public key label, backgrounds
 and reactivates the app, and requires the post-recovery public state to be
