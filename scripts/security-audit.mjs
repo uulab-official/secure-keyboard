@@ -800,6 +800,7 @@ export function runSecurityAudit() {
   }
 
   const ffiHeader = source("crates/secure-ffi/include/secure_keypad.h", findings);
+  const iosNativeFfiHeader = source("native/ios/SecureKeypadFFI/secure_keypad.h", findings);
   const ffiImplementation = source("crates/secure-ffi/src/lib.rs", findings);
   for (const mismatch of findNativeAbiVersionMismatches()) {
     findings.push({
@@ -817,6 +818,9 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /SECURE_KEYPAD_ABI_VERSION UINT32_C\(2\)/, "C ABI must version the native registration handoff");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_start/, "C ABI must expose native-only registration handoff");
   requireText(findings, "crates/secure-ffi/include/secure_keypad.h", ffiHeader, /secure_keypad_client_registration_finish/, "C ABI must expose native-only registration completion");
+  requireText(findings, "native/ios/SecureKeypadFFI/secure_keypad.h", iosNativeFfiHeader, /SECURE_KEYPAD_ABI_VERSION UINT32_C\(2\)/, "standalone iOS SDK must ship the versioned C ABI header");
+  requireText(findings, "native/ios/SecureKeypadFFI/secure_keypad.h", iosNativeFfiHeader, /secure_keypad_client_login_start/, "standalone iOS SDK must ship the native-only auth handoff declaration");
+  forbidText(findings, "native/ios/SecureKeypadFFI/secure_keypad.h", iosNativeFfiHeader, /\bsecure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i, "standalone iOS C ABI must not define a secret getter");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn output_slots_alias/, "FFI auth-start functions must reject aliased ownership/output slots");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn pointer_slots_alias/, "FFI auth-finish functions must reject aliased state/output slots");
   requireText(findings, "crates/secure-ffi/src/lib.rs", ffiImplementation, /fn pointer_slot_overlaps_object/, "FFI output slots must reject overlap with live opaque objects");

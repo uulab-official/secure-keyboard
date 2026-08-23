@@ -1025,6 +1025,171 @@ jobs:
           BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
           bash "$GITHUB_WORKSPACE/scripts/ios-simulator-runtime-smoke.sh" \
             "$APP_PATH" "$BUNDLE_ID" "$SCREENSHOT_PATH"
+      - name: Create and compile the standalone Native iOS host
+        env:
+          HOST_DIR: ${{ runner.temp }}/secure-keypad-native-ios-host
+          SDK_POD_DIR: ${{ runner.temp }}/secure-keypad-native-ios-package
+        run: |
+          mkdir -p "$SDK_POD_DIR" "$HOST_DIR/SecureKeypadNativeHost"
+          rsync -a \
+            --exclude 'flutter' \
+            --exclude 'react-native' \
+            --exclude '*ContractTest.swift' \
+            "$GITHUB_WORKSPACE/native/ios/" "$SDK_POD_DIR/"
+          test -f "$SDK_POD_DIR/SecureKeypadKit.podspec"
+          cp -R "$RUNNER_TEMP/secure_ffi.xcframework" "$SDK_POD_DIR/secure_ffi.xcframework"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          host = Path(os.environ["HOST_DIR"])
+          (host / "Podfile").write_text(
+              """platform :ios, '15.1'
+
+          target 'SecureKeypadNativeHost' do
+            pod 'SecureKeypadKit', :path => '%s'
+          end
+          """ % os.environ["SDK_POD_DIR"]
+          )
+          (host / "SecureKeypadNativeHost/Info.plist").write_text(
+              """<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>$(EXECUTABLE_NAME)</string>
+            <key>CFBundleIdentifier</key>
+            <string>dev.uulab.securekeypad.nativehost</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>SecureKeypadNativeHost</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>0.1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>LSRequiresIPhoneOS</key>
+            <true/>
+            <key>UILaunchStoryboardName</key>
+            <string></string>
+            <key>UIRequiredDeviceCapabilities</key>
+            <array>
+              <string>arm64</string>
+            </array>
+          </dict>
+          </plist>
+          """
+          )
+          (host / "SecureKeypadNativeHost/AppDelegate.swift").write_text(
+              """import UIKit
+
+          @main
+          final class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
+
+              func application(
+                  _ application: UIApplication,
+                  didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+              ) -> Bool {
+                  let window = UIWindow(frame: UIScreen.main.bounds)
+                  window.rootViewController = SecureKeypadNativeHostViewController()
+                  self.window = window
+                  window.makeKeyAndVisible()
+                  return true
+              }
+          }
+          """
+          )
+          (host / "SecureKeypadNativeHost/SecureKeypadNativeHostViewController.swift").write_text(
+              """import SecureKeypadKit
+          import UIKit
+
+          final class SecureKeypadNativeHostViewController: UIViewController {
+              private let keypad = SecureKeypadView()
+
+              override func viewDidLoad() {
+                  super.viewDidLoad()
+                  view.backgroundColor = .systemBackground
+                  keypad.translatesAutoresizingMaskIntoConstraints = false
+                  view.addSubview(keypad)
+                  NSLayoutConstraint.activate([
+                      keypad.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                      keypad.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                      keypad.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+                      keypad.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+                  ])
+
+                  let layout = SecureKeypadLayout(rows: [
+                      [
+                          SecureKeySpec(id: "digit-1", label: "1", role: .input, accessibilityLabel: "One", testId: "digit-1"),
+                          SecureKeySpec(id: "digit-2", label: "2", role: .input, accessibilityLabel: "Two", testId: "digit-2"),
+                          SecureKeySpec(id: "digit-3", label: "3", role: .input, accessibilityLabel: "Three", testId: "digit-3"),
+                      ],
+                      [
+                          SecureKeySpec(id: "clear", label: "Clear", role: .clear, accessibilityLabel: "Clear", testId: "clear"),
+                          SecureKeySpec(id: "backspace", label: "Delete", role: .backspace, accessibilityLabel: "Delete", testId: "backspace"),
+                          SecureKeySpec(id: "submit", label: "Continue", role: .submit, accessibilityLabel: "Continue", testId: "submit"),
+                      ],
+                  ])
+                  do {
+                      try keypad.configureNumeric(layout: layout, maxTokens: 8, timeoutMs: 60_000)
+                  } catch {
+                      assertionFailure("standalone SecureKeypadKit configuration failed: \\(error)")
+                  }
+              }
+          }
+          """
+          )
+          PY
+          cd "$HOST_DIR"
+          ruby - <<'RUBY'
+          require "fileutils"
+          require "xcodeproj"
+
+          project_path = "SecureKeypadNativeHost.xcodeproj"
+          project = Xcodeproj::Project.new(project_path)
+          target = project.new_target(:application, "SecureKeypadNativeHost", :ios, "15.1")
+          target.product_type = "com.apple.product-type.application"
+          target.build_configurations.each do |configuration|
+            settings = configuration.build_settings
+            settings["PRODUCT_BUNDLE_IDENTIFIER"] = "dev.uulab.securekeypad.nativehost"
+            settings["PRODUCT_NAME"] = "SecureKeypadNativeHost"
+            settings["INFOPLIST_FILE"] = "SecureKeypadNativeHost/Info.plist"
+            settings["SWIFT_VERSION"] = "5.0"
+            settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.1"
+            settings["TARGETED_DEVICE_FAMILY"] = "1"
+            settings["CODE_SIGN_STYLE"] = "Manual"
+            settings["CODE_SIGNING_ALLOWED"] = "NO"
+            settings["CODE_SIGNING_REQUIRED"] = "NO"
+          end
+          source_group = project.main_group.new_group("SecureKeypadNativeHost", "SecureKeypadNativeHost")
+          %w[AppDelegate.swift SecureKeypadNativeHostViewController.swift].each do |filename|
+            source_file = source_group.new_file(filename)
+            target.source_build_phase.add_file_reference(source_file)
+          end
+          project.save
+
+          scheme_path = File.join(project_path, "xcshareddata/xcschemes/SecureKeypadNativeHost.xcscheme")
+          FileUtils.mkdir_p(File.dirname(scheme_path))
+          scheme = Xcodeproj::XCScheme.new
+          scheme.add_build_target(target, true)
+          scheme.save_as(project_path, "SecureKeypadNativeHost", true)
+          RUBY
+          pod install
+          xcodebuild -workspace SecureKeypadNativeHost.xcworkspace \
+            -scheme SecureKeypadNativeHost \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/secure-keypad-native-ios-derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            ARCHS=arm64 build
       - name: Create and compile the Flutter iOS host
         env:
           HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host

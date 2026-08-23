@@ -1,4 +1,4 @@
 module SecureKeypadFFI [system] {
-    header "../../../crates/secure-ffi/include/secure_keypad.h"
+    header "secure_keypad.h"
     export *
 }

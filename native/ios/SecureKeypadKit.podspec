@@ -13,7 +13,11 @@ Pod::Spec.new do |spec|
   spec.swift_version = '5.9'
   spec.module_name = 'SecureKeypadKit'
   spec.requires_arc = true
-  spec.source_files = 'SecureKeypad*.swift'
+  spec.source_files = [
+    'SecureKeypadBridgeConfig.swift',
+    'SecureKeypadPresentation.swift',
+    'SecureKeypadView.swift'
+  ]
   spec.preserve_paths = [
     'SecureKeypadFFI/**/*',
     'secure_ffi.xcframework',

@@ -20,6 +20,7 @@ export const NATIVE_PACKAGE_MIRRORS = Object.freeze([
   ["native/ios/react-native/SecureKeypadViewManager.swift", "packages/react-native/ios/SecureKeypadViewManager.swift"],
   ["native/ios/react-native/SecureKeypadViewManager.m", "packages/react-native/ios/SecureKeypadViewManager.m"],
   ["native/ios/flutter/SecureKeypadFlutterPlugin.swift", "packages/flutter/ios/Classes/SecureKeypadFlutterPlugin.swift"],
+  ["crates/secure-ffi/include/secure_keypad.h", "native/ios/SecureKeypadFFI/secure_keypad.h"],
   ["crates/secure-ffi/include/secure_keypad.h", "packages/react-native/ios/SecureKeypadFFI/secure_keypad.h"],
   ["crates/secure-ffi/include/secure_keypad.h", "packages/flutter/ios/Classes/SecureKeypadFFI/secure_keypad.h"],
   ["native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", "packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt"],

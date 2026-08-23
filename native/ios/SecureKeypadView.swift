@@ -1,5 +1,4 @@
 import Foundation
-import SecureKeypadFFI
 import AudioToolbox
 import UIKit
 

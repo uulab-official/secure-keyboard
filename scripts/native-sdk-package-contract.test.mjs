@@ -16,7 +16,11 @@ test("standalone iOS native SDK Podspec excludes framework bridges", () => {
   assert.match(podspec, /spec\.version\s*=\s*['"]0\.1\.0['"]/);
   assert.match(podspec, /spec\.platforms\s*=\s*\{\s*:ios\s*=>\s*['"]15\.1['"]\s*\}/);
   assert.match(podspec, /spec\.swift_version\s*=\s*['"]5\.9['"]/);
-  assert.match(podspec, /spec\.source_files\s*=\s*['"]SecureKeypad\*\.swift['"]/);
+  assert.match(
+    podspec,
+    /spec\.source_files\s*=\s*\[\s*['"]SecureKeypadBridgeConfig\.swift['"],\s*['"]SecureKeypadPresentation\.swift['"],\s*['"]SecureKeypadView\.swift['"]\s*\]/,
+  );
+  assert.doesNotMatch(podspec, /source_files[\s\S]*SecureKeypadPresentationContractTest/);
   assert.match(podspec, /spec\.vendored_frameworks\s*=\s*['"]secure_ffi\.xcframework['"]/);
   assert.doesNotMatch(podspec, /React-Core|Flutter|react-native|SecureKeypadViewManager|SecureKeypadFlutterPlugin/);
 });
@@ -26,6 +30,22 @@ test("standalone iOS native SDK verifies staged FFI artifact ownership", () => {
   assert.match(podspec, /SECURE_KEYPAD_FFI_XCFRAMEWORK/);
   assert.match(podspec, /does not match the staged package FFI artifact/);
   assert.match(podspec, /File\.join\(__dir__, ['"]secure_ffi\.xcframework['"]\)/);
+});
+
+test("standalone iOS native SDK module map is package portable", () => {
+  const moduleMap = read("native/ios/SecureKeypadFFI/module.modulemap");
+  assert.match(moduleMap, /header ['"]secure_keypad\.h['"]/);
+  assert.doesNotMatch(moduleMap, /\.\.\/\.\.\//);
+
+  const header = read("native/ios/SecureKeypadFFI/secure_keypad.h");
+  assert.match(header, /#define SECURE_KEYPAD_ABI_VERSION UINT32_C\(2\)/);
+  assert.doesNotMatch(header, /secure_keypad_[a-z0-9_]*(?:password|secret|get_value|value_bytes)[a-z0-9_]*\s*\(/i);
+});
+
+test("standalone iOS Swift SDK consumes the public C ABI without a consumer-visible submodule", () => {
+  const view = read("native/ios/SecureKeypadView.swift");
+  assert.doesNotMatch(view, /^import SecureKeypadFFI$/m);
+  assert.match(view, /secure_keypad_session_new_numeric/);
 });
 
 test("standalone Android native SDK has no framework dependency", () => {
