@@ -52,6 +52,12 @@ func secureKeypadShouldProtectPresentation(applicationIsActive: Bool, screenIsCa
     !applicationIsActive || screenIsCaptured
 }
 
+/// Rejects host-driven key presses while the native presentation is protected.
+/// This closes the Headless Host command path during capture or inactivity.
+func secureKeypadShouldAcceptProgrammaticKeyPress(protected: Bool) -> Bool {
+    !protected
+}
+
 /// Returns whether a detached native view may recreate its session.
 /// A view without a window must never retain a newly recreated input session.
 func secureKeypadShouldReconfigureSession(hasWindow: Bool, sessionIsNil: Bool, protected: Bool) -> Bool {

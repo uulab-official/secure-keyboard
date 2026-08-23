@@ -80,6 +80,10 @@ only the opaque submission capability.
 7. On Web, verify passkey-first behavior, secure-context enforcement, origin/RP
    ID binding, bounded option parsing, and the explicit lower-assurance warning
    before any custom keypad fallback.
+8. On iOS, while the presentation is protected by app inactivity or active
+   screen capture, attempt both a native tap and an acknowledged Headless Host
+   `pressKey`. Verify that neither accepts input, while explicit cancellation
+   still clears the native session.
 
 ## Evidence and exit rule
 

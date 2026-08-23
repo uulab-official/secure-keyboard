@@ -307,6 +307,7 @@ public class SecureKeypadView: UIView {
     public func requestHeadlessKeyPress(requestId: Int64, keyId: String) {
         guard session != nil,
               headlessHostMode,
+              secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation),
               requestId >= 0,
               keyId.range(of: "^[a-z0-9][a-z0-9._-]{0,63}$", options: .regularExpression) != nil else {
             onError?(1)
@@ -555,6 +556,7 @@ public class SecureKeypadView: UIView {
 
     private func activate(key: SecureKeySpec) {
         guard let session else { return }
+        guard secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation) else { return }
         performFeedback()
         let status: UInt32
         switch key.role {

@@ -869,6 +869,34 @@ export function runSecurityAudit() {
       /let status = secure_keypad_session_refresh\(session, &state\)[\s\S]*guard status == 0 else \{[\s\S]*releaseSession\(\)[\s\S]*onError\?\(status\)/,
       "iOS native views must release the session before reporting a native refresh failure",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /public func requestHeadlessKeyPress[\s\S]*?secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\)/,
+      "iOS native views must reject headless input while the presentation is protected",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key:[\s\S]*?guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return \}/,
+      "iOS native views must reject all activated keys while the presentation is protected",
+    );
+  }
+  for (const file of [
+    "native/ios/SecureKeypadPresentation.swift",
+    "packages/react-native/ios/SecureKeypadPresentation.swift",
+    "packages/flutter/ios/Classes/SecureKeypadPresentation.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(
+      findings,
+      file,
+      contents,
+      /func secureKeypadShouldAcceptProgrammaticKeyPress\(protected: Bool\)[\s\S]*!protected/,
+      "iOS presentation policy must make protected state reject programmatic key presses",
+    );
   }
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");

@@ -474,6 +474,45 @@ test("iOS native views fail closed when masked-state refresh fails", () => {
   }
 });
 
+test("iOS protected presentation rejects headless host input", () => {
+  const presentationSources = [
+    "../native/ios/SecureKeypadPresentation.swift",
+    "../packages/react-native/ios/SecureKeypadPresentation.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadPresentation.swift",
+  ];
+  for (const relativePath of presentationSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /func secureKeypadShouldAcceptProgrammaticKeyPress\(protected: Bool\)/);
+    assert.match(source, /secureKeypadShouldAcceptProgrammaticKeyPress\(protected: Bool\)[\s\S]*!protected/);
+  }
+
+  const viewSources = [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ];
+  for (const relativePath of viewSources) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const headlessStart = source.indexOf("public func requestHeadlessKeyPress");
+    const headlessEnd = source.indexOf("/// Starts a printable-ASCII", headlessStart);
+    assert.ok(headlessStart >= 0 && headlessEnd > headlessStart);
+    assert.match(
+      source.slice(headlessStart, headlessEnd),
+      /secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\)/,
+    );
+    const activateStart = source.indexOf("private func activate(key:");
+    const activateEnd = source.indexOf("private func refreshMaskedState", activateStart);
+    assert.ok(activateStart >= 0 && activateEnd > activateStart);
+    assert.match(
+      source.slice(activateStart, activateEnd),
+      /guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return \}/,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /secureKeypadShouldAcceptProgrammaticKeyPress/);
+});
+
 test("opaque submission routing binds the consumer contract to the originating native view", () => {
   const iosView = readFileSync(new URL("../native/ios/SecureKeypadView.swift", import.meta.url), "utf8");
   const iosManager = readFileSync(

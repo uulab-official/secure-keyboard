@@ -15,6 +15,8 @@ struct SecureKeypadPresentationContractTest {
         precondition(!secureKeypadShouldProtectPresentation(applicationIsActive: true, screenIsCaptured: false))
         precondition(secureKeypadShouldProtectPresentation(applicationIsActive: false, screenIsCaptured: false))
         precondition(secureKeypadShouldProtectPresentation(applicationIsActive: true, screenIsCaptured: true))
+        precondition(secureKeypadShouldAcceptProgrammaticKeyPress(protected: false))
+        precondition(!secureKeypadShouldAcceptProgrammaticKeyPress(protected: true))
         precondition(secureKeypadShouldReconfigureSession(hasWindow: true, sessionIsNil: true, protected: false))
         precondition(!secureKeypadShouldReconfigureSession(hasWindow: false, sessionIsNil: true, protected: false))
         precondition(!secureKeypadShouldReconfigureSession(hasWindow: true, sessionIsNil: false, protected: false))

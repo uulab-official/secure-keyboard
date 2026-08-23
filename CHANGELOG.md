@@ -17,6 +17,8 @@ exact release-candidate commit by the release evidence manifest.
   come from a debug-only artifact.
 - Verification: the Flutter iOS host build and UI smoke now use Release
   configuration for the plugin, simulator app, and lifecycle test.
+- Security: iOS native and wrapper key activation now rejects both touch and
+  Headless Host input while inactive or screen-captured presentation is protected.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

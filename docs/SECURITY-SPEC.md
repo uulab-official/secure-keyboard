@@ -90,6 +90,10 @@ same direct-consumer fallback. Recovery must not replay a previously submitted
 Headless Host command; only a new host command token may activate a key. An
 explicit `releaseSession()` clears both the native session and retained public
 configuration, so teardown remains terminal until the host configures again.
+While iOS marks the presentation as protected because the app is inactive or
+the screen is captured, both native button activation and Headless Host
+`pressKey` commands are rejected. Explicit cancellation and session release
+remain available so the host can clear state without accepting new input.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 
