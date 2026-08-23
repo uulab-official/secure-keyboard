@@ -60,6 +60,7 @@ export function buildProductionCandidateCommands({ evidencePath } = {}) {
     command("Cargo dependency audit", "cargo", ["audit"]),
     command("Node dependency audit", "pnpm", ["audit", "--audit-level", "high"]),
     command("Native package parity", "pnpm", ["check:native-parity"]),
+    command("Native SDK contract", "pnpm", ["check:native-sdk-contract"]),
     command("HTTP contract version parity", "pnpm", ["check:http-contract-version-parity"]),
     command("OPAQUE protocol parity", "pnpm", ["check:opaque-protocol-parity"]),
     command("JavaScript package tests", "pnpm", ["-r", "test"]),

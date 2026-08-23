@@ -18,6 +18,7 @@ test("dry-run plan contains every deterministic production-candidate gate", () =
   assert.ok(rendered.includes("cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"));
   assert.ok(rendered.includes("pnpm audit --audit-level high"));
   assert.ok(rendered.includes("pnpm check:native-parity"));
+  assert.ok(rendered.includes("pnpm check:native-sdk-contract"));
   assert.ok(rendered.includes("pnpm check:http-contract-version-parity"));
   assert.ok(rendered.includes("pnpm check:opaque-protocol-parity"));
   assert.ok(rendered.includes("pnpm security-audit"));
