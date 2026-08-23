@@ -60,7 +60,7 @@ Exit criteria: an external consumer can create a branded keypad without changing
 
 ### Phase 3 — Native mobile renderer
 
-Status: native renderer sources complete; packaging and device verification pending
+Status: native renderer sources and standalone SDK package contracts complete; physical-device verification pending
 
 - [x] Implement iOS native secure view and controller.
 - [x] Implement Android native secure view and controller.
@@ -75,6 +75,8 @@ Status: native renderer sources complete; packaging and device verification pend
 - [x] Add opt-in native CSPRNG input-key randomization while keeping action-key roles and positions stable.
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [x] Add deterministic iOS/Android security-facing presentation snapshots for masked and protected states.
+- [x] Publish the standalone iOS Native SDK Podspec and Android library/AAR module contract without framework dependencies.
+- [x] Bind native SDK version, C ABI, platform floors, and Android ABI artifacts to `native/sdk-contract.json`.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
 - [x] Restore lifecycle-lost sessions for RN and Flutter adapters from retained public configuration across iOS activation/window transitions and Android focus/visibility transitions without replaying Headless Host commands.

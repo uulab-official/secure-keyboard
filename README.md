@@ -19,6 +19,9 @@ reviewer.
 Review the [changelog](CHANGELOG.md) for security fixes and release-candidate changes.
 Report vulnerabilities through the [private security policy](SECURITY.md), never through a public issue.
 Pin framework/native/protocol combinations using the [compatibility policy](docs/COMPATIBILITY.md).
+Direct native consumers must also follow the [native SDK contract](native/sdk-contract.json),
+which binds the native package version, C ABI, platform floors, and Android ABI
+artifact matrix before wrapping the SDK with Flutter or React Native.
 Use the [HTTP deployment baseline](docs/HTTP-DEPLOYMENT.md) when embedding the
 server routes behind TLS or a reverse proxy.
 For multi-instance deployments, follow the [distributed backend contract](docs/DISTRIBUTED-BACKENDS.md)

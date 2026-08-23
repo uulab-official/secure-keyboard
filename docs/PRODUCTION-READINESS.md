@@ -18,6 +18,11 @@ Flutter package checks. It does not prove physical-device behavior, live
 service or CI provenance, Linux LeakSanitizer results, signing, or an
 independent security review.
 
+The native package version, C ABI, iOS/Android platform floors, and Android
+artifact matrix are defined by [`native/sdk-contract.json`](../native/sdk-contract.json).
+The standalone iOS and Android native SDK artifacts and the Flutter/React
+Native wrapper artifacts must be produced from the same immutable commit.
+
 The current checkout must not be described as production-ready until a
 complete release-evidence manifest passes the trusted-key verifier:
 

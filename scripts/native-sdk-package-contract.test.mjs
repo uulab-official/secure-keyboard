@@ -53,3 +53,16 @@ test("standalone Android native SDK fails closed for missing FFI slices", () => 
   const rules = read("native/android/consumer-rules.pro");
   assert.match(rules, /secure_keypad/);
 });
+
+test("public docs bind native SDK versions to the release evidence boundary", () => {
+  for (const relativePath of [
+    "README.md",
+    "docs/COMPATIBILITY.md",
+    "docs/PRODUCTION-READINESS.md",
+  ]) {
+    assert.match(read(relativePath), /native\/sdk-contract\.json/);
+  }
+  assert.match(read("docs/COMPATIBILITY.md"), /SecureKeypadKit|Native SDK/);
+  assert.match(read("docs/PRODUCTION-READINESS.md"), /physical-device|physical device/);
+  assert.match(read("docs/PRODUCTION-READINESS.md"), /independent security review/);
+});
