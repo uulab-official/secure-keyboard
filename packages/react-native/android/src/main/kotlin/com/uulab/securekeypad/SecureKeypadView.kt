@@ -95,6 +95,14 @@ private enum class SecureKeypadInputPolicy {
     HANGUL,
 }
 
+private data class RetainedConfiguration(
+    val layout: SecureKeypadLayout,
+    val theme: SecureKeypadTheme,
+    val maxTokens: Int,
+    val timeoutMs: Long,
+    val policy: SecureKeypadInputPolicy,
+)
+
 private const val MAX_LAYOUT_ROWS = 16
 private const val MAX_LAYOUT_KEYS_PER_ROW = 32
 private const val MAX_LAYOUT_KEYS = 512
@@ -187,6 +195,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
     private var sessionHandle: Long = 0L
+    private var retainedConfiguration: RetainedConfiguration? = null
     internal var onSessionNeedsReconfiguration: (() -> Unit)? = null
     private val display: TextView
     private val keypad: LinearLayout
@@ -334,21 +343,42 @@ public open class SecureKeypadView @JvmOverloads constructor(
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
         validateLayout(layout, policy)
         validateTheme(theme)
-        releaseSession()
-        val handle = when (policy) {
-            SecureKeypadInputPolicy.NUMERIC -> SecureKeypadNative.sessionNewNumeric(maxTokens, timeoutMs)
-            SecureKeypadInputPolicy.ASCII -> SecureKeypadNative.sessionNewAscii(maxTokens, timeoutMs)
-            SecureKeypadInputPolicy.HANGUL -> SecureKeypadNative.sessionNewHangul(maxTokens, timeoutMs)
-        }
-            ?: error("secure keypad native session could not be created")
-        sessionHandle = handle
-        currentTheme = theme
-        render(layout)
-        refreshMaskedState()
+        retainedConfiguration = null
+        releaseNativeSessionPreservingConfiguration()
+        val configuration = RetainedConfiguration(layout, theme, maxTokens, timeoutMs, policy)
+        startSession(configuration)
+        check(sessionHandle != 0L) { "secure keypad native session could not be created" }
+        retainedConfiguration = configuration
     }
 
     /** Releases the native session and zeroizes any pending input. */
     public fun releaseSession() {
+        releaseNativeSessionPreservingConfiguration()
+        retainedConfiguration = null
+    }
+
+    private fun startSession(configuration: RetainedConfiguration) {
+        val handle = when (configuration.policy) {
+            SecureKeypadInputPolicy.NUMERIC -> SecureKeypadNative.sessionNewNumeric(
+                configuration.maxTokens,
+                configuration.timeoutMs,
+            )
+            SecureKeypadInputPolicy.ASCII -> SecureKeypadNative.sessionNewAscii(
+                configuration.maxTokens,
+                configuration.timeoutMs,
+            )
+            SecureKeypadInputPolicy.HANGUL -> SecureKeypadNative.sessionNewHangul(
+                configuration.maxTokens,
+                configuration.timeoutMs,
+            )
+        } ?: error("secure keypad native session could not be created")
+        sessionHandle = handle
+        currentTheme = configuration.theme
+        render(configuration.layout)
+        refreshMaskedState()
+    }
+
+    private fun releaseNativeSessionPreservingConfiguration() {
         if (sessionHandle != 0L) {
             SecureKeypadNative.sessionFree(sessionHandle)
             sessionHandle = 0L
@@ -378,7 +408,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        releaseSession()
+        releaseNativeSessionPreservingConfiguration()
         super.onDetachedFromWindow()
     }
 
@@ -386,7 +416,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         super.onWindowFocusChanged(hasWindowFocus)
         if (hasWindowFocus) {
             requireSecureWindow()
-            if (sessionHandle == 0L) onSessionNeedsReconfiguration?.invoke()
+            requestSessionReconfigurationIfNeeded()
         } else {
             zeroizeSessionForLifecycleLoss()
         }
@@ -396,7 +426,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         super.onWindowVisibilityChanged(visibility)
         if (visibility == View.VISIBLE) {
             requireSecureWindow()
-            if (sessionHandle == 0L) onSessionNeedsReconfiguration?.invoke()
+            requestSessionReconfigurationIfNeeded()
         } else {
             zeroizeSessionForLifecycleLoss()
         }
@@ -404,10 +434,33 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     private fun zeroizeSessionForLifecycleLoss() {
         if (sessionHandle == 0L) return
-        releaseSession()
-        display.text = ""
-        display.contentDescription = "No input"
+        releaseNativeSessionPreservingConfiguration()
         onMaskedStateChanged?.invoke(0, 3)
+    }
+
+    private fun requestSessionReconfigurationIfNeeded() {
+        if (sessionHandle != 0L) return
+        val bridge = onSessionNeedsReconfiguration
+        if (bridge != null) {
+            bridge()
+        } else {
+            reconfigureRetainedConfiguration()
+        }
+    }
+
+    private fun reconfigureRetainedConfiguration() {
+        val configuration = retainedConfiguration ?: return
+        if (sessionHandle != 0L) return
+        try {
+            startSession(configuration)
+            if (sessionHandle == 0L) {
+                retainedConfiguration = null
+            }
+        } catch (_: RuntimeException) {
+            retainedConfiguration = null
+            releaseNativeSessionPreservingConfiguration()
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+        }
     }
 
     private fun render(layout: SecureKeypadLayout) {

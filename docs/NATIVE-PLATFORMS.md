@@ -38,11 +38,14 @@ missing or malformed fields fail closed instead of receiving platform-specific
 defaults.
 
 When iOS releases the session during an inactive, captured, or detached-window
-transition, the native view requests its adapter to reapply retained public
-configuration after protection clears. The callback carries no input state.
-React Native and Flutter adapters retain only the validated public
-configuration and deliberately do not replay a stored Headless Host command
-during lifecycle recovery; a fresh monotonic host command is required.
+transition, the native view retains only the validated public configuration and
+zeroizes the native input session. After protection clears, it automatically
+recreates the session for direct native SDK consumers. If a framework adapter
+callback is installed, the adapter owns that reconfiguration instead. Neither
+path carries input state or replays a stored Headless Host command; a fresh
+monotonic host command is required. Calling public `releaseSession()` clears
+both the native session and retained configuration, so teardown is terminal
+until the host explicitly configures the view again.
 
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
@@ -147,6 +150,13 @@ lose screenshot protection. Construction and attachment fail closed when no
 reassert `FLAG_SECURE` if a host changed the window flags. It releases the
 native session when the window loses focus or becomes invisible, which
 zeroizes pending input instead of keeping it through an app/window transition.
+The validated public configuration is retained in the view so direct native
+SDK consumers automatically receive a fresh session when focus and visibility
+return; framework adapters may take ownership of the same reconfiguration via
+their internal callback. No input state or Headless Host command is replayed.
+Calling public `releaseSession()` clears the retained configuration as well as
+the native session and must be followed by an explicit configure call before
+the view can recover.
 The JNI adapter in
 `native/android/src/main/cpp/secure_keypad_jni.c` owns only pointer handles and
 calls the C ABI. The Activity window receives `FLAG_SECURE`, autofill is

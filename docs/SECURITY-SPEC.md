@@ -81,13 +81,17 @@ fingerprint alone is not proof that a session is live.
 On Android, after window-focus protection has zeroized the session, the native
 view must request the RN manager to reapply the retained public configuration on
 focus or visibility regain; the lifecycle callback must not carry input or any
-secret state. The same rule applies to Flutter's Android PlatformView. On iOS,
-application activation, screen-capture protection clearing, or window
-reattachment must request the RN/Flutter adapter to recreate a missing session
-from retained public configuration. Recovery must not replay a previously
-submitted Headless Host command; only a new host command token may activate a
-key. This contract is enforced independently for the canonical native sources
-and the publishable package copies.
+secret state. The same rule applies to Flutter's Android PlatformView. Direct
+native SDK consumers use the native view's fallback recovery path when no
+framework callback is installed. On iOS, application activation, screen-capture
+protection clearing, or window reattachment must request the RN/Flutter adapter
+to recreate a missing session from retained public configuration, with the
+same direct-consumer fallback. Recovery must not replay a previously submitted
+Headless Host command; only a new host command token may activate a key. An
+explicit `releaseSession()` clears both the native session and retained public
+configuration, so teardown remains terminal until the host configures again.
+This contract is enforced independently for the canonical native sources and
+the publishable package copies.
 
 The core exposes `MAX_KEY_ID_BYTES = 64` and a fallible `KeyId::try_new` for
 untrusted public configuration. Policy resolution repeats the byte bound so a

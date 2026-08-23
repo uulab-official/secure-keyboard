@@ -112,6 +112,14 @@ private enum SecureKeypadInputPolicy {
     case hangul
 }
 
+private struct RetainedConfiguration {
+    let layout: SecureKeypadLayout
+    let theme: SecureKeypadTheme
+    let maxTokens: Int
+    let timeoutMs: UInt64
+    let policy: SecureKeypadInputPolicy
+}
+
 private let hangulInputKeyIds: Set<String> = [
     "jamo-giyeok", "jamo-ssang-giyeok", "jamo-nieun", "jamo-digeut", "jamo-ssang-digeut",
     "jamo-rieul", "jamo-mieum", "jamo-bieub", "jamo-ssang-bieub", "jamo-siot", "jamo-ssang-siot",
@@ -212,6 +220,7 @@ public enum SecureKeypadViewError: Error {
 /// native-only and must not be bridged to JavaScript or Dart.
 public class SecureKeypadView: UIView {
     private var session: OpaquePointer?
+    private var retainedConfiguration: RetainedConfiguration?
     internal var hasActiveSession: Bool { session != nil }
     internal var onSessionNeedsReconfiguration: (() -> Void)? = nil
     private let displayLabel = UILabel()
@@ -265,7 +274,7 @@ public class SecureKeypadView: UIView {
     public override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
-            releaseSession()
+            releaseNativeSessionPreservingConfiguration()
         }
         refreshProtectionState()
         requestSessionReconfigurationIfNeeded()
@@ -352,38 +361,74 @@ public class SecureKeypadView: UIView {
             throw SecureKeypadViewError.abiMismatch
         }
 
-        releaseSession()
+        retainedConfiguration = nil
+        releaseNativeSessionPreservingConfiguration()
+        let configuration = RetainedConfiguration(
+            layout: layout,
+            theme: theme,
+            maxTokens: maxTokens,
+            timeoutMs: timeoutMs,
+            policy: policy
+        )
+        try startSession(configuration: configuration)
+        guard session != nil else {
+            throw SecureKeypadViewError.nativeFailure(secureKeypadInternalError)
+        }
+        retainedConfiguration = configuration
+    }
+
+    private func startSession(configuration: RetainedConfiguration) throws {
+        guard secure_keypad_abi_version() == 2 else {
+            throw SecureKeypadViewError.abiMismatch
+        }
         var newSession: OpaquePointer?
         let status: UInt32
-        switch policy {
+        switch configuration.policy {
         case .numeric:
-            status = secure_keypad_session_new_numeric(UInt32(maxTokens), timeoutMs, &newSession)
+            status = secure_keypad_session_new_numeric(
+                UInt32(configuration.maxTokens),
+                configuration.timeoutMs,
+                &newSession
+            )
         case .ascii:
-            status = secure_keypad_session_new_ascii(UInt32(maxTokens), timeoutMs, &newSession)
+            status = secure_keypad_session_new_ascii(
+                UInt32(configuration.maxTokens),
+                configuration.timeoutMs,
+                &newSession
+            )
         case .hangul:
-            status = secure_keypad_session_new_hangul(UInt32(maxTokens), timeoutMs, &newSession)
+            status = secure_keypad_session_new_hangul(
+                UInt32(configuration.maxTokens),
+                configuration.timeoutMs,
+                &newSession
+            )
         }
         guard status == 0, let newSession else {
             throw SecureKeypadViewError.nativeFailure(status)
         }
         session = newSession
-        activeLayout = Dictionary(uniqueKeysWithValues: layout.rows.flatMap { $0 }.map { ($0.id, $0) })
-        self.theme = theme
-        rootContainer.spacing = theme.keyGap
-        keypadStack.spacing = theme.keyGap
+        activeLayout = Dictionary(uniqueKeysWithValues: configuration.layout.rows.flatMap { $0 }.map { ($0.id, $0) })
+        self.theme = configuration.theme
+        rootContainer.spacing = configuration.theme.keyGap
+        keypadStack.spacing = configuration.theme.keyGap
         if contentPaddingConstraints.count == 4 {
-            contentPaddingConstraints[0].constant = theme.contentPadding
-            contentPaddingConstraints[1].constant = -theme.contentPadding
-            contentPaddingConstraints[2].constant = theme.contentPadding
-            contentPaddingConstraints[3].constant = -theme.contentPadding
+            contentPaddingConstraints[0].constant = configuration.theme.contentPadding
+            contentPaddingConstraints[1].constant = -configuration.theme.contentPadding
+            contentPaddingConstraints[2].constant = configuration.theme.contentPadding
+            contentPaddingConstraints[3].constant = -configuration.theme.contentPadding
         }
-        displayLabel.font = .systemFont(ofSize: theme.keyFontSize, weight: theme.keyFontWeight)
-        render(layout: layout)
+        displayLabel.font = .systemFont(ofSize: configuration.theme.keyFontSize, weight: configuration.theme.keyFontWeight)
+        render(layout: configuration.layout)
         refreshMaskedState()
     }
 
     /// Releases the native session and zeroizes pending input.
     public func releaseSession() {
+        releaseNativeSessionPreservingConfiguration()
+        retainedConfiguration = nil
+    }
+
+    private func releaseNativeSessionPreservingConfiguration() {
         if let session {
             secure_keypad_session_free(session)
             self.session = nil
@@ -617,11 +662,38 @@ public class SecureKeypadView: UIView {
             sessionIsNil: session == nil,
             protected: protectedPresentation
         ) else { return }
-        onSessionNeedsReconfiguration?()
+        if let onSessionNeedsReconfiguration {
+            onSessionNeedsReconfiguration()
+        } else {
+            reconfigureRetainedConfiguration()
+        }
+    }
+
+    private func reconfigureRetainedConfiguration() {
+        guard let configuration = retainedConfiguration, session == nil else { return }
+        do {
+            try startSession(configuration: configuration)
+            if session == nil {
+                retainedConfiguration = nil
+            }
+        } catch let error as SecureKeypadViewError {
+            retainedConfiguration = nil
+            releaseNativeSessionPreservingConfiguration()
+            switch error {
+            case .nativeFailure(let status):
+                onError?(status)
+            case .invalidLayout, .abiMismatch:
+                onError?(secureKeypadInternalError)
+            }
+        } catch {
+            retainedConfiguration = nil
+            releaseNativeSessionPreservingConfiguration()
+            onError?(secureKeypadInternalError)
+        }
     }
 
     private func handleWillResignActive() {
-        releaseSession()
+        releaseNativeSessionPreservingConfiguration()
         setProtectedPresentation(true)
         onMaskedStateChanged?(0, 3)
     }

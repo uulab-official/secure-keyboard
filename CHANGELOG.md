@@ -46,6 +46,11 @@ exact release-candidate commit by the release evidence manifest.
   sessions from retained public configuration on iOS application/window and
   Android focus/visibility restoration; one-time Headless Host commands are
   never replayed during that recovery.
+- Security: standalone iOS and Android native SDK views now perform the same
+  lifecycle recovery without requiring a framework callback. Only validated
+  public configuration is retained; lifecycle loss frees the native input
+  session, and explicit `releaseSession()` clears the retained configuration
+  so teardown cannot silently recreate a session.
 - Security: direct iOS native views now enforce the canonical public key-ID
   grammar before allocating UI or a session, matching the bridge and Android
   fail-closed validation paths across all publishable source copies.

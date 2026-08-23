@@ -688,8 +688,11 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
-    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
-    requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/, "Android native keypad must request reconfiguration after visibility restoration");
+    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(hasWindowFocus\)\s*\{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
+    requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must request reconfiguration after visibility restoration");
+    requireText(findings, file, contents, /private data class RetainedConfiguration/, "Android native keypad must retain only public configuration for direct lifecycle recovery");
+    requireText(findings, file, contents, /private fun requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,260}reconfigureRetainedConfiguration\(\)/, "Android native keypad must provide a direct-consumer lifecycle recovery path");
+    requireText(findings, file, contents, /private fun zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,220}releaseNativeSessionPreservingConfiguration\(\)/, "Android native lifecycle loss must preserve configuration while zeroizing the session");
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)/, "Android native keypad must zeroize when its window becomes invisible");
     requireText(findings, file, contents, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /IMPORTANT_FOR_AUTOFILL_NO/, "Android native keypad must opt out of autofill");
@@ -746,11 +749,11 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /theme\.keyFontSize\.isFinite/, "iOS native theme must reject non-finite font sizes");
     requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
     requireText(findings, file, contents, /willResignActiveNotification[\s\S]{0,240}handleWillResignActive\(\)/, "iOS native keypad must handle application resign-active transitions");
-    requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseSession\(\)/, "iOS native keypad must zeroize when the application resigns active state");
+    requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/, "iOS native keypad must zeroize when the application resigns active state");
     requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
     requireText(findings, file, contents, /refreshProtectionState\(\)/, "iOS native keypad must recompute protection across lifecycle transitions");
     requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
-    requireText(findings, file, contents, /if window == nil \{\s*releaseSession\(\)\s*\}/, "iOS native keypad must release pending input when detached from a window");
+    requireText(findings, file, contents, /if window == nil \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*\}/, "iOS native keypad must release pending input when detached from a window");
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
     requireText(findings, file, contents, /secureKeypadIsValidRenderedLength/, "iOS native keypad must bound masked rendering before allocation");
@@ -760,7 +763,9 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /lastHeadlessKeyPress/, "iOS native keypad must retain a per-view headless replay floor");
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
-    requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,400}releaseSession\(\)/, "iOS native reconfiguration must clear the old session through its nil-setting release path");
+    requireText(findings, file, contents, /private struct RetainedConfiguration/, "iOS native keypad must retain only public configuration for direct lifecycle recovery");
+    requireText(findings, file, contents, /private func requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,600}reconfigureRetainedConfiguration\(\)/, "iOS native keypad must provide a direct-consumer lifecycle recovery path");
+    requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,700}releaseNativeSessionPreservingConfiguration\(\)/, "iOS native reconfiguration must clear the old session through its zeroizing release path");
     requireText(findings, file, contents, /secure_keypad_abi_version\(\)/, "iOS native keypad must fail closed on an FFI ABI mismatch before session creation");
     requireText(findings, file, contents, /configureAscii/, "iOS native keypad must expose the bounded printable-ASCII policy");
     forbidText(

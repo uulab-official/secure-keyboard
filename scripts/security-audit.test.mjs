@@ -228,12 +228,14 @@ test("React Native Android recreates a session after window lifecycle loss", () 
     assert.match(source, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/);
     assert.match(
       source,
-      /if \(hasWindowFocus\) \{[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,240}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/,
+      /if \(hasWindowFocus\) \{[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,240}requestSessionReconfigurationIfNeeded\(\)/,
     );
     assert.match(
       source,
-      /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}if \(sessionHandle == 0L\) onSessionNeedsReconfiguration\?\.invoke\(\)/,
+      /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/,
     );
+    assert.match(source, /private data class RetainedConfiguration/);
+    assert.match(source, /private fun requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,260}reconfigureRetainedConfiguration\(\)/);
   }
 
   for (const relativePath of [

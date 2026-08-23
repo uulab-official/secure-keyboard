@@ -48,6 +48,16 @@ test("standalone iOS Swift SDK consumes the public C ABI without a consumer-visi
   assert.match(view, /secure_keypad_session_new_numeric/);
 });
 
+test("standalone iOS native SDK retains configuration for direct lifecycle recovery", () => {
+  const view = read("native/ios/SecureKeypadView.swift");
+  assert.match(view, /private struct RetainedConfiguration/);
+  assert.match(view, /private var retainedConfiguration: RetainedConfiguration\?/);
+  assert.match(view, /reconfigureRetainedConfiguration/);
+  assert.match(view, /requestSessionReconfigurationIfNeeded[\s\S]*if let onSessionNeedsReconfiguration[\s\S]*reconfigureRetainedConfiguration/);
+  assert.match(view, /handleWillResignActive[\s\S]*releaseNativeSessionPreservingConfiguration/);
+  assert.match(view, /public func releaseSession\(\)[\s\S]*retainedConfiguration = nil/);
+});
+
 test("standalone Android native SDK has no framework dependency", () => {
   const gradle = read("native/android/build.gradle");
   assert.match(gradle, /com\.android\.library/);
@@ -76,6 +86,16 @@ test("standalone Android native SDK fails closed for missing FFI slices", () => 
   assert.match(cmake, /message\(FATAL_ERROR/);
   const rules = read("native/android/consumer-rules.pro");
   assert.match(rules, /secure_keypad/);
+});
+
+test("standalone Android native SDK retains configuration for direct lifecycle recovery", () => {
+  const view = read("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt");
+  assert.match(view, /private data class RetainedConfiguration/);
+  assert.match(view, /private var retainedConfiguration: RetainedConfiguration\?/);
+  assert.match(view, /reconfigureRetainedConfiguration/);
+  assert.match(view, /val bridge = onSessionNeedsReconfiguration[\s\S]*reconfigureRetainedConfiguration/);
+  assert.match(view, /zeroizeSessionForLifecycleLoss[\s\S]*releaseNativeSessionPreservingConfiguration/);
+  assert.match(view, /public fun releaseSession\(\)[\s\S]*retainedConfiguration = null/);
 });
 
 test("public docs bind native SDK versions to the release evidence boundary", () => {
