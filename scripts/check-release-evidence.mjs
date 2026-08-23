@@ -92,6 +92,7 @@ export const CI_RELEASE_GATE_CHECKS = Object.freeze({
       "job-flutter-host-build",
       "job-react-native-host-build",
       "job-ios-host-builds",
+      "job-android-native-sdk-host-runtime-smoke",
       "job-android-host-runtime-smoke",
     ]),
   ]),

@@ -150,6 +150,7 @@ jobs:
       - run: pnpm test:fuzz-corpus
       - run: pnpm test:production-candidate
       - run: pnpm test:security-audit
+      - run: pnpm test:android-native-sdk-host-build-contract
       - run: pnpm security-audit
       - run: pnpm --dir packages/contracts typecheck
       - run: pnpm --dir packages/contracts test
@@ -482,6 +483,192 @@ jobs:
         with:
           name: secure-keypad-react-native-host-apk
           path: ${{ runner.temp }}/secure-keypad-react-native-host/android/app/build/outputs/apk/release/app-release.apk
+
+  android-native-sdk-host-runtime-smoke:
+    name: Build and launch standalone Native Android SDK host
+    needs: [react-native-host-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.0'
+          cache: true
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-ffi-android-react-native-host-and-checksum
+          path: ${{ runner.temp }}/secure-keypad-ffi
+      - name: Create a framework-free Android host around the standalone SDK
+        env:
+          HOST_DIR: ${{ runner.temp }}/secure-keypad-native-android-host
+        run: |
+          flutter create --platforms=android --org dev.uulab --project-name secure_keypad_native_host "$HOST_DIR"
+          python3 - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+
+          android = Path(os.environ["HOST_DIR"]) / "android"
+          shutil.rmtree(android / "app/src/main/java", ignore_errors=True)
+          (android / "settings.gradle.kts").write_text(
+              """pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          plugins {
+              id("com.android.application") version "9.1.0" apply false
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "SecureKeypadNativeAndroidHost"
+          include(":app")
+          include(":secure-keypad-native")
+          project(":secure-keypad-native").projectDir = file("${System.getenv("GITHUB_WORKSPACE")}/native/android")
+          """
+          )
+          (android / "build.gradle.kts").write_text(
+              """// Repositories are centrally controlled by settings.gradle.kts.
+          """
+          )
+          (android / "gradle.properties").write_text(
+              """android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          """
+          )
+          (android / "app/build.gradle.kts").write_text(
+              """plugins {
+              id("com.android.application")
+          }
+
+          android {
+              namespace = "dev.uulab.secure_keypad_native_host"
+              compileSdk = 35
+
+              defaultConfig {
+                  applicationId = "dev.uulab.secure_keypad_native_host"
+                  minSdk = 24
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "0.1.0"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.getByName("debug")
+                  }
+              }
+          }
+
+          dependencies {
+              implementation(project(":secure-keypad-native"))
+          }
+          """
+          )
+          (android / "app/src/main/AndroidManifest.xml").write_text(
+              """<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar"
+                  android:label="SecureKeypadNativeHost">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          """
+          )
+          main = android / "app/src/main/kotlin/dev/uulab/secure_keypad_native_host/MainActivity.kt"
+          main.parent.mkdir(parents=True, exist_ok=True)
+          main.write_text(
+              """package dev.uulab.secure_keypad_native_host
+
+          import android.app.Activity
+          import android.os.Bundle
+          import android.view.WindowManager
+          import com.uulab.securekeypad.SecureKeyRole
+          import com.uulab.securekeypad.SecureKeySpec
+          import com.uulab.securekeypad.SecureKeypadLayout
+          import com.uulab.securekeypad.SecureKeypadView
+
+          class MainActivity : Activity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                  val keypad = SecureKeypadView(this)
+                  setContentView(keypad)
+                  keypad.configureNumeric(
+                      SecureKeypadLayout(
+                          rows = listOf(
+                              listOf(
+                                  SecureKeySpec("digit-1", "1", SecureKeyRole.INPUT, "1", "digit-1"),
+                                  SecureKeySpec("digit-2", "2", SecureKeyRole.INPUT, "2", "digit-2"),
+                                  SecureKeySpec("digit-3", "3", SecureKeyRole.INPUT, "3", "digit-3"),
+                              ),
+                              listOf(
+                                  SecureKeySpec("clear", "Clear", SecureKeyRole.CLEAR, "Clear", "clear"),
+                                  SecureKeySpec("backspace", "Delete", SecureKeyRole.BACKSPACE, "Delete", "backspace"),
+                                  SecureKeySpec("submit", "Continue", SecureKeyRole.SUBMIT, "Continue", "submit"),
+                              ),
+                          ),
+                      ),
+                  )
+              }
+          }
+          """
+          )
+          PY
+      - name: Build the standalone Android SDK host release APK
+        working-directory: ${{ runner.temp }}/secure-keypad-native-android-host/android
+        env:
+          SECURE_KEYPAD_FFI_LIB_DIR: ${{ runner.temp }}/secure-keypad-ffi
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace \
+            -Pandroid.builtInKotlin=true \
+            -PsecureKeypadAndroidArchitectures=arm64-v8a,x86_64
+          test -s app/build/outputs/apk/release/app-release.apk
+      - name: Launch the standalone Android SDK host in an emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
+              "$RUNNER_TEMP/secure-keypad-native-android-host/android/app/build/outputs/apk/release/app-release.apk" \
+              "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android.png" \
+              "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android-ui.xml"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: secure-keypad-native-android-runtime
+          path: ${{ runner.temp }}/secure-keypad-native-android-runtime
+          if-no-files-found: warn
 
   android-host-runtime-smoke:
     name: Launch Android RN and Flutter hosts in an emulator
@@ -1490,6 +1677,7 @@ jobs:
         flutter,
         flutter-host-build,
         react-native-host-build,
+        android-native-sdk-host-runtime-smoke,
         android-host-runtime-smoke,
         fuzz,
         sbom,
@@ -1516,6 +1704,11 @@ jobs:
         with:
           name: secure-keypad-android-emulator-runtime
           path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/android-emulator-runtime
+      - name: Retain standalone Native Android SDK runtime evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: secure-keypad-native-android-runtime
+          path: ${{ runner.temp }}/secure-keypad-ci-release-evidence/retained/native-android-sdk-runtime
       - name: Retain iOS simulator runtime evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -1565,7 +1758,7 @@ jobs:
             --runner ci-aggregate --check job-contracts
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" framework-host-builds \
             "ci/framework-host-builds.json" "fragments/framework-host-builds.json" \
-            --runner ci-aggregate --check job-flutter-host-build --check job-react-native-host-build --check job-ios-host-builds --check job-android-host-runtime-smoke
+            --runner ci-aggregate --check job-flutter-host-build --check job-react-native-host-build --check job-ios-host-builds --check job-android-native-sdk-host-runtime-smoke --check job-android-host-runtime-smoke
           node scripts/emit-ci-gate-evidence.mjs "$EVIDENCE_ROOT" durable-backends \
             "ci/durable-backends-aggregate.json" "fragments/durable-backends-aggregate.json" \
             --runner ci-aggregate --check job-durable-backends

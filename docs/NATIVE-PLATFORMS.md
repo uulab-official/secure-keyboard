@@ -236,6 +236,12 @@ The application must link the JNI adapter with the Rust `secure-ffi` library
 for every ABI it ships. The CMake file intentionally does not invent a Rust
 library path; the host build must provide the architecture-specific artifact.
 
+CI exercises this direct path with a framework-free Kotlin host: it includes
+the Android library module, stages the matching arm64-v8a and x86_64 FFI
+slices, builds a Release APK, and launches it in an API 35 x86_64 emulator.
+The retained screenshot and accessibility hierarchy prove packaging and
+`FLAG_SECURE` wiring only; they do not replace physical-device verification.
+
 For an arm64 Android build, configure the NDK linker explicitly:
 
 ```sh

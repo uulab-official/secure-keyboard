@@ -77,8 +77,3 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     exclude '**/flutter/**'
     exclude '**/reactnative/**'
 }
-
-repositories {
-    google()
-    mavenCentral()
-}

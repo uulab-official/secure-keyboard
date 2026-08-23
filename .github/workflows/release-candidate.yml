@@ -321,6 +321,7 @@ jobs:
           pnpm test:flutter-package-publish-contract
           pnpm test:production-candidate
           pnpm test:security-audit
+          pnpm test:android-native-sdk-host-build-contract
           pnpm security-audit
           pnpm -r test
           pnpm -r typecheck

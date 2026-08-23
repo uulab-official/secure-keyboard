@@ -1516,6 +1516,7 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-release-gate-evidence/, "release candidate must test evidence fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-native-device-evidence/, "release candidate must test native device evidence emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:ios-host-build-contract/, "release candidate must test the iOS host-build contract");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:android-native-sdk-host-build-contract/, "release candidate must test the standalone Android SDK host-build contract");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-signed-release-evidence/, "release candidate must test signed-release evidence emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /test:emit-independent-review-fragment/, "release candidate must test independent-review fragment emission");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /emit-signed-release-evidence\.mjs/, "release candidate must emit signed-release evidence");
@@ -1686,11 +1687,14 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-browser-smoke-\$\{\{ matrix\.browser \}\}/, "CI browser smoke must retain per-browser evidence artifacts");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /if: always\(\)[\s\S]{0,240}secure-keypad-browser-smoke/, "CI browser smoke evidence must upload after failures");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain Android emulator runtime evidence[\s\S]{0,400}secure-keypad-android-emulator-runtime[\s\S]{0,240}retained\/android-emulator-runtime/, "CI aggregate must retain Android emulator runtime evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain standalone Native Android SDK runtime evidence[\s\S]{0,400}secure-keypad-native-android-runtime[\s\S]{0,240}retained\/native-android-sdk-runtime/, "CI aggregate must retain standalone Native Android SDK runtime evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain iOS simulator runtime evidence[\s\S]{0,400}secure-keypad-ios-simulator-runtime[\s\S]{0,240}retained\/ios-simulator-runtime/, "CI aggregate must retain iOS Simulator runtime evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain fuzz and LeakSanitizer campaign logs[\s\S]{0,400}secure-keypad-fuzz-logs[\s\S]{0,240}retained\/fuzz-logs/, "CI aggregate must retain fuzz and LeakSanitizer logs");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Retain dependency metadata[\s\S]{0,400}secure-keypad-dependency-metadata[\s\S]{0,240}retained\/dependency-metadata/, "CI aggregate must retain dependency metadata");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-native-sdk-host-runtime-smoke/, "CI must include a standalone Android SDK host runtime gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-native-android-runtime/, "CI must retain standalone Android SDK runtime evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled Flutter Android FFI artifacts/, "Flutter host CI must exercise the bundled Android FFI fallback");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled React Native Android FFI artifacts/, "React Native host CI must exercise the bundled Android FFI fallback");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /ios-host-builds/, "CI must include iOS host-link build gates");

@@ -59,6 +59,7 @@ test("standalone Android native SDK has no framework dependency", () => {
   assert.match(gradle, /exclude ['"]com\/uulab\/securekeypad\/flutter\/\*\*['"]/);
   assert.match(gradle, /exclude ['"]com\/uulab\/securekeypad\/reactnative\/\*\*['"]/);
   assert.match(gradle, /tasks\.withType\(org\.jetbrains\.kotlin\.gradle\.tasks\.KotlinCompile\)[\s\S]*exclude ['"]\*\*\/flutter\/\*\*['"][\s\S]*exclude ['"]\*\*\/reactnative\/\*\*['"]/);
+  assert.doesNotMatch(gradle, /repositories\s*\{/);
   assert.doesNotMatch(gradle, /react-native|com\.facebook\.react|Flutter/);
 });
 

@@ -76,6 +76,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Add executable iOS/Android native presentation and ownership contract checks to CI.
 - [x] Add deterministic iOS/Android security-facing presentation snapshots for masked and protected states.
 - [x] Publish the standalone iOS Native SDK Podspec and Android library/AAR module contract without framework dependencies.
+- [x] Build and launch framework-free standalone iOS/Android SDK hosts in CI using Release artifacts and public runtime evidence.
 - [x] Bind native SDK version, C ABI, platform floors, and Android ABI artifacts to `native/sdk-contract.json`.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.

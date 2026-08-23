@@ -39,6 +39,13 @@ APKs and uploads no-input screenshots. This catches packaging and launch
 regressions only; it is not physical-device evidence and does not replace the
 Android matrix above.
 
+The CI also builds a framework-free standalone Native Android SDK host from the
+direct AAR module, links the staged arm64/x86_64 FFI slices, launches its Release
+APK in the same API 35 x86_64 emulator, and retains its screenshot and public
+accessibility hierarchy. This verifies direct native consumption and
+`FLAG_SECURE` wiring; it is still emulator evidence, not physical-device
+accessibility, capture, autofill, or TalkBack evidence.
+
 ## Test cases
 
 Use a disposable test account and a sentinel input that must never appear in a
