@@ -513,6 +513,42 @@ test("iOS protected presentation rejects headless host input", () => {
   assert.match(securityAudit, /secureKeypadShouldAcceptProgrammaticKeyPress/);
 });
 
+test("iOS screen-capture transitions release a live native session", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadPresentation.swift",
+    "../packages/react-native/ios/SecureKeypadPresentation.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadPresentation.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /func secureKeypadShouldClearSessionForScreenCapture\(screenIsCaptured: Bool, sessionIsLive: Bool\)[\s\S]*screenIsCaptured && sessionIsLive/,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const observerStart = source.indexOf("UIScreen.capturedDidChangeNotification");
+    const observerEnd = source.indexOf("refreshProtectionState()", observerStart);
+    assert.ok(observerStart >= 0 && observerEnd > observerStart);
+    assert.match(source.slice(observerStart, observerEnd), /handleScreenCaptureChange\(\)/);
+    const handlerStart = source.indexOf("private func handleScreenCaptureChange");
+    const handlerEnd = source.indexOf("private func refreshProtectionState", handlerStart);
+    assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
+    assert.match(
+      source.slice(handlerStart, handlerEnd),
+      /secureKeypadShouldClearSessionForScreenCapture[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*onMaskedStateChanged\?\(0, 3\)[\s\S]*refreshProtectionState\(\)[\s\S]*requestSessionReconfigurationIfNeeded\(\)/,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /secureKeypadShouldClearSessionForScreenCapture/);
+});
+
 test("opaque submission routing binds the consumer contract to the originating native view", () => {
   const iosView = readFileSync(new URL("../native/ios/SecureKeypadView.swift", import.meta.url), "utf8");
   const iosManager = readFileSync(

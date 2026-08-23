@@ -94,6 +94,9 @@ While iOS marks the presentation as protected because the app is inactive or
 the screen is captured, both native button activation and Headless Host
 `pressKey` commands are rejected. Explicit cancellation and session release
 remain available so the host can clear state without accepting new input.
+When screen capture starts, iOS also releases a live native session and emits
+only the public cancelled/empty state; capture end may recreate a session from
+retained public configuration, never from the previous secret input.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 

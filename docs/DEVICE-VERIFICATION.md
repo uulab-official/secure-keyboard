@@ -62,8 +62,10 @@ only the opaque submission capability.
    observe only masked length/state and generic result codes.
 2. Capture the screen, start recording, background the app, open the task
    switcher, and return to the app. Verify that iOS remains protected while
-   capture is still active after an active/inactive transition, that iOS
-   releases the native session on resign-active, and that Android retains
+   capture is still active after an active/inactive transition, releases the
+   live native session when capture starts, emits only the public empty/cancelled
+   state, and recreates only from public configuration after capture ends; also
+   verify that iOS releases the native session on resign-active, and that Android retains
    `FLAG_SECURE` through framework wrapper contexts, reassert it when focus
    returns after host flag changes, while releasing the native session when its
    window loses focus or becomes invisible. Injected or malformed native

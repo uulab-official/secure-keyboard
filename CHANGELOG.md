@@ -19,6 +19,8 @@ exact release-candidate commit by the release evidence manifest.
   configuration for the plugin, simulator app, and lifecycle test.
 - Security: iOS native and wrapper key activation now rejects both touch and
   Headless Host input while inactive or screen-captured presentation is protected.
+- Security: iOS now releases a live native session when screen capture starts
+  and recreates it only from retained public configuration after capture ends.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

@@ -653,8 +653,7 @@ public class SecureKeypadView: UIView {
             self?.requestSessionReconfigurationIfNeeded()
         })
         notificationTokens.append(center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.refreshProtectionState()
-            self?.requestSessionReconfigurationIfNeeded()
+            self?.handleScreenCaptureChange()
         })
         refreshProtectionState()
     }
@@ -699,6 +698,19 @@ public class SecureKeypadView: UIView {
         releaseNativeSessionPreservingConfiguration()
         setProtectedPresentation(true)
         onMaskedStateChanged?(0, 3)
+    }
+
+    private func handleScreenCaptureChange() {
+        let screenIsCaptured = window?.windowScene?.screen.isCaptured ?? false
+        if secureKeypadShouldClearSessionForScreenCapture(
+            screenIsCaptured: screenIsCaptured,
+            sessionIsLive: session != nil
+        ) {
+            releaseNativeSessionPreservingConfiguration()
+            onMaskedStateChanged?(0, 3)
+        }
+        refreshProtectionState()
+        requestSessionReconfigurationIfNeeded()
     }
 
     private func refreshProtectionState() {

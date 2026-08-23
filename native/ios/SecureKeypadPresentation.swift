@@ -58,6 +58,11 @@ func secureKeypadShouldAcceptProgrammaticKeyPress(protected: Bool) -> Bool {
     !protected
 }
 
+/// Clears a live native session when screen capture starts.
+func secureKeypadShouldClearSessionForScreenCapture(screenIsCaptured: Bool, sessionIsLive: Bool) -> Bool {
+    screenIsCaptured && sessionIsLive
+}
+
 /// Returns whether a detached native view may recreate its session.
 /// A view without a window must never retain a newly recreated input session.
 func secureKeypadShouldReconfigureSession(hasWindow: Bool, sessionIsNil: Bool, protected: Bool) -> Bool {

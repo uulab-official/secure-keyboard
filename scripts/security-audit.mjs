@@ -883,6 +883,20 @@ export function runSecurityAudit() {
       /private func activate\(key:[\s\S]*?guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return \}/,
       "iOS native views must reject all activated keys while the presentation is protected",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /UIScreen\.capturedDidChangeNotification[\s\S]*?handleScreenCaptureChange\(\)/,
+      "iOS native views must handle screen-capture transitions through the clearing path",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func handleScreenCaptureChange[\s\S]*?secureKeypadShouldClearSessionForScreenCapture[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?onMaskedStateChanged\?\(0, 3\)[\s\S]*?refreshProtectionState\(\)[\s\S]*?requestSessionReconfigurationIfNeeded\(\)/,
+      "iOS native views must release live sessions and recover only after capture ends",
+    );
   }
   for (const file of [
     "native/ios/SecureKeypadPresentation.swift",
@@ -896,6 +910,13 @@ export function runSecurityAudit() {
       contents,
       /func secureKeypadShouldAcceptProgrammaticKeyPress\(protected: Bool\)[\s\S]*!protected/,
       "iOS presentation policy must make protected state reject programmatic key presses",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /func secureKeypadShouldClearSessionForScreenCapture\(screenIsCaptured: Bool, sessionIsLive: Bool\)[\s\S]*screenIsCaptured && sessionIsLive/,
+      "iOS presentation policy must clear a live session when capture starts",
     );
   }
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
