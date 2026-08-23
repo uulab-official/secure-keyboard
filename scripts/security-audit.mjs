@@ -844,6 +844,8 @@ export function runSecurityAudit() {
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /deliverAndReport\(\s*submission/, "Android submission routing must use the exception-safe ownership reporter");
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /typealias SecureKeypadSubmissionConsumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Boolean/, "Android submission consumers must receive the originating native view");
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isAbiCompatible/, "Android native keypad must fail closed on an FFI ABI mismatch before session creation");
+  const standaloneAndroidBuild = source("native/android/build.gradle", findings);
+  requireText(findings, "native/android/build.gradle", standaloneAndroidBuild, /tasks\.withType\(org\.jetbrains\.kotlin\.gradle\.tasks\.KotlinCompile\)[\s\S]*exclude ['"]\*\*\/flutter\/\*\*['"][\s\S]*exclude ['"]\*\*\/reactnative\/\*\*['"]/, "standalone Android AAR must exclude framework adapters from the Kotlin compile task");
   const androidOwnership = source("native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SubmissionOwnership.kt", androidOwnership, /if \(!isConsumed\(value\)\) release\(value\)/, "Android callback failure handling must not release an already-transferred opaque handle");
 

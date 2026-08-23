@@ -20,6 +20,22 @@ android {
     namespace 'com.uulab.securekeypad'
     compileSdk project.hasProperty('compileSdkVersion') ? project.compileSdkVersion : 35
 
+    // The standalone native module owns the renderer and FFI only. Framework
+    // adapters are published by their respective packages and must never be
+    // pulled into this AAR's compile classpath.
+    sourceSets {
+        main {
+            java {
+                exclude 'com/uulab/securekeypad/flutter/**'
+                exclude 'com/uulab/securekeypad/reactnative/**'
+            }
+            kotlin {
+                exclude 'com/uulab/securekeypad/flutter/**'
+                exclude 'com/uulab/securekeypad/reactnative/**'
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -51,6 +67,15 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+// Kotlin 2.x maintains its own source file collection in addition to the
+// Android Java source set. Apply the boundary to the compile task itself so
+// framework adapters can remain available for wrapper package parity without
+// entering the standalone AAR.
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    exclude '**/flutter/**'
+    exclude '**/reactnative/**'
 }
 
 repositories {
