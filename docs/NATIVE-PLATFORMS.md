@@ -157,6 +157,11 @@ zeroizes pending input instead of keeping it through an app/window transition.
 When a host detaches and reattaches the view without delivering a focus or
 visibility callback, attachment also requests lifecycle recovery so a fresh
 session is created from retained public configuration.
+Every native touch activation and Headless Host command repeats the same
+secure-window reassertion and verifies the resulting `FLAG_SECURE` bit at the
+input boundary. If the Activity/window cannot be resolved or verification
+fails, the input is rejected before the native session is called; a rejected
+Headless Host command does not advance its replay floor.
 The validated public configuration is retained in the view so direct native
 SDK consumers automatically receive a fresh session when focus and visibility
 return; framework adapters may take ownership of the same reconfiguration via

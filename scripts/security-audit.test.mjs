@@ -158,7 +158,8 @@ test("Android secure native view fails closed without a secure Activity window",
     "utf8",
   );
 
-  assert.match(source, /findActivity\(\)\s*\?:\s*error/);
+  assert.match(source, /context\.findActivity\(\)\s*\?:\s*return false/);
+  assert.match(source, /check\(ensureSecureWindowProtection\(\)\)/);
   assert.match(source, /onAttachedToWindow\(\)[\s\S]*addFlags\(WindowManager\.LayoutParams\.FLAG_SECURE\)/);
 });
 
@@ -264,6 +265,34 @@ test("Android native views recover a detached session on reattachment", () => {
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /onAttachedToWindow/);
   assert.match(securityAudit, /requestSessionReconfigurationIfNeeded/);
+});
+
+test("Android native input reasserts secure-window protection at the input boundary", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /private fun ensureSecureWindowProtection\(\)[\s\S]{0,520}FLAG_SECURE/);
+    assert.match(
+      source,
+      /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}ensureSecureWindowProtection\(\)/,
+    );
+    assert.match(
+      source,
+      /public fun requestHeadlessKeyPress[\s\S]{0,800}ensureSecureInputBoundary\(\)/,
+    );
+    assert.match(
+      source,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]{0,300}ensureSecureInputBoundary\(\)/,
+    );
+    assert.match(source, /if \(!activate\(key\)\) return[\s\S]{0,80}lastHeadlessKeyPress = requestId/);
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /ensureSecureInputBoundary/);
+  assert.match(securityAudit, /lastHeadlessKeyPress/);
 });
 
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {

@@ -258,9 +258,24 @@ public open class SecureKeypadView @JvmOverloads constructor(
         requestSessionReconfigurationIfNeeded()
     }
 
+    private fun ensureSecureWindowProtection(): Boolean {
+        return try {
+            val activity = context.findActivity() ?: return false
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            (activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
+
     private fun requireSecureWindow() {
-        val activity = context.findActivity() ?: error("secure keypad requires an Activity window")
-        activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        check(ensureSecureWindowProtection()) { "secure keypad requires an Activity window with FLAG_SECURE" }
+    }
+
+    private fun ensureSecureInputBoundary(): Boolean {
+        if (ensureSecureWindowProtection()) return true
+        onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+        return false
     }
 
     /** Starts a numeric Secure Native session and renders the supplied layout. */
@@ -309,8 +324,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
             onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
             return
         }
+        if (!ensureSecureInputBoundary()) return
+        if (!activate(key)) return
         lastHeadlessKeyPress = requestId
-        activate(key)
     }
 
     /** Starts a printable-ASCII Secure Native session. */
@@ -533,8 +549,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
         return secureKeypadPresentationRows(rows, randomizeInputKeys, secureRandom)
     }
 
-    private fun activate(key: SecureKeySpec) {
-        if (sessionHandle == 0L) return
+    private fun activate(key: SecureKeySpec): Boolean {
+        if (!ensureSecureInputBoundary()) return false
+        if (sessionHandle == 0L) return false
         performFeedback()
         var status = 0
         when (key.role) {
@@ -542,7 +559,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.BACKSPACE -> status = SecureKeypadNative.sessionBackspace(sessionHandle)
             SecureKeyRole.CLEAR -> status = SecureKeypadNative.sessionClear(sessionHandle)
             SecureKeyRole.SUBMIT -> {
-                val rawSubmission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return
+                val rawSubmission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return false
                 val submission = SecureKeypadSubmission(rawSubmission)
                 deliverOrRelease(
                     submission,
@@ -552,10 +569,11 @@ public open class SecureKeypadView @JvmOverloads constructor(
                 )
             }
             SecureKeyRole.CANCEL -> status = SecureKeypadNative.sessionCancel(sessionHandle)
-            SecureKeyRole.SPACER -> return
+            SecureKeyRole.SPACER -> return false
         }
         if (status != 0) onError?.invoke(status)
         refreshMaskedState()
+        return true
     }
 
     private fun keyBackground(): StateListDrawable = StateListDrawable().apply {

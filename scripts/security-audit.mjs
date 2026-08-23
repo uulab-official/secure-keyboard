@@ -693,6 +693,11 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /object SecureKeypadNativeSubmissionRouter/, "Android native handoff must be explicitly routed");
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
+    requireText(findings, file, contents, /private fun ensureSecureWindowProtection\(\)[\s\S]{0,520}FLAG_SECURE/, "Android secure-window protection must be reasserted and verified");
+    requireText(findings, file, contents, /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}ensureSecureWindowProtection\(\)/, "Android input must fail closed when secure-window protection cannot be verified");
+    requireText(findings, file, contents, /public fun requestHeadlessKeyPress[\s\S]{0,800}ensureSecureInputBoundary\(\)/, "Android headless input must verify secure-window protection at the command boundary");
+    requireText(findings, file, contents, /private fun activate\(key: SecureKeySpec\)[\s\S]{0,300}ensureSecureInputBoundary\(\)/, "Android touch input must verify secure-window protection at activation");
+    requireText(findings, file, contents, /if \(!activate\(key\)\) return[\s\S]{0,80}lastHeadlessKeyPress = requestId/, "Android headless replay state must advance only after secure input succeeds");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");

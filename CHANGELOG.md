@@ -25,6 +25,9 @@ exact release-candidate commit by the release evidence manifest.
   preventing unrelated multi-window scenes from changing its session.
 - Security: Android native views now recover a zeroized session on reattachment
   even when the host does not emit a focus or visibility callback.
+- Security: Android touch and Headless Host input now reassert and verify
+  `FLAG_SECURE` at the native input boundary; rejected commands cannot advance
+  the headless replay floor.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

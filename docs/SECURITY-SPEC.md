@@ -155,6 +155,7 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Native submission and OPAQUE secret-output handoffs invoke a `FnOnce(&[u8])` callback that returns no value; callers must consume the bytes immediately in native/server cryptographic code and cannot use the public API as a secret getter.
 - Mobile background snapshots must be masked. Android secure-window protection and iOS capture/background handling are platform-specific controls, not universal guarantees.
 - Android Secure Native construction must fail closed if the host `Activity` window cannot be resolved for `FLAG_SECURE`; a keypad that cannot establish the secure window boundary must not accept input.
+- Android touch activation and Headless Host commands must reassert and verify `FLAG_SECURE` immediately before invoking the native session. If the host window cannot be resolved, reassertion fails, or verification fails, the input is rejected and the command replay floor must not advance.
 
 ## Authentication boundary
 
