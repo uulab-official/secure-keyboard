@@ -27,3 +27,8 @@ test("standalone Android SDK runtime smoke exercises lifecycle zeroization and r
   assert.match(SMOKE_SCRIPT, /input tap/);
   assert.doesNotMatch(SMOKE_SCRIPT, /getText|secret|plaintext/i);
 });
+
+test("standalone Android lifecycle smoke taps only a clickable public digit key", () => {
+  assert.match(SMOKE_SCRIPT, /node\.attrib\.get\("content-desc"\) != "1"/);
+  assert.match(SMOKE_SCRIPT, /node\.attrib\.get\("clickable"\) != "true"/);
+});

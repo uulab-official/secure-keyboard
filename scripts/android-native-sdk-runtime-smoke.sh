@@ -118,6 +118,8 @@ root = ElementTree.parse(sys.argv[1]).getroot()
 for node in root.iter("node"):
     if node.attrib.get("content-desc") != "1":
         continue
+    if node.attrib.get("clickable") != "true":
+        continue
     match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
     if not match:
         continue

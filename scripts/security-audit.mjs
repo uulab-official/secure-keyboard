@@ -565,6 +565,7 @@ export function runSecurityAudit() {
   const standaloneAndroidRuntimeSmoke = source("scripts/android-native-sdk-runtime-smoke.sh", findings);
   requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /KEYCODE_HOME/, "standalone Android SDK runtime evidence must exercise the lifecycle background transition");
   requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /adb shell am start -W -n/, "standalone Android SDK runtime evidence must relaunch the resolved native host explicitly");
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /node\.attrib\.get\("clickable"\) != "true"/, "standalone Android SDK runtime evidence must tap only a clickable public key node");
   requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /content-desc="1 characters entered"/, "standalone Android SDK runtime evidence must observe only masked public state after a key tap");
   requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /content-desc="No input"/, "standalone Android SDK runtime evidence must verify lifecycle recovery to the empty public state");
   requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /password="true"/, "standalone Android SDK runtime evidence must reject password accessibility nodes");

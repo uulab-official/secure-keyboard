@@ -6,6 +6,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Verification: the Android lifecycle harness now selects only clickable
+  public key nodes before deriving tap coordinates, avoiding ambiguous
+  accessibility labels.
 - Verification: standalone Android and iOS native host UI smokes now tap only a
   public key identifier, background/foreground the host, and require the
   post-recovery public state to be empty while retaining sanitized screenshot

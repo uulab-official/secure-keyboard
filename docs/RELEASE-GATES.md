@@ -735,7 +735,7 @@ UIAutomator XML hierarchy dumps. The smoke rejects editable-text and password
 accessibility nodes before uploading those artifacts. This is also supplemental
 runtime evidence and does not replace the physical Android matrix.
 The standalone Native Android SDK host has an additional lifecycle smoke: it
-uses the public digit-1 accessibility bounds for one tap, sends KEYCODE_HOME,
+uses the public clickable digit-1 accessibility bounds for one tap, sends KEYCODE_HOME,
 relaunches the host, and requires No input after recovery. Its retained
 screenshot and UIAutomator XML are sanitized artifacts; the harness never
 reads a text field or secret value. The standalone Native iOS host UI test
