@@ -27,3 +27,29 @@ test("standalone iOS native SDK verifies staged FFI artifact ownership", () => {
   assert.match(podspec, /does not match the staged package FFI artifact/);
   assert.match(podspec, /File\.join\(__dir__, ['"]secure_ffi\.xcframework['"]\)/);
 });
+
+test("standalone Android native SDK has no framework dependency", () => {
+  const gradle = read("native/android/build.gradle");
+  assert.match(gradle, /com\.android\.library/);
+  assert.match(gradle, /namespace\s+['"]com\.uulab\.securekeypad['"]/);
+  assert.match(gradle, /version\s*=\s*['"]0\.1\.0['"]/);
+  assert.match(gradle, /minSdk\s+project\.hasProperty\('minSdkVersion'\)\s*\?\s*project\.minSdkVersion\s*:\s*24/);
+  assert.match(gradle, /secureKeypadAndroidArchitectures/);
+  assert.match(gradle, /arm64-v8a,x86_64/);
+  assert.doesNotMatch(gradle, /react-native|com\.facebook\.react|Flutter/);
+});
+
+test("standalone Android native SDK manifest has no component registration", () => {
+  const manifest = read("native/android/src/main/AndroidManifest.xml");
+  assert.match(manifest, /<manifest\b/);
+  assert.doesNotMatch(manifest, /<\s*(activity|service|receiver)\b/);
+});
+
+test("standalone Android native SDK fails closed for missing FFI slices", () => {
+  const cmake = read("native/android/CMakeLists.txt");
+  assert.match(cmake, /SECURE_KEYPAD_FFI_LIB_DIR/);
+  assert.match(cmake, /EXISTS\s+"\$\{SECURE_KEYPAD_FFI_LIB_DIR\}\/\$\{ANDROID_ABI\}\/libsecure_ffi\.a"/);
+  assert.match(cmake, /message\(FATAL_ERROR/);
+  const rules = read("native/android/consumer-rules.pro");
+  assert.match(rules, /secure_keypad/);
+});

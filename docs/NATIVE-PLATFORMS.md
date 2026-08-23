@@ -120,6 +120,24 @@ paths.
 
 ## Android
 
+### Direct native SDK consumption
+
+Applications that do not use React Native or Flutter can include the Android
+native library module directly and publish it as an AAR:
+
+```gradle
+include ':secure-keypad-native'
+project(':secure-keypad-native').projectDir = file('../native/android')
+```
+
+The module has no React Native or Flutter dependency. It accepts
+`secureKeypadAndroidArchitectures` (default `arm64-v8a,x86_64`) and requires a
+matching `secure_ffi/<ABI>/libsecure_ffi.a` for every selected ABI. CMake fails
+closed when a slice is missing; it never substitutes a stub or a different
+architecture. The host must also install the native submission consumer and
+keep the native SDK, JNI adapter, and Rust FFI artifacts on one release
+commit.
+
 `native/android/src/main/kotlin/.../SecureKeypadView.kt` is a custom
 `FrameLayout` with public key/layout/theme models. It resolves the host
 `Activity` through framework `ContextWrapper` chains before applying

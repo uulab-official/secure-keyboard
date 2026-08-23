@@ -1,0 +1,59 @@
+apply plugin: 'com.android.library'
+
+// AGP 9 hosts may use built-in Kotlin. Older hosts must expose the Kotlin
+// Android plugin in their plugin management block before consuming this module.
+def builtInKotlinEnabled = (project.findProperty('android.builtInKotlin') ?: 'false').toString().toBoolean()
+if (!builtInKotlinEnabled) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}
+
+group = 'com.uulab.securekeypad'
+version = '0.1.0'
+
+def secureKeypadAbiFilters = (project.findProperty('secureKeypadAndroidArchitectures') ?: 'arm64-v8a,x86_64')
+    .toString()
+    .split(',')
+    .collect { it.trim() }
+    .findAll { !it.isEmpty() }
+
+android {
+    namespace 'com.uulab.securekeypad'
+    compileSdk project.hasProperty('compileSdkVersion') ? project.compileSdkVersion : 35
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk project.hasProperty('minSdkVersion') ? project.minSdkVersion : 24
+        targetSdk project.hasProperty('targetSdkVersion') ? project.targetSdkVersion : 35
+        consumerProguardFiles 'consumer-rules.pro'
+        ndk {
+            abiFilters(*secureKeypadAbiFilters)
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags '-std=c11'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
