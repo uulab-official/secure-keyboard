@@ -36,10 +36,11 @@ recovery regressions only; it is not physical-device evidence and does not
 replace the matrix above.
 
 The Android CI host jobs additionally build arm64 and x86_64 FFI variants. A
-separate API 35 x86_64 emulator job installs and launches both generated host
-APKs and uploads no-input screenshots. This catches packaging and launch
-regressions only; it is not physical-device evidence and does not replace the
-Android matrix above.
+separate API 35 x86_64 emulator job installs both generated host APKs, taps a
+public key, backgrounds and relaunches each host, and uploads the post-recovery
+empty-state screenshot and accessibility hierarchy. This catches packaging,
+launch, and wrapper lifecycle recovery regressions only; it is not
+physical-device evidence and does not replace the Android matrix above.
 
 The CI also builds a framework-free standalone Native Android SDK host from the
 direct AAR module, links the staged arm64/x86_64 FFI slices, launches its Release

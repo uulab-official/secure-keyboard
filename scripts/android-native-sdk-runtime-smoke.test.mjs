@@ -32,3 +32,22 @@ test("standalone Android lifecycle smoke taps only a clickable public digit key"
   assert.match(SMOKE_SCRIPT, /node\.attrib\.get\("content-desc"\) != "1"/);
   assert.match(SMOKE_SCRIPT, /node\.attrib\.get\("clickable"\) != "true"/);
 });
+
+test("Android RN and Flutter host smokes exercise lifecycle recovery", () => {
+  const start = WORKFLOW.indexOf("android-host-runtime-smoke:");
+  const end = WORKFLOW.indexOf("\n  fuzz:", start);
+  const section = WORKFLOW.slice(start, end);
+
+  assert.equal(
+    (section.match(/android-native-sdk-runtime-smoke\.sh/g) ?? []).length,
+    2,
+    "Android RN and Flutter hosts must use the lifecycle-aware runtime smoke",
+  );
+  assert.match(section, /flutter\/app-debug\.apk/);
+  assert.match(section, /react-native\/app-release\.apk/);
+  assert.match(section, /flutter-ui\.xml/);
+  assert.match(section, /react-native-ui\.xml/);
+  assert.match(SMOKE_SCRIPT, /KEYCODE_HOME/);
+  assert.match(SMOKE_SCRIPT, /content-desc="No input"/);
+  assert.doesNotMatch(section, /android-emulator-runtime-smoke\.sh/);
+});

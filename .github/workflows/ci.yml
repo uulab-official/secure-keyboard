@@ -685,7 +685,7 @@ jobs:
           if-no-files-found: warn
 
   android-host-runtime-smoke:
-    name: Launch Android RN and Flutter hosts in an emulator
+    name: Exercise Android RN and Flutter lifecycle recovery in an emulator
     needs: [flutter-host-build, react-native-host-build]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -716,11 +716,11 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
+            bash "$GITHUB_WORKSPACE/scripts/android-native-sdk-runtime-smoke.sh" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter/app-debug.apk" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter.png" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter-ui.xml"
-            bash "$GITHUB_WORKSPACE/scripts/android-emulator-runtime-smoke.sh" \
+            bash "$GITHUB_WORKSPACE/scripts/android-native-sdk-runtime-smoke.sh" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/react-native/app-release.apk" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/react-native.png" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/react-native-ui.xml"

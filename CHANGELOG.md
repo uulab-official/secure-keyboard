@@ -9,6 +9,9 @@ exact release-candidate commit by the release evidence manifest.
 - Verification: generated React Native and Flutter iOS Release UI smokes now
   background and reactivate the app after a public key tap, requiring an empty
   post-recovery state so wrapper lifecycle recovery cannot replay input.
+- Verification: Android React Native and Flutter emulator smokes now use the
+  lifecycle-aware public-key harness, requiring an empty state after
+  background/relaunch recovery and retaining sanitized hierarchy evidence.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.
