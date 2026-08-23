@@ -533,8 +533,17 @@ test("release candidate signs staged package archives and publishable native FFI
   assert.match(workflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/);
   assert.match(workflow, /source\/native-artifacts\/android\/secure-keypad-native\.aar/);
   assert.match(workflow, /secure-keypad-native-android\.aar\.sha256/);
+  assert.match(workflow, /AAR_EXPECTED_SHA256/);
+  assert.match(workflow, /native\/secure-keypad-native\.aar/);
   assert.match(workflow, /assembleRelease/);
   assert.match(workflow, /\$GITHUB_WORKSPACE\/native\/android\/build\/outputs\/aar/);
+  assert.match(workflow, /unzip -Z1 "\$AAR_PATH"/);
+  assert.match(workflow, /AndroidManifest\.xml/);
+  assert.match(workflow, /classes\.jar/);
+  assert.match(workflow, /jni\/arm64-v8a\/libsecure_keypad_jni\.so/);
+  assert.match(workflow, /jni\/x86_64\/libsecure_keypad_jni\.so/);
+  assert.match(workflow, /jar tf/);
+  assert.match(workflow, /flutter\|reactnative/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/react-native\/android\/secure_ffi\/arm64-v8a/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/x86_64" packages\/react-native\/android\/secure_ffi\/x86_64/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/flutter\/android\/secure_ffi\/arm64-v8a/);

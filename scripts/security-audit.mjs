@@ -1538,6 +1538,12 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /Build standalone Android Native SDK AAR[\s\S]{0,3200}assembleRelease/, "release workflow must build the standalone Android Native SDK AAR");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-native-android\.aar\.sha256/, "release workflow must carry the standalone Android Native SDK AAR checksum");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/secure-keypad-native\.aar/, "release workflow must carry the standalone Android Native SDK AAR into the signed source bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /AAR_EXPECTED_SHA256/, "release bundle staging must reverify the downloaded standalone Android Native SDK AAR checksum");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /unzip -Z1 "\$AAR_PATH"/, "release workflow must inspect the standalone Android Native SDK AAR archive contents");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /jni\/arm64-v8a\/libsecure_keypad_jni\.so/, "release workflow must require the arm64 Android JNI library in the AAR");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /jni\/x86_64\/libsecure_keypad_jni\.so/, "release workflow must require the x86_64 Android JNI library in the AAR");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /jar tf/, "release workflow must inspect AAR class contents");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /flutter\|reactnative\|react/, "release workflow must reject framework bridge classes in the standalone AAR");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/emit-release-artifact-fragment\.mjs[\s\S]{0,400}--commit "\$RELEASE_REF"[\s\S]{0,160}--package-version "\$CANDIDATE_PACKAGE_VERSION"/, "release artifact evidence must bind to the candidate commit and package version");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");

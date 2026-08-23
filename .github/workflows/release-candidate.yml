@@ -188,6 +188,32 @@ jobs:
             -PsecureKeypadAndroidArchitectures=arm64-v8a,x86_64
           AAR_PATH="$(find "$GITHUB_WORKSPACE/native/android/build/outputs/aar" -maxdepth 1 -type f -name '*.aar' | sort | head -n 1)"
           test -s "$AAR_PATH"
+          AAR_ENTRIES="$RUNNER_TEMP/secure-keypad-native-aar.entries"
+          unzip -Z1 "$AAR_PATH" > "$AAR_ENTRIES"
+          for required_entry in \
+            AndroidManifest.xml \
+            classes.jar \
+            jni/arm64-v8a/libsecure_keypad_jni.so \
+            jni/x86_64/libsecure_keypad_jni.so; do
+            grep -Fx "$required_entry" "$AAR_ENTRIES"
+          done
+          if ! awk '
+            /^jni\/.*\.so$/ &&
+              $0 != "jni/arm64-v8a/libsecure_keypad_jni.so" &&
+              $0 != "jni/x86_64/libsecure_keypad_jni.so" { print; invalid = 1 }
+            END { exit invalid }
+          ' "$AAR_ENTRIES"; then
+            echo "AAR contains an unsupported native library entry"
+            exit 1
+          fi
+          CLASSES_JAR="$RUNNER_TEMP/secure-keypad-native-classes.jar"
+          CLASSES_ENTRIES="$RUNNER_TEMP/secure-keypad-native-classes.entries"
+          unzip -p "$AAR_PATH" classes.jar > "$CLASSES_JAR"
+          jar tf "$CLASSES_JAR" > "$CLASSES_ENTRIES"
+          if grep -Eiq '(^|/)(flutter|reactnative|react)(/|\\.|$)|com/uulab/securekeypad/(flutter|reactnative)/' "$CLASSES_ENTRIES"; then
+            echo "AAR must not contain framework bridge classes"
+            exit 1
+          fi
           mkdir -p "$ANDROID_FFI_DIR/native"
           cp "$AAR_PATH" "$ANDROID_FFI_DIR/native/secure-keypad-native.aar"
           test -s "$ANDROID_FFI_DIR/native/secure-keypad-native.aar"
@@ -325,6 +351,12 @@ jobs:
             sha256sum -c secure-keypad-android-ffi.sha256
           )
           test "$(cat "$ANDROID_FFI_DIR/secure-keypad-android-ffi.commit")" = "$RELEASE_REF"
+          AAR_EXPECTED_SHA256="$(awk '
+            $0 ~ /^[0-9a-f]{64}  native-artifacts\/android\/secure-keypad-native\.aar$/ { count += 1; hash = $1 }
+            END { if (count != 1) exit 1; print hash }
+          ' "$ANDROID_FFI_DIR/secure-keypad-native-android.aar.sha256")"
+          test "$(sha256sum "$ANDROID_FFI_DIR/native/secure-keypad-native.aar" | cut -d' ' -f1)" = "$AAR_EXPECTED_SHA256"
+          test -s "$ANDROID_FFI_DIR/native/secure-keypad-native.aar"
           test -s "$ANDROID_FFI_DIR/arm64-v8a/libsecure_ffi.a"
           test -s "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
           mkdir -p packages/react-native/android/secure_ffi packages/flutter/android/secure_ffi

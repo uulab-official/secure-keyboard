@@ -64,6 +64,8 @@ archive and signed Flutter source package under their ABI-specific
 signed source bundle for reproducible host integration. The protected release
 candidate additionally builds the standalone Android Native SDK AAR from the
 same module and carries its checksum-bound bytes in the signed source bundle.
+Before staging, the candidate job also requires `classes.jar`, both supported
+JNI ABI libraries, and rejects framework bridge classes from the AAR.
 `check-release-bundle`
 and `check-release-archive` require these package paths. The staging checker
 compares published React Native iOS XCFramework files and fallback library
