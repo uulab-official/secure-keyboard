@@ -76,6 +76,8 @@ test("release workflows publish and consume the candidate artifact fragment", ()
   assert.match(candidateWorkflow, /emit-release-artifact-fragment\.mjs/);
   assert.match(candidateWorkflow, /native-checksum/);
   assert.match(candidateWorkflow, /native-checksum-android/);
+  assert.match(candidateWorkflow, /native-android-aar/);
+  assert.match(candidateWorkflow, /secure-keypad-native-android\.aar/);
   assert.match(candidateWorkflow, /license-notices/);
   assert.match(finalWorkflow, /secure-keypad-release-candidate/);
   assert.match(finalWorkflow, /fragments/);

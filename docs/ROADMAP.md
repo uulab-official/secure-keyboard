@@ -250,7 +250,7 @@ Status: release-gate automation complete; actual CI evidence, device review, and
 - [x] Restrict release signing workflow dispatch to a verified immutable 40-character commit SHA.
 - [x] Bind release signing to a named protected GitHub Environment; administrator reviewer configuration remains external evidence.
 - [x] Embed immutable candidate-only release metadata and final evidence-verifier instructions inside the signed bundle.
-- [x] Build, commit-bind, and checksum-verify publishable iOS FFI plus Android `arm64-v8a`/`x86_64` FFI artifacts, include the verified native inputs in the signed release bundle and publishable mobile package paths, and keep npm/crate archives inside the detached-signature tarball scope.
+- [x] Build, commit-bind, and checksum-verify publishable iOS FFI, Android `arm64-v8a`/`x86_64` FFI, and standalone Android AAR artifacts; include the verified native inputs in the signed release bundle and publishable mobile package paths, and keep npm/crate archives inside the detached-signature tarball scope.
 - [x] Add a read-only finalization workflow that stages candidate/CI/external artifacts, converts the signed-release record into a complete manifest fragment, and runs trusted-key verification before retaining production evidence.
 - [x] Preflight finalization fragments by canonical gate name, rejecting missing, duplicate, unsupported, symlinked, or oversized gate inputs before merge.
 - [x] Reject unsupported gate names in the standalone release manifest verifier as well as the finalization preflight.

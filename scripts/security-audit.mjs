@@ -1535,10 +1535,14 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-ios-ffi\.sha256/, "release workflow must carry the verified iOS FFI checksum into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/secure-keypad-android-ffi\.sha256/, "release workflow must carry the verified Android FFI checksum into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /cp \"\$ANDROID_FFI_DIR\/secure-keypad-android-ffi\.commit\"/, "release workflow must carry the Android FFI commit binding into the signed source bundle");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /Build standalone Android Native SDK AAR[\s\S]{0,3200}assembleRelease/, "release workflow must build the standalone Android Native SDK AAR");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /secure-keypad-native-android\.aar\.sha256/, "release workflow must carry the standalone Android Native SDK AAR checksum");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /source\/native-artifacts\/android\/secure-keypad-native\.aar/, "release workflow must carry the standalone Android Native SDK AAR into the signed source bundle");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /scripts\/emit-release-artifact-fragment\.mjs/, "release workflow must emit the candidate public artifact fragment");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /verifier\/scripts\/emit-release-artifact-fragment\.mjs[\s\S]{0,400}--commit "\$RELEASE_REF"[\s\S]{0,160}--package-version "\$CANDIDATE_PACKAGE_VERSION"/, "release artifact evidence must bind to the candidate commit and package version");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum/, "release workflow must evidence the native checksum artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-checksum-android/, "release workflow must evidence the Android native checksum artifact");
+  requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /native-android-aar/, "release workflow must evidence the standalone Android Native SDK AAR artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /license-notices/, "release workflow must evidence the license notices artifact");
   requireText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /if-no-files-found: error/, "release workflow must fail when a release artifact is missing");
   forbidText(findings, ".github/workflows/release-candidate.yml", releaseWorkflow, /contents:\s*write/, "release candidate workflow must not publish directly with write permissions");
@@ -1925,6 +1929,8 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /pathHasSymlinkComponent/, "release artifact evidence must reject symlink traversal");
   requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /flag:\s*["']wx["']/, "release artifact evidence must create fragments exclusively");
   requireText(findings, "scripts/emit-release-artifact-fragment.mjs", releaseArtifactFragment, /PRIVATE_MATERIAL_PATH/, "release artifact evidence must reject private or secret paths");
+  requireText(findings, "scripts/check-release-bundle.mjs", releaseBundleCheck, /ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST/, "release staging must verify the standalone Android Native SDK AAR checksum");
+  requireText(findings, "scripts/check-release-archive.mjs", releaseArchiveCheck, /secure-keypad-native\.aar/, "signed archive validation must require the standalone Android Native SDK AAR");
   const signedReleaseFragment = source("scripts/emit-signed-release-fragment.mjs", findings);
   requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /buildSignedReleaseFragment/, "signed-release finalization must preserve gate, artifact, and detached-signature descriptors");
   requireText(findings, "scripts/emit-signed-release-fragment.mjs", signedReleaseFragment, /MAX_GATE_EVIDENCE_BYTES/, "signed-release fragment conversion must bound record materialization");

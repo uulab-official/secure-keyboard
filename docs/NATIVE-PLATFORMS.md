@@ -242,6 +242,12 @@ slices, builds a Release APK, and launches it in an API 35 x86_64 emulator.
 The retained screenshot and accessibility hierarchy prove packaging and
 `FLAG_SECURE` wiring only; they do not replace physical-device verification.
 
+The protected release-candidate workflow also builds the standalone
+`secure-keypad-native.aar` from this module, binds it to the release commit,
+and carries its checksum into the signed source bundle. Consumers may use the
+AAR directly, but must still provide the matching native submission consumer
+and keep the AAR, Rust FFI slices, and SDK source on one immutable commit.
+
 For an arm64 Android build, configure the NDK linker explicitly:
 
 ```sh

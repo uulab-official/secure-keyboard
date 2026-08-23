@@ -42,8 +42,10 @@ const REQUIRED_SOURCE_FILES = Object.freeze([
   "source/secure-keypad-ios-ffi.sha256",
   "source/secure-keypad-android-ffi.sha256",
   "source/secure-keypad-android-ffi.commit",
+  "source/secure-keypad-native-android.aar.sha256",
   "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "source/native-artifacts/android/x86_64/libsecure_ffi.a",
+  "source/native-artifacts/android/secure-keypad-native.aar",
   "source/release-candidate-metadata.json",
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
@@ -61,6 +63,10 @@ const SECRET_KEY = /password|passphrase|secret|private|plaintext|rawInput|input(
 const ANDROID_FFI_CHECKSUM_ENTRIES = Object.freeze([
   "native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "native-artifacts/android/x86_64/libsecure_ffi.a",
+]);
+const ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST = "source/secure-keypad-native-android.aar.sha256";
+const ANDROID_NATIVE_AAR_CHECKSUM_ENTRIES = Object.freeze([
+  "native-artifacts/android/secure-keypad-native.aar",
 ]);
 const ANDROID_PACKAGE_FFI_ENTRIES = Object.freeze([
   {
@@ -180,6 +186,50 @@ function validateAndroidFfiChecksum(root, findings, metadata) {
   }
   if (commitContents !== `${metadata.commit}\n`) {
     findings.push(`${ANDROID_FFI_COMMIT}: must contain the release candidate commit followed by one newline`);
+  }
+}
+
+function validateAndroidNativeAarChecksum(root, findings) {
+  const manifestPath = regularFile(root, ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST, findings);
+  if (!manifestPath) return;
+  const contents = readBoundedChecksumManifest(manifestPath, ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST, findings);
+  if (contents === undefined) return;
+
+  const seen = new Set();
+  const lines = contents.split(/\r?\n/).filter((line) => line.length > 0);
+  if (lines.length !== ANDROID_NATIVE_AAR_CHECKSUM_ENTRIES.length) {
+    findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: must contain exactly one checksum for the standalone Android Native SDK AAR`);
+  }
+  for (const line of lines) {
+    const match = line.match(/^([a-f0-9]{64})  ([^\r\n]+)$/);
+    if (!match) {
+      findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: contains a malformed checksum line`);
+      continue;
+    }
+    const [, expectedHash, relativePath] = match;
+    if (path.posix.isAbsolute(relativePath) || relativePath.includes("\\") || relativePath.split("/").includes("..")) {
+      findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: checksum path must be relative and non-parent`);
+      continue;
+    }
+    if (!ANDROID_NATIVE_AAR_CHECKSUM_ENTRIES.includes(relativePath)) {
+      findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: unexpected checksum path ${relativePath}`);
+      continue;
+    }
+    if (seen.has(relativePath)) {
+      findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: duplicate checksum path ${relativePath}`);
+      continue;
+    }
+    seen.add(relativePath);
+    const sourceRelativePath = path.posix.join("source", relativePath);
+    const absolutePath = regularFile(root, sourceRelativePath, findings);
+    if (!absolutePath) continue;
+    const actualHash = createHash("sha256").update(readFileSync(absolutePath)).digest("hex");
+    if (actualHash !== expectedHash) {
+      findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: checksum does not match ${sourceRelativePath}`);
+    }
+  }
+  for (const requiredPath of ANDROID_NATIVE_AAR_CHECKSUM_ENTRIES) {
+    if (!seen.has(requiredPath)) findings.push(`${ANDROID_NATIVE_AAR_CHECKSUM_MANIFEST}: missing checksum for ${requiredPath}`);
   }
 }
 
@@ -592,6 +642,7 @@ export function checkReleaseStaging(root) {
   const validatedMetadata = validateCandidateMetadata(metadata, findings);
   validateSpdx(root, findings);
   validateAndroidFfiChecksum(root, findings, validatedMetadata);
+  validateAndroidNativeAarChecksum(root, findings);
   if (validatedMetadata?.packageVersion) {
     const archiveEntryMap = validateNpmArchives(root, validatedMetadata.packageVersion, findings);
     validateIosFfiChecksum(root, validatedMetadata.packageVersion, findings, archiveEntryMap, validatedMetadata);

@@ -90,6 +90,14 @@ function createValidStaging() {
     "source/native-artifacts/android/x86_64/libsecure_ffi.a": "x86_64 fixture\n",
   };
   for (const [relativePath, contents] of Object.entries(androidLibraries)) writeFile(root, relativePath, contents);
+  const nativeAndroidAar = "source/native-artifacts/android/secure-keypad-native.aar";
+  const nativeAndroidAarContents = "standalone android aar fixture\n";
+  writeFile(root, nativeAndroidAar, nativeAndroidAarContents);
+  writeFile(
+    root,
+    "source/secure-keypad-native-android.aar.sha256",
+    `${createHash("sha256").update(nativeAndroidAarContents).digest("hex")}  ${nativeAndroidAar.slice("source/".length)}\n`,
+  );
   writeFile(
     root,
     "source/secure-keypad-android-ffi.sha256",
@@ -150,6 +158,30 @@ test("release staging requires the complete signed-bundle input contract", () =>
   const root = createValidStaging();
   try {
     assert.deepEqual(checkReleaseStaging(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging requires the standalone Android Native SDK AAR and checksum", () => {
+  const root = createValidStaging();
+  try {
+    rmSync(path.join(root, "source/native-artifacts/android/secure-keypad-native.aar"));
+    rmSync(path.join(root, "source/secure-keypad-native-android.aar.sha256"));
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-native.aar")));
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-native-android.aar.sha256")));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("release staging rejects a tampered standalone Android Native SDK AAR", () => {
+  const root = createValidStaging();
+  try {
+    writeFile(root, "source/native-artifacts/android/secure-keypad-native.aar", "tampered aar\n");
+    const findings = checkReleaseStaging(root);
+    assert.ok(findings.some((finding) => finding.includes("secure-keypad-native-android.aar.sha256") && finding.includes("checksum does not match")));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -499,6 +531,10 @@ test("release candidate signs staged package archives and publishable native FFI
   assert.match(workflow, /secure-keypad-android-ffi\.sha256/);
   assert.match(workflow, /source\/secure-keypad-android-ffi\.commit/);
   assert.match(workflow, /source\/native-artifacts\/android\/arm64-v8a\/libsecure_ffi\.a/);
+  assert.match(workflow, /source\/native-artifacts\/android\/secure-keypad-native\.aar/);
+  assert.match(workflow, /secure-keypad-native-android\.aar\.sha256/);
+  assert.match(workflow, /assembleRelease/);
+  assert.match(workflow, /\$GITHUB_WORKSPACE\/native\/android\/build\/outputs\/aar/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/react-native\/android\/secure_ffi\/arm64-v8a/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/x86_64" packages\/react-native\/android\/secure_ffi\/x86_64/);
   assert.match(workflow, /cp -R "\$ANDROID_FFI_DIR\/arm64-v8a" packages\/flutter\/android\/secure_ffi\/arm64-v8a/);

@@ -61,7 +61,10 @@ The iOS artifacts are staged into both publishable mobile packages, and the
 verified Android libraries are copied into the publishable React Native npm
 archive and signed Flutter source package under their ABI-specific
 `android/secure_ffi` paths. The same libraries are also retained under the
-signed source bundle for reproducible host integration. `check-release-bundle`
+signed source bundle for reproducible host integration. The protected release
+candidate additionally builds the standalone Android Native SDK AAR from the
+same module and carries its checksum-bound bytes in the signed source bundle.
+`check-release-bundle`
 and `check-release-archive` require these package paths. The staging checker
 compares published React Native iOS XCFramework files and fallback library
 bytes with the signed Flutter source package, and compares Android package

@@ -15,8 +15,10 @@ const REQUIRED_ENTRIES = [
   "source/secure-keypad.sbom.spdx.json",
   "source/secure-keypad-android-ffi.sha256",
   "source/secure-keypad-android-ffi.commit",
+  "source/secure-keypad-native-android.aar.sha256",
   "source/native-artifacts/android/arm64-v8a/libsecure_ffi.a",
   "source/native-artifacts/android/x86_64/libsecure_ffi.a",
+  "source/native-artifacts/android/secure-keypad-native.aar",
   "source/packages/flutter/pubspec.yaml",
   "source/packages/flutter/ios/secure_ffi.xcframework/Info.plist",
   "source/packages/flutter/ios/libsecure_ffi.a",
@@ -46,6 +48,15 @@ test("signed release archive requires the Android FFI commit binding", () => {
   );
   const findings = validateReleaseArchiveEntries(entries);
   assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-android-ffi.commit")));
+});
+
+test("signed release archive requires the standalone Android Native SDK AAR", () => {
+  const entries = REQUIRED_ENTRIES.filter(
+    (entry) => !entry.includes("secure-keypad-native.aar") && !entry.includes("secure-keypad-native-android.aar.sha256"),
+  );
+  const findings = validateReleaseArchiveEntries(entries);
+  assert.ok(findings.some((finding) => finding.includes("source/native-artifacts/android/secure-keypad-native.aar")));
+  assert.ok(findings.some((finding) => finding.includes("source/secure-keypad-native-android.aar.sha256")));
 });
 
 test("signed release archive checker reads the actual tarball entry list", () => {

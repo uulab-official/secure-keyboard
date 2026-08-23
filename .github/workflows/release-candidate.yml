@@ -77,6 +77,7 @@ jobs:
     timeout-minutes: 30
     env:
       ANDROID_FFI_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+      ANDROID_HOST_DIR: ${{ runner.temp }}/secure-keypad-release-android-host
       RELEASE_REF: ${{ inputs.ref }}
       ANDROID_NDK_VERSION: 27.1.12297006
     steps:
@@ -97,6 +98,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.47.0'
+          cache: true
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # Rust 1.97.1
         with:
           targets: aarch64-linux-android,x86_64-linux-android
@@ -126,6 +131,66 @@ jobs:
             "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
           test -s "$ANDROID_FFI_DIR/arm64-v8a/libsecure_ffi.a"
           test -s "$ANDROID_FFI_DIR/x86_64/libsecure_ffi.a"
+      - name: Build standalone Android Native SDK AAR
+        env:
+          ANDROID_HOST_DIR: ${{ runner.temp }}/secure-keypad-release-android-host
+          SECURE_KEYPAD_FFI_LIB_DIR: ${{ runner.temp }}/secure-keypad-release-android-ffi
+        run: |
+          flutter create --platforms=android --org dev.uulab --project-name secure_keypad_release_host "$ANDROID_HOST_DIR"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          android = Path(os.environ["ANDROID_HOST_DIR"]) / "android"
+          (android / "settings.gradle.kts").write_text(
+              """pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          plugins {
+              id("com.android.application") version "9.1.0" apply false
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "SecureKeypadNativeAndroidReleaseHost"
+          include(":secure-keypad-native")
+          project(":secure-keypad-native").projectDir = file("${System.getenv("GITHUB_WORKSPACE")}/native/android")
+          """
+          )
+          (android / "build.gradle.kts").write_text(
+              """// Repositories are centrally controlled by settings.gradle.kts.
+          """
+          )
+          (android / "gradle.properties").write_text(
+              """android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          """
+          )
+          PY
+          chmod +x "$ANDROID_HOST_DIR/android/gradlew"
+          SECURE_KEYPAD_FFI_LIB_DIR="$SECURE_KEYPAD_FFI_LIB_DIR" \
+            "$ANDROID_HOST_DIR/android/gradlew" \
+            -p "$ANDROID_HOST_DIR/android" \
+            :secure-keypad-native:assembleRelease \
+            --no-daemon --stacktrace \
+            -Pandroid.builtInKotlin=true \
+            -PsecureKeypadAndroidArchitectures=arm64-v8a,x86_64
+          AAR_PATH="$(find "$GITHUB_WORKSPACE/native/android/build/outputs/aar" -maxdepth 1 -type f -name '*.aar' | sort | head -n 1)"
+          test -s "$AAR_PATH"
+          mkdir -p "$ANDROID_FFI_DIR/native"
+          cp "$AAR_PATH" "$ANDROID_FFI_DIR/native/secure-keypad-native.aar"
+          test -s "$ANDROID_FFI_DIR/native/secure-keypad-native.aar"
       - name: Bind and checksum release Android FFI artifacts
         run: |
           printf '%s\n' "$RELEASE_REF" > "$ANDROID_FFI_DIR/secure-keypad-android-ffi.commit"
@@ -134,6 +199,9 @@ jobs:
             sha256sum arm64-v8a/libsecure_ffi.a x86_64/libsecure_ffi.a
           ) > "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256"
           cat "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256"
+          AAR_SHA256="$(sha256sum "$ANDROID_FFI_DIR/native/secure-keypad-native.aar" | cut -d' ' -f1)"
+          printf '%s  native-artifacts/android/secure-keypad-native.aar\n' "$AAR_SHA256" > "$ANDROID_FFI_DIR/secure-keypad-native-android.aar.sha256"
+          cat "$ANDROID_FFI_DIR/secure-keypad-native-android.aar.sha256"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-keypad-release-android-ffi
@@ -371,9 +439,11 @@ jobs:
           cp "$IOS_FFI_DIR/secure-keypad-ios-ffi.sha256" "$RELEASE_DIR/source/secure-keypad-ios-ffi.sha256"
           cp "$ANDROID_FFI_DIR/secure-keypad-android-ffi.sha256" "$RELEASE_DIR/source/secure-keypad-android-ffi.sha256"
           cp "$ANDROID_FFI_DIR/secure-keypad-android-ffi.commit" "$RELEASE_DIR/source/secure-keypad-android-ffi.commit"
+          cp "$ANDROID_FFI_DIR/secure-keypad-native-android.aar.sha256" "$RELEASE_DIR/source/secure-keypad-native-android.aar.sha256"
           mkdir -p "$RELEASE_DIR/source/native-artifacts/android"
           cp -R "$ANDROID_FFI_DIR/arm64-v8a" "$RELEASE_DIR/source/native-artifacts/android/arm64-v8a"
           cp -R "$ANDROID_FFI_DIR/x86_64" "$RELEASE_DIR/source/native-artifacts/android/x86_64"
+          cp "$ANDROID_FFI_DIR/native/secure-keypad-native.aar" "$RELEASE_DIR/source/native-artifacts/android/secure-keypad-native.aar"
           test -s "$RELEASE_DIR/source/native-artifacts/android/arm64-v8a/libsecure_ffi.a"
           test -s "$RELEASE_DIR/source/native-artifacts/android/x86_64/libsecure_ffi.a"
           (
@@ -381,6 +451,7 @@ jobs:
             sha256sum native-artifacts/android/arm64-v8a/libsecure_ffi.a \
               native-artifacts/android/x86_64/libsecure_ffi.a
           ) > "$RELEASE_DIR/source/secure-keypad-android-ffi.sha256"
+          test -s "$RELEASE_DIR/source/native-artifacts/android/secure-keypad-native.aar"
           mkdir -p "$RELEASE_DIR/source/packages"
           cp -R packages/flutter "$RELEASE_DIR/source/packages/flutter"
           cp -R docs "$RELEASE_DIR/source/docs"
@@ -434,6 +505,7 @@ jobs:
             --package-version "$CANDIDATE_PACKAGE_VERSION" \
             --artifact native-checksum=source/secure-keypad-ios-ffi.sha256 \
             --artifact native-checksum-android=source/secure-keypad-android-ffi.sha256 \
+            --artifact native-android-aar=source/native-artifacts/android/secure-keypad-native.aar \
             --artifact sbom=source/secure-keypad.sbom.spdx.json \
             --artifact license-notices=source/THIRD-PARTY-NOTICES.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
