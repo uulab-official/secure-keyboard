@@ -30,3 +30,21 @@ test("iOS CI builds the standalone Native SDK host without framework bridges", (
   assert.match(section, /ARCHS=arm64 build/);
   assert.doesNotMatch(section, /React Native|React-Core|Flutter/);
 });
+
+test("iOS CI runs a standalone Native SDK UI and simulator runtime smoke", () => {
+  const start = WORKFLOW.indexOf("Create and compile the standalone Native iOS host");
+  const end = WORKFLOW.indexOf("Create and compile the Flutter iOS host", start);
+  const section = WORKFLOW.slice(start, end);
+
+  assert.match(section, /SecureKeypadNativeHostUITests\/SecureKeypadNativeHostUITests\.swift/);
+  assert.match(section, /com\.apple\.product-type\.bundle\.ui-testing/);
+  assert.match(section, /scheme\.add_test_target\(ui_target\)/);
+  assert.match(section, /xcodebuild -workspace SecureKeypadNativeHost\.xcworkspace[\s\S]*-configuration Release[\s\S]*test/);
+  assert.match(section, /xcrun simctl list devices available -j/);
+  assert.match(section, /-destination "platform=iOS Simulator,id=\$SIMULATOR_ID"/);
+  assert.match(section, /digitOne\.tap\(\)/);
+  assert.match(section, /1 characters entered/);
+  assert.match(WORKFLOW, /Launch the standalone Native iOS host in an iOS Simulator/);
+  assert.match(WORKFLOW, /secure-keypad-native-ios-runtime\/native\.png/);
+  assert.match(WORKFLOW, /ios-simulator-runtime-smoke\.sh/);
+});

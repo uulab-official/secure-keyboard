@@ -1144,6 +1144,27 @@ jobs:
           }
           """
           )
+          (host / "SecureKeypadNativeHostUITests").mkdir()
+          (host / "SecureKeypadNativeHostUITests/SecureKeypadNativeHostUITests.swift").write_text(
+              """import XCTest
+
+          final class SecureKeypadNativeHostUITests: XCTestCase {
+              func testSecureKeypadRuntime() {
+                  let app = XCUIApplication(bundleIdentifier: "dev.uulab.securekeypad.nativehost")
+                  app.launch()
+
+                  let digitOne = app.buttons["digit-1"]
+                  XCTAssertTrue(digitOne.waitForExistence(timeout: 15))
+                  XCTAssertTrue(app.buttons["Continue"].exists)
+
+                  digitOne.tap()
+                  let maskedState = app.descendants(matching: .any)["1 characters entered"]
+                  XCTAssertTrue(maskedState.waitForExistence(timeout: 5))
+                  XCTAssertFalse(app.staticTexts["digit-1"].exists)
+              }
+          }
+          """
+          )
           PY
           cd "$HOST_DIR"
           ruby - <<'RUBY'
@@ -1171,12 +1192,32 @@ jobs:
             source_file = source_group.new_file(filename)
             target.source_build_phase.add_file_reference(source_file)
           end
+          ui_target = project.new_target(:ui_test_bundle, "SecureKeypadNativeHostUITests", :ios, "15.1")
+          ui_target.product_type = "com.apple.product-type.bundle.ui-testing"
+          ui_target.deployment_target = "15.1"
+          ui_target.build_configurations.each do |configuration|
+            settings = configuration.build_settings
+            settings["PRODUCT_BUNDLE_IDENTIFIER"] = "dev.uulab.securekeypad.nativehost.uitests"
+            settings["PRODUCT_NAME"] = "SecureKeypadNativeHostUITests"
+            settings["GENERATE_INFOPLIST_FILE"] = "YES"
+            settings["SWIFT_VERSION"] = "5.0"
+            settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.1"
+            settings["TARGETED_DEVICE_FAMILY"] = "1"
+            settings["CODE_SIGN_STYLE"] = "Automatic"
+            settings["CODE_SIGNING_ALLOWED"] = "NO"
+            settings["CODE_SIGNING_REQUIRED"] = "NO"
+          end
+          ui_source_group = project.main_group.new_group("SecureKeypadNativeHostUITests", "SecureKeypadNativeHostUITests")
+          ui_source_file = ui_source_group.new_file("SecureKeypadNativeHostUITests.swift")
+          ui_target.source_build_phase.add_file_reference(ui_source_file)
+          ui_target.add_dependency(target)
           project.save
 
-          scheme_path = File.join(project_path, "xcshareddata/xcschemes/SecureKeypadNativeHost.xcscheme")
-          FileUtils.mkdir_p(File.dirname(scheme_path))
           scheme = Xcodeproj::XCScheme.new
           scheme.add_build_target(target, true)
+          scheme.add_build_target(ui_target, false)
+          scheme.add_test_target(ui_target)
+          scheme.set_launch_target(target)
           scheme.save_as(project_path, "SecureKeypadNativeHost", true)
           RUBY
           pod install
@@ -1190,6 +1231,26 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             ONLY_ACTIVE_ARCH=YES \
             ARCHS=arm64 build
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; data=json.load(sys.stdin); [print(device["udid"]) or sys.exit() for runtime in data.get("devices", {}).values() for device in runtime if device.get("isAvailable") and device.get("name", "").startswith("iPhone ")]')"
+          test -n "$SIMULATOR_ID"
+          xcodebuild -workspace SecureKeypadNativeHost.xcworkspace \
+            -scheme SecureKeypadNativeHost \
+            -configuration Release \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/secure-keypad-native-ios-derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            ARCHS=arm64 test
+      - name: Launch the standalone Native iOS host in an iOS Simulator
+        env:
+          APP_PATH: ${{ runner.temp }}/secure-keypad-native-ios-derived/Build/Products/Release-iphonesimulator/SecureKeypadNativeHost.app
+          SCREENSHOT_PATH: ${{ runner.temp }}/secure-keypad-native-ios-runtime/native.png
+        run: |
+          test -d "$APP_PATH"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          bash "$GITHUB_WORKSPACE/scripts/ios-simulator-runtime-smoke.sh" \
+            "$APP_PATH" "$BUNDLE_ID" "$SCREENSHOT_PATH"
       - name: Create and compile the Flutter iOS host
         env:
           HOST_DIR: ${{ runner.temp }}/secure-keypad-flutter-ios-host
