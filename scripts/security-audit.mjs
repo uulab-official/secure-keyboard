@@ -500,14 +500,14 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /didBecomeActiveNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/,
-      "iOS native views must request reconfiguration after application lifecycle restoration",
+      /UIScene\.didActivateNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/,
+      "iOS native views must request reconfiguration after scene lifecycle restoration",
     );
     requireText(
       findings,
       file,
       contents,
-      /capturedDidChangeNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/,
+      /private func handleScreenCaptureChange[\s\S]{0,900}requestSessionReconfigurationIfNeeded\(\)/,
       "iOS native views must request reconfiguration after screen-capture protection clears",
     );
   }
@@ -755,9 +755,9 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /try validate\(theme: theme\)/, "iOS native renderer must validate public theme values");
     requireText(findings, file, contents, /theme\.keyHeight\.isFinite/, "iOS native theme must reject non-finite key heights");
     requireText(findings, file, contents, /theme\.keyFontSize\.isFinite/, "iOS native theme must reject non-finite font sizes");
-    requireText(findings, file, contents, /UIApplication\.willResignActiveNotification/, "iOS native keypad must mask while inactive");
-    requireText(findings, file, contents, /willResignActiveNotification[\s\S]{0,240}handleWillResignActive\(\)/, "iOS native keypad must handle application resign-active transitions");
-    requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/, "iOS native keypad must zeroize when the application resigns active state");
+    requireText(findings, file, contents, /UIScene\.willDeactivateNotification/, "iOS native keypad must mask while its scene is inactive");
+    requireText(findings, file, contents, /willDeactivateNotification[\s\S]{0,240}handleWillResignActive\(\)/, "iOS native keypad must handle scene deactivation transitions");
+    requireText(findings, file, contents, /private func handleWillResignActive\(\)[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/, "iOS native keypad must zeroize when its scene resigns active state");
     requireText(findings, file, contents, /UIScreen\.capturedDidChangeNotification/, "iOS native keypad must react to screen capture");
     requireText(findings, file, contents, /refreshProtectionState\(\)/, "iOS native keypad must recompute protection across lifecycle transitions");
     requireText(findings, file, contents, /didMoveToWindow\(\)/, "iOS native keypad must recompute protection when attached to a captured window");
@@ -896,6 +896,34 @@ export function runSecurityAudit() {
       contents,
       /private func handleScreenCaptureChange[\s\S]*?secureKeypadShouldClearSessionForScreenCapture[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?onMaskedStateChanged\?\(0, 3\)[\s\S]*?refreshProtectionState\(\)[\s\S]*?requestSessionReconfigurationIfNeeded\(\)/,
       "iOS native views must release live sessions and recover only after capture ends",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /UIScene\.willDeactivateNotification[\s\S]*?UIScene\.didActivateNotification/,
+      "iOS native views must observe scene-scoped activation transitions",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func isCurrentSceneNotification\(_ object: Any\?\)[\s\S]*?notificationScene === currentScene/,
+      "iOS native views must bind lifecycle notifications to their own window scene",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /let applicationIsActive = window\?\.windowScene\?\.activationState == \.foregroundActive/,
+      "iOS native views must derive activity from their own window scene",
+    );
+    forbidText(
+      findings,
+      file,
+      contents,
+      /UIApplication\.shared\.applicationState/,
+      "iOS native views must not use global application activity for scene protection",
     );
   }
   for (const file of [

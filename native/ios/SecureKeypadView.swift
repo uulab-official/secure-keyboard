@@ -645,17 +645,25 @@ public class SecureKeypadView: UIView {
 
     private func installProtectionObservers() {
         let center = NotificationCenter.default
-        notificationTokens.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.handleWillResignActive()
+        notificationTokens.append(center.addObserver(forName: UIScene.willDeactivateNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self, self.isCurrentSceneNotification(note.object) else { return }
+            self.handleWillResignActive()
         })
-        notificationTokens.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.refreshProtectionState()
-            self?.requestSessionReconfigurationIfNeeded()
+        notificationTokens.append(center.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self, self.isCurrentSceneNotification(note.object) else { return }
+            self.refreshProtectionState()
+            self.requestSessionReconfigurationIfNeeded()
         })
         notificationTokens.append(center.addObserver(forName: UIScreen.capturedDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             self?.handleScreenCaptureChange()
         })
         refreshProtectionState()
+    }
+
+    private func isCurrentSceneNotification(_ object: Any?) -> Bool {
+        guard let notificationScene = object as? UIWindowScene,
+              let currentScene = window?.windowScene else { return false }
+        return notificationScene === currentScene
     }
 
     private func requestSessionReconfigurationIfNeeded() {
@@ -714,7 +722,7 @@ public class SecureKeypadView: UIView {
     }
 
     private func refreshProtectionState() {
-        let applicationIsActive = UIApplication.shared.applicationState == .active
+        let applicationIsActive = window?.windowScene?.activationState == .foregroundActive
         let screenIsCaptured = window?.windowScene?.screen.isCaptured ?? false
         setProtectedPresentation(secureKeypadShouldProtectPresentation(
             applicationIsActive: applicationIsActive,

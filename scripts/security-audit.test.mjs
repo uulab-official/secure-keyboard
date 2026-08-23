@@ -256,8 +256,8 @@ test("all framework adapters restore lifecycle-lost sessions without replaying h
   ]) {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(source, /internal var onSessionNeedsReconfiguration: \(\(\) -> Void\)\? = nil/);
-    assert.match(source, /didBecomeActiveNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/);
-    assert.match(source, /capturedDidChangeNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/);
+    assert.match(source, /UIScene\.didActivateNotification[\s\S]{0,360}requestSessionReconfigurationIfNeeded\(\)/);
+    assert.match(source, /private func handleScreenCaptureChange[\s\S]{0,900}requestSessionReconfigurationIfNeeded\(\)/);
     assert.match(source, /onSessionNeedsReconfiguration = nil/);
   }
 
@@ -547,6 +547,25 @@ test("iOS screen-capture transitions release a live native session", () => {
 
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /secureKeypadShouldClearSessionForScreenCapture/);
+});
+
+test("iOS lifecycle protection is scoped to the keypad window scene", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /UIScene\.willDeactivateNotification/);
+    assert.match(source, /UIScene\.didActivateNotification/);
+    assert.match(source, /window\?\.windowScene\?\.activationState == \.foregroundActive/);
+    assert.doesNotMatch(source, /UIApplication\.shared\.applicationState/);
+    assert.match(source, /private func isCurrentSceneNotification\(_ object: Any\?\)/);
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /UIScene\\\.willDeactivateNotification/);
+  assert.match(securityAudit, /activationState == \\.foregroundActive/);
 });
 
 test("opaque submission routing binds the consumer contract to the originating native view", () => {

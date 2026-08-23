@@ -97,6 +97,9 @@ remain available so the host can clear state without accepting new input.
 When screen capture starts, iOS also releases a live native session and emits
 only the public cancelled/empty state; capture end may recreate a session from
 retained public configuration, never from the previous secret input.
+iOS lifecycle protection is scoped to the keypad's own `UIWindowScene`. A
+different scene becoming inactive must not release or recreate this keypad's
+session; activity is derived from that window scene's `activationState`.
 This contract is enforced independently for the canonical native sources and
 the publishable package copies.
 
