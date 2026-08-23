@@ -594,6 +594,7 @@ public class SecureKeypadView: UIView {
         var state = secure_keypad_masked_state_t(length: 0, display_state: 0)
         let status = secure_keypad_session_refresh(session, &state)
         guard status == 0 else {
+            releaseSession()
             onError?(status)
             return
         }

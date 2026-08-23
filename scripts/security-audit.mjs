@@ -856,6 +856,20 @@ export function runSecurityAudit() {
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /typealias Consumer = \(SecureKeypadView, SecureKeypadSubmission\) -> Bool/, "iOS submission consumers must receive the originating native view");
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /public func clearBridgeCallbacks\(\)/, "iOS native views must expose callback teardown without touching secret state");
   requireText(findings, "native/ios/SecureKeypadView.swift", iosNativeView, /isConsumed/, "iOS submission routing must verify that the opaque handle was actually transferred");
+  for (const file of [
+    "native/ios/SecureKeypadView.swift",
+    "packages/react-native/ios/SecureKeypadView.swift",
+    "packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const contents = source(file, findings);
+    requireText(
+      findings,
+      file,
+      contents,
+      /let status = secure_keypad_session_refresh\(session, &state\)[\s\S]*guard status == 0 else \{[\s\S]*releaseSession\(\)[\s\S]*onError\?\(status\)/,
+      "iOS native views must release the session before reporting a native refresh failure",
+    );
+  }
   const androidNativeView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /isConsumed/, "Android submission routing must verify that the opaque handle was actually transferred");
   requireText(findings, "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", androidNativeView, /deliverAndReport\(\s*submission/, "Android submission routing must use the exception-safe ownership reporter");

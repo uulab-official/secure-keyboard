@@ -47,6 +47,10 @@ monotonic host command is required. Calling public `releaseSession()` clears
 both the native session and retained configuration, so teardown is terminal
 until the host explicitly configures the view again.
 
+If a native masked-state refresh returns an error, the iOS view releases the
+session before reporting the non-secret error. It does not keep rendering stale
+masked state or continue using a potentially invalid native handle.
+
 `native/ios/react-native/SecureKeypadViewManager.swift` and its Objective-C
 export file register the same view with React Native. The manager decodes only
 versioned public layout/theme dictionaries and exports masked state/result

@@ -455,6 +455,25 @@ test("native keypad sources reject clipboard APIs as a secret channel", () => {
   assert.deepEqual(findNativeClipboardMismatches("class SecureKeypadView", "android"), []);
 });
 
+test("iOS native views fail closed when masked-state refresh fails", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const start = source.indexOf("private func refreshMaskedState");
+    const end = source.indexOf("private func performFeedback", start);
+    assert.ok(start >= 0 && end > start, "iOS native refresh block must exist");
+    const refreshBlock = source.slice(start, end);
+    assert.match(
+      refreshBlock,
+      /let status = secure_keypad_session_refresh\(session, &state\)[\s\S]*guard status == 0 else \{[\s\S]*releaseSession\(\)[\s\S]*onError\?\(status\)/,
+      "iOS native views must release the session before reporting a native refresh failure",
+    );
+  }
+});
+
 test("opaque submission routing binds the consumer contract to the originating native view", () => {
   const iosView = readFileSync(new URL("../native/ios/SecureKeypadView.swift", import.meta.url), "utf8");
   const iosManager = readFileSync(

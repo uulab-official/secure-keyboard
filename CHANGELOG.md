@@ -6,6 +6,9 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Security: iOS native masked-state refresh failures now release the native
+  session before reporting the error, matching Android fail-closed behavior
+  across the standalone, React Native, and Flutter source copies.
 - Verification: the Android lifecycle harness now selects only clickable
   public key nodes before deriving tap coordinates, avoiding ambiguous
   accessibility labels.
