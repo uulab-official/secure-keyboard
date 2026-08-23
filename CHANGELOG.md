@@ -12,6 +12,9 @@ exact release-candidate commit by the release evidence manifest.
 - Verification: Android React Native and Flutter emulator smokes now use the
   lifecycle-aware public-key harness, requiring an empty state after
   background/relaunch recovery and retaining sanitized hierarchy evidence.
+- Verification: the Flutter Android host smoke now builds and uploads a
+  multi-ABI Release APK, so lifecycle and capture-boundary evidence does not
+  come from a debug-only artifact.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

@@ -327,7 +327,7 @@ jobs:
         working-directory: ${{ runner.temp }}/secure-keypad-flutter-host
         run: |
           flutter pub get
-          flutter build apk --debug --target-platform android-arm64,android-x64
+          flutter build apk --release --target-platform android-arm64,android-x64
       - name: Emit Flutter Android FFI checksum manifest
         run: |
           (
@@ -342,7 +342,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-keypad-flutter-host-apk
-          path: ${{ runner.temp }}/secure-keypad-flutter-host/build/app/outputs/flutter-apk/app-debug.apk
+          path: ${{ runner.temp }}/secure-keypad-flutter-host/build/app/outputs/flutter-apk/app-release.apk
 
   react-native-host-build:
     name: Compile React Native Android host integration
@@ -717,7 +717,7 @@ jobs:
           disable-animations: true
           script: |
             bash "$GITHUB_WORKSPACE/scripts/android-native-sdk-runtime-smoke.sh" \
-              "$RUNNER_TEMP/secure-keypad-android-runtime/flutter/app-debug.apk" \
+              "$RUNNER_TEMP/secure-keypad-android-runtime/flutter/app-release.apk" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter.png" \
               "$RUNNER_TEMP/secure-keypad-android-runtime/flutter-ui.xml"
             bash "$GITHUB_WORKSPACE/scripts/android-native-sdk-runtime-smoke.sh" \

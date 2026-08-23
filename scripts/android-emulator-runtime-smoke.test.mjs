@@ -189,8 +189,13 @@ test("Flutter host artifact contains every supported Android target platform", (
     /Build the Flutter host APK with the native FFI boundary[\s\S]*?Emit Flutter Android FFI checksum manifest/,
   )?.[0];
   assert.ok(flutterBuildSection, "Flutter Android build section must exist");
-  assert.match(flutterBuildSection, /flutter build apk --debug --target-platform android-arm64,android-x64/);
-  assert.doesNotMatch(flutterBuildSection, /target-platform android-arm64\s*\n\s*flutter build apk --debug --target-platform android-x64/);
+  assert.match(flutterBuildSection, /flutter build apk --release --target-platform android-arm64,android-x64/);
+  assert.doesNotMatch(flutterBuildSection, /flutter build apk --debug/);
+  const flutterArtifactSection = WORKFLOW.match(
+    /name: secure-keypad-flutter-host-apk[\s\S]*?path: [^\n]+/,
+  )?.[0];
+  assert.match(flutterArtifactSection ?? "", /outputs\/flutter-apk\/app-release\.apk/);
+  assert.doesNotMatch(flutterArtifactSection ?? "", /app-debug\.apk/);
 });
 
 test("Android host builds exercise the bundled FFI fallback", () => {

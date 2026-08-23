@@ -43,7 +43,7 @@ test("Android RN and Flutter host smokes exercise lifecycle recovery", () => {
     2,
     "Android RN and Flutter hosts must use the lifecycle-aware runtime smoke",
   );
-  assert.match(section, /flutter\/app-debug\.apk/);
+  assert.match(section, /flutter\/app-release\.apk/);
   assert.match(section, /react-native\/app-release\.apk/);
   assert.match(section, /flutter-ui\.xml/);
   assert.match(section, /react-native-ui\.xml/);
