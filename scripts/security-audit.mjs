@@ -562,6 +562,13 @@ export function runSecurityAudit() {
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /uiautomator dump/, "Android runtime evidence must verify the rendered native hierarchy");
   requireText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /content-desc="No input"/, "Android runtime evidence must verify only the public empty-state label");
   forbidText(findings, "scripts/android-emulator-runtime-smoke.sh", androidRuntimeHierarchySmoke, /adb shell input|adb shell[^\n]*(?:getText|password|secret)/i, "Android runtime evidence must not query or serialize input values");
+  const standaloneAndroidRuntimeSmoke = source("scripts/android-native-sdk-runtime-smoke.sh", findings);
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /KEYCODE_HOME/, "standalone Android SDK runtime evidence must exercise the lifecycle background transition");
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /adb shell am start -W -n/, "standalone Android SDK runtime evidence must relaunch the resolved native host explicitly");
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /content-desc="1 characters entered"/, "standalone Android SDK runtime evidence must observe only masked public state after a key tap");
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /content-desc="No input"/, "standalone Android SDK runtime evidence must verify lifecycle recovery to the empty public state");
+  requireText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /password="true"/, "standalone Android SDK runtime evidence must reject password accessibility nodes");
+  forbidText(findings, "scripts/android-native-sdk-runtime-smoke.sh", standaloneAndroidRuntimeSmoke, /getText|secret|plaintext/i, "standalone Android SDK runtime evidence must not query or serialize input values");
 
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
@@ -1709,6 +1716,9 @@ export function runSecurityAudit() {
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /flutter-host-build/, "CI must include a Flutter host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /react-native-host-build/, "CI must include a React Native host-link build gate");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-native-sdk-host-runtime-smoke/, "CI must include a standalone Android SDK host runtime gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /android-native-sdk-runtime-smoke\.sh/, "CI must execute the standalone Android SDK lifecycle runtime smoke");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /native-android-after-lifecycle\.png/, "CI must retain the standalone Android lifecycle screenshot evidence");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /native-android-after-lifecycle-ui\.xml/, "CI must retain the standalone Android lifecycle accessibility evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /secure-keypad-native-android-runtime/, "CI must retain standalone Android SDK runtime evidence");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled Flutter Android FFI artifacts/, "Flutter host CI must exercise the bundled Android FFI fallback");
   requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /Stage bundled React Native Android FFI artifacts/, "React Native host CI must exercise the bundled Android FFI fallback");

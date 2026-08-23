@@ -734,6 +734,14 @@ generated host APKs while retaining no-input screenshots and the corresponding
 UIAutomator XML hierarchy dumps. The smoke rejects editable-text and password
 accessibility nodes before uploading those artifacts. This is also supplemental
 runtime evidence and does not replace the physical Android matrix.
+The standalone Native Android SDK host has an additional lifecycle smoke: it
+uses the public digit-1 accessibility bounds for one tap, sends KEYCODE_HOME,
+relaunches the host, and requires No input after recovery. Its retained
+screenshot and UIAutomator XML are sanitized artifacts; the harness never
+reads a text field or secret value. The standalone Native iOS host UI test
+performs the same public-key/background/foreground/empty-state sequence in the
+Simulator. These checks provide lifecycle evidence, not physical-device or
+independent-review approval.
 
 The CI `web-browser-matrix` job runs the checked-in browser smoke harness against
 the exact Playwright dependency in the lockfile on Chromium, Firefox, and

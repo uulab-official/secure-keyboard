@@ -663,6 +663,20 @@ jobs:
               "$RUNNER_TEMP/secure-keypad-native-android-host/android/app/build/outputs/apk/release/app-release.apk" \
               "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android.png" \
               "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android-ui.xml"
+      - name: Exercise standalone Android SDK lifecycle recovery
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            bash "$GITHUB_WORKSPACE/scripts/android-native-sdk-runtime-smoke.sh" \
+              "$RUNNER_TEMP/secure-keypad-native-android-host/android/app/build/outputs/apk/release/app-release.apk" \
+              "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android-after-lifecycle.png" \
+              "$RUNNER_TEMP/secure-keypad-native-android-runtime/native-android-after-lifecycle-ui.xml"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -1348,6 +1362,12 @@ jobs:
                   let maskedState = app.descendants(matching: .any)["1 characters entered"]
                   XCTAssertTrue(maskedState.waitForExistence(timeout: 5))
                   XCTAssertFalse(app.staticTexts["digit-1"].exists)
+
+                  XCUIDevice.shared.press(.home)
+                  app.activate()
+                  let emptyState = app.descendants(matching: .any)["No input"]
+                  XCTAssertTrue(emptyState.waitForExistence(timeout: 5))
+                  XCTAssertFalse(app.descendants(matching: .any)["1 characters entered"].exists)
               }
           }
           """

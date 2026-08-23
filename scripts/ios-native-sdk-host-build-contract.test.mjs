@@ -44,6 +44,9 @@ test("iOS CI runs a standalone Native SDK UI and simulator runtime smoke", () =>
   assert.match(section, /-destination "platform=iOS Simulator,id=\$SIMULATOR_ID"/);
   assert.match(section, /digitOne\.tap\(\)/);
   assert.match(section, /1 characters entered/);
+  assert.match(section, /XCUIDevice\.shared\.press\(\.home\)/);
+  assert.match(section, /app\.activate\(\)/);
+  assert.match(section, /No input/);
   assert.match(WORKFLOW, /Launch the standalone Native iOS host in an iOS Simulator/);
   assert.match(WORKFLOW, /secure-keypad-native-ios-runtime\/native\.png/);
   assert.match(WORKFLOW, /ios-simulator-runtime-smoke\.sh/);

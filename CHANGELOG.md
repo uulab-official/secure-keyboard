@@ -6,6 +6,10 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Verification: standalone Android and iOS native host UI smokes now tap only a
+  public key identifier, background/foreground the host, and require the
+  post-recovery public state to be empty while retaining sanitized screenshot
+  and hierarchy evidence; no input value is queried by the harness.
 - Added `pnpm verify:production-candidate`, a fail-closed aggregate command for deterministic Rust, package, adapter, browser, Flutter, parity, dependency, and security gates; it keeps physical, service, CI-provenance, signing, and independent-review evidence separate.
 - The production-candidate aggregate now rejects a dirty or untracked checkout
   before running any deterministic gate, preserving commit-bound verification
