@@ -154,6 +154,9 @@ lose screenshot protection. Construction and attachment fail closed when no
 reassert `FLAG_SECURE` if a host changed the window flags. It releases the
 native session when the window loses focus or becomes invisible, which
 zeroizes pending input instead of keeping it through an app/window transition.
+When a host detaches and reattaches the view without delivering a focus or
+visibility callback, attachment also requests lifecycle recovery so a fresh
+session is created from retained public configuration.
 The validated public configuration is retained in the view so direct native
 SDK consumers automatically receive a fresh session when focus and visibility
 return; framework adapters may take ownership of the same reconfiguration via

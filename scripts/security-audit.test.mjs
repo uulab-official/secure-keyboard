@@ -248,6 +248,24 @@ test("React Native Android recreates a session after window lifecycle loss", () 
   }
 });
 
+test("Android native views recover a detached session on reattachment", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /override fun onAttachedToWindow\(\)[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,160}requestSessionReconfigurationIfNeeded\(\)/,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /onAttachedToWindow/);
+  assert.match(securityAudit, /requestSessionReconfigurationIfNeeded/);
+});
+
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",

@@ -80,10 +80,12 @@ from the same validated public configuration; a matching configuration
 fingerprint alone is not proof that a session is live.
 On Android, after window-focus protection has zeroized the session, the native
 view must request the RN manager to reapply the retained public configuration on
-focus or visibility regain; the lifecycle callback must not carry input or any
-secret state. The same rule applies to Flutter's Android PlatformView. Direct
-native SDK consumers use the native view's fallback recovery path when no
-framework callback is installed. On iOS, application activation, screen-capture
+focus or visibility regain. Reattachment must make the same recovery request
+because a host can detach and reattach a view without a focus or visibility
+callback; the lifecycle callback must not carry input or any secret state. The
+same rule applies to Flutter's Android PlatformView. Direct native SDK
+consumers use the native view's fallback recovery path when no framework
+callback is installed. On iOS, application activation, screen-capture
 protection clearing, or window reattachment must request the RN/Flutter adapter
 to recreate a missing session from retained public configuration, with the
 same direct-consumer fallback. Recovery must not replay a previously submitted

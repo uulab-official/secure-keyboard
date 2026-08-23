@@ -23,6 +23,8 @@ exact release-candidate commit by the release evidence manifest.
   and recreates it only from retained public configuration after capture ends.
 - Security: iOS lifecycle protection now follows the keypad's own window scene,
   preventing unrelated multi-window scenes from changing its session.
+- Security: Android native views now recover a zeroized session on reattachment
+  even when the host does not emit a focus or visibility callback.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.
