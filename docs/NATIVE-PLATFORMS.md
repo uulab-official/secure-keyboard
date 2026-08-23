@@ -7,6 +7,22 @@ never use a text input widget for the secret. The repository pins Rust
 
 ## iOS
 
+### Direct native SDK consumption
+
+Applications that do not use React Native or Flutter can consume the native
+UIKit SDK directly:
+
+```ruby
+pod 'SecureKeypadKit', :path => '../native/ios'
+```
+
+`SecureKeypadKit` contains the native renderer and native-only submission
+router, but no framework bridge manager. The host must provide a matching
+`secure_ffi.xcframework` (or `libsecure_ffi.a`) built from the same commit and
+must install a native authentication consumer before treating submission as a
+success. The Podspec rejects missing artifacts and rejects explicit artifact
+paths whose content does not match the staged package artifact.
+
 `native/ios/SecureKeypadView.swift` is a UIKit view that accepts public layout
 and theme values, sends key IDs to the Rust C ABI, and renders only bullets and
 non-secret state. It masks presentation while the app is inactive or the
