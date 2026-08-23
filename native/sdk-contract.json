@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "nativeSdkVersion": "0.1.0",
+  "abiVersion": 2,
+  "ios": {
+    "minimum": "15.1",
+    "artifact": "secure_ffi.xcframework"
+  },
+  "android": {
+    "minimumApi": 24,
+    "releaseAbis": ["arm64-v8a", "x86_64"],
+    "artifact": "secure_ffi"
+  }
+}

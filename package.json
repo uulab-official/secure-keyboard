@@ -5,6 +5,8 @@
   "scripts": {
     "check:native-parity": "node scripts/check-native-package-parity.mjs",
     "test:native-parity": "node --test scripts/check-native-package-parity.test.mjs",
+    "check:native-sdk-contract": "node scripts/check-native-sdk-contract.mjs",
+    "test:native-sdk-contract": "node --test scripts/check-native-sdk-contract.test.mjs",
     "check:http-contract-version-parity": "node scripts/check-http-contract-version-parity.mjs",
     "test:http-contract-version-parity": "node --test scripts/check-http-contract-version-parity.test.mjs",
     "check:opaque-protocol-parity": "node scripts/check-opaque-protocol-parity.mjs",
