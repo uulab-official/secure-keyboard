@@ -28,6 +28,7 @@
 - Create `native/android/build.gradle`: standalone Android native SDK library module definition.
 - Create `native/android/src/main/AndroidManifest.xml`: standalone library manifest with no framework registration.
 - Create `native/android/consumer-rules.pro`: native SDK shrinker rules for JNI entry points and opaque handle classes.
+- Modify `native/android/CMakeLists.txt`: canonical fail-closed FFI artifact linking for every Android ABI.
 - Create `scripts/check-native-sdk-contract.mjs`: validates metadata against headers, manifests, package versions, and platform rules.
 - Create `scripts/check-native-sdk-contract.test.mjs`: contract tests for valid metadata and fail-closed mismatch cases.
 - Create `scripts/native-sdk-package-contract.test.mjs`: verifies standalone iOS/Android package boundaries and artifact requirements.
@@ -190,6 +191,7 @@ git commit -m "feat: add standalone iOS native sdk package"
 - Create: `native/android/build.gradle`
 - Create: `native/android/src/main/AndroidManifest.xml`
 - Create: `native/android/consumer-rules.pro`
+- Modify: `native/android/CMakeLists.txt`
 - Modify: `scripts/native-sdk-package-contract.test.mjs`
 - Modify: `docs/NATIVE-PLATFORMS.md`
 
@@ -228,6 +230,14 @@ packages. Register only the native view/Kotlin/JNI source set and use
 `consumer-rules.pro` for the JNI and opaque-handle keep rules. Do not add
 React Native or Flutter dependencies.
 
+Replace the canonical CMake input path with the package-independent native
+contract: include `../../crates/secure-ffi/include`, resolve
+`SECURE_KEYPAD_FFI_LIB_DIR` from a Gradle property or environment variable,
+default to `native/android/secure_ffi`, reject a missing
+`${ANDROID_ABI}/libsecure_ffi.a` using `message(FATAL_ERROR ...)`, and link
+the imported static library to `secure_keypad_jni` with `log` and `android`.
+The JNI adapter must never build without the matching Rust FFI slice.
+
 - [ ] **Step 4: Document direct Android consumption**
 
 Add a Gradle dependency example to `docs/NATIVE-PLATFORMS.md` and state that
@@ -241,7 +251,7 @@ Run: `node --test scripts/native-sdk-package-contract.test.mjs scripts/check-nat
 Expected: PASS.
 
 ```sh
-git add native/android/build.gradle native/android/src/main/AndroidManifest.xml native/android/consumer-rules.pro scripts/native-sdk-package-contract.test.mjs docs/NATIVE-PLATFORMS.md
+git add native/android/build.gradle native/android/src/main/AndroidManifest.xml native/android/consumer-rules.pro native/android/CMakeLists.txt scripts/native-sdk-package-contract.test.mjs docs/NATIVE-PLATFORMS.md
 git commit -m "feat: add standalone Android native sdk module"
 ```
 
