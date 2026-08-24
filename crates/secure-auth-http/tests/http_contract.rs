@@ -4,8 +4,10 @@ use secure_auth::{
     CredentialFile, ServerSetupBytes, CIPHER_SUITE_ID, MAX_IDENTIFIER_BYTES, MAX_JSON_BODY_BYTES,
 };
 use secure_auth_http::{
-    validate_content_length, ContentLengthError, CredentialRepository, HttpAuthRouter,
-    HttpDeploymentContext, HttpRequest, RepositoryError, RequestAdmission, TransportSecurity,
+    is_valid_financial_context, is_valid_financial_evidence, validate_content_length,
+    ContentLengthError, CredentialRepository, DeviceIntegrityEvidence, DeviceIntegrityProvider,
+    FinancialAuthContext, FinancialAuthOperation, HttpAuthRouter, HttpDeploymentContext,
+    HttpRequest, RepositoryError, RequestAdmission, TransportSecurity,
     AUTHENTICATED_RESPONSE, REGISTRATION_STORED_RESPONSE,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, LoginStateHandle, ServerAuthService};
@@ -16,6 +18,65 @@ const CLIENT_ID: &[u8] = b"fixture-client";
 const SERVER_ID: &[u8] = b"fixture-server";
 const CREDENTIAL_ID: &[u8] = b"fixture-user";
 const PASSWORD: &[u8] = b"fixture-only-secret";
+
+#[test]
+fn financial_evidence_requires_exact_binding_and_freshness() {
+    let context = FinancialAuthContext {
+        subject: "user-123".to_owned(),
+        operation: FinancialAuthOperation::Login,
+        nonce: "nonce-1234567890".to_owned(),
+        deployment_id: "prod-kor-1".to_owned(),
+    };
+    let now_ms = 1_000_000;
+    let mut evidence = DeviceIntegrityEvidence {
+        subject: context.subject.clone(),
+        operation: context.operation,
+        nonce: context.nonce.clone(),
+        deployment_id: context.deployment_id.clone(),
+        provider: DeviceIntegrityProvider::AndroidPlayIntegrity,
+        issued_at_ms: now_ms - 1_000,
+        expires_at_ms: now_ms + 60_000,
+    };
+
+    assert!(is_valid_financial_context("/v1/opaque/login/start", &context));
+    assert!(is_valid_financial_evidence(
+        "/v1/opaque/login/start",
+        &context,
+        &evidence,
+        now_ms,
+    ));
+
+    evidence.nonce = "nonce-mismatch-1234".to_owned();
+    assert!(!is_valid_financial_evidence(
+        "/v1/opaque/login/start",
+        &context,
+        &evidence,
+        now_ms,
+    ));
+    evidence.nonce = context.nonce.clone();
+    evidence.issued_at_ms = now_ms + 30_001;
+    assert!(!is_valid_financial_evidence(
+        "/v1/opaque/login/start",
+        &context,
+        &evidence,
+        now_ms,
+    ));
+    evidence.issued_at_ms = now_ms - 1_000;
+    evidence.expires_at_ms = now_ms - 1;
+    assert!(!is_valid_financial_evidence(
+        "/v1/opaque/login/start",
+        &context,
+        &evidence,
+        now_ms,
+    ));
+    evidence.expires_at_ms = now_ms + 300_001;
+    assert!(!is_valid_financial_evidence(
+        "/v1/opaque/login/start",
+        &context,
+        &evidence,
+        now_ms,
+    ));
+}
 
 #[test]
 fn content_length_validation_is_strict_and_bounded() {

@@ -221,6 +221,33 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("applies the financial binding limit to UTF-8 bytes", async () => {
+    const delegate = vi.fn();
+    const deviceIntegrityVerifier = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      financialContext: () => ({
+        subject: "한".repeat(129),
+        operation: "login" as const,
+        nonce: "nonce-1234567890",
+        deploymentId: "prod-kor-1",
+      }),
+      deviceIntegrityVerifier,
+      delegate,
+    });
+    const incoming = request("{}");
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(503);
+    expect(incoming.bodyUsed).toBe(false);
+    expect(deviceIntegrityVerifier).not.toHaveBeenCalled();
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
   it("rejects reuse of the same financial evidence within one handler", async () => {
     const now = Date.now();
     const context = {

@@ -17,13 +17,79 @@ use actix_web::{
     HttpRequest, HttpResponse, Scope,
 };
 use secure_auth_http::{
-    device_integrity_response, request_admission_response, validate_content_length,
-    ContentLengthError, CredentialRepository, DeviceIntegrityDecision, HttpAuthRouter,
-    HttpDeploymentContext, HttpRequest as ContractRequest, HttpResponse as ContractResponse,
-    RequestAdmission, JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    current_time_millis, is_valid_financial_context, is_valid_financial_evidence,
+    request_admission_response, validate_content_length, ContentLengthError, CredentialRepository,
+    FinancialAuthContext, FinancialDeviceIntegrityDecision, HttpAuthRouter, HttpDeploymentContext,
+    HttpRequest as ContractRequest, HttpResponse as ContractResponse, RequestAdmission,
+    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+const MAX_FINANCIAL_REPLAY_ENTRIES: usize = 4096;
+
+struct FinancialAdmission {
+    context: Arc<dyn Fn(&HttpRequest, &str) -> Option<FinancialAuthContext> + Send + Sync>,
+    integrity: Arc<
+        dyn Fn(&HttpRequest, &FinancialAuthContext) -> FinancialDeviceIntegrityDecision
+            + Send
+            + Sync,
+    >,
+    consumed: Mutex<HashMap<String, u64>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ReplayDecision {
+    Consumed,
+    Replayed,
+    Unavailable,
+}
+
+impl FinancialAdmission {
+    fn new<C, I>(context: C, integrity: I) -> Self
+    where
+        C: Fn(&HttpRequest, &str) -> Option<FinancialAuthContext> + Send + Sync + 'static,
+        I: Fn(&HttpRequest, &FinancialAuthContext) -> FinancialDeviceIntegrityDecision
+            + Send
+            + Sync
+            + 'static,
+    {
+        Self {
+            context: Arc::new(context),
+            integrity: Arc::new(integrity),
+            consumed: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn consume(
+        &self,
+        context: &FinancialAuthContext,
+        expires_at_ms: u64,
+        now_ms: u64,
+    ) -> ReplayDecision {
+        let Ok(mut consumed) = self.consumed.lock() else {
+            return ReplayDecision::Unavailable;
+        };
+        consumed.retain(|_, expires_at| *expires_at > now_ms);
+        let operation = match context.operation {
+            secure_auth_http::FinancialAuthOperation::Registration => "registration",
+            secure_auth_http::FinancialAuthOperation::Login => "login",
+        };
+        let key = format!(
+            "{}\u{0}{}\u{0}{}\u{0}{}",
+            context.deployment_id, context.subject, operation, context.nonce
+        );
+        if consumed.contains_key(&key) {
+            return ReplayDecision::Replayed;
+        }
+        if consumed.len() >= MAX_FINANCIAL_REPLAY_ENTRIES {
+            return ReplayDecision::Unavailable;
+        }
+        consumed.insert(key, expires_at_ms);
+        ReplayDecision::Consumed
+    }
+}
 
 #[cfg(feature = "webauthn")]
 use secure_webauthn_example::{
@@ -39,7 +105,7 @@ struct AppState<S, R, P, Q> {
     context: HttpDeploymentContext,
     csrf: Arc<P>,
     rate_limit: Arc<Q>,
-    device_integrity: Arc<dyn Fn(&HttpRequest) -> DeviceIntegrityDecision + Send + Sync>,
+    financial: Option<Arc<FinancialAdmission>>,
 }
 
 /// Builds an Actix [`Scope`] for the Secure Keypad OPAQUE routes.
@@ -67,22 +133,22 @@ where
     P: Fn(&HttpRequest) -> bool + Send + Sync + 'static,
     Q: Fn(&HttpRequest) -> RequestAdmission + Send + Sync + 'static,
 {
-    build_router(auth_router, context, csrf, rate_limit, |_request| {
-        DeviceIntegrityDecision::Verified
-    })
+    build_router(auth_router, context, csrf, rate_limit, None)
 }
 
 /// Builds an Actix scope for financial authentication routes.
 ///
-/// The `device_integrity` callback must verify a server-bound Android/iOS
-/// platform-integrity result from request metadata without reading the body.
-/// `Verified` is required before the adapter buffers or dispatches JSON;
-/// `Rejected` and `Unavailable` fail closed with generic responses.
-pub fn financial_router<S, R, P, Q, I>(
+/// The `financial_context` callback must resolve a fresh account/operation/
+/// nonce/deployment binding from request metadata without reading the body.
+/// The `device_integrity` callback must verify the vendor result and return
+/// evidence bound to that context. Invalid, stale, reused, rejected, or
+/// unavailable evidence fails closed before the adapter buffers JSON.
+pub fn financial_router<S, R, P, Q, C, I>(
     auth_router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: P,
     rate_limit: Q,
+    financial_context: C,
     device_integrity: I,
 ) -> Scope
 where
@@ -90,31 +156,43 @@ where
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&HttpRequest) -> bool + Send + Sync + 'static,
     Q: Fn(&HttpRequest) -> RequestAdmission + Send + Sync + 'static,
-    I: Fn(&HttpRequest) -> DeviceIntegrityDecision + Send + Sync + 'static,
+    C: Fn(&HttpRequest, &str) -> Option<FinancialAuthContext> + Send + Sync + 'static,
+    I: Fn(&HttpRequest, &FinancialAuthContext) -> FinancialDeviceIntegrityDecision
+        + Send
+        + Sync
+        + 'static,
 {
-    build_router(auth_router, context, csrf, rate_limit, device_integrity)
+    build_router(
+        auth_router,
+        context,
+        csrf,
+        rate_limit,
+        Some(Arc::new(FinancialAdmission::new(
+            financial_context,
+            device_integrity,
+        ))),
+    )
 }
 
-fn build_router<S, R, P, Q, I>(
+fn build_router<S, R, P, Q>(
     auth_router: HttpAuthRouter<S, R>,
     context: HttpDeploymentContext,
     csrf: P,
     rate_limit: Q,
-    device_integrity: I,
+    financial: Option<Arc<FinancialAdmission>>,
 ) -> Scope
 where
     S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
     R: CredentialRepository + Send + Sync + 'static,
     P: Fn(&HttpRequest) -> bool + Send + Sync + 'static,
     Q: Fn(&HttpRequest) -> RequestAdmission + Send + Sync + 'static,
-    I: Fn(&HttpRequest) -> DeviceIntegrityDecision + Send + Sync + 'static,
 {
     let state = Data::new(AppState {
         router: auth_router,
         context,
         csrf: Arc::new(csrf),
         rate_limit: Arc::new(rate_limit),
-        device_integrity: Arc::new(device_integrity),
+        financial,
     });
     web::scope("")
         .app_data(state)
@@ -147,14 +225,6 @@ where
         return invalid_request_response(content_length_status(error));
     }
 
-    let integrity_decision = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        (state.device_integrity)(&request)
-    }))
-    .unwrap_or(DeviceIntegrityDecision::Unavailable);
-    if let Some(response) = device_integrity_response(integrity_decision) {
-        return response_from(response);
-    }
-
     let method = request.method().as_str().to_owned();
     let path = request.path().to_owned();
     let content_type = request
@@ -162,6 +232,44 @@ where
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
+
+    if let Some(financial) = state.financial.as_ref() {
+        let Some(context) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            (financial.context)(&request, &path)
+        }))
+        .unwrap_or(None) else {
+            return deployment_unavailable_response();
+        };
+        if !is_valid_financial_context(&path, &context) {
+            return deployment_unavailable_response();
+        }
+        let decision = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            (financial.integrity)(&request, &context)
+        }))
+        .unwrap_or(FinancialDeviceIntegrityDecision::Unavailable);
+        match decision {
+            FinancialDeviceIntegrityDecision::Rejected => {
+                return invalid_request_response(403);
+            }
+            FinancialDeviceIntegrityDecision::Unavailable => {
+                return deployment_unavailable_response();
+            }
+            FinancialDeviceIntegrityDecision::Evidence(evidence) => {
+                let Some(now_ms) = current_time_millis() else {
+                    return deployment_unavailable_response();
+                };
+                if !is_valid_financial_evidence(&path, &context, &evidence, now_ms) {
+                    return invalid_request_response(403);
+                }
+                match financial.consume(&context, evidence.expires_at_ms, now_ms) {
+                    ReplayDecision::Consumed => {}
+                    ReplayDecision::Replayed => return invalid_request_response(403),
+                    ReplayDecision::Unavailable => return deployment_unavailable_response(),
+                }
+            }
+        }
+    }
+
     let Ok(Ok(body)) = payload.to_bytes_limited(body_limit).await else {
         return invalid_request_response(413);
     };

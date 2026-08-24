@@ -80,8 +80,8 @@ nonce atomically in a shared store; the in-process replay guard is only a local
 defense. `verifyPlatformIntegrity` is intentionally host-supplied: the SDK
 cannot hold Google/Apple credentials or decide the product's account-risk
 policy. The Rust Axum/Actix adapters expose the equivalent pre-buffering
-`financial_router` boundary; their callbacks must apply the same binding and
-freshness policy before returning `Verified`.
+`financial_router` boundary; their callbacks now return the same structured
+evidence contract and apply the same binding and freshness policy.
 
 The public release version follows the Contracts package. Authentication
 protocol and C ABI versions remain independent.

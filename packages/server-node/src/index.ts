@@ -150,10 +150,9 @@ const DEVICE_INTEGRITY_PROVIDERS = new Set<NodeDeviceIntegrityProvider>([
 ]);
 
 function isBoundedBinding(value: unknown, minimumLength: number, maximumLength: number): value is string {
-  return typeof value === "string" &&
-    value.length >= minimumLength &&
-    value.length <= maximumLength &&
-    !/[\u0000-\u0020\u007f]/.test(value);
+  if (typeof value !== "string" || /(?:\p{C}|\p{White_Space})/u.test(value)) return false;
+  const byteLength = encoder.encode(value).byteLength;
+  return byteLength >= minimumLength && byteLength <= maximumLength;
 }
 
 function isValidFinancialContext(

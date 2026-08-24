@@ -20,6 +20,9 @@ exact release-candidate commit by the release evidence manifest.
   window; it rejects evidence reuse before request-body buffering. Hosts must
   still verify vendor attestation credentials and atomically consume nonces in
   shared storage for multi-instance deployments.
+- Security: Axum and Actix `financial_router` now require the same structured
+  context/evidence contract as Node; the previous bare `Verified` callback is no
+  longer accepted by the financial adapters.
 
 - Added checked-in React Native, Flutter, and WebAuthn host entrypoint examples
   under `examples/`; CI verifies their public API usage and rejects framework

@@ -18,6 +18,7 @@ use secure_auth_server::{
     ServerAuthService, StoreError,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 use zeroize::Zeroize;
 
 /// Exact API prefix used by the reference routes.
@@ -154,16 +155,147 @@ pub enum RequestAdmission {
     Unavailable,
 }
 
-/// Host-side platform-integrity result established before body buffering.
+/// Authentication operation covered by a financial device-integrity nonce.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DeviceIntegrityDecision {
-    /// The host verified Play Integrity, App Attest, DeviceCheck, or an
-    /// equivalent server-verifiable signal bound to this authentication.
-    Verified,
-    /// The host verified that the request must not authenticate.
+pub enum FinancialAuthOperation {
+    /// OPAQUE registration ceremony.
+    Registration,
+    /// OPAQUE login ceremony.
+    Login,
+}
+
+/// Host-derived binding that a platform-integrity result must cover.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FinancialAuthContext {
+    /// Bounded account or host-principal identifier.
+    pub subject: String,
+    /// OPAQUE operation covered by this request.
+    pub operation: FinancialAuthOperation,
+    /// Fresh, one-use server nonce.
+    pub nonce: String,
+    /// Deployment or verifier configuration identifier.
+    pub deployment_id: String,
+}
+
+/// Platform-integrity provider accepted by the financial admission contract.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeviceIntegrityProvider {
+    /// Android Play Integrity.
+    AndroidPlayIntegrity,
+    /// iOS App Attest.
+    IosAppAttest,
+    /// iOS DeviceCheck.
+    IosDeviceCheck,
+    /// A host-controlled verifier with an independently documented contract.
+    Custom,
+}
+
+/// Evidence returned only after the host verifies the vendor attestation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeviceIntegrityEvidence {
+    /// Account or host-principal identifier covered by the evidence.
+    pub subject: String,
+    /// Operation covered by the evidence.
+    pub operation: FinancialAuthOperation,
+    /// Nonce covered by the evidence.
+    pub nonce: String,
+    /// Deployment identifier covered by the evidence.
+    pub deployment_id: String,
+    /// Provider that produced the verified evidence.
+    pub provider: DeviceIntegrityProvider,
+    /// Evidence issuance time in Unix milliseconds.
+    pub issued_at_ms: u64,
+    /// Evidence expiry time in Unix milliseconds.
+    pub expires_at_ms: u64,
+}
+
+/// Host-side result for the structured financial integrity admission.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FinancialDeviceIntegrityDecision {
+    /// Vendor-verified evidence to be checked against the request context.
+    Evidence(DeviceIntegrityEvidence),
+    /// The request must not authenticate.
     Rejected,
-    /// The host could not make a safe integrity decision.
+    /// The host could not make a safe decision.
     Unavailable,
+}
+
+/// Maximum accepted lifetime of financial platform-integrity evidence.
+pub const MAX_FINANCIAL_EVIDENCE_LIFETIME_MS: u64 = 300_000;
+/// Maximum clock skew accepted for a not-yet-valid evidence issue time.
+pub const MAX_FINANCIAL_FUTURE_SKEW_MS: u64 = 30_000;
+/// Maximum UTF-8 byte length for a financial subject binding.
+pub const MAX_FINANCIAL_SUBJECT_BYTES: usize = 256;
+/// Maximum UTF-8 byte length for a financial nonce binding.
+pub const MAX_FINANCIAL_NONCE_BYTES: usize = 512;
+/// Maximum UTF-8 byte length for a financial deployment binding.
+pub const MAX_FINANCIAL_DEPLOYMENT_BYTES: usize = 128;
+
+/// Returns the current Unix time in milliseconds when the system clock is
+/// usable. It is public so framework adapters and their contract tests use
+/// the same clock unit without duplicating time conversion logic.
+pub fn current_time_millis() -> Option<u64> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+}
+
+fn valid_financial_binding(value: &str, minimum_bytes: usize, maximum_bytes: usize) -> bool {
+    let length = value.len();
+    length >= minimum_bytes
+        && length <= maximum_bytes
+        && !value
+            .chars()
+            .any(|character| character.is_control() || character.is_whitespace())
+}
+
+/// Resolves the operation encoded by one of the four OPAQUE route paths.
+#[must_use]
+pub fn financial_operation_for_path(path: &str) -> Option<FinancialAuthOperation> {
+    match path {
+        REGISTRATION_START_PATH | REGISTRATION_FINISH_PATH => {
+            Some(FinancialAuthOperation::Registration)
+        }
+        LOGIN_START_PATH | LOGIN_FINISH_PATH => Some(FinancialAuthOperation::Login),
+        _ => None,
+    }
+}
+
+/// Validates the host context before a financial route reads its request body.
+#[must_use]
+pub fn is_valid_financial_context(path: &str, context: &FinancialAuthContext) -> bool {
+    financial_operation_for_path(path) == Some(context.operation)
+        && valid_financial_binding(&context.subject, 1, MAX_FINANCIAL_SUBJECT_BYTES)
+        && valid_financial_binding(&context.nonce, 16, MAX_FINANCIAL_NONCE_BYTES)
+        && valid_financial_binding(&context.deployment_id, 1, MAX_FINANCIAL_DEPLOYMENT_BYTES)
+}
+
+/// Validates structured evidence against the host context and current time.
+#[must_use]
+pub fn is_valid_financial_evidence(
+    path: &str,
+    context: &FinancialAuthContext,
+    evidence: &DeviceIntegrityEvidence,
+    now_ms: u64,
+) -> bool {
+    is_valid_financial_context(path, context)
+        && evidence.subject == context.subject
+        && evidence.operation == context.operation
+        && evidence.nonce == context.nonce
+        && evidence.deployment_id == context.deployment_id
+        && matches!(
+            evidence.provider,
+            DeviceIntegrityProvider::AndroidPlayIntegrity
+                | DeviceIntegrityProvider::IosAppAttest
+                | DeviceIntegrityProvider::IosDeviceCheck
+                | DeviceIntegrityProvider::Custom
+        )
+        && evidence.issued_at_ms <= now_ms.saturating_add(MAX_FINANCIAL_FUTURE_SKEW_MS)
+        && evidence.expires_at_ms > now_ms
+        && evidence.expires_at_ms > evidence.issued_at_ms
+        && evidence.expires_at_ms.saturating_sub(evidence.issued_at_ms)
+            <= MAX_FINANCIAL_EVIDENCE_LIFETIME_MS
 }
 
 /// Deployment controls that must be established before a route reads JSON.
@@ -269,20 +401,6 @@ pub fn request_admission_response(admission: RequestAdmission) -> Option<HttpRes
         RequestAdmission::Allowed => None,
         RequestAdmission::RateLimited => Some(static_response(429, RATE_LIMITED_RESPONSE)),
         RequestAdmission::Unavailable => {
-            Some(error_response(503, PublicAuthCode::TemporarilyUnavailable))
-        }
-    }
-}
-
-/// Builds the generic response for a financial device-integrity decision.
-#[must_use]
-pub fn device_integrity_response(decision: DeviceIntegrityDecision) -> Option<HttpResponse> {
-    match decision {
-        DeviceIntegrityDecision::Verified => None,
-        DeviceIntegrityDecision::Rejected => {
-            Some(error_response(403, PublicAuthCode::InvalidRequest))
-        }
-        DeviceIntegrityDecision::Unavailable => {
             Some(error_response(503, PublicAuthCode::TemporarilyUnavailable))
         }
     }

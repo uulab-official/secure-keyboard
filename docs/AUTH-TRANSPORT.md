@@ -190,6 +190,6 @@ time, expiry, five-minute maximum evidence lifetime, and local replay reuse
 before body buffering. The host must still atomically consume the nonce in a
 shared store for a multi-instance deployment. Axum and Actix expose the same
 pre-buffering rule via their explicit `financial_router` constructors; their
-callbacks must perform equivalent binding and freshness checks before returning
-`Verified`. Platform attestation remains host/server responsibility; the SDK
-does not claim to verify Google/Apple attestation credentials itself.
+callbacks resolve a `FinancialAuthContext` and return the same structured
+evidence contract. Platform attestation remains host/server responsibility; the
+SDK does not claim to verify Google/Apple attestation credentials itself.
