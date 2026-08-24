@@ -3,11 +3,13 @@ package com.uulab.securekeypad
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Build
+import android.os.Debug
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.MotionEvent
@@ -18,6 +20,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.io.File
 import java.security.SecureRandom
 import java.util.Random
 
@@ -64,6 +67,12 @@ public enum class SecureKeypadSoundFeedback {
     CLICK,
 }
 
+/** Local device posture policy. Strict mode is a risk gate, not attestation. */
+public enum class SecureKeypadDeviceSecurityMode {
+    STANDARD,
+    STRICT,
+}
+
 /** A serializable row-based presentation layout. */
 public data class SecureKeypadLayout(
     val rows: List<List<SecureKeySpec>>,
@@ -102,6 +111,7 @@ private data class RetainedConfiguration(
     val maxTokens: Int,
     val timeoutMs: Long,
     val policy: SecureKeypadInputPolicy,
+    val securityMode: String,
 )
 
 private const val MAX_LAYOUT_ROWS = 16
@@ -123,6 +133,13 @@ private val HANGUL_INPUT_KEY_IDS = setOf(
     "tail-rieul-bieub", "tail-rieul-siot", "tail-rieul-tieut", "tail-rieul-pieup", "tail-rieul-hieuh",
     "tail-mieum", "tail-bieub", "tail-bieub-siot", "tail-siot", "tail-ssang-siot", "tail-ieung",
     "tail-jieut", "tail-chieut", "tail-kieuk", "tail-tieut", "tail-pieup", "tail-hieuh",
+)
+private val ROOT_INDICATOR_PATHS = listOf(
+    "/system/xbin/su",
+    "/system/bin/su",
+    "/sbin/su",
+    "/system/app/Superuser.apk",
+    "/data/adb/magisk",
 )
 
 /** Resolves an Activity through framework ContextWrappers without assuming a host type. */
@@ -278,8 +295,16 @@ public open class SecureKeypadView @JvmOverloads constructor(
     }
 
     private fun ensureSecureInputBoundary(): Boolean {
+        if (!ensureSecureDeviceSecurityBoundary()) return false
         if (ensureSecureWindowProtection()) return true
         failClosedSecureWindowBoundary()
+        return false
+    }
+
+    private fun ensureSecureDeviceSecurityBoundary(): Boolean {
+        if (secureKeypadDeviceSecurityAllows(retainedConfiguration?.securityMode ?: "standard")) return true
+        zeroizeSessionForLifecycleLoss()
+        onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
         return false
     }
 
@@ -308,14 +333,47 @@ public open class SecureKeypadView @JvmOverloads constructor(
         onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
     }
 
+    private fun secureKeypadDeviceSecurityAllows(securityMode: String): Boolean {
+        val mode = when (securityMode) {
+            "standard" -> SecureKeypadDeviceSecurityMode.STANDARD
+            "strict" -> SecureKeypadDeviceSecurityMode.STRICT
+            else -> return false
+        }
+        if (mode == SecureKeypadDeviceSecurityMode.STANDARD) return true
+        return try {
+            val appIsDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            !Debug.isDebuggerConnected() &&
+                !Debug.waitingForDebugger() &&
+                !appIsDebuggable &&
+                !Build.TAGS.orEmpty().contains("test-keys") &&
+                !isLikelyEmulator() &&
+                ROOT_INDICATOR_PATHS.none { File(it).exists() }
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
+
+    private fun isLikelyEmulator(): Boolean {
+        val fingerprint = Build.FINGERPRINT.orEmpty()
+        val model = Build.MODEL.orEmpty()
+        val product = Build.PRODUCT.orEmpty()
+        return fingerprint.startsWith("generic") ||
+            fingerprint.contains("emulator", ignoreCase = true) ||
+            model.contains("google_sdk", ignoreCase = true) ||
+            model.contains("emulator", ignoreCase = true) ||
+            product.contains("sdk", ignoreCase = true) ||
+            product.contains("emulator", ignoreCase = true)
+    }
+
     /** Starts a numeric Secure Native session and renders the supplied layout. */
     public fun configureNumeric(
         layout: SecureKeypadLayout,
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 8,
         timeoutMs: Long = 60_000L,
+        securityMode: String = "standard",
     ) {
-        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.NUMERIC)
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.NUMERIC, securityMode)
     }
 
     /**
@@ -365,8 +423,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 32,
         timeoutMs: Long = 60_000L,
+        securityMode: String = "standard",
     ) {
-        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.ASCII)
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.ASCII, securityMode)
     }
 
     /** Starts a structured Hangul Secure Native session. */
@@ -375,8 +434,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 32,
         timeoutMs: Long = 60_000L,
+        securityMode: String = "standard",
     ) {
-        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.HANGUL)
+        configure(layout, theme, maxTokens, timeoutMs, SecureKeypadInputPolicy.HANGUL, securityMode)
     }
 
     private fun configure(
@@ -385,14 +445,22 @@ public open class SecureKeypadView @JvmOverloads constructor(
         maxTokens: Int,
         timeoutMs: Long,
         policy: SecureKeypadInputPolicy,
+        securityMode: String,
     ) {
         require(maxTokens in 1..4096) { "maxTokens is outside the supported range" }
         require(timeoutMs in 1..86_400_000L) { "timeoutMs is outside the supported range" }
+        require(securityMode == "standard" || securityMode == "strict") {
+            "securityMode is outside the supported range"
+        }
         validateLayout(layout, policy)
         validateTheme(theme)
         retainedConfiguration = null
         releaseNativeSessionPreservingConfiguration()
-        val configuration = RetainedConfiguration(layout, theme, maxTokens, timeoutMs, policy)
+        if (!secureKeypadDeviceSecurityAllows(securityMode)) {
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+            return
+        }
+        val configuration = RetainedConfiguration(layout, theme, maxTokens, timeoutMs, policy, securityMode)
         startSession(configuration)
         check(sessionHandle != 0L) { "secure keypad native session could not be created" }
         retainedConfiguration = configuration
@@ -513,6 +581,12 @@ public open class SecureKeypadView @JvmOverloads constructor(
     private fun reconfigureRetainedConfiguration() {
         val configuration = retainedConfiguration ?: return
         if (sessionHandle != 0L) return
+        if (!secureKeypadDeviceSecurityAllows(configuration.securityMode)) {
+            retainedConfiguration = null
+            releaseNativeSessionPreservingConfiguration()
+            onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+            return
+        }
         try {
             startSession(configuration)
             if (sessionHandle == 0L) {

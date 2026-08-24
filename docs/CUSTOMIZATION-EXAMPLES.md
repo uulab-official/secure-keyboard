@@ -82,6 +82,7 @@ SecureKeypad(
     layout: hangul,
     theme: SecureKeypadTheme.defaultTheme(),
     inputPolicy: InputPolicy.hangul,
+    securityMode: DeviceSecurityMode.strict,
     maxTokens: 32,
     timeoutMs: 120000,
     onMaskedStateChanged: (state) {

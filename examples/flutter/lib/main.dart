@@ -63,6 +63,7 @@ class _HangulKeypadPageState extends State<HangulKeypadPage> {
       layout: _layout,
       theme: SecureKeypadTheme.defaultTheme(),
       inputPolicy: InputPolicy.hangul,
+      securityMode: DeviceSecurityMode.strict,
       maxTokens: 32,
       timeoutMs: 120000,
       onMaskedStateChanged: (state) {

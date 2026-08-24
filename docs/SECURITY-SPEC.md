@@ -193,6 +193,8 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Android focus and visibility restoration must fail closed without throwing into the host: clear the native session and emit only the stable internal error when `FLAG_SECURE` cannot be re-established.
 - Android view reattachment must apply the same rule: a failed secure-window restoration must clear the native session and return from the lifecycle callback without throwing.
 - Android Secure Native views must enable obscured-touch filtering and reject both fully and partially obscured `MotionEvent`s before key activation; this is a tapjacking boundary, and rejection must clear the native session before emitting the stable internal error.
+- Mobile `securityMode: strict` must gate session creation and every activation on local device-posture checks: Android debugger/debuggable-build/test-key/emulator/root indicators, and iOS debugger/simulator/jailbreak indicators. A failed check clears the session and emits only the stable internal error.
+- Local device-posture checks are bypassable heuristics, not Play Integrity, App Attest, DeviceCheck, or server attestation. Financial deployments must independently verify platform attestation and account risk on the server before accepting the native opaque submission.
 - iOS protected presentation is a zeroization boundary: whenever scene inactivity or screen capture makes the presentation protected, any live native session must be released before the protected state is rendered.
 - iOS and Android Headless Host commands must record their replay token only after the native activation path returns success; protected, unavailable, or otherwise rejected activation must not advance the replay floor.
 

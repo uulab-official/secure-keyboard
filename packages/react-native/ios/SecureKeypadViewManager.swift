@@ -7,6 +7,7 @@ final class SecureKeypadReactView: SecureKeypadView {
     @objc var theme: NSDictionary? { didSet { configureIfReady() } }
     @objc var inputPolicy: NSString = "numeric" { didSet { configureIfReady() } }
     @objc var mode: NSString = "secure-native" { didSet { configureIfReady() } }
+    @objc var securityMode: NSString = "standard" { didSet { configureIfReady() } }
     @objc var acknowledgeLowerAssurance: NSNumber = false { didSet { configureIfReady() } }
     @objc var maxTokens: NSNumber = 8 { didSet { configureIfReady() } }
     @objc var timeoutMs: NSNumber = 60_000 { didSet { configureIfReady() } }
@@ -77,6 +78,7 @@ final class SecureKeypadReactView: SecureKeypadView {
             "theme": theme,
             "inputPolicy": inputPolicy,
             "mode": mode,
+            "securityMode": securityMode,
             "acknowledgeLowerAssurance": acknowledgeLowerAssurance,
             "maxTokens": maxTokens,
             "timeoutMs": timeoutMs,
@@ -85,7 +87,7 @@ final class SecureKeypadReactView: SecureKeypadView {
             config["headlessKeyPress"] = headlessKeyPress
         }
         let configDictionary = config as NSDictionary
-        let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
+        let fingerprint = "\(layout)\n\(theme)\n\(inputPolicy)\n\(mode)\n\(securityMode)\n\(acknowledgeLowerAssurance)\n\(maxTokens)\n\(timeoutMs)"
         if fingerprint == configuredFingerprint && hasActiveSession {
             guard forceHeadlessCommand else { return }
             do {
@@ -106,21 +108,24 @@ final class SecureKeypadReactView: SecureKeypadView {
                     layout: parsed.layout,
                     theme: parsed.theme,
                     maxTokens: parsed.maxTokens,
-                    timeoutMs: parsed.timeoutMs
+                    timeoutMs: parsed.timeoutMs,
+                    securityMode: parsed.securityMode
                 )
             } else if parsed.inputPolicy == "ascii" {
                 try configureAscii(
                     layout: parsed.layout,
                     theme: parsed.theme,
                     maxTokens: parsed.maxTokens,
-                    timeoutMs: parsed.timeoutMs
+                    timeoutMs: parsed.timeoutMs,
+                    securityMode: parsed.securityMode
                 )
             } else {
                 try configureNumeric(
                     layout: parsed.layout,
                     theme: parsed.theme,
                     maxTokens: parsed.maxTokens,
-                    timeoutMs: parsed.timeoutMs
+                    timeoutMs: parsed.timeoutMs,
+                    securityMode: parsed.securityMode
                 )
             }
             if let command = parsed.headlessKeyPress {

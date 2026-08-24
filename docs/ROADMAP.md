@@ -75,6 +75,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Reassert and verify Android `FLAG_SECURE` at every native touch and Headless Host input boundary; rejected commands do not advance the replay floor.
 - [x] Zeroize the native session when Android input-boundary `FLAG_SECURE` verification fails before reporting the internal error.
 - [x] Reject fully and partially obscured Android touches before native activation, zeroizing the session on the tapjacking boundary.
+- [x] Add cross-platform `securityMode: strict` local posture gates and expose them through React Native and Flutter public configuration.
 - [x] Advance native Headless Host replay floors only after iOS/Android activation returns success across standalone, React Native, and Flutter views.
 - [x] Centralize bounded Android/iOS masked-display/accessibility announcements and execute standalone JVM/Swift contract tests.
 - [x] Reject out-of-contract native display-state codes before rendering or framework emission.

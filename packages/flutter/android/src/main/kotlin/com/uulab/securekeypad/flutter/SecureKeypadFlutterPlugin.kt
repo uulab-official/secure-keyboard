@@ -182,6 +182,7 @@ private class SecureKeypadFlutterPlatformView(
                     configuration.theme,
                     configuration.maxTokens,
                     configuration.timeoutMs,
+                    configuration.securityMode,
                 )
             } else if (configuration.inputPolicy == "ascii") {
                 keypad.configureAscii(
@@ -189,6 +190,7 @@ private class SecureKeypadFlutterPlatformView(
                     configuration.theme,
                     configuration.maxTokens,
                     configuration.timeoutMs,
+                    configuration.securityMode,
                 )
             } else {
                 keypad.configureNumeric(
@@ -196,6 +198,7 @@ private class SecureKeypadFlutterPlatformView(
                     configuration.theme,
                     configuration.maxTokens,
                     configuration.timeoutMs,
+                    configuration.securityMode,
                 )
             }
             if (replayHeadlessKeyPress) {

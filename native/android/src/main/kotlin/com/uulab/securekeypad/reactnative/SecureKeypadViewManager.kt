@@ -73,6 +73,11 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
         setConfigurationValue(view, "mode", value ?: "secure-native")
     }
 
+    @ReactProp(name = "securityMode")
+    public fun setSecurityMode(view: SecureKeypadView, value: String?) {
+        setConfigurationValue(view, "securityMode", value ?: "standard")
+    }
+
     @ReactProp(name = "acknowledgeLowerAssurance", defaultBoolean = false)
     public fun setAcknowledgeLowerAssurance(view: SecureKeypadView, value: Boolean) {
         setConfigurationValue(view, "acknowledgeLowerAssurance", value)
@@ -177,11 +182,11 @@ public class SecureKeypadViewManager : SimpleViewManager<SecureKeypadView>() {
             val parsed = SecureKeypadBridgeConfigParser.parse(configuration)
             view.setRendererMode(parsed.mode, parsed.acknowledgeLowerAssurance)
             if (parsed.inputPolicy == "hangul") {
-                view.configureHangul(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
+                view.configureHangul(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs, parsed.securityMode)
             } else if (parsed.inputPolicy == "ascii") {
-                view.configureAscii(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
+                view.configureAscii(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs, parsed.securityMode)
             } else {
-                view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs)
+                view.configureNumeric(parsed.layout, parsed.theme, parsed.maxTokens, parsed.timeoutMs, parsed.securityMode)
             }
             configuredViews[view] = true
             if (replayHeadlessKeyPress || replayInitialHeadlessKeyPress) {

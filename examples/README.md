@@ -32,6 +32,9 @@ and additional branded theme variants, see
 ## Production integration rules
 
 - Keep Secure Native mode as the default on mobile.
+- Set `securityMode` to `strict` for financial authentication screens. Strict
+  mode rejects known local risk signals and is expected to reject simulators;
+  use `standard` only for development or explicitly lower-risk flows.
 - Consume native opaque submissions in host-native authentication code; never
   route them through JavaScript, Dart, a text field, or a mutable global account
   context.

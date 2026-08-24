@@ -15,8 +15,10 @@ test("checked-in examples cover the supported public integration surfaces", () =
   assert.match(readme, /WebAuthn/);
   assert.match(reactNative, /getSecureKeypadView/);
   assert.match(reactNative, /inputPolicy: "numeric"/);
+  assert.match(reactNative, /securityMode: "strict"/);
   assert.match(flutter, /SecureKeypadConfiguration/);
   assert.match(flutter, /InputPolicy\.hangul/);
+  assert.match(flutter, /DeviceSecurityMode\.strict/);
   assert.match(flutter, /late final SecureKeypadConfiguration _configuration/);
   assert.match(flutter, /void initState\(\)/);
   assert.match(web, /createPasskeyController/);

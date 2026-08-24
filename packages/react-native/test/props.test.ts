@@ -23,6 +23,36 @@ describe("React Native public prop boundary", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts strict local device posture mode and forwards it without a secret channel", () => {
+    const result = validateSecureKeypadProps({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+      securityMode: "strict",
+    });
+    expect(result.valid).toBe(true);
+
+    const nativeProps = getSecureKeypadNativeProps({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      inputPolicy: "numeric",
+      securityMode: "strict",
+    });
+    expect(nativeProps).toMatchObject({ securityMode: "strict" });
+    expect(nativeProps).not.toHaveProperty("value");
+    expect(nativeProps).not.toHaveProperty("password");
+  });
+
+  it("rejects unknown device posture modes before native serialization", () => {
+    const result = validateSecureKeypadProps({
+      layout: DEFAULT_NUMERIC_LAYOUT,
+      theme: DEFAULT_THEME,
+      securityMode: "unsafe",
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("props.securityMode is invalid");
+  });
+
   it("accepts presentation-only React Native styles without creating a secret channel", () => {
     const result = validateSecureKeypadProps({
       layout: DEFAULT_NUMERIC_LAYOUT,

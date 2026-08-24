@@ -56,6 +56,7 @@ export default function App() {
     layout: brandedNumericLayout,
     theme: brandedTheme,
     inputPolicy: "numeric",
+    securityMode: "strict",
     maxTokens: 8,
     timeoutMs: 60_000,
     onMaskedStateChange: ({ nativeEvent }) => {

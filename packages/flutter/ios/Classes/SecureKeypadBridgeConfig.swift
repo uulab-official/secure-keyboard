@@ -15,11 +15,12 @@ public struct SecureKeypadBridgeConfiguration {
     public let maxTokens: Int
     public let timeoutMs: UInt64
     public let mode: String
+    public let securityMode: String
     public let acknowledgeLowerAssurance: Bool
     public let headlessKeyPress: SecureKeypadHeadlessKeyPress?
 
     public init(dictionary: NSDictionary) throws {
-        guard Self.onlyKeys(dictionary, ["layout", "theme", "inputPolicy", "maxTokens", "timeoutMs", "mode", "acknowledgeLowerAssurance", "headlessKeyPress"]) else {
+        guard Self.onlyKeys(dictionary, ["layout", "theme", "inputPolicy", "maxTokens", "timeoutMs", "mode", "securityMode", "acknowledgeLowerAssurance", "headlessKeyPress"]) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         guard let layoutValue = dictionary["layout"] as? NSDictionary,
@@ -45,12 +46,17 @@ public struct SecureKeypadBridgeConfiguration {
         guard parsedMode == "secure-native" || parsedMode == "headless-host" else {
             throw SecureKeypadBridgeConfigError.invalid
         }
+        let parsedSecurityMode = (dictionary["securityMode"] as? String) ?? "standard"
+        guard parsedSecurityMode == "standard" || parsedSecurityMode == "strict" else {
+            throw SecureKeypadBridgeConfigError.invalid
+        }
         let parsedAcknowledgement = Self.boolean(dictionary["acknowledgeLowerAssurance"]) ?? false
         guard (parsedMode == "secure-native" && !parsedAcknowledgement) ||
                 (parsedMode == "headless-host" && parsedAcknowledgement) else {
             throw SecureKeypadBridgeConfigError.invalid
         }
         mode = parsedMode
+        securityMode = parsedSecurityMode
         acknowledgeLowerAssurance = parsedAcknowledgement
         headlessKeyPress = try Self.parseHeadlessKeyPress(dictionary["headlessKeyPress"], mode: parsedMode)
     }

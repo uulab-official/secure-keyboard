@@ -193,6 +193,44 @@ test("Android secure native view rejects obscured touches before activation", ()
   }
 });
 
+test("Android financial security mode gates session creation on local device posture", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /SecureKeypadDeviceSecurityMode/);
+    assert.match(source, /securityMode: String = "standard"/);
+    assert.match(source, /Debug\.isDebuggerConnected\(\)/);
+    assert.match(source, /ApplicationInfo\.FLAG_DEBUGGABLE/);
+    assert.match(source, /Build\.TAGS/);
+    assert.match(source, /isLikelyEmulator/);
+    assert.match(source, /\/data\/adb\/magisk/);
+    assert.match(source, /secureKeypadDeviceSecurityAllows\(securityMode\)/);
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadBridgeConfig.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /securityMode/);
+    assert.match(source, /securityMode == "standard" \|\| securityMode == "strict"/);
+  }
+
+  const reactNative = readFileSync(new URL("../packages/react-native/src/index.ts", import.meta.url), "utf8");
+  assert.match(reactNative, /securityMode\?: SecureKeypadDeviceSecurityMode/);
+  assert.match(reactNative, /value\.securityMode !== "standard"/);
+  assert.match(reactNative, /securityMode: props\.securityMode/);
+
+  const flutter = readFileSync(new URL("../packages/flutter/lib/secure_keypad_flutter.dart", import.meta.url), "utf8");
+  assert.match(flutter, /enum DeviceSecurityMode/);
+  assert.match(flutter, /this\.securityMode = DeviceSecurityMode\.standard/);
+  assert.match(flutter, /'securityMode': securityMode\.name/);
+});
+
 test("native framework managers release stale sessions when required configuration disappears", () => {
   for (const relativePath of [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",

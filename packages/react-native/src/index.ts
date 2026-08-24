@@ -20,6 +20,7 @@ export const SECURE_KEYPAD_NATIVE_VIEW_NAME = "SecureKeypadView" as const;
 
 export type InputPolicy = ContractInputPolicy;
 export type SecureKeypadMode = KeypadMode;
+export type SecureKeypadDeviceSecurityMode = "standard" | "strict";
 
 /** A public host command; it never contains or derives an input character. */
 export interface HeadlessKeyPress {
@@ -38,6 +39,8 @@ export interface SecureKeypadProps {
   readonly inputPolicy?: InputPolicy;
   /** Selects the renderer. Secure Native is the default; headless-host is lower assurance. */
   readonly mode?: SecureKeypadMode;
+  /** Local device posture gate; financial authentication screens should use strict. */
+  readonly securityMode?: SecureKeypadDeviceSecurityMode;
   /** Required true acknowledgement before the lower-assurance host renderer can run. */
   readonly acknowledgeLowerAssurance?: boolean;
   /** Upper bound for the number of accepted tokens. */
@@ -122,6 +125,7 @@ const ALLOWED_PROP_NAMES = [
   "theme",
   "inputPolicy",
   "mode",
+  "securityMode",
   "acknowledgeLowerAssurance",
   "maxTokens",
   "timeoutMs",
@@ -201,6 +205,9 @@ export function validateSecureKeypadProps(value: unknown): ValidationResult {
   if (mode === "secure-native" && value.acknowledgeLowerAssurance === true) {
     errors.push("lower-assurance acknowledgement requires headless-host mode");
   }
+  if (value.securityMode !== undefined && value.securityMode !== "standard" && value.securityMode !== "strict") {
+    errors.push("props.securityMode is invalid");
+  }
   if (value.headlessKeyPress !== undefined && !validateHeadlessKeyPress(value.headlessKeyPress)) {
     errors.push("props.headlessKeyPress is invalid");
   }
@@ -249,6 +256,7 @@ export function getSecureKeypadNativeProps(props: SecureKeypadProps): SecureKeyp
     ...(props.style === undefined ? {} : { style: props.style }),
     ...(props.inputPolicy === undefined ? {} : { inputPolicy: props.inputPolicy }),
     ...(props.mode === undefined ? {} : { mode: props.mode }),
+    ...(props.securityMode === undefined ? {} : { securityMode: props.securityMode }),
     ...(props.acknowledgeLowerAssurance === undefined
       ? {}
       : { acknowledgeLowerAssurance: props.acknowledgeLowerAssurance }),

@@ -318,11 +318,12 @@ export function runSecurityAudit() {
     findings,
     "packages/react-native/src/index.ts",
     rnProps,
-    /layout|theme|inputPolicy|mode|acknowledgeLowerAssurance|headlessKeyPress|maxTokens|timeoutMs|cancelRequest|onMaskedStateChange|onResult/g,
+    /layout|theme|inputPolicy|mode|securityMode|acknowledgeLowerAssurance|headlessKeyPress|maxTokens|timeoutMs|cancelRequest|onMaskedStateChange|onResult/g,
     "RN public props must be explicitly enumerated",
   );
   requireText(findings, "packages/react-native/src/index.ts", rnProps, /cancelRequest/, "RN must expose only a non-secret cancel command token");
   requireText(findings, "packages/react-native/src/index.ts", rn, /SecureKeypadMode/, "RN must expose an explicit renderer mode");
+  requireText(findings, "packages/react-native/src/index.ts", rn, /SecureKeypadDeviceSecurityMode/, "RN must expose the device posture mode");
   requireText(findings, "packages/react-native/src/index.ts", rn, /acknowledgeLowerAssurance/, "RN headless mode must require explicit acknowledgement");
   requireText(findings, "packages/react-native/src/index.ts", rn, /validateHeadlessKeyPress/, "RN headless commands must be bounded and allowlisted");
   forbidText(
@@ -339,6 +340,7 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /class SecureKeypadController/, "Flutter must expose a non-secret native controller");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /invokeMethod<void>\('cancel'\)/, "Flutter controller must use a native cancel method");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /enum SecureKeypadMode/, "Flutter must expose an explicit renderer mode");
+  requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /enum DeviceSecurityMode/, "Flutter must expose the device posture mode");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /invokeMethod<void>\('pressKey'/, "Flutter headless commands must use a native method channel");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /acknowledgeLowerAssurance/, "Flutter headless mode must require explicit acknowledgement");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /toPlatformCreationParams/, "Flutter must expose an explicit public creation map");
@@ -628,6 +630,7 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /cancelRequest/, "RN native manager must expose the non-secret cancel command");
     requireText(findings, file, contents, /mode/, "RN native manager must expose an explicit renderer mode");
+    requireText(findings, file, contents, /securityMode/, "RN native manager must expose the device posture mode");
     requireText(findings, file, contents, /acknowledgeLowerAssurance/, "RN native manager must enforce lower-assurance acknowledgement");
     requireText(findings, file, contents, /headlessKeyPress/, "RN native manager must expose the bounded headless key-ID command");
   }
@@ -657,6 +660,7 @@ export function runSecurityAudit() {
     const contents = source(file, findings);
     requireText(findings, file, contents, /activeConfiguration/, "Flutter iOS must retain only public configuration for lifecycle restoration");
     requireText(findings, file, contents, /onSessionNeedsReconfiguration = \{[\s\S]{0,220}replayHeadlessKeyPress: false/, "Flutter iOS must restore a lost native session without replaying a headless command");
+    requireText(findings, file, contents, /config\.securityMode/, "Flutter iOS must pass the device posture mode to the native view");
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/flutter/SecureKeypadFlutterPlugin.kt",
@@ -667,6 +671,7 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /keypad\.onSessionNeedsReconfiguration = \{[\s\S]{0,220}replayHeadlessKeyPress = false/, "Flutter Android must restore a lost native session without replaying a headless command");
     requireText(findings, file, contents, /keypad\.onSessionNeedsReconfiguration = null/, "Flutter Android must clear the lifecycle callback during teardown");
     requireText(findings, file, contents, /if \(replayHeadlessKeyPress\) \{[\s\S]{0,180}configuration\.headlessKeyPress\?\.let/, "Flutter Android must not replay a stored headless command during lifecycle restoration");
+    requireText(findings, file, contents, /configuration\.securityMode/, "Flutter Android must pass the device posture mode to the native view");
   }
   for (const file of [
     "native/ios/flutter/SecureKeypadFlutterPlugin.swift",
@@ -690,6 +695,11 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /case \.cancel:/, "iOS native keypad must implement the explicit cancel action");
     requireText(findings, file, contents, /takeOpaqueHandle\(\)/, "iOS native submission must have an opaque transfer API");
     requireText(findings, file, contents, /public enum SecureKeypadNativeSubmissionRouter/, "iOS native handoff must be explicitly routed");
+    requireText(findings, file, contents, /SecureKeypadDeviceSecurityMode/, "iOS native keypad must expose the local device posture mode");
+    requireText(findings, file, contents, /securityMode: String = \"standard\"/, "iOS native keypad must default the local posture mode safely");
+    requireText(findings, file, contents, /isDebuggerAttached\(\)/, "iOS strict posture must check debugger attachment");
+    requireText(findings, file, contents, /jailbreakIndicatorPaths/, "iOS strict posture must check jailbreak indicators");
+    requireText(findings, file, contents, /secureKeypadDeviceSecurityAllows\(securityMode\)/, "iOS session creation must gate on local device posture");
   }
   for (const file of [
     "native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
@@ -718,6 +728,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /private fun ensureSecureWindowProtection\(\)[\s\S]{0,520}FLAG_SECURE/, "Android secure-window protection must be reasserted and verified");
+    requireText(findings, file, contents, /SecureKeypadDeviceSecurityMode/, "Android native keypad must expose the local device posture mode");
+    requireText(findings, file, contents, /securityMode: String = \"standard\"/, "Android native keypad must default the local posture mode safely");
+    requireText(findings, file, contents, /Debug\.isDebuggerConnected\(\)/, "Android strict posture must check debugger attachment");
+    requireText(findings, file, contents, /ApplicationInfo\.FLAG_DEBUGGABLE/, "Android strict posture must reject debuggable applications");
+    requireText(findings, file, contents, /isLikelyEmulator\(\)/, "Android strict posture must check emulator indicators");
+    requireText(findings, file, contents, /ROOT_INDICATOR_PATHS/, "Android strict posture must check root indicators");
+    requireText(findings, file, contents, /secureKeypadDeviceSecurityAllows\(securityMode\)/, "Android session creation must gate on local device posture");
     requireText(findings, file, contents, /filterTouchesWhenObscured\s*=\s*true/, "Android native keypad must opt into obscured-touch filtering");
     requireText(findings, file, contents, /override fun onFilterTouchEventForSecurity\(event: MotionEvent\): Boolean/, "Android native keypad must inspect obscured touches at the view boundary");
     requireText(findings, file, contents, /MotionEvent\.FLAG_WINDOW_IS_OBSCURED/, "Android native keypad must reject fully obscured touches");

@@ -4,6 +4,20 @@ This policy defines the v1 boundary for controls that the SDK cannot own
 across every host application, network stack, and operating-system security
 model.
 
+## Local device posture mode
+
+The mobile SDK exposes `securityMode: strict`. It rejects session creation and
+activation when bounded local signals indicate a debugger, a debuggable Android
+application, an emulator/simulator, test-key Android build, or representative
+root/jailbreak indicators. The default is `standard` for development and
+compatibility.
+
+These are defense-in-depth heuristics and can be bypassed by a sufficiently
+privileged process. They are not platform attestation and do not prove device
+integrity. A financial deployment must verify Play Integrity/App Attest or an
+equivalent server-verifiable signal and apply account-risk policy before
+accepting authentication.
+
 ## TLS and certificate pinning
 
 The SDK does not implement an HTTP client. The native OPAQUE FFI boundary

@@ -12,6 +12,12 @@ state/result callbacks for numeric, printable-ASCII, and Hangul native policies.
 must keep key events, printable-ASCII resolution, and Hangul composition in native/core code and implement
 `SecureKeypadNativeAdapter` without sending the accumulated input through Dart.
 
+Set `securityMode: DeviceSecurityMode.strict` for financial authentication
+screens. Strict mode rejects bounded local risk signals before native session
+creation and activation; it is defense-in-depth, not Play Integrity/App Attest
+or server attestation, so the host must still verify server-side device and
+account risk signals.
+
 The package includes the registration source under `ios/Classes` and
 `android/src/main`, plus a `SecureKeypad` widget. The view type is
 `secure_keypad/native` and its event channel is `secure_keypad/events/<viewId>`.

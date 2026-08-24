@@ -9,6 +9,7 @@ void main() {
 
       expect(configuration.validate(), isEmpty);
       expect(configuration.inputPolicy, InputPolicy.numeric);
+      expect(configuration.securityMode, DeviceSecurityMode.standard);
       expect(
         configuration.layout.rows
             .expand((row) => row)
@@ -25,6 +26,18 @@ void main() {
 
     expect(configuration.maxTokens, 8);
     expect(configuration.timeoutMs, 60000);
+  });
+
+  test('strict device security mode is explicit public configuration', () {
+    final configuration = SecureKeypadConfiguration.defaultNumeric(
+      securityMode: DeviceSecurityMode.strict,
+    );
+
+    expect(configuration.validate(), isEmpty);
+    expect(
+      configuration.toPlatformCreationParams()['securityMode'],
+      'strict',
+    );
   });
 
   test(

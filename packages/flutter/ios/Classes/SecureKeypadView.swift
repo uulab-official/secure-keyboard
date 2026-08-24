@@ -1,6 +1,8 @@
 import Foundation
 import AudioToolbox
 import UIKit
+import Darwin
+import SecureKeypadFFI
 
 /// Public presentation role. It never contains a secret value.
 public enum SecureKeyRole: String {
@@ -66,6 +68,12 @@ public enum SecureKeypadSoundFeedback {
     case click
 }
 
+/// Local device posture policy. Strict mode is a risk gate, not attestation.
+public enum SecureKeypadDeviceSecurityMode: String {
+    case standard
+    case strict
+}
+
 /// A row-based presentation layout with public IDs only.
 public struct SecureKeypadLayout {
     public let rows: [[SecureKeySpec]]
@@ -118,7 +126,16 @@ private struct RetainedConfiguration {
     let maxTokens: Int
     let timeoutMs: UInt64
     let policy: SecureKeypadInputPolicy
+    let securityMode: String
 }
+
+private let jailbreakIndicatorPaths = [
+    "/Applications/Cydia.app",
+    "/Library/MobileSubstrate/MobileSubstrate.dylib",
+    "/bin/bash",
+    "/usr/sbin/sshd",
+    "/etc/apt",
+]
 
 private let hangulInputKeyIds: Set<String> = [
     "jamo-giyeok", "jamo-ssang-giyeok", "jamo-nieun", "jamo-digeut", "jamo-ssang-digeut",
@@ -285,9 +302,10 @@ public class SecureKeypadView: UIView {
         layout: SecureKeypadLayout,
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 8,
-        timeoutMs: UInt64 = 60_000
+        timeoutMs: UInt64 = 60_000,
+        securityMode: String = "standard"
     ) throws {
-        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .numeric)
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .numeric, securityMode: securityMode)
     }
 
     /// Selects the renderer mode. Headless host mode hides native controls and
@@ -332,9 +350,10 @@ public class SecureKeypadView: UIView {
         layout: SecureKeypadLayout,
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 32,
-        timeoutMs: UInt64 = 60_000
+        timeoutMs: UInt64 = 60_000,
+        securityMode: String = "standard"
     ) throws {
-        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .ascii)
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .ascii, securityMode: securityMode)
     }
 
     /// Starts a structured Hangul Secure Native session.
@@ -342,9 +361,10 @@ public class SecureKeypadView: UIView {
         layout: SecureKeypadLayout,
         theme: SecureKeypadTheme = SecureKeypadTheme(),
         maxTokens: Int = 32,
-        timeoutMs: UInt64 = 60_000
+        timeoutMs: UInt64 = 60_000,
+        securityMode: String = "standard"
     ) throws {
-        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .hangul)
+        try configure(layout: layout, theme: theme, maxTokens: maxTokens, timeoutMs: timeoutMs, policy: .hangul, securityMode: securityMode)
     }
 
     private func configure(
@@ -352,9 +372,13 @@ public class SecureKeypadView: UIView {
         theme: SecureKeypadTheme,
         maxTokens: Int,
         timeoutMs: UInt64,
-        policy: SecureKeypadInputPolicy
+        policy: SecureKeypadInputPolicy,
+        securityMode: String
     ) throws {
         guard maxTokens > 0, maxTokens <= 4_096, timeoutMs > 0, timeoutMs <= 86_400_000 else {
+            throw SecureKeypadViewError.invalidLayout
+        }
+        guard securityMode == "standard" || securityMode == "strict" else {
             throw SecureKeypadViewError.invalidLayout
         }
         try validate(layout: layout, policy: policy)
@@ -365,12 +389,17 @@ public class SecureKeypadView: UIView {
 
         retainedConfiguration = nil
         releaseNativeSessionPreservingConfiguration()
+        guard secureKeypadDeviceSecurityAllows(securityMode) else {
+            onError?(secureKeypadInternalError)
+            return
+        }
         let configuration = RetainedConfiguration(
             layout: layout,
             theme: theme,
             maxTokens: maxTokens,
             timeoutMs: timeoutMs,
-            policy: policy
+            policy: policy,
+            securityMode: securityMode
         )
         try startSession(configuration: configuration)
         guard session != nil else {
@@ -566,6 +595,11 @@ public class SecureKeypadView: UIView {
     @discardableResult
     private func activate(key: SecureKeySpec) -> Bool {
         guard let session else { return false }
+        guard secureKeypadDeviceSecurityAllows(retainedConfiguration?.securityMode ?? "standard") else {
+            releaseNativeSessionPreservingConfiguration()
+            onError?(secureKeypadInternalError)
+            return false
+        }
         guard secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation) else { return false }
         performFeedback()
         let status: UInt32
@@ -708,8 +742,35 @@ public class SecureKeypadView: UIView {
         }
     }
 
+    private func secureKeypadDeviceSecurityAllows(_ securityMode: String) -> Bool {
+        guard let mode = SecureKeypadDeviceSecurityMode(rawValue: securityMode) else { return false }
+        if mode == .standard { return true }
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return !isDebuggerAttached() &&
+            !jailbreakIndicatorPaths.contains { FileManager.default.fileExists(atPath: $0) }
+        #endif
+    }
+
+    private func isDebuggerAttached() -> Bool {
+        var processInfo = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        let result = name.withUnsafeMutableBufferPointer { buffer in
+            sysctl(buffer.baseAddress, u_int(buffer.count), &processInfo, &size, nil, 0)
+        }
+        return result == 0 && (processInfo.kp_proc.p_flag & P_TRACED) != 0
+    }
+
     private func reconfigureRetainedConfiguration() {
         guard let configuration = retainedConfiguration, session == nil else { return }
+        guard secureKeypadDeviceSecurityAllows(configuration.securityMode) else {
+            retainedConfiguration = nil
+            releaseNativeSessionPreservingConfiguration()
+            onError?(secureKeypadInternalError)
+            return
+        }
         do {
             try startSession(configuration: configuration)
             if session == nil {

@@ -10,6 +10,7 @@ internal data class SecureKeypadBridgeConfiguration(
     val maxTokens: Int,
     val timeoutMs: Long,
     val mode: String,
+    val securityMode: String,
     val acknowledgeLowerAssurance: Boolean,
     val headlessKeyPress: SecureKeypadHeadlessKeyPress?,
 )
@@ -26,6 +27,7 @@ internal object SecureKeypadBridgeConfigParser {
             "maxTokens",
             "timeoutMs",
             "mode",
+            "securityMode",
             "acknowledgeLowerAssurance",
             "headlessKeyPress",
         )
@@ -39,6 +41,8 @@ internal object SecureKeypadBridgeConfigParser {
         require(timeoutMs in 1L..86_400_000L)
         val mode = (value["mode"] as? String) ?: "secure-native"
         require(mode == "secure-native" || mode == "headless-host")
+        val securityMode = (value["securityMode"] as? String) ?: "standard"
+        require(securityMode == "standard" || securityMode == "strict")
         val acknowledgeLowerAssurance = value["acknowledgeLowerAssurance"]?.let { it as? Boolean ?: invalid() } ?: false
         require(
             (mode == "secure-native" && !acknowledgeLowerAssurance) ||
@@ -63,6 +67,7 @@ internal object SecureKeypadBridgeConfigParser {
             maxTokens.toInt(),
             timeoutMs,
             mode,
+            securityMode,
             acknowledgeLowerAssurance,
             headlessKeyPress,
         )

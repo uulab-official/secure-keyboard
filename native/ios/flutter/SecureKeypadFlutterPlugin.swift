@@ -190,21 +190,24 @@ private final class SecureKeypadFlutterPlatformView: NSObject, FlutterPlatformVi
                     layout: config.layout,
                     theme: config.theme,
                     maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
+                    timeoutMs: config.timeoutMs,
+                    securityMode: config.securityMode
                 )
             } else if config.inputPolicy == "ascii" {
                 try keypad.configureAscii(
                     layout: config.layout,
                     theme: config.theme,
                     maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
+                    timeoutMs: config.timeoutMs,
+                    securityMode: config.securityMode
                 )
             } else {
                 try keypad.configureNumeric(
                     layout: config.layout,
                     theme: config.theme,
                     maxTokens: config.maxTokens,
-                    timeoutMs: config.timeoutMs
+                    timeoutMs: config.timeoutMs,
+                    securityMode: config.securityMode
                 )
             }
             if replayHeadlessKeyPress, let command = config.headlessKeyPress {

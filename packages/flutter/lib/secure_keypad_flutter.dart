@@ -15,6 +15,8 @@ import 'package:flutter/widgets.dart';
 /// Native-only policies. Web custom keypads are intentionally not represented.
 enum InputPolicy { numeric, ascii, hangul }
 
+enum DeviceSecurityMode { standard, strict }
+
 /// Selects who renders the visible key controls.
 ///
 /// Secure Native is the default and keeps both rendering and input handling
@@ -257,6 +259,7 @@ class SecureKeypadConfiguration {
     required this.theme,
     this.inputPolicy = InputPolicy.numeric,
     this.mode = SecureKeypadMode.secureNative,
+    this.securityMode = DeviceSecurityMode.standard,
     this.acknowledgeLowerAssurance = false,
     this.maxTokens = 8,
     this.timeoutMs = 60000,
@@ -265,12 +268,14 @@ class SecureKeypadConfiguration {
   });
 
   factory SecureKeypadConfiguration.defaultNumeric({
+    DeviceSecurityMode securityMode = DeviceSecurityMode.standard,
     MaskedStateCallback? onMaskedStateChanged,
     ResultCallback? onResult,
   }) {
     return SecureKeypadConfiguration(
       layout: defaultNumericLayout,
       theme: SecureKeypadTheme.defaultTheme(),
+      securityMode: securityMode,
       onMaskedStateChanged: onMaskedStateChanged,
       onResult: onResult,
     );
@@ -280,6 +285,7 @@ class SecureKeypadConfiguration {
   final SecureKeypadTheme theme;
   final InputPolicy inputPolicy;
   final SecureKeypadMode mode;
+  final DeviceSecurityMode securityMode;
   final bool acknowledgeLowerAssurance;
   final int maxTokens;
   final int timeoutMs;
@@ -343,6 +349,7 @@ class SecureKeypadConfiguration {
         },
       },
       'inputPolicy': inputPolicy.name,
+      'securityMode': securityMode.name,
       'mode': mode == SecureKeypadMode.secureNative
           ? 'secure-native'
           : 'headless-host',
@@ -405,6 +412,10 @@ class SecureKeypadConfiguration {
       errors.add('maxTokens is invalid');
     if (!_isBoundedInteger(timeoutMs, 1, 86400000))
       errors.add('timeoutMs is invalid');
+    if (securityMode != DeviceSecurityMode.standard &&
+        securityMode != DeviceSecurityMode.strict) {
+      errors.add('securityMode is invalid');
+    }
     if ((mode == SecureKeypadMode.secureNative && acknowledgeLowerAssurance) ||
         (mode == SecureKeypadMode.headlessHost && !acknowledgeLowerAssurance)) {
       errors.add('mode acknowledgement is invalid');

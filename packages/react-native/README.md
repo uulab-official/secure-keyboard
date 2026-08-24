@@ -20,6 +20,8 @@ export function PinEntry() {
     layout: DEFAULT_NUMERIC_LAYOUT,
     theme: DEFAULT_THEME,
     inputPolicy: "numeric",
+    // Financial authentication screens should opt into the native posture gate.
+    securityMode: "strict",
     maxTokens: 8,
     timeoutMs: 60_000,
     // Increment this public command token to cancel and zeroize natively.
@@ -69,6 +71,12 @@ JavaScript is not a trusted secret-memory boundary, so use the passkey adapter
 on the web.
 
 This adapter deliberately has no `value`, `password`, `secret`, `onChangeText`, or submitted-value callback. The app receives only masked state and result codes. `getSecureKeypadView()` validates and allowlists props before native view creation, strips framework callbacks and unknown fields from the native map, and installs a fail-closed event wrapper: masked lengths are limited to 4,096 and result payloads are restricted to stable codes before host callbacks run. Invalid props emit only a generic `error` result and do not create a native view. The unwrapped native component is intentionally not exported, so applications cannot accidentally bypass the public validation and event boundary. The npm package includes the iOS/Android view managers, JNI adapter, and FFI module map under `ios/` and `android/`; `scripts/check-native-package-parity.mjs` keeps these copies aligned with `native/`. Expo Go and browser runtimes are not supported.
+
+`securityMode: "strict"` rejects bounded local risk signals such as debuggers,
+debuggable/test-key Android builds, emulators, and representative
+root/jailbreak indicators before session creation and activation. It is
+defense-in-depth, not Play Integrity/App Attest or server attestation; a
+financial host must still verify server-side device/account risk signals.
 
 ## Expo Development Build
 
