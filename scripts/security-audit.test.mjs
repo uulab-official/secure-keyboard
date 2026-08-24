@@ -757,6 +757,24 @@ test("iOS screen-capture transitions release a live native session", () => {
   assert.match(securityAudit, /secureKeypadShouldClearSessionForScreenCapture/);
 });
 
+test("iOS protected presentation zeroizes any live session", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)[\s\S]{0,120}onMaskedStateChanged\?\(0, 3\)/,
+      `${relativePath} must zeroize a live session whenever protected presentation is enabled`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /iOS protected presentation must zeroize a live native session/);
+});
+
 test("iOS lifecycle protection is scoped to the keypad window scene", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",

@@ -32,6 +32,8 @@ exact release-candidate commit by the release evidence manifest.
   native session and emit an internal error without throwing into the host app.
 - Security: Android reattachment failures now follow the same fail-closed
   zeroization path instead of throwing from the view lifecycle callback.
+- Security: iOS protected-presentation transitions now zeroize any live native
+  session before exposing the protected UI state.
 - Security: Flutter Headless Host controller tokens now remain monotonic across
   Dart widget reattachment, preventing lifecycle resets below the native replay floor.
 - Security: iOS Headless Host replay floors now advance only after native key

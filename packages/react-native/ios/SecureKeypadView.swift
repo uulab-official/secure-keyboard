@@ -744,6 +744,10 @@ public class SecureKeypadView: UIView {
     private func setProtectedPresentation(_ protected: Bool) {
         protectedPresentation = protected
         isUserInteractionEnabled = !protected
+        if protected, session != nil {
+            releaseNativeSessionPreservingConfiguration()
+            onMaskedStateChanged?(0, 3)
+        }
         guard session != nil else {
             displayLabel.text = protected ? "Protected" : ""
             displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: 0, protected: protected)

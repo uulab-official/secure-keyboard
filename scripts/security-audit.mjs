@@ -836,6 +836,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /if window == nil \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*\}/, "iOS native keypad must release pending input when detached from a window");
     requireText(findings, file, contents, /secureKeypadShouldProtectPresentation\(/, "iOS native keypad must preserve protection while capture remains active");
     requireText(findings, file, contents, /protectedPresentation/, "iOS native keypad must have a protected presentation state");
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)[\s\S]{0,120}onMaskedStateChanged\?\(0, 3\)/,
+      "iOS protected presentation must zeroize a live native session",
+    );
     requireText(findings, file, contents, /secureKeypadIsValidRenderedLength/, "iOS native keypad must bound masked rendering before allocation");
     requireText(findings, file, contents, /secureKeypadIsValidDisplayState/, "iOS native keypad must reject invalid display-state codes");
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
