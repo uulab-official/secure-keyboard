@@ -110,6 +110,10 @@ remain available so the host can clear state without accepting new input.
 When screen capture starts, iOS also releases a live native session and emits
 only the public cancelled/empty state; capture end may recreate a session from
 retained public configuration, never from the previous secret input.
+The shared native release helper publishes an empty `(length: 0,
+displayState: 0)` state by default. Lifecycle and protected-presentation
+callers may opt into the public cancelled state `(length: 0, displayState: 3)`;
+they must use that centralized helper and must not emit a duplicate callback.
 iOS lifecycle protection is scoped to the keypad's own `UIWindowScene`. A
 different scene becoming inactive must not release or recreate this keypad's
 session; activity is derived from that window scene's `activationState`.

@@ -491,8 +491,8 @@ test("native session release clears the public masked state", () => {
     assert.ok(start >= 0 && end > start);
     assert.match(
       source.slice(start, end),
-      /onMaskedStateChanged\?\(0, 3\)/,
-      `${relativePath} must clear the public masked state when releasing the native session`,
+      /private func releaseNativeSessionPreservingConfiguration\(displayState: UInt32 = 0\)[\s\S]*onMaskedStateChanged\?\(0, displayState\)/,
+      `${relativePath} must publish an empty masked state for a default native session release`,
     );
   }
 
@@ -507,8 +507,8 @@ test("native session release clears the public masked state", () => {
     assert.ok(start >= 0 && end > start);
     assert.match(
       source.slice(start, end),
-      /onMaskedStateChanged\?\.invoke\(0, 3\)/,
-      `${relativePath} must clear the public masked state when releasing the native session`,
+      /private fun releaseNativeSessionPreservingConfiguration\(displayState: Int = 0\)[\s\S]*onMaskedStateChanged\?\.invoke\(0, displayState\)/,
+      `${relativePath} must publish an empty masked state for a default native session release`,
     );
   }
 
@@ -611,6 +611,11 @@ test("Android lifecycle secure-window failures zeroize without throwing", () => 
     assert.match(
       source,
       /private fun failClosedSecureWindowBoundary\(\)[\s\S]{0,180}zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,120}onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)/,
+    );
+    assert.match(
+      source,
+      /private fun zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,220}releaseNativeSessionPreservingConfiguration\(displayState = 3\)/,
+      `${relativePath} must publish cancellation only for lifecycle-driven zeroization`,
     );
   }
 
@@ -932,7 +937,7 @@ test("iOS screen-capture transitions release a live native session", () => {
     assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
     assert.match(
       source.slice(handlerStart, handlerEnd),
-      /secureKeypadShouldClearSessionForScreenCapture[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*refreshProtectionState\(\)[\s\S]*requestSessionReconfigurationIfNeeded\(\)/,
+      /secureKeypadShouldClearSessionForScreenCapture[\s\S]*releaseNativeSessionPreservingConfiguration\(displayState: 3\)[\s\S]*refreshProtectionState\(\)[\s\S]*requestSessionReconfigurationIfNeeded\(\)/,
     );
   }
 
@@ -949,7 +954,7 @@ test("iOS protected presentation zeroizes any live session", () => {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(
       source,
-      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/,
+      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(displayState: 3\)/,
       `${relativePath} must zeroize a live session whenever protected presentation is enabled`,
     );
   }
@@ -970,6 +975,11 @@ test("iOS lifecycle protection is scoped to the keypad window scene", () => {
     assert.match(source, /window\?\.windowScene\?\.activationState == \.foregroundActive/);
     assert.doesNotMatch(source, /UIApplication\.shared\.applicationState/);
     assert.match(source, /private func isCurrentSceneNotification\(_ object: Any\?\)/);
+    assert.match(
+      source,
+      /private func handleWillResignActive\(\)[\s\S]{0,120}releaseNativeSessionPreservingConfiguration\(displayState: 3\)/,
+      `${relativePath} must publish cancellation only for lifecycle-driven zeroization`,
+    );
   }
 
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");

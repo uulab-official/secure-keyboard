@@ -92,7 +92,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Release the native session when cancellation fails before reporting the error, without advancing the cancel replay floor.
 - [x] Release the native session when key/action activation fails before reporting the error, without advancing the Headless Host replay floor.
 - [x] Propagate masked-state refresh failures through activation and cancellation so rejected commands cannot consume replay tokens.
-- [x] Centralize empty masked-state publication in every native session release path and remove duplicate lifecycle emissions.
+- [x] Centralize masked-state publication in every native session release path: ordinary release/error cleanup publishes empty state, while lifecycle protection explicitly publishes `cancelled`.
 - [ ] Complete device-level accessibility review and physical UI snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.
