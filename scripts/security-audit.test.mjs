@@ -15,6 +15,12 @@ test("independent static security audit has no findings", () => {
   assert.deepEqual(runSecurityAudit(), []);
 });
 
+test("WebAuthn audit rejects late direct API results before serialization", () => {
+  const audit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(audit, /WebAuthn registration must discard late credentials before serialization after cancellation/);
+  assert.match(audit, /WebAuthn authentication must discard late credentials before serialization after cancellation/);
+});
+
 test("release workflows pin every production host toolchain consistently", () => {
   const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
   const releaseWorkflow = readFileSync(

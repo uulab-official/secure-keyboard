@@ -320,6 +320,58 @@ describe("WebAuthn support and mode policy", () => {
     });
   });
 
+  it("discards a late browser credential before serialization after direct cancellation", async () => {
+    let release: ((credential: WebAuthnCredential) => void) | undefined;
+    let extensionResultsRead = false;
+    const credential = {
+      id: "credential-id",
+      rawId: new Uint8Array([9, 8, 7]).buffer,
+      type: "public-key" as const,
+      response: {
+        clientDataJSON: new Uint8Array([1]).buffer,
+        attestationObject: new Uint8Array([2]).buffer,
+      },
+      getClientExtensionResults: () => {
+        extensionResultsRead = true;
+        return {};
+      },
+    } satisfies WebAuthnCredential;
+    const api: WebAuthnCredentialApi = {
+      create: () => new Promise<WebAuthnCredential>((resolve) => {
+        release = resolve;
+      }),
+      get: async () => null,
+    };
+    const abortController = new AbortController();
+    const operation = createPasskey(creationOptions, environment(api), { signal: abortController.signal });
+
+    await Promise.resolve();
+    abortController.abort();
+    release?.(credential);
+
+    await expect(operation).rejects.toMatchObject({ code: "aborted" });
+    expect(extensionResultsRead).toBe(false);
+  });
+
+  it("preserves direct cancellation when the browser rejects after cancellation", async () => {
+    let rejectOperation: ((error: unknown) => void) | undefined;
+    const api: WebAuthnCredentialApi = {
+      create: () => new Promise<WebAuthnCredential>((_, reject) => {
+        rejectOperation = reject;
+      }),
+      get: async () => null,
+    };
+    const abortController = new AbortController();
+    const operation = createPasskey(creationOptions, environment(api), { signal: abortController.signal });
+
+    await Promise.resolve();
+    abortController.abort();
+    rejectOperation?.(new Error("fixture-only-secret"));
+
+    await expect(operation).rejects.toMatchObject({ code: "aborted" });
+    await expect(operation).rejects.not.toThrow("fixture-only-secret");
+  });
+
   it("normalizes browser API failures without exposing the original error", async () => {
     const secret = "fixture-only-secret";
     const api: WebAuthnCredentialApi = {

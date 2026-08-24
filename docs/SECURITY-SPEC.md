@@ -49,7 +49,9 @@ The passkey presentation controller treats cancellation as terminal for the
 active ceremony: late browser results are discarded and cannot transition the
 controller to success or return a credential to the caller. The caller
 operation also settles with the stable "aborted" error independently of whether
-the browser honors the underlying abort signal.
+the browser honors the underlying abort signal. The direct registration and
+authentication APIs apply the same abort check after the browser promise settles,
+so a late credential is rejected before response data is serialized.
 
 ## Public customization contract
 

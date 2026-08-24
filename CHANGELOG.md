@@ -136,6 +136,9 @@ exact release-candidate commit by the release evidence manifest.
   browser results, so an abort race cannot publish or return a credential.
 - Security: WebAuthn cancellation now settles the caller operation immediately
   even when the browser ignores the underlying abort signal.
+- Security: direct WebAuthn registration and authentication APIs now discard
+  late browser credentials before response serialization when the caller has
+  cancelled through `AbortSignal`.
 
 ### Server adapters
 

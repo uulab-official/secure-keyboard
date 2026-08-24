@@ -768,17 +768,17 @@ export async function createPasskey(
   operationOptions: WebAuthnOperationOptions = {},
 ): Promise<SerializedRegistrationCredential> {
   assertWebAuthnMode("passkey", environment);
-  if (operationOptions.signal?.aborted) {
-    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
-  }
+  throwIfAborted(operationOptions.signal);
   try {
     const credential = await environment.credentials!.create({
       publicKey: toNativeCreationOptions(options),
       ...(operationOptions.signal === undefined ? {} : { signal: operationOptions.signal }),
     });
+    throwIfAborted(operationOptions.signal);
     if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
     return serializeRegistrationCredential(credential);
   } catch (error) {
+    throwIfAborted(operationOptions.signal);
     return normalizeWebAuthnError(error, "credential-api-failure", "WebAuthn credential operation failed");
   }
 }
@@ -789,17 +789,17 @@ export async function getPasskey(
   operationOptions: WebAuthnOperationOptions = {},
 ): Promise<SerializedAssertionCredential> {
   assertWebAuthnMode("passkey", environment);
-  if (operationOptions.signal?.aborted) {
-    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
-  }
+  throwIfAborted(operationOptions.signal);
   try {
     const credential = await environment.credentials!.get({
       publicKey: toNativeRequestOptions(options),
       ...(operationOptions.signal === undefined ? {} : { signal: operationOptions.signal }),
     });
+    throwIfAborted(operationOptions.signal);
     if (credential === null) throw new WebAuthnClientError("no-credential", "WebAuthn did not return a credential");
     return serializeAssertionCredential(credential);
   } catch (error) {
+    throwIfAborted(operationOptions.signal);
     return normalizeWebAuthnError(error, "credential-api-failure", "WebAuthn credential operation failed");
   }
 }
@@ -825,6 +825,12 @@ function presentationError(error: unknown): WebAuthnClientError {
     return new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
   }
   return new WebAuthnClientError("credential-api-failure", "WebAuthn credential operation failed");
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+  }
 }
 
 /**
