@@ -163,6 +163,7 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Android Secure Native construction must fail closed if the host `Activity` window cannot be resolved for `FLAG_SECURE`; a keypad that cannot establish the secure window boundary must not accept input.
 - Android touch activation and Headless Host commands must reassert and verify `FLAG_SECURE` immediately before invoking the native session. If the host window cannot be resolved, reassertion fails, or verification fails, the input is rejected and the command replay floor must not advance.
 - Android focus and visibility restoration must fail closed without throwing into the host: clear the native session and emit only the stable internal error when `FLAG_SECURE` cannot be re-established.
+- Android view reattachment must apply the same rule: a failed secure-window restoration must clear the native session and return from the lifecycle callback without throwing.
 - iOS and Android Headless Host commands must record their replay token only after the native activation path returns success; protected, unavailable, or otherwise rejected activation must not advance the replay floor.
 
 ## Authentication boundary

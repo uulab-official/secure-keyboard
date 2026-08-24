@@ -30,6 +30,8 @@ exact release-candidate commit by the release evidence manifest.
   the headless replay floor.
 - Security: Android focus and visibility lifecycle failures now zeroize the
   native session and emit an internal error without throwing into the host app.
+- Security: Android reattachment failures now follow the same fail-closed
+  zeroization path instead of throwing from the view lifecycle callback.
 - Security: Flutter Headless Host controller tokens now remain monotonic across
   Dart widget reattachment, preventing lifecycle resets below the native replay floor.
 - Security: iOS Headless Host replay floors now advance only after native key

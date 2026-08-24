@@ -254,7 +254,10 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        requireSecureWindow()
+        if (!ensureSecureWindowProtection()) {
+            failClosedSecureWindowBoundary()
+            return
+        }
         requestSessionReconfigurationIfNeeded()
     }
 

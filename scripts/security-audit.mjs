@@ -761,7 +761,14 @@ export function runSecurityAudit() {
     );
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(hasWindowFocus\)\s*\{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
-    requireText(findings, file, contents, /onAttachedToWindow\(\)[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,160}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must recover a detached session on reattachment");
+    requireText(findings, file, contents, /onAttachedToWindow\(\)[\s\S]{0,260}if \(!ensureSecureWindowProtection\(\)\)[\s\S]{0,180}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must recover a detached session on reattachment");
+    requireText(
+      findings,
+      file,
+      contents,
+      /onAttachedToWindow\(\)[\s\S]{0,260}if \(!ensureSecureWindowProtection\(\)\) \{\s*failClosedSecureWindowBoundary\(\)\s*return\s*\}/,
+      "Android reattachment secure-window failures must fail closed without throwing",
+    );
     requireText(findings, file, contents, /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,360}if \(visibility == View\.VISIBLE\) \{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must request reconfiguration after visibility restoration");
     requireText(findings, file, contents, /private data class RetainedConfiguration/, "Android native keypad must retain only public configuration for direct lifecycle recovery");
     requireText(findings, file, contents, /private fun requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,260}reconfigureRetainedConfiguration\(\)/, "Android native keypad must provide a direct-consumer lifecycle recovery path");
