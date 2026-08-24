@@ -1319,10 +1319,13 @@ export function runSecurityAudit() {
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await reader\.cancel()/, "Node server adapter must cancel an oversized request stream");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await csrfValidated\(request\)[\s\S]{0,2600}readBoundedBody/, "Node server adapter must validate CSRF before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /rateLimitDecision\?:/, "Node server adapter must expose a pre-buffering rate-limit admission callback");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /NodeSecurityProfile\s*=\s*"standard"\s*\|\s*"financial"/, "Node server adapter must expose an explicit financial security profile");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /deviceIntegrityDecision\?:/, "Node financial profile must expose a host device-integrity verifier");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function isReady\(context: NodeDeploymentContext\)[\s\S]{0,700}\btry\s*\{[\s\S]{0,700}\}\s*catch\s*\{/, "Node server deployment context validation must fail closed when accessors throw");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /const upstreamBodyLimitBytes = isReady\(deploymentContext\)[\s\S]{0,4000}contentType = request\.headers\.get\("content-type"\)[\s\S]{0,2000}catch\s*\{/, "Node server request metadata access must stay inside a fail-closed boundary");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /if \(rateLimitDecision === undefined\)/, "Node server adapter must fail closed when rate-limit admission is not configured");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /await rateLimitDecision\(request\)[\s\S]{0,1000}readBoundedBody/, "Node server adapter must resolve rate-limit admission before buffering the body");
+  requireText(findings, "packages/server-node/src/index.ts", nodeServer, /securityProfile === "financial"[\s\S]{0,1400}deviceIntegrityDecision[\s\S]{0,900}readBoundedBody/, "Node financial security profile must verify device integrity before buffering the body");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /transport === \"direct-tls\" \|\| context\.transport === \"trusted-proxy-tls\"/, "Node server adapter must require explicit TLS deployment facts");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /STATUS_CODES = new Set/, "Node server adapter must constrain delegate status codes");
   requireText(findings, "packages/server-node/src/index.ts", nodeServer, /function byteView[\s\S]{0,700}function zeroizeChunk/, "Node server adapter must preserve byte-view ownership and zeroize malformed chunks");
@@ -1412,12 +1415,16 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /TrustedProxyTls/, "OPAQUE HTTP routes must define trusted-proxy TLS handling");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /connection_limits_enforced/, "OPAQUE HTTP routes must require connection/read limits");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /RESPONSE_SECURITY_HEADERS/, "OPAQUE HTTP responses must carry cache and MIME security headers");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /pub enum DeviceIntegrityDecision/, "OPAQUE HTTP contracts must define a server device-integrity decision");
+  requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /pub fn device_integrity_response/, "OPAQUE HTTP contracts must map device-integrity failures to generic responses");
   requireText(findings, "crates/secure-auth-http/src/lib.rs", opaqueHttp, /fn registration_finish[\s\S]{0,500}valid_identifier\(request\.identifier\.as_bytes\(\)\)/, "OPAQUE registration finish must bound the persistence identifier before protocol processing");
 
   const axum = source("crates/secure-auth-axum/src/lib.rs", findings);
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /let \(parts, body\) = request\.into_parts\(\);[\s\S]{0,1400}to_bytes\(body, body_limit\)/, "Axum adapter must bound streaming request bodies before route parsing");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /state\.router\.handle\(/, "Axum adapter must delegate to the framework-neutral route contract");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /RESPONSE_SECURITY_HEADERS/, "Axum adapter must preserve static response security headers");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /pub fn financial_router/, "Axum adapter must expose an explicit financial router");
+  requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /device_integrity_response[\s\S]{0,1800}to_bytes\(body, body_limit\)/, "Axum financial device-integrity admission must run before body buffering");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /Fn\(&Parts\) -> Option<Uuid>/, "WebAuthn Axum principal resolver must receive request parts without the body");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /to_bytes\(body, body_limit\)/, "WebAuthn Axum adapter must bound streaming request bodies before principal resolution");
   requireText(findings, "crates/secure-auth-axum/src/lib.rs", axum, /WebAuthnHttpRouter(?:::<[^>]+>)?::new/, "WebAuthn Axum adapter must delegate to the framework-neutral route contract");
@@ -1427,6 +1434,8 @@ export function runSecurityAudit() {
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /payload\.to_bytes_limited\(body_limit\)/, "Actix adapter must bound streaming request bodies before route parsing");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /state\.router\.handle\(/, "Actix adapter must delegate to the framework-neutral route contract");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /RESPONSE_SECURITY_HEADERS/, "Actix adapter must preserve static response security headers");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /pub fn financial_router/, "Actix adapter must expose an explicit financial router");
+  requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /device_integrity_response[\s\S]{0,1800}payload\.to_bytes_limited\(body_limit\)/, "Actix financial device-integrity admission must run before body buffering");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /Fn\(&HttpRequest\) -> bool/, "Actix adapter CSRF resolver must receive request parts without the body");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /payload\.to_bytes_limited\(body_limit\)[\s\S]{0,800}state\.principal/, "Actix WebAuthn adapter must resolve the host principal only after bounded body collection");
   requireText(findings, "crates/secure-auth-actix/src/lib.rs", actix, /WebAuthnHttpRouter::new/, "Actix WebAuthn adapter must delegate to the framework-neutral route contract");

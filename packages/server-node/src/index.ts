@@ -32,6 +32,12 @@ export const RESPONSE_SECURITY_HEADERS = Object.freeze([
 
 export type NodeTransportSecurity = "direct-tls" | "trusted-proxy-tls" | "plaintext";
 
+/** Server admission profile. Financial mode requires verified device integrity. */
+export type NodeSecurityProfile = "standard" | "financial";
+
+/** Result of host-side Play Integrity/App Attest or equivalent verification. */
+export type NodeDeviceIntegrityDecision = "verified" | "rejected" | "unavailable";
+
 /** Host-side admission result returned before the request body is read. */
 export type NodeRateLimitDecision = "allowed" | "rate-limited" | "unavailable";
 
@@ -72,8 +78,16 @@ export type OpaqueRouteDelegate = (
   context: NodeDeploymentContext,
 ) => NodeHttpResponse | Promise<NodeHttpResponse>;
 
+export type NodeDeviceIntegrityVerifier = (
+  request: Request,
+) => NodeDeviceIntegrityDecision | Promise<NodeDeviceIntegrityDecision>;
+
 export interface CreateOpaqueHandlerOptions {
   readonly deploymentContext: NodeDeploymentContext;
+  /** Financial profile fails closed unless this host verifier returns verified. */
+  readonly securityProfile?: NodeSecurityProfile;
+  /** Host-side platform attestation verifier; it runs before Request.body is read. */
+  readonly deviceIntegrityDecision?: NodeDeviceIntegrityVerifier;
   /** Host session/origin validation; it runs before `Request.body` is read. */
   readonly csrfValidated: (request: Request) => boolean | Promise<boolean>;
   /**
@@ -91,6 +105,10 @@ const STATUS_CODES = new Set([200, 400, 401, 403, 404, 405, 413, 415, 429, 503])
 const encoder = new TextEncoder();
 
 class BodyTooLargeError extends Error {}
+
+function isSecurityProfile(value: unknown): value is NodeSecurityProfile {
+  return value === "standard" || value === "financial";
+}
 
 function isBodyTooLargeError(error: unknown): boolean {
   try {
@@ -269,16 +287,27 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     let handlerOptions: CreateOpaqueHandlerOptions;
     try {
       const rateLimitDecision = options.rateLimitDecision;
+      const deviceIntegrityDecision = options.deviceIntegrityDecision;
       handlerOptions = {
         deploymentContext: options.deploymentContext,
+        securityProfile: options.securityProfile ?? "standard",
         csrfValidated: options.csrfValidated,
         delegate: options.delegate,
+        ...(deviceIntegrityDecision === undefined ? {} : { deviceIntegrityDecision }),
         ...(rateLimitDecision === undefined ? {} : { rateLimitDecision }),
       };
     } catch {
       return genericResponse(503, "temporarily_unavailable");
     }
-    const { deploymentContext, csrfValidated, rateLimitDecision, delegate } = handlerOptions;
+    const {
+      deploymentContext,
+      securityProfile,
+      deviceIntegrityDecision,
+      csrfValidated,
+      rateLimitDecision,
+      delegate,
+    } = handlerOptions;
+    if (!isSecurityProfile(securityProfile)) return genericResponse(400, "invalid_request");
     const upstreamBodyLimitBytes = isReady(deploymentContext);
     if (upstreamBodyLimitBytes === undefined) return genericResponse(400, "invalid_request");
 
@@ -320,6 +349,20 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     }
     if (rateLimitResult === "rate-limited") return genericResponse(429, "rate_limited");
     if (rateLimitResult !== "allowed") return genericResponse(503, "temporarily_unavailable");
+
+    if (securityProfile === "financial") {
+      if (deviceIntegrityDecision === undefined) {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+      let integrityResult: NodeDeviceIntegrityDecision;
+      try {
+        integrityResult = await deviceIntegrityDecision(request);
+      } catch {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+      if (integrityResult === "rejected") return genericResponse(403, "invalid_request");
+      if (integrityResult !== "verified") return genericResponse(503, "temporarily_unavailable");
+    }
 
     let body: Uint8Array;
     try {

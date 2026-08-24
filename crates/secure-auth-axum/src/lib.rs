@@ -16,9 +16,10 @@ use axum::{
     Router,
 };
 use secure_auth_http::{
-    request_admission_response, validate_content_length, ContentLengthError, CredentialRepository,
-    HttpAuthRouter, HttpDeploymentContext, HttpRequest, HttpResponse, RequestAdmission,
-    JSON_CONTENT_TYPE, RESPONSE_SECURITY_HEADERS,
+    device_integrity_response, request_admission_response, validate_content_length,
+    ContentLengthError, CredentialRepository, DeviceIntegrityDecision, HttpAuthRouter,
+    HttpDeploymentContext, HttpRequest, HttpResponse, RequestAdmission, JSON_CONTENT_TYPE,
+    RESPONSE_SECURITY_HEADERS,
 };
 use secure_auth_server::BoundOneTimeLoginStateStore;
 use std::sync::Arc;
@@ -28,6 +29,7 @@ struct AppState<S, R, P, Q> {
     context: HttpDeploymentContext,
     csrf: Arc<P>,
     rate_limit: Arc<Q>,
+    device_integrity: Arc<dyn Fn(&Parts) -> DeviceIntegrityDecision + Send + Sync>,
 }
 
 /// Builds an Axum router that delegates the authentication contract to
@@ -53,11 +55,54 @@ where
     P: Fn(&Parts) -> bool + Send + Sync + 'static,
     Q: Fn(&Parts) -> RequestAdmission + Send + Sync + 'static,
 {
+    build_router(auth_router, context, csrf, rate_limit, |_parts| {
+        DeviceIntegrityDecision::Verified
+    })
+}
+
+/// Builds an Axum router for financial authentication routes.
+///
+/// The `device_integrity` callback must verify a server-bound Android/iOS
+/// platform-integrity result from request parts without reading the body.
+/// `Verified` is required before the adapter buffers or dispatches JSON;
+/// `Rejected` and `Unavailable` fail closed with generic responses.
+pub fn financial_router<S, R, P, Q, I>(
+    auth_router: HttpAuthRouter<S, R>,
+    context: HttpDeploymentContext,
+    csrf: P,
+    rate_limit: Q,
+    device_integrity: I,
+) -> Router
+where
+    S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
+    R: CredentialRepository + Send + Sync + 'static,
+    P: Fn(&Parts) -> bool + Send + Sync + 'static,
+    Q: Fn(&Parts) -> RequestAdmission + Send + Sync + 'static,
+    I: Fn(&Parts) -> DeviceIntegrityDecision + Send + Sync + 'static,
+{
+    build_router(auth_router, context, csrf, rate_limit, device_integrity)
+}
+
+fn build_router<S, R, P, Q, I>(
+    auth_router: HttpAuthRouter<S, R>,
+    context: HttpDeploymentContext,
+    csrf: P,
+    rate_limit: Q,
+    device_integrity: I,
+) -> Router
+where
+    S: BoundOneTimeLoginStateStore + Send + Sync + 'static,
+    R: CredentialRepository + Send + Sync + 'static,
+    P: Fn(&Parts) -> bool + Send + Sync + 'static,
+    Q: Fn(&Parts) -> RequestAdmission + Send + Sync + 'static,
+    I: Fn(&Parts) -> DeviceIntegrityDecision + Send + Sync + 'static,
+{
     let state = Arc::new(AppState {
         router: auth_router,
         context,
         csrf: Arc::new(csrf),
         rate_limit: Arc::new(rate_limit),
+        device_integrity: Arc::new(device_integrity),
     });
     Router::new()
         .fallback(handle_request::<S, R, P, Q>)
@@ -101,6 +146,14 @@ where
             headers: RESPONSE_SECURITY_HEADERS,
             body: br#"{"error":"invalid_request"}"#.to_vec(),
         });
+    }
+
+    let integrity_decision = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        (state.device_integrity)(&parts)
+    }))
+    .unwrap_or(DeviceIntegrityDecision::Unavailable);
+    if let Some(response) = device_integrity_response(integrity_decision) {
+        return response_from(response);
     }
 
     let Ok(body) = to_bytes(body, body_limit).await else {

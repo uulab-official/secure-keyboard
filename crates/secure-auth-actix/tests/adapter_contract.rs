@@ -1,11 +1,15 @@
 use actix_web::{body::to_bytes, http::StatusCode, test as actix_test, App, Scope};
 use secure_auth::{ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES};
-use secure_auth_actix::router;
+use secure_auth_actix::{financial_router, router};
 use secure_auth_http::{
-    CredentialRepository, HttpDeploymentContext, HttpResponse as ContractResponse, RepositoryError,
-    RequestAdmission, TransportSecurity,
+    CredentialRepository, DeviceIntegrityDecision, HttpDeploymentContext,
+    HttpResponse as ContractResponse, RepositoryError, RequestAdmission, TransportSecurity,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthService};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::Duration;
 
 struct EmptyRepository;
@@ -57,6 +61,25 @@ fn app_with_rate_limit(context: HttpDeploymentContext, decision: RequestAdmissio
         secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
         context,
         |_request| true,
+        move |_request| decision,
+    )
+}
+
+fn app_with_device_integrity(
+    context: HttpDeploymentContext,
+    decision: DeviceIntegrityDecision,
+) -> Scope {
+    let service = ServerAuthService::new(
+        ServerSetupBytes::generate().unwrap(),
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    financial_router(
+        secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
+        context,
+        |_request| true,
+        |_request| RequestAdmission::Allowed,
         move |_request| decision,
     )
 }
@@ -126,6 +149,79 @@ async fn adapter_rejects_rate_limited_admission_before_body_processing() {
     assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
     let body = to_bytes(response.into_body()).await.unwrap();
     assert_eq!(&body[..], br#"{"error":"rate_limited"}"#);
+}
+
+#[actix_web::test]
+async fn financial_adapter_rejects_device_integrity_before_body_processing() {
+    let app = actix_test::init_service(App::new().service(app_with_device_integrity(
+        HttpDeploymentContext::direct_tls(),
+        DeviceIntegrityDecision::Rejected,
+    )))
+    .await;
+    let request = actix_test::TestRequest::post()
+        .uri("/v1/opaque/login/start")
+        .insert_header(("content-type", "application/json"))
+        .set_payload("{}")
+        .to_request();
+    let response = actix_test::call_service(&app, request).await;
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let body = to_bytes(response.into_body()).await.unwrap();
+    assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
+}
+
+#[actix_web::test]
+async fn financial_adapter_validates_content_length_before_device_integrity() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let callback_calls = Arc::clone(&calls);
+    let app = actix_test::init_service(
+        App::new().service(financial_router(
+            secure_auth_http::HttpAuthRouter::new(
+                ServerAuthService::new(
+                    ServerSetupBytes::generate().unwrap(),
+                    CIPHER_SUITE_ID,
+                    InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+                )
+                .unwrap(),
+                EmptyRepository,
+            ),
+            HttpDeploymentContext::direct_tls(),
+            |_request| true,
+            |_request| RequestAdmission::Allowed,
+            move |_request| {
+                callback_calls.fetch_add(1, Ordering::SeqCst);
+                DeviceIntegrityDecision::Verified
+            },
+        )),
+    )
+    .await;
+    let request = actix_test::TestRequest::post()
+        .uri("/v1/opaque/login/start")
+        .insert_header(("content-type", "application/json"))
+        .insert_header(("content-length", MAX_JSON_BODY_BYTES + 1))
+        .to_request();
+
+    let response = actix_test::call_service(&app, request).await;
+
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[actix_web::test]
+async fn financial_adapter_dispatches_only_after_verified_device_integrity() {
+    let app = actix_test::init_service(App::new().service(app_with_device_integrity(
+        HttpDeploymentContext::direct_tls(),
+        DeviceIntegrityDecision::Verified,
+    )))
+    .await;
+    let request = actix_test::TestRequest::post()
+        .uri("/v1/opaque/login/start")
+        .insert_header(("content-type", "application/json"))
+        .set_payload("{}")
+        .to_request();
+    let response = actix_test::call_service(&app, request).await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[actix_web::test]

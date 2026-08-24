@@ -12,6 +12,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: added cross-platform `securityMode: strict` local device-posture
   gates for Native, React Native, and Flutter; the gate is explicitly documented
   as defense-in-depth rather than platform attestation.
+- Security: added a financial server-admission gate for Node, Axum, and Actix;
+  `securityProfile: "financial"` or `financial_router` requires a host-verified
+  device-integrity decision before request-body buffering and opaque dispatch.
 
 - Added checked-in React Native, Flutter, and WebAuthn host entrypoint examples
   under `examples/`; CI verifies their public API usage and rejects framework

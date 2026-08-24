@@ -154,6 +154,18 @@ pub enum RequestAdmission {
     Unavailable,
 }
 
+/// Host-side platform-integrity result established before body buffering.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeviceIntegrityDecision {
+    /// The host verified Play Integrity, App Attest, DeviceCheck, or an
+    /// equivalent server-verifiable signal bound to this authentication.
+    Verified,
+    /// The host verified that the request must not authenticate.
+    Rejected,
+    /// The host could not make a safe integrity decision.
+    Unavailable,
+}
+
 /// Deployment controls that must be established before a route reads JSON.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HttpDeploymentContext {
@@ -257,6 +269,20 @@ pub fn request_admission_response(admission: RequestAdmission) -> Option<HttpRes
         RequestAdmission::Allowed => None,
         RequestAdmission::RateLimited => Some(static_response(429, RATE_LIMITED_RESPONSE)),
         RequestAdmission::Unavailable => {
+            Some(error_response(503, PublicAuthCode::TemporarilyUnavailable))
+        }
+    }
+}
+
+/// Builds the generic response for a financial device-integrity decision.
+#[must_use]
+pub fn device_integrity_response(decision: DeviceIntegrityDecision) -> Option<HttpResponse> {
+    match decision {
+        DeviceIntegrityDecision::Verified => None,
+        DeviceIntegrityDecision::Rejected => {
+            Some(error_response(403, PublicAuthCode::InvalidRequest))
+        }
+        DeviceIntegrityDecision::Unavailable => {
             Some(error_response(503, PublicAuthCode::TemporarilyUnavailable))
         }
     }

@@ -165,6 +165,8 @@ covered by a downgrade regression test.
 - per-account, per-IP, and deployment-wide rate limits;
 - pre-buffering rate-limit admission with fail-closed behavior on limiter
   outage;
+- server-verified device-integrity admission for financial authentication,
+  bound to the account, operation, nonce, and deployment before body buffering;
 - dummy login processing for unknown accounts to reduce enumeration signals;
 - constant-time proof checks and generic external authentication errors;
 - key rotation with an explicit supported-version window and downgrade tests;
@@ -181,3 +183,8 @@ provides the Node Fetch-compatible boundary, but delegates cryptography to the
 pinned Rust/native reference service; it is not an OPAQUE implementation in
 JavaScript. These adapters are not a complete HTTP server deployment until
 they are configured with the required host controls and independently tested.
+Financial Node routes must use `securityProfile: "financial"` and a verifier
+that returns `verified`; Axum and Actix expose the same pre-buffering rule via
+their explicit `financial_router` constructors. Platform attestation remains
+host/server responsibility; the SDK does not claim to verify Google/Apple
+attestation credentials itself.

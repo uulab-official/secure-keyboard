@@ -1,12 +1,16 @@
 use axum::{body::Body, http::Request};
 use http_body_util::BodyExt;
 use secure_auth::{ServerSetupBytes, CIPHER_SUITE_ID, MAX_JSON_BODY_BYTES};
-use secure_auth_axum::router;
+use secure_auth_axum::{financial_router, router};
 use secure_auth_http::{
-    CredentialRepository, HttpDeploymentContext, HttpResponse, RepositoryError, RequestAdmission,
-    TransportSecurity,
+    CredentialRepository, DeviceIntegrityDecision, HttpDeploymentContext, HttpResponse,
+    RepositoryError, RequestAdmission, TransportSecurity,
 };
 use secure_auth_server::{InMemoryOneTimeLoginStore, ServerAuthService};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::Duration;
 use tower::ServiceExt;
 
@@ -68,6 +72,25 @@ fn app_with_rate_limit(context: HttpDeploymentContext, decision: RequestAdmissio
     )
 }
 
+fn app_with_device_integrity(
+    context: HttpDeploymentContext,
+    decision: DeviceIntegrityDecision,
+) -> axum::Router {
+    let service = ServerAuthService::new(
+        ServerSetupBytes::generate().unwrap(),
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    financial_router(
+        secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
+        context,
+        |_parts| true,
+        |_parts| RequestAdmission::Allowed,
+        move |_parts| decision,
+    )
+}
+
 fn app() -> axum::Router {
     app_with_context(HttpDeploymentContext::direct_tls())
 }
@@ -125,6 +148,80 @@ async fn adapter_rejects_rate_limited_admission_before_body_processing() {
     assert_eq!(response.status(), 429);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(&body[..], br#"{"error":"rate_limited"}"#);
+}
+
+#[tokio::test]
+async fn financial_adapter_rejects_device_integrity_before_body_processing() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v1/opaque/login/start")
+        .header("content-type", "application/json")
+        .body(Body::from(vec![b'x'; MAX_JSON_BODY_BYTES + 1]))
+        .unwrap();
+    let response = app_with_device_integrity(
+        HttpDeploymentContext::direct_tls(),
+        DeviceIntegrityDecision::Rejected,
+    )
+    .oneshot(request)
+    .await
+    .unwrap();
+
+    assert_eq!(response.status(), 403);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(&body[..], br#"{"error":"invalid_request"}"#);
+}
+
+#[tokio::test]
+async fn financial_adapter_validates_content_length_before_device_integrity() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let callback_calls = Arc::clone(&calls);
+    let service = ServerAuthService::new(
+        ServerSetupBytes::generate().unwrap(),
+        CIPHER_SUITE_ID,
+        InMemoryOneTimeLoginStore::new(8, Duration::from_secs(60)).unwrap(),
+    )
+    .unwrap();
+    let app = financial_router(
+        secure_auth_http::HttpAuthRouter::new(service, EmptyRepository),
+        HttpDeploymentContext::direct_tls(),
+        |_parts| true,
+        |_parts| RequestAdmission::Allowed,
+        move |_parts| {
+            callback_calls.fetch_add(1, Ordering::SeqCst);
+            DeviceIntegrityDecision::Verified
+        },
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v1/opaque/login/start")
+        .header("content-type", "application/json")
+        .header("content-length", MAX_JSON_BODY_BYTES + 1)
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), 413);
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn financial_adapter_dispatches_only_after_verified_device_integrity() {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v1/opaque/login/start")
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
+    let response = app_with_device_integrity(
+        HttpDeploymentContext::direct_tls(),
+        DeviceIntegrityDecision::Verified,
+    )
+    .oneshot(request)
+    .await
+    .unwrap();
+
+    assert_eq!(response.status(), 400);
 }
 
 #[tokio::test]

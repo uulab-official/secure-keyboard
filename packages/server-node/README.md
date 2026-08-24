@@ -50,5 +50,28 @@ with 503 before the body is read. JavaScript memory is not a secure-memory
 boundary; applications requiring the strongest secret handling should keep the
 OPAQUE engine in the Rust/native process.
 
+For financial authentication, set `securityProfile: "financial"` and provide
+`deviceIntegrityDecision`. The callback must verify the Android Play Integrity,
+iOS App Attest/DeviceCheck, or equivalent server-verifiable result bound to the
+current account, authentication operation, nonce, and deployment. It runs after
+CSRF/rate-limit admission but before the request body is read; `"rejected"`,
+`"unavailable"`, a missing callback, or a callback failure returns a generic
+failure and never reaches the OPAQUE delegate:
+
+```ts
+const handler = createOpaqueHandler({
+  deploymentContext,
+  securityProfile: "financial",
+  csrfValidated: validateHostSession,
+  rateLimitDecision: admitRateLimit,
+  deviceIntegrityDecision: verifyPlatformIntegrity,
+  delegate: pinnedRustOpaqueDelegate,
+});
+```
+
+`verifyPlatformIntegrity` is intentionally host-supplied: the SDK cannot hold
+Google/Apple credentials or decide the product's account-risk policy. The Rust
+Axum/Actix adapters expose the equivalent `financial_router` boundary.
+
 The public release version follows the Contracts package. Authentication
 protocol and C ABI versions remain independent.

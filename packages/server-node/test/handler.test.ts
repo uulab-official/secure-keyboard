@@ -66,6 +66,67 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
+  it("requires a server-verified device integrity decision for financial profile", async () => {
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe('{"error":"temporarily_unavailable"}');
+    expect(incoming.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a failed financial device integrity decision before reading the body", async () => {
+    const delegate = vi.fn();
+    const deviceIntegrityDecision = vi.fn(() => "rejected" as const);
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      deviceIntegrityDecision,
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe('{"error":"invalid_request"}');
+    expect(deviceIntegrityDecision).toHaveBeenCalledWith(incoming);
+    expect(incoming.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("delegates a financial request only after device integrity is verified", async () => {
+    const delegate = vi.fn(() => ({ status: 200, body: new TextEncoder().encode('{"ok":true}') }));
+    const deviceIntegrityDecision = vi.fn(() => "verified" as const);
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      deviceIntegrityDecision,
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(200);
+    expect(deviceIntegrityDecision).toHaveBeenCalledWith(incoming);
+    expect(delegate).toHaveBeenCalledOnce();
+  });
+
   it("normalizes rate-limit callback failures and invalid decisions before body access", async () => {
     const delegate = vi.fn();
     const callbackFailure = createOpaqueHandler({
