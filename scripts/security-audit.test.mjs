@@ -424,6 +424,44 @@ test("cancel request failures do not advance the native cancel replay floor", ()
 
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /cancel failures must not advance the native cancel replay floor/);
+  assert.match(securityAudit, /cancel failures must release the native session before reporting the error/);
+});
+
+test("native cancel failures release the session before reporting the error", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const cancelStart = source.indexOf("private func cancelSessionAndReport");
+    const cancelEnd = source.indexOf("/// Applies a monotonic", cancelStart);
+    assert.ok(cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /if status != 0 \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\(status\)\s*return false\s*\}/,
+      `${relativePath} must release the native session when cancellation fails`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const cancelStart = source.indexOf("private fun cancelSessionAndReport");
+    const cancelEnd = source.indexOf("/** Applies a monotonic", cancelStart);
+    assert.ok(cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /if \(status != 0\) \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      `${relativePath} must release the native session when cancellation fails`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /cancel failures must release the native session before reporting the error/);
 });
 
 test("Android lifecycle secure-window failures zeroize without throwing", () => {

@@ -89,6 +89,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Restore lifecycle-lost sessions for RN and Flutter adapters from retained public configuration across iOS activation/window transitions and Android focus/visibility transitions without replaying Headless Host commands.
 - [x] Restore lifecycle-lost sessions for direct iOS and Android Native SDK consumers without a framework callback; retain only public configuration and make explicit release terminal.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.
+- [x] Release the native session when cancellation fails before reporting the error, without advancing the cancel replay floor.
 - [ ] Complete device-level accessibility review and physical UI snapshot tests.
 
 Exit criteria: Secure Native Mode works without a secret crossing the framework bridge.

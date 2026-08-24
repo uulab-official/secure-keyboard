@@ -43,6 +43,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: native session errors now leave both iOS and Android Headless Host
   replay floors unchanged, allowing rejected commands to fail closed without
   consuming their token.
+- Security: native cancel failures now release the session before reporting
+  the error, preventing an uncertain cancellation state from retaining input.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

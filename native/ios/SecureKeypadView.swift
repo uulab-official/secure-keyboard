@@ -448,6 +448,7 @@ public class SecureKeypadView: UIView {
         guard let session else { return false }
         let status = secure_keypad_session_cancel(session)
         if status != 0 {
+            releaseNativeSessionPreservingConfiguration()
             onError?(status)
             return false
         }

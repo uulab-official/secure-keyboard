@@ -740,7 +740,14 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private fun cancelSessionAndReport\(\): Boolean[\s\S]*?if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      /private fun cancelSessionAndReport\(\): Boolean[\s\S]*?if \(status != 0\) \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      "cancel failures must release the native session before reporting the error",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /public fun requestCancel\(requestId: Long\)[\s\S]{0,600}if \(cancelSessionAndReport\(\)\) \{\s*lastCancelRequest = requestId\s*\}/,
       "cancel failures must not advance the native cancel replay floor",
     );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
@@ -880,7 +887,14 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func cancelSessionAndReport\(\) -> Bool[\s\S]*?if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
+      /private func cancelSessionAndReport\(\) -> Bool[\s\S]*?if status != 0 \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\(status\)\s*return false\s*\}/,
+      "cancel failures must release the native session before reporting the error",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /public func requestCancel\(_ requestId: Int64\)[\s\S]{0,600}if cancelSessionAndReport\(\) \{\s*lastCancelRequest = requestId\s*\}/,
       "cancel failures must not advance the native cancel replay floor",
     );
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");

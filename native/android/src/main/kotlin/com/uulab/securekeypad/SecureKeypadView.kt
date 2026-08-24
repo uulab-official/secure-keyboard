@@ -421,6 +421,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         if (sessionHandle == 0L) return false
         val status = SecureKeypadNative.sessionCancel(sessionHandle)
         if (status != 0) {
+            releaseNativeSessionPreservingConfiguration()
             onError?.invoke(status)
             return false
         }
