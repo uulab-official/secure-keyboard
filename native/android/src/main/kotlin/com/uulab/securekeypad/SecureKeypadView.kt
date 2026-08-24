@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.os.Build
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.MotionEvent
@@ -228,6 +229,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         check(SecureKeypadNative.isAbiCompatible()) { "secure keypad native ABI mismatch" }
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         isSaveEnabled = false
+        filterTouchesWhenObscured = true
         requireSecureWindow()
 
         setBackgroundColor(currentTheme.backgroundColor)
@@ -279,6 +281,26 @@ public open class SecureKeypadView @JvmOverloads constructor(
         if (ensureSecureWindowProtection()) return true
         failClosedSecureWindowBoundary()
         return false
+    }
+
+    override fun onFilterTouchEventForSecurity(event: MotionEvent): Boolean {
+        if (isObscuredTouch(event)) {
+            failClosedObscuredTouchBoundary()
+            return false
+        }
+        return super.onFilterTouchEventForSecurity(event)
+    }
+
+    private fun isObscuredTouch(event: MotionEvent): Boolean {
+        val fullyObscured = (event.flags and MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0
+        val partiallyObscured = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            (event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0
+        return fullyObscured || partiallyObscured
+    }
+
+    private fun failClosedObscuredTouchBoundary() {
+        zeroizeSessionForLifecycleLoss()
+        onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
     }
 
     private fun failClosedSecureWindowBoundary() {

@@ -718,6 +718,11 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /findActivity\(\)/, "Android secure-window protection must resolve wrapped host contexts");
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /private fun ensureSecureWindowProtection\(\)[\s\S]{0,520}FLAG_SECURE/, "Android secure-window protection must be reasserted and verified");
+    requireText(findings, file, contents, /filterTouchesWhenObscured\s*=\s*true/, "Android native keypad must opt into obscured-touch filtering");
+    requireText(findings, file, contents, /override fun onFilterTouchEventForSecurity\(event: MotionEvent\): Boolean/, "Android native keypad must inspect obscured touches at the view boundary");
+    requireText(findings, file, contents, /MotionEvent\.FLAG_WINDOW_IS_OBSCURED/, "Android native keypad must reject fully obscured touches");
+    requireText(findings, file, contents, /MotionEvent\.FLAG_WINDOW_IS_PARTIALLY_OBSCURED/, "Android native keypad must reject partially obscured touches");
+    requireText(findings, file, contents, /private fun failClosedObscuredTouchBoundary\(\)[\s\S]{0,220}zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,220}SECURE_KEYPAD_ERROR_INTERNAL/, "Android obscured-touch rejection must zeroize before reporting the stable error");
     requireText(findings, file, contents, /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}ensureSecureWindowProtection\(\)/, "Android input must fail closed when secure-window protection cannot be verified");
     requireText(
       findings,

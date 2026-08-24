@@ -175,6 +175,24 @@ test("Android secure native view fails closed without a secure Activity window",
   assert.match(source, /onAttachedToWindow\(\)[\s\S]*addFlags\(WindowManager\.LayoutParams\.FLAG_SECURE\)/);
 });
 
+test("Android secure native view rejects obscured touches before activation", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(source, /filterTouchesWhenObscured\s*=\s*true/);
+    assert.match(source, /override fun onFilterTouchEventForSecurity\(event: MotionEvent\): Boolean/);
+    assert.match(source, /MotionEvent\.FLAG_WINDOW_IS_OBSCURED/);
+    assert.match(source, /MotionEvent\.FLAG_WINDOW_IS_PARTIALLY_OBSCURED/);
+    assert.match(
+      source,
+      /failClosedObscuredTouchBoundary\(\)[\s\S]{0,220}zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,220}onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)/,
+    );
+  }
+});
+
 test("native framework managers release stale sessions when required configuration disappears", () => {
   for (const relativePath of [
     "../native/android/src/main/kotlin/com/uulab/securekeypad/reactnative/SecureKeypadViewManager.kt",

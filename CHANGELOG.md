@@ -6,6 +6,10 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Security: Android now rejects fully and partially obscured touches at the
+  native keypad boundary and zeroizes the session before reporting the stable
+  internal error.
+
 - Added checked-in React Native, Flutter, and WebAuthn host entrypoint examples
   under `examples/`; CI verifies their public API usage and rejects framework
   secret channels.

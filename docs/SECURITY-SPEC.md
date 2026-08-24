@@ -192,6 +192,7 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Android touch and Headless Host input-boundary protection failure is a zeroization boundary: if `FLAG_SECURE` cannot be re-established or verified, clear the native session before reporting the stable internal error.
 - Android focus and visibility restoration must fail closed without throwing into the host: clear the native session and emit only the stable internal error when `FLAG_SECURE` cannot be re-established.
 - Android view reattachment must apply the same rule: a failed secure-window restoration must clear the native session and return from the lifecycle callback without throwing.
+- Android Secure Native views must enable obscured-touch filtering and reject both fully and partially obscured `MotionEvent`s before key activation; this is a tapjacking boundary, and rejection must clear the native session before emitting the stable internal error.
 - iOS protected presentation is a zeroization boundary: whenever scene inactivity or screen capture makes the presentation protected, any live native session must be released before the protected state is rendered.
 - iOS and Android Headless Host commands must record their replay token only after the native activation path returns success; protected, unavailable, or otherwise rejected activation must not advance the replay floor.
 
