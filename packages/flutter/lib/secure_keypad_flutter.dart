@@ -241,13 +241,11 @@ class SecureKeypadController {
   }) {
     _cancelAction = action;
     _headlessKeyPressAction = headlessKeyPressAction;
-    _nextHeadlessKeyPressToken = 0;
   }
 
   void _detach() {
     _cancelAction = null;
     _headlessKeyPressAction = null;
-    _nextHeadlessKeyPressToken = 0;
   }
 }
 

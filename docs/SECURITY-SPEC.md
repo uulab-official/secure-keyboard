@@ -30,6 +30,9 @@ may apply a command that arrived before the session was created.
 The replay floor is retained for the lifetime of a native view instance across
 session release, lifecycle recovery, and public reconfiguration; releasing the
 secret-bearing session must not make an older delayed command valid again.
+Flutter's public controller also preserves its monotonic token sequence across
+Dart widget attach/detach cycles, so adapter reattachment cannot reset commands
+below the native replay floor or make an older delayed command current again.
 
 ### Web Mode
 

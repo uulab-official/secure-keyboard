@@ -342,6 +342,30 @@ export function runSecurityAudit() {
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /invokeMethod<void>\('pressKey'/, "Flutter headless commands must use a native method channel");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /acknowledgeLowerAssurance/, "Flutter headless mode must require explicit acknowledgement");
   requireText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /toPlatformCreationParams/, "Flutter must expose an explicit public creation map");
+  const flutterControllerAttachStart = flutter.indexOf("  void _attach(");
+  const flutterControllerDetachStart = flutter.indexOf("  void _detach(", flutterControllerAttachStart);
+  if (flutterControllerAttachStart >= 0 && flutterControllerDetachStart > flutterControllerAttachStart) {
+    forbidText(
+      findings,
+      "packages/flutter/lib/secure_keypad_flutter.dart",
+      flutter.slice(flutterControllerAttachStart, flutterControllerDetachStart),
+      /_nextHeadlessKeyPressToken\s*=\s*0/,
+      "Flutter headless controller must preserve its token sequence across attachment",
+    );
+    forbidText(
+      findings,
+      "packages/flutter/lib/secure_keypad_flutter.dart",
+      flutter.slice(flutterControllerDetachStart, flutterControllerDetachStart + 260),
+      /_nextHeadlessKeyPressToken\s*=\s*0/,
+      "Flutter headless controller must preserve its token sequence across detachment",
+    );
+  } else {
+    findings.push({
+      rule: "required-contract",
+      file: "packages/flutter/lib/secure_keypad_flutter.dart",
+      detail: "Flutter headless controller attachment lifecycle markers are missing",
+    });
+  }
   forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /TextEditingController/, "Flutter must not use a text editing controller");
   forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter, /final\s+(?:String\??)\s+(?:value|password|secret)\b/i, "Flutter configuration must not hold a secret string field");
   forbidText(findings, "packages/flutter/lib/secure_keypad_flutter.dart", flutter.match(/toPlatformCreationParams\(\)[\s\S]*?\n  \}/)?.[0] ?? "", /onResult|onMaskedStateChanged/, "Flutter native creation params must not serialize callbacks");

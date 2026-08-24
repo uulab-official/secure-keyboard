@@ -368,6 +368,27 @@ test("native headless replay floors survive session release", () => {
   }
 });
 
+test("Flutter headless controller keeps its token sequence across reattachment", () => {
+  const source = readFileSync(
+    new URL("../packages/flutter/lib/secure_keypad_flutter.dart", import.meta.url),
+    "utf8",
+  );
+  const attachStart = source.indexOf("  void _attach(");
+  const detachStart = source.indexOf("  void _detach(", attachStart);
+  assert.ok(attachStart >= 0 && detachStart > attachStart);
+  assert.doesNotMatch(
+    source.slice(attachStart, detachStart),
+    /_nextHeadlessKeyPressToken\s*=\s*0/,
+  );
+  assert.doesNotMatch(
+    source.slice(detachStart, detachStart + 260),
+    /_nextHeadlessKeyPressToken\s*=\s*0/,
+  );
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /Flutter headless controller must preserve its token sequence/);
+});
+
 test("native host ABI expectations stay synchronized with the FFI header", () => {
   assert.deepEqual(findNativeAbiVersionMismatches(), []);
 });
