@@ -52,6 +52,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: the central native release path now publishes an empty masked state
   by default, while lifecycle-driven protection releases explicitly preserve
   the public `cancelled` result without making ordinary errors look cancelled.
+- Security: iOS and Android now fail closed when native submission reports
+  success without returning an opaque handle; the session is zeroized before
+  the stable internal error is emitted.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

@@ -582,7 +582,11 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.BACKSPACE -> status = SecureKeypadNative.sessionBackspace(sessionHandle)
             SecureKeyRole.CLEAR -> status = SecureKeypadNative.sessionClear(sessionHandle)
             SecureKeyRole.SUBMIT -> {
-                val rawSubmission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: return false
+                val rawSubmission = SecureKeypadNative.sessionSubmit(sessionHandle) ?: run {
+                    releaseNativeSessionPreservingConfiguration()
+                    onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+                    return false
+                }
                 val submission = SecureKeypadSubmission(rawSubmission)
                 deliverOrRelease(
                     submission,

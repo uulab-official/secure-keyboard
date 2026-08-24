@@ -86,6 +86,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Bind native SDK version, C ABI, platform floors, and Android ABI artifacts to `native/sdk-contract.json`.
 - [x] Cover aborted native OPAQUE registration ownership and one-time release in the FFI contract suite.
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
+- [x] Fail closed when native submission reports success without returning an opaque handle; zeroize before emitting the stable internal error across iOS, React Native, and Flutter sources.
 - [x] Restore lifecycle-lost sessions for RN and Flutter adapters from retained public configuration across iOS activation/window transitions and Android focus/visibility transitions without replaying Headless Host commands.
 - [x] Restore lifecycle-lost sessions for direct iOS and Android Native SDK consumers without a framework callback; retain only public configuration and make explicit release terminal.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.

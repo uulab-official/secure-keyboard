@@ -148,7 +148,9 @@ RN and Flutter bridges require an explicitly installed native submission
 consumer. Without one, submit zeroizes/releases the opaque handle and emits an
 error result. A framework success event is emitted only after the consumer has
 actually taken ownership of the opaque handle; it still never means that server
-authentication succeeded.
+authentication succeeded. If the native ABI reports submit success without an
+opaque handle, the native view must release the session and emit only the
+stable internal error; a missing handle is never treated as a successful submit.
 
 ## Input policies
 

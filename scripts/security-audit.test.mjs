@@ -1011,6 +1011,43 @@ test("opaque submission routing binds the consumer contract to the originating n
   assert.match(androidManager, /deliver\(submission, view\)/);
 });
 
+test("native submission failures zeroize before reporting an internal error", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const submitStart = source.indexOf("case .submit:");
+    const cancelStart = source.indexOf("case .cancel:", submitStart);
+    assert.ok(submitStart >= 0 && cancelStart > submitStart);
+    assert.match(
+      source.slice(submitStart, cancelStart),
+      /secure_keypad_session_submit[\s\S]*guard let rawSubmission else \{[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*onError\?\(secureKeypadInternalError\)[\s\S]*return false/,
+      `${relativePath} must zeroize when native submission succeeds without returning an opaque handle`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const submitStart = source.indexOf("SecureKeyRole.SUBMIT");
+    const cancelStart = source.indexOf("SecureKeyRole.CANCEL", submitStart);
+    assert.ok(submitStart >= 0 && cancelStart > submitStart);
+    assert.match(
+      source.slice(submitStart, cancelStart),
+      /sessionSubmit\(sessionHandle\)[\s\S]*\?: run \{[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*return false/,
+      `${relativePath} must zeroize when JNI returns no opaque submission handle`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /native submission failures must zeroize before reporting an internal error/);
+});
+
 test("native adapter teardown breaks callback ownership cycles", () => {
   const iosFlutter = readFileSync(
     new URL("../native/ios/flutter/SecureKeypadFlutterPlugin.swift", import.meta.url),

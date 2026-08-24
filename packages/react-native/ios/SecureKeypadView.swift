@@ -582,7 +582,12 @@ public class SecureKeypadView: UIView {
         case .submit:
             var rawSubmission: OpaquePointer?
             status = secure_keypad_session_submit(session, &rawSubmission)
-            if status == 0, let rawSubmission {
+            if status == 0 {
+                guard let rawSubmission else {
+                    releaseNativeSessionPreservingConfiguration()
+                    onError?(secureKeypadInternalError)
+                    return false
+                }
                 let submission = SecureKeypadSubmission(raw: rawSubmission)
                 if let onSubmit {
                     onSubmit(submission)
