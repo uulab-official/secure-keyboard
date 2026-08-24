@@ -295,6 +295,27 @@ test("Android native input reasserts secure-window protection at the input bound
   assert.match(securityAudit, /lastHeadlessKeyPress/);
 });
 
+test("iOS headless replay state advances only after native activation succeeds", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const headlessStart = source.indexOf("public func requestHeadlessKeyPress");
+    const headlessEnd = source.indexOf("/// Starts a printable-ASCII", headlessStart);
+    assert.ok(headlessStart >= 0 && headlessEnd > headlessStart);
+    assert.match(
+      source.slice(headlessStart, headlessEnd),
+      /if activate\(key: key\) \{\s*lastHeadlessKeyPress = requestId\s*\}/,
+      `${relativePath} must advance the replay floor only after activation succeeds`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /iOS headless replay state must advance only after secure input succeeds/);
+});
+
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",
@@ -573,7 +594,7 @@ test("iOS protected presentation rejects headless host input", () => {
     assert.ok(activateStart >= 0 && activateEnd > activateStart);
     assert.match(
       source.slice(activateStart, activateEnd),
-      /guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return \}/,
+      /guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return(?: false)? \}/,
     );
   }
 

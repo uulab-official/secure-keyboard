@@ -30,6 +30,8 @@ exact release-candidate commit by the release evidence manifest.
   the headless replay floor.
 - Security: Flutter Headless Host controller tokens now remain monotonic across
   Dart widget reattachment, preventing lifecycle resets below the native replay floor.
+- Security: iOS Headless Host replay floors now advance only after native key
+  activation succeeds across the standalone, React Native, and Flutter views.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

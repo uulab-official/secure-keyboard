@@ -799,6 +799,20 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /secureKeypadMaskedDisplayText/, "iOS native keypad must render masked text through one bounded helper");
     requireText(findings, file, contents, /secureKeypadAccessibilityLabel/, "iOS accessibility must expose only masked state and length");
     requireText(findings, file, contents, /lastHeadlessKeyPress/, "iOS native keypad must retain a per-view headless replay floor");
+    requireText(
+      findings,
+      file,
+      contents,
+      /public func requestHeadlessKeyPress[\s\S]*?if activate\(key: key\) \{\s*lastHeadlessKeyPress = requestId\s*\}/,
+      "iOS headless replay state must advance only after secure input succeeds",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key: SecureKeySpec\) -> Bool/,
+      "iOS native activation must report whether a command reached the native session",
+    );
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
     requireText(findings, file, contents, /private struct RetainedConfiguration/, "iOS native keypad must retain only public configuration for direct lifecycle recovery");
@@ -910,7 +924,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func activate\(key:[\s\S]*?guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return \}/,
+      /private func activate\(key:[\s\S]*?guard secureKeypadShouldAcceptProgrammaticKeyPress\(protected: protectedPresentation\) else \{ return(?: false)? \}/,
       "iOS native views must reject all activated keys while the presentation is protected",
     );
     requireText(

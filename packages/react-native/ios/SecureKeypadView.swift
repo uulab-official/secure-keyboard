@@ -322,8 +322,9 @@ public class SecureKeypadView: UIView {
             onError?(1)
             return
         }
-        lastHeadlessKeyPress = requestId
-        activate(key: key)
+        if activate(key: key) {
+            lastHeadlessKeyPress = requestId
+        }
     }
 
     /// Starts a printable-ASCII Secure Native session.
@@ -554,9 +555,10 @@ public class SecureKeypadView: UIView {
         )
     }
 
-    private func activate(key: SecureKeySpec) {
-        guard let session else { return }
-        guard secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation) else { return }
+    @discardableResult
+    private func activate(key: SecureKeySpec) -> Bool {
+        guard let session else { return false }
+        guard secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation) else { return false }
         performFeedback()
         let status: UInt32
         switch key.role {
@@ -583,12 +585,13 @@ public class SecureKeypadView: UIView {
         case .cancel:
             status = secure_keypad_session_cancel(session)
         case .spacer:
-            return
+            return false
         }
         if status != 0 {
             onError?(status)
         }
         refreshMaskedState()
+        return true
     }
 
     private func refreshMaskedState() {

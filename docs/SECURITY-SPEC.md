@@ -33,6 +33,9 @@ secret-bearing session must not make an older delayed command valid again.
 Flutter's public controller also preserves its monotonic token sequence across
 Dart widget attach/detach cycles, so adapter reattachment cannot reset commands
 below the native replay floor or make an older delayed command current again.
+On iOS, a Headless Host token is recorded only after the native activation path
+accepts the command; a rejected or unavailable activation therefore cannot
+advance the replay floor.
 
 ### Web Mode
 
@@ -159,6 +162,7 @@ memory-erasure claim that a hostile or compromised runtime would require.
 - Mobile background snapshots must be masked. Android secure-window protection and iOS capture/background handling are platform-specific controls, not universal guarantees.
 - Android Secure Native construction must fail closed if the host `Activity` window cannot be resolved for `FLAG_SECURE`; a keypad that cannot establish the secure window boundary must not accept input.
 - Android touch activation and Headless Host commands must reassert and verify `FLAG_SECURE` immediately before invoking the native session. If the host window cannot be resolved, reassertion fails, or verification fails, the input is rejected and the command replay floor must not advance.
+- iOS Headless Host commands must record their replay token only after the native activation path accepts the command; protected, unavailable, or otherwise rejected activation must not advance the replay floor.
 
 ## Authentication boundary
 
