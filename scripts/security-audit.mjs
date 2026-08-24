@@ -737,7 +737,28 @@ export function runSecurityAudit() {
       "cancel failures must not advance the native cancel replay floor",
     );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
-    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
+    requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*if \(!ensureSecureWindowProtection\(\)\)/, "Android native keypad must reassert secure-window protection when focus returns");
+    requireText(
+      findings,
+      file,
+      contents,
+      /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,260}if \(!ensureSecureWindowProtection\(\)\) \{\s*failClosedSecureWindowBoundary\(\)\s*return\s*\}/,
+      "Android lifecycle secure-window failures must fail closed without throwing",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,300}if \(!ensureSecureWindowProtection\(\)\) \{\s*failClosedSecureWindowBoundary\(\)\s*return\s*\}/,
+      "Android lifecycle secure-window failures must fail closed without throwing",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun failClosedSecureWindowBoundary\(\)[\s\S]{0,180}zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,120}onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)/,
+      "Android lifecycle secure-window failures must zeroize before reporting the error",
+    );
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,400}if \(hasWindowFocus\)\s*\{[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must request reconfiguration after lifecycle zeroization");
     requireText(findings, file, contents, /onAttachedToWindow\(\)[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,160}requestSessionReconfigurationIfNeeded\(\)/, "Android native keypad must recover a detached session on reattachment");

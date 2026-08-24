@@ -278,6 +278,11 @@ public open class SecureKeypadView @JvmOverloads constructor(
         return false
     }
 
+    private fun failClosedSecureWindowBoundary() {
+        zeroizeSessionForLifecycleLoss()
+        onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+    }
+
     /** Starts a numeric Secure Native session and renders the supplied layout. */
     public fun configureNumeric(
         layout: SecureKeypadLayout,
@@ -441,7 +446,10 @@ public open class SecureKeypadView @JvmOverloads constructor(
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
         super.onWindowFocusChanged(hasWindowFocus)
         if (hasWindowFocus) {
-            requireSecureWindow()
+            if (!ensureSecureWindowProtection()) {
+                failClosedSecureWindowBoundary()
+                return
+            }
             requestSessionReconfigurationIfNeeded()
         } else {
             zeroizeSessionForLifecycleLoss()
@@ -451,7 +459,10 @@ public open class SecureKeypadView @JvmOverloads constructor(
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
         if (visibility == View.VISIBLE) {
-            requireSecureWindow()
+            if (!ensureSecureWindowProtection()) {
+                failClosedSecureWindowBoundary()
+                return
+            }
             requestSessionReconfigurationIfNeeded()
         } else {
             zeroizeSessionForLifecycleLoss()

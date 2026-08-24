@@ -229,7 +229,7 @@ test("React Native Android recreates a session after window lifecycle loss", () 
     assert.match(source, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/);
     assert.match(
       source,
-      /if \(hasWindowFocus\) \{[\s\S]{0,240}requireSecureWindow\(\)[\s\S]{0,240}requestSessionReconfigurationIfNeeded\(\)/,
+      /if \(hasWindowFocus\) \{[\s\S]{0,300}if \(!ensureSecureWindowProtection\(\)\)[\s\S]{0,220}requestSessionReconfigurationIfNeeded\(\)/,
     );
     assert.match(
       source,
@@ -388,6 +388,33 @@ test("cancel request failures do not advance the native cancel replay floor", ()
 
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /cancel failures must not advance the native cancel replay floor/);
+});
+
+test("Android lifecycle secure-window failures zeroize without throwing", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,260}if \(!ensureSecureWindowProtection\(\)\) \{\s*failClosedSecureWindowBoundary\(\)\s*return\s*\}/,
+      `${relativePath} must fail closed instead of throwing when focus protection cannot be restored`,
+    );
+    assert.match(
+      source,
+      /onWindowVisibilityChanged\(visibility: Int\)[\s\S]{0,300}if \(!ensureSecureWindowProtection\(\)\) \{\s*failClosedSecureWindowBoundary\(\)\s*return\s*\}/,
+      `${relativePath} must fail closed instead of throwing when visibility protection cannot be restored`,
+    );
+    assert.match(
+      source,
+      /private fun failClosedSecureWindowBoundary\(\)[\s\S]{0,180}zeroizeSessionForLifecycleLoss\(\)[\s\S]{0,120}onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)/,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /Android lifecycle secure-window failures must fail closed without throwing/);
 });
 
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {

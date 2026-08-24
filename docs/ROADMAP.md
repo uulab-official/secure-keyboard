@@ -69,6 +69,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Add background masking, screenshot/capture handling, and autofill/clipboard restrictions.
 - [x] Zeroize the native session on iOS resign-active and Android window focus/visibility loss.
 - [x] Reassert Android `FLAG_SECURE` on every focus regain after host window-flag changes.
+- [x] Fail closed without throwing when Android lifecycle `FLAG_SECURE` restoration fails; zeroize the session and emit a stable internal error.
 - [x] Reassert and verify Android `FLAG_SECURE` at every native touch and Headless Host input boundary; rejected commands do not advance the replay floor.
 - [x] Advance native Headless Host replay floors only after iOS/Android activation returns success across standalone, React Native, and Flutter views.
 - [x] Centralize bounded Android/iOS masked-display/accessibility announcements and execute standalone JVM/Swift contract tests.

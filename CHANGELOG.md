@@ -28,6 +28,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: Android touch and Headless Host input now reassert and verify
   `FLAG_SECURE` at the native input boundary; rejected commands cannot advance
   the headless replay floor.
+- Security: Android focus and visibility lifecycle failures now zeroize the
+  native session and emit an internal error without throwing into the host app.
 - Security: Flutter Headless Host controller tokens now remain monotonic across
   Dart widget reattachment, preventing lifecycle resets below the native replay floor.
 - Security: iOS Headless Host replay floors now advance only after native key
