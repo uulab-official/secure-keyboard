@@ -114,6 +114,8 @@ exact release-candidate commit by the release evidence manifest.
   errors now fail closed through the same trap-tolerant normalization boundary.
 - Security: cancelled WebAuthn presentation operations now invalidate late
   browser results, so an abort race cannot publish or return a credential.
+- Security: WebAuthn cancellation now settles the caller operation immediately
+  even when the browser ignores the underlying abort signal.
 
 ### Server adapters
 

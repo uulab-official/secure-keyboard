@@ -1139,8 +1139,10 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /operation-in-progress/, "Web passkey UI controller must reject concurrent ceremonies");
   requireText(findings, "packages/web/src/index.ts", web, /readonly cancel: \(\) => void/, "Web passkey UI controller must expose cancellation without secret data");
   requireText(findings, "packages/web/src/index.ts", web, /new AbortController\(\)/, "Web passkey UI cancellation must use an abortable browser ceremony");
+  requireText(findings, "packages/web/src/index.ts", web, /Promise\.race\(\[[\s\S]{0,220}cancellation/, "Web passkey cancellation must settle the caller operation independently of browser abort behavior");
   requireText(findings, "packages/web/src/index.ts", web, /if \(active\.cancelled\)[\s\S]{0,180}new WebAuthnClientError\("aborted"/, "Web cancelled ceremonies must reject late browser results");
   requireText(findings, "packages/web/src/index.ts", web, /active\.cancelled = true[\s\S]{0,160}publish\(presentationState\("error", active\.operation, "aborted"\)\)/, "Web cancellation must immediately publish a stable aborted state");
+  requireText(findings, "packages/web/src/index.ts", web, /active\.rejectCancellation\?\.\([\s\S]{0,160}new WebAuthnClientError\("aborted"/, "Web cancellation must reject the caller operation with a stable error");
   requireText(findings, "packages/web/src/index.ts", web, /\| \"aborted\"/, "Web aborted ceremonies must use a stable error code");
   requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)/, "Web passkey UI controller must normalize unexpected errors");
   requireText(findings, "packages/web/src/index.ts", web, /function presentationError\(error: unknown\)[\s\S]{0,180}isWebAuthnClientError\(error\)/, "Web passkey UI error normalization must tolerate hostile exception objects");

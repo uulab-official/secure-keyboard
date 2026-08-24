@@ -205,6 +205,7 @@ Status: passkey-first adapter, reference server, bounded HTTP route, compile-tes
 - [x] Make secure-context and WebAuthn API support checks explicit and fail closed.
 - [x] Expose a secret-free, abortable passkey presentation controller so RN/Web/custom host UIs can render lifecycle state without receiving credential results through UI state.
 - [x] Invalidate late WebAuthn results after controller cancellation so abort races cannot publish or return a credential.
+- [x] Settle cancelled WebAuthn controller operations independently of browser abort behavior.
 - [x] Expose an explicit lower-assurance acknowledgement contract for a product-owned custom web UI fallback; the SDK does not ship a browser DOM keypad.
 - [x] Keep browser JavaScript memory outside the trusted security boundary; do not claim Web Crypto changes that limitation.
 - [x] Add a pinned Playwright Chromium/Firefox/WebKit runtime smoke gate for the Web adapter.

@@ -47,7 +47,9 @@ around that contract, but must clearly document browser, page-script,
 extension, and memory limitations before accepting any input.
 The passkey presentation controller treats cancellation as terminal for the
 active ceremony: late browser results are discarded and cannot transition the
-controller to success or return a credential to the caller.
+controller to success or return a credential to the caller. The caller
+operation also settles with the stable "aborted" error independently of whether
+the browser honors the underlying abort signal.
 
 ## Public customization contract
 

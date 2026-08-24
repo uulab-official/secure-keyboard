@@ -296,9 +296,23 @@ describe("WebAuthn support and mode policy", () => {
       operation: "registration",
       errorCode: "aborted",
     });
-    release?.(credential);
 
-    await expect(operation).rejects.toMatchObject({ code: "aborted" });
+    const settlement = await Promise.race([
+      operation.then(
+        () => ({ kind: "success" as const }),
+        (error) => error,
+      ),
+      new Promise<{ readonly kind: "timeout" }>((resolve) => {
+        setTimeout(() => resolve({ kind: "timeout" }), 50);
+      }),
+    ]);
+    release?.(credential);
+    const lateSettlement = await operation.then(
+      () => ({ kind: "success" as const }),
+      (error) => error,
+    );
+    expect(settlement).toMatchObject({ code: "aborted" });
+    expect(lateSettlement).toMatchObject({ code: "aborted" });
     expect(controller.getState()).toEqual({
       phase: "error",
       operation: "registration",

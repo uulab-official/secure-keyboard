@@ -838,6 +838,7 @@ export function createPasskeyController(
     readonly operation: PasskeyPresentationOperation;
     readonly abortController: AbortController;
     cancelled: boolean;
+    rejectCancellation?: (reason: WebAuthnClientError) => void;
   };
 
   let state = presentationState("idle");
@@ -871,27 +872,30 @@ export function createPasskeyController(
       cancelled: false,
     };
     activeOperation = active;
+    const cancellation = new Promise<never>((_, reject) => {
+      active.rejectCancellation = reject;
+    });
     publish(presentationState("pending", operation));
-    return Promise.resolve()
-      .then(() => work(active.abortController.signal))
-      .then(
-        (result) => {
-          if (active.cancelled) {
-            throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
-          }
-          publish(presentationState("success", operation));
-          return result;
-        },
-        (error: unknown) => {
-          const normalized = active.cancelled
-            ? new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted")
-            : presentationError(error);
-          if (!active.cancelled) {
-            publish(presentationState("error", operation, normalized.code));
-          }
-          throw normalized;
-        },
-      )
+    return Promise.race([
+      Promise.resolve().then(() => work(active.abortController.signal)),
+      cancellation,
+    ])
+      .then((result) => {
+        if (active.cancelled) {
+          throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+        }
+        publish(presentationState("success", operation));
+        return result;
+      })
+      .catch((error: unknown) => {
+        const normalized = active.cancelled
+          ? new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted")
+          : presentationError(error);
+        if (!active.cancelled) {
+          publish(presentationState("error", operation, normalized.code));
+        }
+        throw normalized;
+      })
       .finally(() => {
         if (activeOperation === active) activeOperation = undefined;
       });
@@ -903,6 +907,9 @@ export function createPasskeyController(
     active.cancelled = true;
     active.abortController.abort();
     publish(presentationState("error", active.operation, "aborted"));
+    active.rejectCancellation?.(
+      new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted"),
+    );
   };
 
   return Object.freeze({
