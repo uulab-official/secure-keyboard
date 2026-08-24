@@ -771,6 +771,13 @@ export function runSecurityAudit() {
       /public fun requestCancel\(requestId: Long\)[\s\S]{0,600}if \(cancelSessionAndReport\(\)\) \{\s*lastCancelRequest = requestId\s*\}/,
       "cancel failures must not advance the native cancel replay floor",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun releaseNativeSessionPreservingConfiguration\(\)[\s\S]*display\.contentDescription = "No input"\s*onMaskedStateChanged\?\.invoke\(0, 3\)/,
+      "native session release clears the public masked state",
+    );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*if \(!ensureSecureWindowProtection\(\)\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(
@@ -875,7 +882,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)[\s\S]{0,120}onMaskedStateChanged\?\(0, 3\)/,
+      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/,
       "iOS protected presentation must zeroize a live native session",
     );
     requireText(findings, file, contents, /secureKeypadIsValidRenderedLength/, "iOS native keypad must bound masked rendering before allocation");
@@ -941,6 +948,13 @@ export function runSecurityAudit() {
     );
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func releaseNativeSessionPreservingConfiguration\(\)[\s\S]*displayLabel\.accessibilityLabel = secureKeypadAccessibilityLabel\(length: 0, protected: protectedPresentation\)\s*onMaskedStateChanged\?\(0, 3\)/,
+      "native session release clears the public masked state",
+    );
     requireText(findings, file, contents, /private struct RetainedConfiguration/, "iOS native keypad must retain only public configuration for direct lifecycle recovery");
     requireText(findings, file, contents, /private func requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,600}reconfigureRetainedConfiguration\(\)/, "iOS native keypad must provide a direct-consumer lifecycle recovery path");
     requireText(findings, file, contents, /try validate\(theme: theme\)[\s\S]{0,700}releaseNativeSessionPreservingConfiguration\(\)/, "iOS native reconfiguration must clear the old session through its zeroizing release path");
@@ -1064,7 +1078,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func handleScreenCaptureChange[\s\S]*?secureKeypadShouldClearSessionForScreenCapture[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?onMaskedStateChanged\?\(0, 3\)[\s\S]*?refreshProtectionState\(\)[\s\S]*?requestSessionReconfigurationIfNeeded\(\)/,
+      /private func handleScreenCaptureChange[\s\S]*?secureKeypadShouldClearSessionForScreenCapture[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?refreshProtectionState\(\)[\s\S]*?requestSessionReconfigurationIfNeeded\(\)/,
       "iOS native views must release live sessions and recover only after capture ends",
     );
     requireText(

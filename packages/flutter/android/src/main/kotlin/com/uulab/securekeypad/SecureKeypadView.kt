@@ -410,6 +410,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         }
         display.text = ""
         display.contentDescription = "No input"
+        onMaskedStateChanged?.invoke(0, 3)
     }
 
     /** Cancels the native session and zeroizes any pending input. */
@@ -475,7 +476,6 @@ public open class SecureKeypadView @JvmOverloads constructor(
     private fun zeroizeSessionForLifecycleLoss() {
         if (sessionHandle == 0L) return
         releaseNativeSessionPreservingConfiguration()
-        onMaskedStateChanged?.invoke(0, 3)
     }
 
     private fun requestSessionReconfigurationIfNeeded() {

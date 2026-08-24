@@ -49,6 +49,8 @@ exact release-candidate commit by the release evidence manifest.
   the error, covering touch, Headless Host, and action-key activation paths.
 - Security: masked-state refresh failures now propagate as failed activation or
   cancellation results, so rejected commands cannot consume replay tokens.
+- Security: every native session release now publishes an empty masked state
+  through the central release path, preventing stale public length metadata.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

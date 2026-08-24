@@ -479,6 +479,43 @@ test("masked-state refresh failures cannot report successful commands", () => {
   assert.match(securityAudit, /masked-state refresh failures cannot report successful commands/);
 });
 
+test("native session release clears the public masked state", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const start = source.indexOf("private func releaseNativeSessionPreservingConfiguration");
+    const end = source.indexOf("/// Cancels the native session", start);
+    assert.ok(start >= 0 && end > start);
+    assert.match(
+      source.slice(start, end),
+      /onMaskedStateChanged\?\(0, 3\)/,
+      `${relativePath} must clear the public masked state when releasing the native session`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const start = source.indexOf("private fun releaseNativeSessionPreservingConfiguration");
+    const end = source.indexOf("/** Cancels the native session", start);
+    assert.ok(start >= 0 && end > start);
+    assert.match(
+      source.slice(start, end),
+      /onMaskedStateChanged\?\.invoke\(0, 3\)/,
+      `${relativePath} must clear the public masked state when releasing the native session`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /native session release clears the public masked state/);
+});
+
 test("cancel request failures do not advance the native cancel replay floor", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",
@@ -895,7 +932,7 @@ test("iOS screen-capture transitions release a live native session", () => {
     assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
     assert.match(
       source.slice(handlerStart, handlerEnd),
-      /secureKeypadShouldClearSessionForScreenCapture[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*onMaskedStateChanged\?\(0, 3\)[\s\S]*refreshProtectionState\(\)[\s\S]*requestSessionReconfigurationIfNeeded\(\)/,
+      /secureKeypadShouldClearSessionForScreenCapture[\s\S]*releaseNativeSessionPreservingConfiguration\(\)[\s\S]*refreshProtectionState\(\)[\s\S]*requestSessionReconfigurationIfNeeded\(\)/,
     );
   }
 
@@ -912,7 +949,7 @@ test("iOS protected presentation zeroizes any live session", () => {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.match(
       source,
-      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)[\s\S]{0,120}onMaskedStateChanged\?\(0, 3\)/,
+      /private func setProtectedPresentation\(_ protected: Bool\)[\s\S]{0,280}if protected, session != nil \{[\s\S]{0,180}releaseNativeSessionPreservingConfiguration\(\)/,
       `${relativePath} must zeroize a live session whenever protected presentation is enabled`,
     );
   }

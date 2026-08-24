@@ -437,6 +437,7 @@ public class SecureKeypadView: UIView {
         }
         displayLabel.text = protectedPresentation ? "Protected" : ""
         displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: 0, protected: protectedPresentation)
+        onMaskedStateChanged?(0, 3)
     }
 
     /// Cancels the native session and zeroizes any pending input.
@@ -718,7 +719,6 @@ public class SecureKeypadView: UIView {
     private func handleWillResignActive() {
         releaseNativeSessionPreservingConfiguration()
         setProtectedPresentation(true)
-        onMaskedStateChanged?(0, 3)
     }
 
     private func handleScreenCaptureChange() {
@@ -728,7 +728,6 @@ public class SecureKeypadView: UIView {
             sessionIsLive: session != nil
         ) {
             releaseNativeSessionPreservingConfiguration()
-            onMaskedStateChanged?(0, 3)
         }
         refreshProtectionState()
         requestSessionReconfigurationIfNeeded()
@@ -748,7 +747,6 @@ public class SecureKeypadView: UIView {
         isUserInteractionEnabled = !protected
         if protected, session != nil {
             releaseNativeSessionPreservingConfiguration()
-            onMaskedStateChanged?(0, 3)
         }
         guard session != nil else {
             displayLabel.text = protected ? "Protected" : ""
