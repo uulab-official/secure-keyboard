@@ -221,6 +221,7 @@ Status: passkey-first adapter, reference server, bounded HTTP route, compile-tes
 - [x] Add a pinned Playwright Chromium/Firefox/WebKit runtime smoke gate for the Web adapter.
 - [x] Add WebAuthn registration/login server examples with challenge, origin, RP ID, and replay verification.
 - [x] Add CSP, dependency integrity, and supply-chain guidance.
+- [x] Ship checked-in React Native, Flutter, and WebAuthn host entrypoint examples with a secret-channel contract test.
 
 Exit criteria: web users get a safe default and understand the difference between native and browser security.
 

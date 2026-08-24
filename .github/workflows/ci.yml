@@ -150,6 +150,7 @@ jobs:
       - run: pnpm test:fuzz-corpus
       - run: pnpm test:production-candidate
       - run: pnpm test:security-audit
+      - run: pnpm test:examples
       - run: pnpm test:android-native-sdk-host-build-contract
       - run: pnpm security-audit
       - run: pnpm --dir packages/contracts typecheck

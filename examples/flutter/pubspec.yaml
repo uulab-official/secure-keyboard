@@ -1,0 +1,21 @@
+name: secure_keypad_flutter_example
+description: Secure Native host example for secure_keypad_flutter.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: '>=3.12.0 <4.0.0'
+  flutter: '>=3.44.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  secure_keypad_flutter:
+    path: ../../packages/flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

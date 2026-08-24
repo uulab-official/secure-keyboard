@@ -59,8 +59,9 @@ host-app compilation, device-level security verification, and independent
 review remain release gates; the Axum WebAuthn and Actix OPAQUE integrations
 are compile-tested. Do not treat the current repository state as a
 drop-in production authentication component.
-See [customization examples](docs/CUSTOMIZATION-EXAMPLES.md) for numeric,
-printable ASCII, Hangul, and branded native layouts.
+See the checked-in [host examples](examples/README.md) for React Native,
+Flutter, and WebAuthn entrypoints, and [customization examples](docs/CUSTOMIZATION-EXAMPLES.md)
+for numeric, printable ASCII, Hangul, and branded native layouts.
 
 ## Development
 

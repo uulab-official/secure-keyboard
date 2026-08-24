@@ -6,6 +6,10 @@ exact release-candidate commit by the release evidence manifest.
 
 ## Unreleased
 
+- Added checked-in React Native, Flutter, and WebAuthn host entrypoint examples
+  under `examples/`; CI verifies their public API usage and rejects framework
+  secret channels.
+
 - Verification: generated React Native and Flutter iOS Release UI smokes now
   background and reactivate the app after a public key tap, requiring an empty
   post-recovery state so wrapper lifecycle recovery cannot replay input.

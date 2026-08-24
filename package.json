@@ -44,6 +44,7 @@
     "test:fuzz-corpus": "node --test scripts/fuzz-corpus.test.mjs",
     "test:durable-backends": "bash scripts/run-durable-backend-tests.sh",
     "test:web-browser": "node scripts/web-browser-smoke.mjs",
+    "test:examples": "node --test scripts/examples-contract.test.mjs",
     "security-audit": "node scripts/security-audit.mjs",
     "test:security-audit": "node --test scripts/security-audit.test.mjs"
   },

@@ -2106,6 +2106,18 @@ export function runSecurityAudit() {
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /DEFAULT_THEME/, "customization guide must cover branded themes");
   requireText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /randomizeInputKeys: true/, "customization guide must cover native input-key randomization");
   forbidText(findings, "docs/CUSTOMIZATION-EXAMPLES.md", customizationGuide, /(?:password|secret)\s*[:=][^\n]*(?:String|value|input)/i, "customization examples must not define a secret value channel");
+  const hostExamples = source("examples/README.md", findings);
+  requireText(findings, "examples/README.md", hostExamples, /react-native\/App\.tsx/, "host examples must publish a React Native entrypoint");
+  requireText(findings, "examples/README.md", hostExamples, /flutter\/lib\/main\.dart/, "host examples must publish a Flutter entrypoint");
+  requireText(findings, "examples/README.md", hostExamples, /web\/src\/passkey\.ts/, "host examples must publish a WebAuthn entrypoint");
+  for (const relativePath of [
+    "examples/react-native/App.tsx",
+    "examples/flutter/lib/main.dart",
+    "examples/web/src/passkey.ts",
+  ]) {
+    const example = source(relativePath, findings);
+    forbidText(findings, relativePath, example, /TextInput|TextEditingController|onChangeText|password\s*[:(]|secret\s*[:(]/i, "host examples must not add framework secret channels");
+  }
   const contractsSource = source("packages/contracts/src/index.ts", findings);
   requireText(findings, "packages/contracts/src/index.ts", contractsSource, /randomizeInputKeys\?: boolean/, "layout contract must expose explicit input-key randomization");
   const randomizationAndroidView = source("native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt", findings);
@@ -2123,6 +2135,8 @@ export function runSecurityAudit() {
   requireText(findings, "package.json", rootPackage, /"verify:production-candidate"/, "the workspace must expose the production-candidate verification command");
   requireText(findings, "package.json", rootPackage, /"playwright"\s*:\s*"1\.62\.1"/, "browser runtime verification must use an exact Playwright version");
   requireText(findings, "package.json", rootPackage, /"test:web-browser"/, "the workspace must expose the browser runtime smoke gate");
+  requireText(findings, "package.json", rootPackage, /"test:examples"\s*:\s*"node --test scripts\/examples-contract\.test\.mjs"/, "the workspace must expose the checked-in host example contract gate");
+  requireText(findings, ".github/workflows/ci.yml", ciWorkflow, /pnpm test:examples/, "CI must execute the checked-in host example contract gate");
   requireText(findings, "package.json", rootPackage, /"test:expo-development-build"/, "the workspace must expose the Expo development-build contract test");
   requireText(findings, "package.json", rootPackage, /"test:release-bundle"/, "the workspace must expose the release staging inspector test");
   requireText(findings, "package.json", rootPackage, /"test:emit-release-artifact-fragment"/, "the workspace must expose the release artifact fragment test");
