@@ -66,7 +66,7 @@ describe("Node OPAQUE HTTP adapter", () => {
     expect(delegate).not.toHaveBeenCalled();
   });
 
-  it("requires a server-verified device integrity decision for financial profile", async () => {
+  it("requires bound device integrity evidence for financial profile", async () => {
     const delegate = vi.fn();
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
@@ -87,13 +87,19 @@ describe("Node OPAQUE HTTP adapter", () => {
 
   it("rejects a failed financial device integrity decision before reading the body", async () => {
     const delegate = vi.fn();
-    const deviceIntegrityDecision = vi.fn(() => "rejected" as const);
+    const deviceIntegrityVerifier = vi.fn(() => "rejected" as const);
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       securityProfile: "financial",
       csrfValidated: () => true,
       rateLimitDecision: () => "allowed",
-      deviceIntegrityDecision,
+      financialContext: () => ({
+        subject: "user-123",
+        operation: "login",
+        nonce: "nonce-1234567890",
+        deploymentId: "prod-kor-1",
+      }),
+      deviceIntegrityVerifier,
       delegate,
     });
     const incoming = request('{"protocolVersion":1}');
@@ -102,20 +108,39 @@ describe("Node OPAQUE HTTP adapter", () => {
 
     expect(response.status).toBe(403);
     expect(await response.text()).toBe('{"error":"invalid_request"}');
-    expect(deviceIntegrityDecision).toHaveBeenCalledWith(incoming);
+    expect(deviceIntegrityVerifier).toHaveBeenCalledWith(incoming, {
+      subject: "user-123",
+      operation: "login",
+      nonce: "nonce-1234567890",
+      deploymentId: "prod-kor-1",
+    });
     expect(incoming.bodyUsed).toBe(false);
     expect(delegate).not.toHaveBeenCalled();
   });
 
   it("delegates a financial request only after device integrity is verified", async () => {
     const delegate = vi.fn(() => ({ status: 200, body: new TextEncoder().encode('{"ok":true}') }));
-    const deviceIntegrityDecision = vi.fn(() => "verified" as const);
+    const now = Date.now();
+    const context = {
+      subject: "user-123",
+      operation: "login" as const,
+      nonce: "nonce-1234567890",
+      deploymentId: "prod-kor-1",
+    };
+    const financialContext = vi.fn(() => context);
+    const deviceIntegrityVerifier = vi.fn((_request, verifiedContext) => ({
+      ...verifiedContext,
+      provider: "android-play-integrity" as const,
+      issuedAtMs: now - 1_000,
+      expiresAtMs: now + 60_000,
+    }));
     const handler = createOpaqueHandler({
       deploymentContext: secureContext,
       securityProfile: "financial",
       csrfValidated: () => true,
       rateLimitDecision: () => "allowed",
-      deviceIntegrityDecision,
+      financialContext,
+      deviceIntegrityVerifier,
       delegate,
     });
     const incoming = request('{"protocolVersion":1}');
@@ -123,7 +148,110 @@ describe("Node OPAQUE HTTP adapter", () => {
     const response = await handler(incoming);
 
     expect(response.status).toBe(200);
-    expect(deviceIntegrityDecision).toHaveBeenCalledWith(incoming);
+    expect(financialContext).toHaveBeenCalledWith(incoming, "/v1/opaque/login/start");
+    expect(deviceIntegrityVerifier).toHaveBeenCalledWith(incoming, context);
+    expect(delegate).toHaveBeenCalledOnce();
+  });
+
+  it("rejects financial evidence whose nonce does not match the host context", async () => {
+    const now = Date.now();
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      financialContext: () => ({
+        subject: "user-123",
+        operation: "login" as const,
+        nonce: "nonce-1234567890",
+        deploymentId: "prod-kor-1",
+      }),
+      deviceIntegrityVerifier: () => ({
+        subject: "user-123",
+        operation: "login" as const,
+        nonce: "nonce-wrong-1234",
+        deploymentId: "prod-kor-1",
+        provider: "ios-app-attest" as const,
+        issuedAtMs: now - 1_000,
+        expiresAtMs: now + 60_000,
+      }),
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(403);
+    expect(incoming.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("rejects expired financial device integrity evidence before delegation", async () => {
+    const now = Date.now();
+    const delegate = vi.fn();
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      financialContext: () => ({
+        subject: "user-123",
+        operation: "login" as const,
+        nonce: "nonce-1234567890",
+        deploymentId: "prod-kor-1",
+      }),
+      deviceIntegrityVerifier: () => ({
+        subject: "user-123",
+        operation: "login" as const,
+        nonce: "nonce-1234567890",
+        deploymentId: "prod-kor-1",
+        provider: "ios-device-check" as const,
+        issuedAtMs: now - 120_000,
+        expiresAtMs: now - 60_000,
+      }),
+      delegate,
+    });
+    const incoming = request('{"protocolVersion":1}');
+
+    const response = await handler(incoming);
+
+    expect(response.status).toBe(403);
+    expect(incoming.bodyUsed).toBe(false);
+    expect(delegate).not.toHaveBeenCalled();
+  });
+
+  it("rejects reuse of the same financial evidence within one handler", async () => {
+    const now = Date.now();
+    const context = {
+      subject: "user-123",
+      operation: "login" as const,
+      nonce: "nonce-replay-123456",
+      deploymentId: "prod-kor-1",
+    };
+    const delegate = vi.fn(() => ({ status: 200, body: new Uint8Array() }));
+    const handler = createOpaqueHandler({
+      deploymentContext: secureContext,
+      securityProfile: "financial",
+      csrfValidated: () => true,
+      rateLimitDecision: () => "allowed",
+      financialContext: () => context,
+      deviceIntegrityVerifier: () => ({
+        ...context,
+        provider: "custom" as const,
+        issuedAtMs: now - 1_000,
+        expiresAtMs: now + 60_000,
+      }),
+      delegate,
+    });
+
+    const firstResponse = await handler(request("{}"));
+    const replayRequest = request("{}");
+    const replayResponse = await handler(replayRequest);
+
+    expect(firstResponse.status).toBe(200);
+    expect(replayResponse.status).toBe(403);
+    expect(replayRequest.bodyUsed).toBe(false);
     expect(delegate).toHaveBeenCalledOnce();
   });
 

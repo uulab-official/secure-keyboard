@@ -183,8 +183,13 @@ provides the Node Fetch-compatible boundary, but delegates cryptography to the
 pinned Rust/native reference service; it is not an OPAQUE implementation in
 JavaScript. These adapters are not a complete HTTP server deployment until
 they are configured with the required host controls and independently tested.
-Financial Node routes must use `securityProfile: "financial"` and a verifier
-that returns `verified`; Axum and Actix expose the same pre-buffering rule via
-their explicit `financial_router` constructors. Platform attestation remains
-host/server responsibility; the SDK does not claim to verify Google/Apple
-attestation credentials itself.
+Financial Node routes must use `securityProfile: "financial"`, resolve a fresh
+one-use context, and return evidence bound to that context. The Node adapter
+checks the route operation, subject, nonce, deployment, provider, issuance
+time, expiry, five-minute maximum evidence lifetime, and local replay reuse
+before body buffering. The host must still atomically consume the nonce in a
+shared store for a multi-instance deployment. Axum and Actix expose the same
+pre-buffering rule via their explicit `financial_router` constructors; their
+callbacks must perform equivalent binding and freshness checks before returning
+`Verified`. Platform attestation remains host/server responsibility; the SDK
+does not claim to verify Google/Apple attestation credentials itself.

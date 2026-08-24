@@ -792,7 +792,9 @@ test("native host ABI expectations stay synchronized with the FFI header", () =>
 test("financial server adapters require verified device integrity before body buffering", () => {
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /financial device-integrity admission/);
-  assert.match(securityAudit, /deviceIntegrityDecision/);
+  assert.match(securityAudit, /financialContext/);
+  assert.match(securityAudit, /isFreshBoundEvidence/);
+  assert.match(securityAudit, /consumeFinancialEvidence/);
   assert.match(securityAudit, /financial_router/);
 });
 

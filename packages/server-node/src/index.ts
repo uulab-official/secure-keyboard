@@ -38,6 +38,29 @@ export type NodeSecurityProfile = "standard" | "financial";
 /** Result of host-side Play Integrity/App Attest or equivalent verification. */
 export type NodeDeviceIntegrityDecision = "verified" | "rejected" | "unavailable";
 
+export type NodeFinancialAuthOperation = "registration" | "login";
+
+export type NodeDeviceIntegrityProvider =
+  | "android-play-integrity"
+  | "ios-app-attest"
+  | "ios-device-check"
+  | "custom";
+
+/** Host-derived public binding that the attestation must cover. */
+export interface NodeFinancialAuthContext {
+  readonly subject: string;
+  readonly operation: NodeFinancialAuthOperation;
+  readonly nonce: string;
+  readonly deploymentId: string;
+}
+
+/** Verified evidence returned only after the host checks the vendor token. */
+export interface NodeDeviceIntegrityEvidence extends NodeFinancialAuthContext {
+  readonly provider: NodeDeviceIntegrityProvider;
+  readonly issuedAtMs: number;
+  readonly expiresAtMs: number;
+}
+
 /** Host-side admission result returned before the request body is read. */
 export type NodeRateLimitDecision = "allowed" | "rate-limited" | "unavailable";
 
@@ -78,16 +101,24 @@ export type OpaqueRouteDelegate = (
   context: NodeDeploymentContext,
 ) => NodeHttpResponse | Promise<NodeHttpResponse>;
 
+export type NodeFinancialContextResolver = (
+  request: Request,
+  path: (typeof OPAQUE_ROUTE_PATHS)[number],
+) => NodeFinancialAuthContext | undefined | Promise<NodeFinancialAuthContext | undefined>;
+
 export type NodeDeviceIntegrityVerifier = (
   request: Request,
-) => NodeDeviceIntegrityDecision | Promise<NodeDeviceIntegrityDecision>;
+  context: NodeFinancialAuthContext,
+) => NodeDeviceIntegrityEvidence | NodeDeviceIntegrityDecision | Promise<NodeDeviceIntegrityEvidence | NodeDeviceIntegrityDecision>;
 
 export interface CreateOpaqueHandlerOptions {
   readonly deploymentContext: NodeDeploymentContext;
   /** Financial profile fails closed unless this host verifier returns verified. */
   readonly securityProfile?: NodeSecurityProfile;
+  /** Resolves the account/operation/nonce binding before Request.body is read. */
+  readonly financialContext?: NodeFinancialContextResolver;
   /** Host-side platform attestation verifier; it runs before Request.body is read. */
-  readonly deviceIntegrityDecision?: NodeDeviceIntegrityVerifier;
+  readonly deviceIntegrityVerifier?: NodeDeviceIntegrityVerifier;
   /** Host session/origin validation; it runs before `Request.body` is read. */
   readonly csrfValidated: (request: Request) => boolean | Promise<boolean>;
   /**
@@ -103,11 +134,82 @@ export interface CreateOpaqueHandlerOptions {
 
 const STATUS_CODES = new Set([200, 400, 401, 403, 404, 405, 413, 415, 429, 503]);
 const encoder = new TextEncoder();
+const MAX_FINANCIAL_REPLAY_ENTRIES = 4096;
 
 class BodyTooLargeError extends Error {}
 
 function isSecurityProfile(value: unknown): value is NodeSecurityProfile {
   return value === "standard" || value === "financial";
+}
+
+const DEVICE_INTEGRITY_PROVIDERS = new Set<NodeDeviceIntegrityProvider>([
+  "android-play-integrity",
+  "ios-app-attest",
+  "ios-device-check",
+  "custom",
+]);
+
+function isBoundedBinding(value: unknown, minimumLength: number, maximumLength: number): value is string {
+  return typeof value === "string" &&
+    value.length >= minimumLength &&
+    value.length <= maximumLength &&
+    !/[\u0000-\u0020\u007f]/.test(value);
+}
+
+function isValidFinancialContext(
+  value: unknown,
+  path: (typeof OPAQUE_ROUTE_PATHS)[number],
+): value is NodeFinancialAuthContext {
+  const candidate = value as Partial<NodeFinancialAuthContext> | null;
+  if (candidate === null || typeof candidate !== "object") return false;
+  const operation = path.includes("registration") ? "registration" : "login";
+  return candidate.operation === operation &&
+    isBoundedBinding(candidate.subject, 1, 256) &&
+    isBoundedBinding(candidate.nonce, 16, 512) &&
+    isBoundedBinding(candidate.deploymentId, 1, 128);
+}
+
+function isFreshBoundEvidence(
+  value: unknown,
+  context: NodeFinancialAuthContext,
+  nowMs = Date.now(),
+): value is NodeDeviceIntegrityEvidence {
+  const candidate = value as Partial<NodeDeviceIntegrityEvidence> | null;
+  if (candidate === null || typeof candidate !== "object") return false;
+  if (!DEVICE_INTEGRITY_PROVIDERS.has(candidate.provider as NodeDeviceIntegrityProvider)) return false;
+  if (candidate.subject !== context.subject ||
+      candidate.operation !== context.operation ||
+      candidate.nonce !== context.nonce ||
+      candidate.deploymentId !== context.deploymentId) return false;
+  if (!Number.isSafeInteger(candidate.issuedAtMs) || !Number.isSafeInteger(candidate.expiresAtMs)) return false;
+  const issuedAtMs = candidate.issuedAtMs as number;
+  const expiresAtMs = candidate.expiresAtMs as number;
+  return issuedAtMs <= nowMs + 30_000 &&
+    expiresAtMs > nowMs &&
+    expiresAtMs > issuedAtMs &&
+    expiresAtMs - issuedAtMs <= 300_000;
+}
+
+type FinancialReplayDecision = "consumed" | "replayed" | "unavailable";
+
+function consumeFinancialEvidence(
+  consumedEvidence: Map<string, number>,
+  context: NodeFinancialAuthContext,
+  expiresAtMs: number,
+  nowMs = Date.now(),
+): FinancialReplayDecision {
+  try {
+    for (const [key, expiresAt] of consumedEvidence) {
+      if (expiresAt <= nowMs) consumedEvidence.delete(key);
+    }
+    const replayKey = `${context.deploymentId}\u0000${context.subject}\u0000${context.operation}\u0000${context.nonce}`;
+    if (consumedEvidence.has(replayKey)) return "replayed";
+    if (consumedEvidence.size >= MAX_FINANCIAL_REPLAY_ENTRIES) return "unavailable";
+    consumedEvidence.set(replayKey, expiresAtMs);
+    return "consumed";
+  } catch {
+    return "unavailable";
+  }
 }
 
 function isBodyTooLargeError(error: unknown): boolean {
@@ -283,17 +385,20 @@ function responseFromDelegate(value: NodeHttpResponse): Response {
  * delegate cannot be controlled by this adapter.
  */
 export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (request: Request) => Promise<Response> {
+  const consumedFinancialEvidence = new Map<string, number>();
   return async (request) => {
     let handlerOptions: CreateOpaqueHandlerOptions;
     try {
       const rateLimitDecision = options.rateLimitDecision;
-      const deviceIntegrityDecision = options.deviceIntegrityDecision;
+      const financialContext = options.financialContext;
+      const deviceIntegrityVerifier = options.deviceIntegrityVerifier;
       handlerOptions = {
         deploymentContext: options.deploymentContext,
         securityProfile: options.securityProfile ?? "standard",
         csrfValidated: options.csrfValidated,
         delegate: options.delegate,
-        ...(deviceIntegrityDecision === undefined ? {} : { deviceIntegrityDecision }),
+        ...(financialContext === undefined ? {} : { financialContext }),
+        ...(deviceIntegrityVerifier === undefined ? {} : { deviceIntegrityVerifier }),
         ...(rateLimitDecision === undefined ? {} : { rateLimitDecision }),
       };
     } catch {
@@ -302,7 +407,8 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     const {
       deploymentContext,
       securityProfile,
-      deviceIntegrityDecision,
+      financialContext,
+      deviceIntegrityVerifier,
       csrfValidated,
       rateLimitDecision,
       delegate,
@@ -351,17 +457,47 @@ export function createOpaqueHandler(options: CreateOpaqueHandlerOptions): (reque
     if (rateLimitResult !== "allowed") return genericResponse(503, "temporarily_unavailable");
 
     if (securityProfile === "financial") {
-      if (deviceIntegrityDecision === undefined) {
+      if (financialContext === undefined || deviceIntegrityVerifier === undefined || path === undefined) {
         return genericResponse(503, "temporarily_unavailable");
       }
-      let integrityResult: NodeDeviceIntegrityDecision;
+      let context: NodeFinancialAuthContext | undefined;
       try {
-        integrityResult = await deviceIntegrityDecision(request);
+        context = await financialContext(request, path);
       } catch {
         return genericResponse(503, "temporarily_unavailable");
       }
-      if (integrityResult === "rejected") return genericResponse(403, "invalid_request");
-      if (integrityResult !== "verified") return genericResponse(503, "temporarily_unavailable");
+      try {
+        if (!isValidFinancialContext(context, path)) return genericResponse(503, "temporarily_unavailable");
+      } catch {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+
+      let verification: NodeDeviceIntegrityEvidence | NodeDeviceIntegrityDecision;
+      try {
+        verification = await deviceIntegrityVerifier(request, context);
+      } catch {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+      if (verification === "rejected") return genericResponse(403, "invalid_request");
+      if (verification === "unavailable" || verification === "verified") {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+      let evidenceIsValid = false;
+      try {
+        evidenceIsValid = isFreshBoundEvidence(verification, context);
+      } catch {
+        return genericResponse(503, "temporarily_unavailable");
+      }
+      if (!evidenceIsValid) {
+        return genericResponse(403, "invalid_request");
+      }
+      const replayDecision = consumeFinancialEvidence(
+        consumedFinancialEvidence,
+        context,
+        verification.expiresAtMs,
+      );
+      if (replayDecision === "replayed") return genericResponse(403, "invalid_request");
+      if (replayDecision !== "consumed") return genericResponse(503, "temporarily_unavailable");
     }
 
     let body: Uint8Array;

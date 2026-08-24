@@ -15,6 +15,11 @@ exact release-candidate commit by the release evidence manifest.
 - Security: added a financial server-admission gate for Node, Axum, and Actix;
   `securityProfile: "financial"` or `financial_router` requires a host-verified
   device-integrity decision before request-body buffering and opaque dispatch.
+- Security: Node financial admission now requires fresh evidence bound to the
+  route operation, subject, nonce, deployment, provider, and bounded issuance
+  window; it rejects evidence reuse before request-body buffering. Hosts must
+  still verify vendor attestation credentials and atomically consume nonces in
+  shared storage for multi-instance deployments.
 
 - Added checked-in React Native, Flutter, and WebAuthn host entrypoint examples
   under `examples/`; CI verifies their public API usage and rejects framework

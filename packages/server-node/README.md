@@ -51,12 +51,12 @@ boundary; applications requiring the strongest secret handling should keep the
 OPAQUE engine in the Rust/native process.
 
 For financial authentication, set `securityProfile: "financial"` and provide
-`deviceIntegrityDecision`. The callback must verify the Android Play Integrity,
-iOS App Attest/DeviceCheck, or equivalent server-verifiable result bound to the
-current account, authentication operation, nonce, and deployment. It runs after
-CSRF/rate-limit admission but before the request body is read; `"rejected"`,
-`"unavailable"`, a missing callback, or a callback failure returns a generic
-failure and never reaches the OPAQUE delegate:
+both `financialContext` and `deviceIntegrityVerifier`. The context resolver must
+create a fresh, one-use nonce for the exact account, OPAQUE route operation, and
+deployment. The verifier must validate the Google/Apple or equivalent vendor
+evidence server-side and return evidence containing the same `subject`,
+`operation`, `nonce`, and `deploymentId`, plus a supported `provider` and a
+short `issuedAtMs`/`expiresAtMs` window:
 
 ```ts
 const handler = createOpaqueHandler({
@@ -64,14 +64,24 @@ const handler = createOpaqueHandler({
   securityProfile: "financial",
   csrfValidated: validateHostSession,
   rateLimitDecision: admitRateLimit,
-  deviceIntegrityDecision: verifyPlatformIntegrity,
+  financialContext: resolveOneUseFinancialContext,
+  deviceIntegrityVerifier: verifyPlatformIntegrity,
   delegate: pinnedRustOpaqueDelegate,
 });
 ```
 
-`verifyPlatformIntegrity` is intentionally host-supplied: the SDK cannot hold
-Google/Apple credentials or decide the product's account-risk policy. The Rust
-Axum/Actix adapters expose the equivalent `financial_router` boundary.
+The Node adapter evaluates this admission after CSRF/rate-limit checks but
+before reading `Request.body`. It rejects missing/invalid context, rejected or
+unavailable verification, route-operation mismatches, subject/nonce/deployment
+mismatches, unknown providers, future evidence beyond 30 seconds, expired
+evidence, evidence windows over five minutes, and reuse of the same binding
+within one handler. A multi-instance deployment must additionally consume the
+nonce atomically in a shared store; the in-process replay guard is only a local
+defense. `verifyPlatformIntegrity` is intentionally host-supplied: the SDK
+cannot hold Google/Apple credentials or decide the product's account-risk
+policy. The Rust Axum/Actix adapters expose the equivalent pre-buffering
+`financial_router` boundary; their callbacks must apply the same binding and
+freshness policy before returning `Verified`.
 
 The public release version follows the Contracts package. Authentication
 protocol and C ABI versions remain independent.

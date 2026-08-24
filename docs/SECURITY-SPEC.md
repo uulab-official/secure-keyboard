@@ -212,7 +212,13 @@ infer CSRF state from a request body. OPAQUE adapters also require a
 pre-buffering `RequestAdmission` result for account/IP/deployment rate-limit
 admission and fail closed on a denied or unavailable decision. Financial
 constructors additionally require a pre-buffering device-integrity decision;
-only a server-verified `Verified` result reaches the OPAQUE route.
+only a server-verified `Verified` result reaches the OPAQUE route. The Node
+adapter strengthens this into structured evidence bound to the route operation,
+subject, one-use nonce, and deployment. It rejects unknown providers, evidence
+issued more than 30 seconds in the future, expired evidence, evidence windows
+longer than five minutes, and local reuse before reading the body. The host
+must still verify vendor credentials and atomically consume the nonce in shared
+storage across server instances.
 
 The publishable `@secure-keypad/server-node` adapter applies the same boundary
 to Web Fetch requests: it requires an explicit TLS/proxy deployment context,
