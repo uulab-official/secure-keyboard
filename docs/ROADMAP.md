@@ -88,6 +88,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Make the Android framework submission router release an unconsumed opaque handle when a native consumer throws, without double-releasing transferred ownership.
 - [x] Fail closed when native submission reports success without returning an opaque handle; zeroize before emitting the stable internal error across iOS, React Native, and Flutter sources.
 - [x] Fail closed when no native submission consumer is installed; release the opaque handle and emit the stable internal error instead of silently accepting submit.
+- [x] Gate native opaque submission handoff on a successful post-submit masked-state refresh, closing pending handles on refresh failure before framework success emission.
 - [x] Restore lifecycle-lost sessions for RN and Flutter adapters from retained public configuration across iOS activation/window transitions and Android focus/visibility transitions without replaying Headless Host commands.
 - [x] Restore lifecycle-lost sessions for direct iOS and Android Native SDK consumers without a framework callback; retain only public configuration and make explicit release terminal.
 - [x] Wire a native `cancel` action through the ABI and both framework event contracts.

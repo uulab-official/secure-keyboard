@@ -154,6 +154,10 @@ stable internal error; a missing handle is never treated as a successful submit.
 The same fail-closed rule applies when a direct native consumer is not
 installed: the opaque handle is released, the stable internal error is emitted,
 and no successful submit result is published.
+After a submit creates an opaque handle, the native view must refresh the
+public masked state before handing the handle to the consumer. If that refresh
+fails, the handle is released and the consumer/framework must not receive a
+success result.
 
 ## Input policies
 

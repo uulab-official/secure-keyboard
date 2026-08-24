@@ -747,7 +747,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private fun activate\(key: SecureKeySpec\)[\s\S]*?return refreshMaskedState\(\)/,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?if \(!refreshMaskedState\(\)\) \{[\s\S]*?pendingSubmission\?\.close\(\)[\s\S]*?return false[\s\S]*?pendingSubmission\?\.let[\s\S]*?deliverOrRelease\([\s\S]*?submitCallback[\s\S]*?return true/,
       "masked-state refresh failures cannot report successful commands",
     );
     requireText(
@@ -789,8 +789,15 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private fun activate\(key: SecureKeySpec\)[\s\S]*?val submitCallback = onSubmit \?: run \{[\s\S]*?SecureKeypadSubmission\(rawSubmission\)\.close\(\)[\s\S]*?onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*?return false[\s\S]*?deliverOrRelease\([\s\S]*?submitCallback/,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?val callback = onSubmit \?: run \{[\s\S]*?SecureKeypadSubmission\(rawSubmission\)\.close\(\)[\s\S]*?onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*?return false/,
       "native submit without an installed consumer must fail closed",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?var pendingSubmission: SecureKeypadSubmission\?[\s\S]*?if \(!refreshMaskedState\(\)\) \{[\s\S]*?pendingSubmission\?\.close\(\)[\s\S]*?return false[\s\S]*?pendingSubmission\?\.let[\s\S]*?deliverOrRelease\([\s\S]*?submitCallback/,
+      "native submit handoff must wait for masked-state refresh",
     );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*if \(!ensureSecureWindowProtection\(\)\)/, "Android native keypad must reassert secure-window protection when focus returns");
@@ -936,7 +943,7 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func activate\(key: SecureKeySpec\)[\s\S]*?return refreshMaskedState\(\)/,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?guard refreshMaskedState\(\) else \{[\s\S]*?pendingSubmission\?\.close\(\)[\s\S]*?return false[\s\S]*?onSubmit\?\(pendingSubmission\)[\s\S]*?return true/,
       "masked-state refresh failures cannot report successful commands",
     );
     requireText(
@@ -980,8 +987,15 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func activate\(key: SecureKeySpec\)[\s\S]*?case \.submit:[\s\S]*?if let onSubmit \{[\s\S]*?onSubmit\(submission\)[\s\S]*?\} else \{[\s\S]*?submission\.close\(\)[\s\S]*?onError\?\(secureKeypadInternalError\)[\s\S]*?return false/,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?case \.submit:[\s\S]*?if onSubmit != nil \{[\s\S]*?pendingSubmission = submission[\s\S]*?\} else \{[\s\S]*?submission\.close\(\)[\s\S]*?onError\?\(secureKeypadInternalError\)[\s\S]*?return false/,
       "native submit without an installed consumer must fail closed",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?var pendingSubmission: SecureKeypadSubmission\?[\s\S]*?guard refreshMaskedState\(\) else \{[\s\S]*?pendingSubmission\?\.close\(\)[\s\S]*?return false[\s\S]*?onSubmit\?\(pendingSubmission\)/,
+      "native submit handoff must wait for masked-state refresh",
     );
     requireText(findings, file, contents, /private struct RetainedConfiguration/, "iOS native keypad must retain only public configuration for direct lifecycle recovery");
     requireText(findings, file, contents, /private func requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,600}reconfigureRetainedConfiguration\(\)/, "iOS native keypad must provide a direct-consumer lifecycle recovery path");

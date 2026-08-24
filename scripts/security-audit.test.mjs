@@ -440,7 +440,7 @@ test("masked-state refresh failures cannot report successful commands", () => {
     assert.ok(activateStart >= 0 && refreshStart > activateStart && cancelStart >= 0 && cancelEnd > cancelStart);
     assert.match(
       source.slice(activateStart, refreshStart),
-      /return refreshMaskedState\(\)\s*\}/,
+      /guard refreshMaskedState\(\) else \{[\s\S]*pendingSubmission\?\.close\(\)[\s\S]*return false[\s\S]*onSubmit\?\(pendingSubmission\)[\s\S]*return true/,
       `${relativePath} must not report activation success when masked-state refresh fails`,
     );
     assert.match(
@@ -464,7 +464,7 @@ test("masked-state refresh failures cannot report successful commands", () => {
     assert.ok(activateStart >= 0 && refreshStart > activateStart && cancelStart >= 0 && cancelEnd > cancelStart);
     assert.match(
       source.slice(activateStart, refreshStart),
-      /return refreshMaskedState\(\)\s*\}/,
+      /if \(!refreshMaskedState\(\)\) \{[\s\S]*pendingSubmission\?\.close\(\)[\s\S]*return false[\s\S]*pendingSubmission\?\.let[\s\S]*deliverOrRelease\([\s\S]*submitCallback[\s\S]*return true/,
       `${relativePath} must not report activation success when masked-state refresh fails`,
     );
     assert.match(
@@ -1060,7 +1060,7 @@ test("native submit without an installed consumer fails closed", () => {
     assert.ok(submitStart >= 0 && cancelStart > submitStart);
     assert.match(
       source.slice(submitStart, cancelStart),
-      /if let onSubmit \{[\s\S]*onSubmit\(submission\)[\s\S]*\} else \{[\s\S]*submission\.close\(\)[\s\S]*onError\?\(secureKeypadInternalError\)[\s\S]*return false/,
+      /if onSubmit != nil \{[\s\S]*pendingSubmission = submission[\s\S]*\} else \{[\s\S]*submission\.close\(\)[\s\S]*onError\?\(secureKeypadInternalError\)[\s\S]*return false/,
       `${relativePath} must reject submit when no native consumer is installed`,
     );
   }
@@ -1076,13 +1076,58 @@ test("native submit without an installed consumer fails closed", () => {
     assert.ok(submitStart >= 0 && cancelStart > submitStart);
     assert.match(
       source.slice(submitStart, cancelStart),
-      /val submitCallback = onSubmit \?: run \{[\s\S]*SecureKeypadSubmission\(rawSubmission\)\.close\(\)[\s\S]*onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*return false[\s\S]*deliverOrRelease\([\s\S]*submitCallback/,
+      /val callback = onSubmit \?: run \{[\s\S]*SecureKeypadSubmission\(rawSubmission\)\.close\(\)[\s\S]*onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*return false/,
       `${relativePath} must reject submit when no native consumer is installed`,
     );
   }
 
   const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
   assert.match(securityAudit, /native submit without an installed consumer must fail closed/);
+});
+
+test("native submit handoff waits for a successful masked-state refresh", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private func activate(key: SecureKeySpec)");
+    const refreshStart = source.indexOf("private func refreshMaskedState", activateStart);
+    assert.ok(activateStart >= 0 && refreshStart > activateStart);
+    const activate = source.slice(activateStart, refreshStart);
+    const refreshIndex = activate.indexOf("guard refreshMaskedState()");
+    const handoffIndex = activate.indexOf("onSubmit?(pendingSubmission)");
+    assert.ok(refreshIndex >= 0 && handoffIndex > refreshIndex);
+    assert.match(
+      activate,
+      /var pendingSubmission: SecureKeypadSubmission\?[\s\S]*guard refreshMaskedState\(\) else \{[\s\S]*pendingSubmission\?\.close\(\)[\s\S]*return false/,
+      `${relativePath} must close a pending opaque submission when post-submit refresh fails`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private fun activate(key: SecureKeySpec)");
+    const refreshStart = source.indexOf("private fun refreshMaskedState", activateStart);
+    assert.ok(activateStart >= 0 && refreshStart > activateStart);
+    const activate = source.slice(activateStart, refreshStart);
+    const refreshIndex = activate.lastIndexOf("if (!refreshMaskedState())");
+    const handoffIndex = activate.indexOf("deliverOrRelease(");
+    assert.ok(refreshIndex >= 0 && handoffIndex > refreshIndex);
+    assert.match(
+      activate,
+      /var pendingSubmission: SecureKeypadSubmission\?[\s\S]*if \(!refreshMaskedState\(\)\) \{[\s\S]*pendingSubmission\?\.close\(\)[\s\S]*return false/,
+      `${relativePath} must close a pending opaque submission when post-submit refresh fails`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /native submit handoff must wait for masked-state refresh/);
 });
 
 test("native adapter teardown breaks callback ownership cycles", () => {

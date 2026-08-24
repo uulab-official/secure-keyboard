@@ -58,6 +58,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: native views now fail closed when no submission consumer is
   installed; opaque handles are released and the stable internal error is
   emitted instead of allowing a silent successful submit path.
+- Security: native submit handoff now waits for a successful masked-state
+  refresh; refresh failure closes the pending opaque submission before any
+  framework success event can be emitted.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

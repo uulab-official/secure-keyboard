@@ -569,6 +569,7 @@ public class SecureKeypadView: UIView {
         guard secureKeypadShouldAcceptProgrammaticKeyPress(protected: protectedPresentation) else { return false }
         performFeedback()
         let status: UInt32
+        var pendingSubmission: SecureKeypadSubmission?
         switch key.role {
         case .input:
             let bytes = Array(key.id.utf8)
@@ -589,8 +590,8 @@ public class SecureKeypadView: UIView {
                     return false
                 }
                 let submission = SecureKeypadSubmission(raw: rawSubmission)
-                if let onSubmit {
-                    onSubmit(submission)
+                if onSubmit != nil {
+                    pendingSubmission = submission
                 } else {
                     submission.close()
                     onError?(secureKeypadInternalError)
@@ -607,7 +608,14 @@ public class SecureKeypadView: UIView {
             onError?(status)
             return false
         }
-        return refreshMaskedState()
+        guard refreshMaskedState() else {
+            pendingSubmission?.close()
+            return false
+        }
+        if let pendingSubmission {
+            onSubmit?(pendingSubmission)
+        }
+        return true
     }
 
     @discardableResult

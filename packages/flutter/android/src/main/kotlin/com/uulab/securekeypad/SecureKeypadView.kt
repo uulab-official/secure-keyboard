@@ -577,6 +577,8 @@ public open class SecureKeypadView @JvmOverloads constructor(
         if (sessionHandle == 0L) return false
         performFeedback()
         var status = 0
+        var pendingSubmission: SecureKeypadSubmission? = null
+        var submitCallback: ((SecureKeypadSubmission) -> Unit)? = null
         when (key.role) {
             SecureKeyRole.INPUT -> status = SecureKeypadNative.sessionPressKey(sessionHandle, key.id)
             SecureKeyRole.BACKSPACE -> status = SecureKeypadNative.sessionBackspace(sessionHandle)
@@ -587,18 +589,13 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
                     return false
                 }
-                val submitCallback = onSubmit ?: run {
+                val callback = onSubmit ?: run {
                     SecureKeypadSubmission(rawSubmission).close()
                     onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
                     return false
                 }
-                val submission = SecureKeypadSubmission(rawSubmission)
-                deliverOrRelease(
-                    submission,
-                    submitCallback,
-                    SecureKeypadSubmission::close,
-                    { it.isConsumed },
-                )
+                submitCallback = callback
+                pendingSubmission = SecureKeypadSubmission(rawSubmission)
             }
             SecureKeyRole.CANCEL -> status = SecureKeypadNative.sessionCancel(sessionHandle)
             SecureKeyRole.SPACER -> return false
@@ -608,7 +605,19 @@ public open class SecureKeypadView @JvmOverloads constructor(
             onError?.invoke(status)
             return false
         }
-        return refreshMaskedState()
+        if (!refreshMaskedState()) {
+            pendingSubmission?.close()
+            return false
+        }
+        pendingSubmission?.let { submission ->
+            deliverOrRelease(
+                submission,
+                submitCallback,
+                SecureKeypadSubmission::close,
+                { it.isConsumed },
+            )
+        }
+        return true
     }
 
     private fun keyBackground(): StateListDrawable = StateListDrawable().apply {
