@@ -441,12 +441,18 @@ public class SecureKeypadView: UIView {
 
     /// Cancels the native session and zeroizes any pending input.
     public func cancelSession() {
-        guard let session else { return }
+        _ = cancelSessionAndReport()
+    }
+
+    private func cancelSessionAndReport() -> Bool {
+        guard let session else { return false }
         let status = secure_keypad_session_cancel(session)
         if status != 0 {
             onError?(status)
+            return false
         }
         refreshMaskedState()
+        return true
     }
 
     /// Applies a monotonic, non-secret host command exactly once.
@@ -457,8 +463,9 @@ public class SecureKeypadView: UIView {
         case .ignore:
             return
         case .accept:
-            lastCancelRequest = requestId
-            cancelSession()
+            if cancelSessionAndReport() {
+                lastCancelRequest = requestId
+            }
         }
     }
 

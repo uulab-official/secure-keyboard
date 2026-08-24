@@ -729,6 +729,13 @@ export function runSecurityAudit() {
       /private fun activate\(key: SecureKeySpec\)[\s\S]*?if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
       "native activation failures must not advance headless replay floors",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun cancelSessionAndReport\(\): Boolean[\s\S]*?if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      "cancel failures must not advance the native cancel replay floor",
+    );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
@@ -826,6 +833,13 @@ export function runSecurityAudit() {
       contents,
       /private func activate\(key: SecureKeySpec\)[\s\S]*?if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
       "native activation failures must not advance headless replay floors",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func cancelSessionAndReport\(\) -> Bool[\s\S]*?if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
+      "cancel failures must not advance the native cancel replay floor",
     );
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");

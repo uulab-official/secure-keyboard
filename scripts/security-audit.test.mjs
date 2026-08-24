@@ -353,6 +353,43 @@ test("native session activation failures do not advance the headless replay floo
   assert.match(securityAudit, /native activation failures must not advance headless replay floors/);
 });
 
+test("cancel request failures do not advance the native cancel replay floor", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const cancelStart = source.indexOf("public func requestCancel");
+    const cancelEnd = source.indexOf("private func installViews", cancelStart);
+    assert.ok(cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /if cancelSessionAndReport\(\) \{\s*lastCancelRequest = requestId\s*\}/,
+      `${relativePath} must advance the cancel replay floor only after native cancel succeeds`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const cancelStart = source.indexOf("public fun requestCancel");
+    const cancelEnd = source.indexOf("override fun onDetachedFromWindow", cancelStart);
+    assert.ok(cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /if \(cancelSessionAndReport\(\)\) \{\s*lastCancelRequest = requestId\s*\}/,
+      `${relativePath} must advance the cancel replay floor only after native cancel succeeds`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /cancel failures must not advance the native cancel replay floor/);
+});
+
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",

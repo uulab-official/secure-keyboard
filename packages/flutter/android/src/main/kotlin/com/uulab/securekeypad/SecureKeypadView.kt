@@ -406,10 +406,18 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     /** Cancels the native session and zeroizes any pending input. */
     public fun cancelSession() {
-        if (sessionHandle == 0L) return
+        cancelSessionAndReport()
+    }
+
+    private fun cancelSessionAndReport(): Boolean {
+        if (sessionHandle == 0L) return false
         val status = SecureKeypadNative.sessionCancel(sessionHandle)
-        if (status != 0) onError?.invoke(status)
+        if (status != 0) {
+            onError?.invoke(status)
+            return false
+        }
         refreshMaskedState()
+        return true
     }
 
     /** Applies a monotonic, non-secret host command exactly once. */
@@ -418,8 +426,9 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeypadCommandDecision.INVALID -> onError?.invoke(SECURE_KEYPAD_ERROR_INVALID)
             SecureKeypadCommandDecision.IGNORE -> return
             SecureKeypadCommandDecision.ACCEPT -> {
-                lastCancelRequest = requestId
-                cancelSession()
+                if (cancelSessionAndReport()) {
+                    lastCancelRequest = requestId
+                }
             }
         }
     }
