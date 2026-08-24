@@ -151,6 +151,9 @@ actually taken ownership of the opaque handle; it still never means that server
 authentication succeeded. If the native ABI reports submit success without an
 opaque handle, the native view must release the session and emit only the
 stable internal error; a missing handle is never treated as a successful submit.
+The same fail-closed rule applies when a direct native consumer is not
+installed: the opaque handle is released, the stable internal error is emitted,
+and no successful submit result is published.
 
 ## Input policies
 

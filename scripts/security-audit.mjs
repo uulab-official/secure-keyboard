@@ -785,6 +785,13 @@ export function runSecurityAudit() {
       /private fun activate\(key: SecureKeySpec\)[\s\S]*?SecureKeyRole\.SUBMIT[\s\S]*?SecureKeypadNative\.sessionSubmit\(sessionHandle\)\s*\?: run \{[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*?return false/,
       "native submission failures must zeroize before reporting an internal error",
     );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?val submitCallback = onSubmit \?: run \{[\s\S]*?SecureKeypadSubmission\(rawSubmission\)\.close\(\)[\s\S]*?onError\?\.invoke\(SECURE_KEYPAD_ERROR_INTERNAL\)[\s\S]*?return false[\s\S]*?deliverOrRelease\([\s\S]*?submitCallback/,
+      "native submit without an installed consumer must fail closed",
+    );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*if \(!ensureSecureWindowProtection\(\)\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(
@@ -968,6 +975,13 @@ export function runSecurityAudit() {
       contents,
       /private func activate\(key: SecureKeySpec\)[\s\S]*?case \.submit:[\s\S]*?secure_keypad_session_submit[\s\S]*?guard let rawSubmission else \{[\s\S]*?releaseNativeSessionPreservingConfiguration\(\)[\s\S]*?onError\?\(secureKeypadInternalError\)[\s\S]*?return false/,
       "native submission failures must zeroize before reporting an internal error",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?case \.submit:[\s\S]*?if let onSubmit \{[\s\S]*?onSubmit\(submission\)[\s\S]*?\} else \{[\s\S]*?submission\.close\(\)[\s\S]*?onError\?\(secureKeypadInternalError\)[\s\S]*?return false/,
+      "native submit without an installed consumer must fail closed",
     );
     requireText(findings, file, contents, /private struct RetainedConfiguration/, "iOS native keypad must retain only public configuration for direct lifecycle recovery");
     requireText(findings, file, contents, /private func requestSessionReconfigurationIfNeeded\(\)[\s\S]{0,600}reconfigureRetainedConfiguration\(\)/, "iOS native keypad must provide a direct-consumer lifecycle recovery path");

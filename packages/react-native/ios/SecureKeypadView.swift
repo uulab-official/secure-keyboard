@@ -593,6 +593,8 @@ public class SecureKeypadView: UIView {
                     onSubmit(submission)
                 } else {
                     submission.close()
+                    onError?(secureKeypadInternalError)
+                    return false
                 }
             }
         case .cancel:

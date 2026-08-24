@@ -587,10 +587,15 @@ public open class SecureKeypadView @JvmOverloads constructor(
                     onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
                     return false
                 }
+                val submitCallback = onSubmit ?: run {
+                    SecureKeypadSubmission(rawSubmission).close()
+                    onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+                    return false
+                }
                 val submission = SecureKeypadSubmission(rawSubmission)
                 deliverOrRelease(
                     submission,
-                    onSubmit,
+                    submitCallback,
                     SecureKeypadSubmission::close,
                     { it.isConsumed },
                 )
