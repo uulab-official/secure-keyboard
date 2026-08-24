@@ -73,6 +73,7 @@ Status: native renderer sources and standalone SDK package contracts complete; p
 - [x] Fail closed without throwing when Android view reattachment cannot restore `FLAG_SECURE`; zeroize the session before returning from the lifecycle callback.
 - [x] Make iOS protected-presentation state itself a zeroization boundary for inactive or screen-captured scenes.
 - [x] Reassert and verify Android `FLAG_SECURE` at every native touch and Headless Host input boundary; rejected commands do not advance the replay floor.
+- [x] Zeroize the native session when Android input-boundary `FLAG_SECURE` verification fails before reporting the internal error.
 - [x] Advance native Headless Host replay floors only after iOS/Android activation returns success across standalone, React Native, and Flutter views.
 - [x] Centralize bounded Android/iOS masked-display/accessibility announcements and execute standalone JVM/Swift contract tests.
 - [x] Reject out-of-contract native display-state codes before rendering or framework emission.

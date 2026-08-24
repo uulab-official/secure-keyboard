@@ -28,6 +28,8 @@ exact release-candidate commit by the release evidence manifest.
 - Security: Android touch and Headless Host input now reassert and verify
   `FLAG_SECURE` at the native input boundary; rejected commands cannot advance
   the headless replay floor.
+- Security: Android input-boundary `FLAG_SECURE` failures now zeroize the
+  native session before reporting the stable internal error.
 - Security: Android focus and visibility lifecycle failures now zeroize the
   native session and emit an internal error without throwing into the host app.
 - Security: Android reattachment failures now follow the same fail-closed

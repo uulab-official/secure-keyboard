@@ -719,6 +719,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /FLAG_SECURE/, "Android native keypad must enable secure-window protection");
     requireText(findings, file, contents, /private fun ensureSecureWindowProtection\(\)[\s\S]{0,520}FLAG_SECURE/, "Android secure-window protection must be reasserted and verified");
     requireText(findings, file, contents, /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}ensureSecureWindowProtection\(\)/, "Android input must fail closed when secure-window protection cannot be verified");
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}if \(ensureSecureWindowProtection\(\)\) return true\s*failClosedSecureWindowBoundary\(\)\s*return false\s*\}/,
+      "Android input-boundary protection failures must zeroize the native session",
+    );
     requireText(findings, file, contents, /public fun requestHeadlessKeyPress[\s\S]{0,800}ensureSecureInputBoundary\(\)/, "Android headless input must verify secure-window protection at the command boundary");
     requireText(findings, file, contents, /private fun activate\(key: SecureKeySpec\)[\s\S]{0,300}ensureSecureInputBoundary\(\)/, "Android touch input must verify secure-window protection at activation");
     requireText(findings, file, contents, /if \(!activate\(key\)\) return[\s\S]{0,80}lastHeadlessKeyPress = requestId/, "Android headless replay state must advance only after secure input succeeds");

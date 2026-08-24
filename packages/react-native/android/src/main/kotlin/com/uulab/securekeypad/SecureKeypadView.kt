@@ -277,7 +277,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
 
     private fun ensureSecureInputBoundary(): Boolean {
         if (ensureSecureWindowProtection()) return true
-        onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
+        failClosedSecureWindowBoundary()
         return false
     }
 

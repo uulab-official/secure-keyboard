@@ -313,6 +313,24 @@ test("Android native input reasserts secure-window protection at the input bound
   assert.match(securityAudit, /lastHeadlessKeyPress/);
 });
 
+test("Android input-boundary protection failures zeroize the native session", () => {
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.match(
+      source,
+      /private fun ensureSecureInputBoundary\(\)[\s\S]{0,220}if \(ensureSecureWindowProtection\(\)\) return true\s*failClosedSecureWindowBoundary\(\)\s*return false\s*\}/,
+      relativePath + " must zeroize the native session when input-boundary protection fails",
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /Android input-boundary protection failures must zeroize the native session/);
+});
+
 test("iOS headless replay state advances only after native activation succeeds", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",
