@@ -47,6 +47,8 @@ exact release-candidate commit by the release evidence manifest.
   the error, preventing an uncertain cancellation state from retaining input.
 - Security: native activation failures now release the session before reporting
   the error, covering touch, Headless Host, and action-key activation paths.
+- Security: masked-state refresh failures now propagate as failed activation or
+  cancellation results, so rejected commands cannot consume replay tokens.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

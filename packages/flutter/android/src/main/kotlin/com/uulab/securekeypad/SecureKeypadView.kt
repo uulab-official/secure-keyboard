@@ -425,8 +425,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             onError?.invoke(status)
             return false
         }
-        refreshMaskedState()
-        return true
+        return refreshMaskedState()
     }
 
     /** Applies a monotonic, non-secret host command exactly once. */
@@ -600,8 +599,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             onError?.invoke(status)
             return false
         }
-        refreshMaskedState()
-        return true
+        return refreshMaskedState()
     }
 
     private fun keyBackground(): StateListDrawable = StateListDrawable().apply {
@@ -615,22 +613,22 @@ public open class SecureKeypadView @JvmOverloads constructor(
         })
     }
 
-    private fun refreshMaskedState() {
+    private fun refreshMaskedState(): Boolean {
         val packed = SecureKeypadNative.sessionRefresh(sessionHandle)
         val (length, displayState) = secureKeypadDecodeMaskedState(packed) ?: run {
             releaseSession()
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
-            return
+            return false
         }
         if (length !in 0..SECURE_KEYPAD_MAX_RENDERED_LENGTH) {
             releaseSession()
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
-            return
+            return false
         }
         if (!secureKeypadIsValidDisplayState(displayState)) {
             releaseSession()
             onError?.invoke(SECURE_KEYPAD_ERROR_INTERNAL)
-            return
+            return false
         }
         val maskedText = secureKeypadMaskedDisplayText(length)
         display.animate().cancel()
@@ -647,6 +645,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
         }
         display.contentDescription = secureKeypadAccessibilityLabel(length)
         onMaskedStateChanged?.invoke(length, displayState)
+        return true
     }
 
     private fun performFeedback() {

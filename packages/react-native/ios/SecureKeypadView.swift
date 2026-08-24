@@ -452,8 +452,7 @@ public class SecureKeypadView: UIView {
             onError?(status)
             return false
         }
-        refreshMaskedState()
-        return true
+        return refreshMaskedState()
     }
 
     /// Applies a monotonic, non-secret host command exactly once.
@@ -600,29 +599,29 @@ public class SecureKeypadView: UIView {
             onError?(status)
             return false
         }
-        refreshMaskedState()
-        return true
+        return refreshMaskedState()
     }
 
-    private func refreshMaskedState() {
-        guard let session else { return }
+    @discardableResult
+    private func refreshMaskedState() -> Bool {
+        guard let session else { return false }
         var state = secure_keypad_masked_state_t(length: 0, display_state: 0)
         let status = secure_keypad_session_refresh(session, &state)
         guard status == 0 else {
             releaseSession()
             onError?(status)
-            return
+            return false
         }
         let count = Int(state.length)
         guard secureKeypadIsValidRenderedLength(count) else {
             releaseSession()
             onError?(secureKeypadInternalError)
-            return
+            return false
         }
         guard secureKeypadIsValidDisplayState(state.display_state) else {
             releaseSession()
             onError?(secureKeypadInternalError)
-            return
+            return false
         }
         let maskedText = secureKeypadMaskedDisplayText(length: count, protected: protectedPresentation)
         if theme.maskRevealDuration == 0 {
@@ -638,6 +637,7 @@ public class SecureKeypadView: UIView {
         }
         displayLabel.accessibilityLabel = secureKeypadAccessibilityLabel(length: count, protected: protectedPresentation)
         onMaskedStateChanged?(state.length, state.display_state)
+        return true
     }
 
     private func performFeedback() {

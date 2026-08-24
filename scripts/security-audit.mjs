@@ -740,6 +740,27 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
+      /private fun refreshMaskedState\(\): Boolean[\s\S]*?onMaskedStateChanged\?\.invoke\(length, displayState\)[\s\S]*return true/,
+      "masked-state refresh failures cannot report successful commands",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?return refreshMaskedState\(\)/,
+      "masked-state refresh failures cannot report successful commands",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun cancelSessionAndReport\(\): Boolean[\s\S]*?return refreshMaskedState\(\)/,
+      "masked-state refresh failures cannot report successful commands",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
       /private fun cancelSessionAndReport\(\): Boolean[\s\S]*?if \(status != 0\) \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
       "cancel failures must release the native session before reporting the error",
     );
@@ -882,6 +903,27 @@ export function runSecurityAudit() {
       contents,
       /private func activate\(key: SecureKeySpec\)[\s\S]*?if status != 0 \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\(status\)\s*return false\s*\}/,
       "native activation failures must release the native session before reporting the error",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func refreshMaskedState\(\) -> Bool[\s\S]*?onMaskedStateChanged\?\(state\.length, state\.display_state\)[\s\S]*return true/,
+      "masked-state refresh failures cannot report successful commands",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?return refreshMaskedState\(\)/,
+      "masked-state refresh failures cannot report successful commands",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func cancelSessionAndReport\(\) -> Bool[\s\S]*?return refreshMaskedState\(\)/,
+      "masked-state refresh failures cannot report successful commands",
     );
     requireText(
       findings,

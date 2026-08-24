@@ -426,6 +426,59 @@ test("native activation failures release the session before reporting the error"
   assert.match(securityAudit, /native activation failures must release the native session before reporting the error/);
 });
 
+test("masked-state refresh failures cannot report successful commands", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private func activate(key:");
+    const cancelStart = source.indexOf("private func cancelSessionAndReport");
+    const refreshStart = source.indexOf("private func refreshMaskedState");
+    const cancelEnd = source.indexOf("private func installViews", cancelStart);
+    assert.ok(activateStart >= 0 && refreshStart > activateStart && cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(activateStart, refreshStart),
+      /return refreshMaskedState\(\)\s*\}/,
+      `${relativePath} must not report activation success when masked-state refresh fails`,
+    );
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /return refreshMaskedState\(\)\s*\}/,
+      `${relativePath} must not consume cancel replay when masked-state refresh fails`,
+    );
+    assert.match(source, /private func refreshMaskedState\(\) -> Bool/);
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private fun activate(key:");
+    const cancelStart = source.indexOf("private fun cancelSessionAndReport");
+    const refreshStart = source.indexOf("private fun refreshMaskedState");
+    const cancelEnd = source.indexOf("/** Applies a monotonic", cancelStart);
+    assert.ok(activateStart >= 0 && refreshStart > activateStart && cancelStart >= 0 && cancelEnd > cancelStart);
+    assert.match(
+      source.slice(activateStart, refreshStart),
+      /return refreshMaskedState\(\)\s*\}/,
+      `${relativePath} must not report activation success when masked-state refresh fails`,
+    );
+    assert.match(
+      source.slice(cancelStart, cancelEnd),
+      /return refreshMaskedState\(\)\s*\}/,
+      `${relativePath} must not consume cancel replay when masked-state refresh fails`,
+    );
+    assert.match(source, /private fun refreshMaskedState\(\): Boolean/);
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /masked-state refresh failures cannot report successful commands/);
+});
+
 test("cancel request failures do not advance the native cancel replay floor", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",
