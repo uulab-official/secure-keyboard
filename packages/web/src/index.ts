@@ -834,8 +834,14 @@ function presentationError(error: unknown): WebAuthnClientError {
 export function createPasskeyController(
   environment = getDefaultWebAuthnEnvironment(),
 ): PasskeyPresentationController {
+  type ActiveOperation = {
+    readonly operation: PasskeyPresentationOperation;
+    readonly abortController: AbortController;
+    cancelled: boolean;
+  };
+
   let state = presentationState("idle");
-  let activeAbortController: AbortController | undefined;
+  let activeOperation: ActiveOperation | undefined;
   const listeners = new Set<(nextState: PasskeyPresentationState) => void>();
 
   const publish = (nextState: PasskeyPresentationState): void => {
@@ -859,29 +865,44 @@ export function createPasskeyController(
       );
     }
 
-    const abortController = new AbortController();
-    activeAbortController = abortController;
+    const active: ActiveOperation = {
+      operation,
+      abortController: new AbortController(),
+      cancelled: false,
+    };
+    activeOperation = active;
     publish(presentationState("pending", operation));
     return Promise.resolve()
-      .then(() => work(abortController.signal))
+      .then(() => work(active.abortController.signal))
       .then(
         (result) => {
+          if (active.cancelled) {
+            throw new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted");
+          }
           publish(presentationState("success", operation));
           return result;
         },
         (error: unknown) => {
-          const normalized = presentationError(error);
-          publish(presentationState("error", operation, normalized.code));
+          const normalized = active.cancelled
+            ? new WebAuthnClientError("aborted", "WebAuthn credential operation was aborted")
+            : presentationError(error);
+          if (!active.cancelled) {
+            publish(presentationState("error", operation, normalized.code));
+          }
           throw normalized;
         },
       )
       .finally(() => {
-        if (activeAbortController === abortController) activeAbortController = undefined;
+        if (activeOperation === active) activeOperation = undefined;
       });
   };
 
   const cancel = (): void => {
-    if (state.phase === "pending") activeAbortController?.abort();
+    const active = activeOperation;
+    if (state.phase !== "pending" || active === undefined) return;
+    active.cancelled = true;
+    active.abortController.abort();
+    publish(presentationState("error", active.operation, "aborted"));
   };
 
   return Object.freeze({

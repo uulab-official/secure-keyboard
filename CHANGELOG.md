@@ -112,6 +112,8 @@ exact release-candidate commit by the release evidence manifest.
   proxy-thrown values from escaping the adapter.
 - Security: caller-supplied WebAuthn environment getters and passkey controller
   errors now fail closed through the same trap-tolerant normalization boundary.
+- Security: cancelled WebAuthn presentation operations now invalidate late
+  browser results, so an abort race cannot publish or return a credential.
 
 ### Server adapters
 

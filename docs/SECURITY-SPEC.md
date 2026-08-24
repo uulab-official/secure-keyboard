@@ -45,6 +45,9 @@ contract; it does not ship a browser DOM keypad that could be mistaken for a
 secure native input boundary. A product may build its own custom browser UI
 around that contract, but must clearly document browser, page-script,
 extension, and memory limitations before accepting any input.
+The passkey presentation controller treats cancellation as terminal for the
+active ceremony: late browser results are discarded and cannot transition the
+controller to success or return a credential to the caller.
 
 ## Public customization contract
 

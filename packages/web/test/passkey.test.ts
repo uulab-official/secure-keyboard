@@ -14,6 +14,7 @@ import {
   getDefaultWebAuthnEnvironment,
   serializeRegistrationCredential,
   type WebAuthnCredentialApi,
+  type WebAuthnCredential,
   type WebAuthnEnvironment,
 } from "../src/index.js";
 
@@ -257,6 +258,47 @@ describe("WebAuthn support and mode policy", () => {
 
     await expect(operation).rejects.toMatchObject({ code: "aborted" });
     expect(observedSignal?.aborted).toBe(true);
+    expect(controller.getState()).toEqual({
+      phase: "error",
+      operation: "registration",
+      errorCode: "aborted",
+    });
+  });
+
+  it("does not return a credential when the browser ignores cancellation", async () => {
+    let release: ((credential: WebAuthnCredential) => void) | undefined;
+    let started = false;
+    const credential = {
+      id: "credential-id",
+      rawId: new Uint8Array([9, 8, 7]).buffer,
+      type: "public-key" as const,
+      response: {
+        clientDataJSON: new Uint8Array([1]).buffer,
+        attestationObject: new Uint8Array([2]).buffer,
+      },
+      getClientExtensionResults: () => ({}),
+    } satisfies WebAuthnCredential;
+    const api: WebAuthnCredentialApi = {
+      create: () => new Promise<WebAuthnCredential>((resolve) => {
+        started = true;
+        release = resolve;
+      }),
+      get: async () => null,
+    };
+    const controller = createPasskeyController(environment(api));
+    const operation = controller.createPasskey(creationOptions);
+    await Promise.resolve();
+    expect(started).toBe(true);
+
+    controller.cancel();
+    expect(controller.getState()).toEqual({
+      phase: "error",
+      operation: "registration",
+      errorCode: "aborted",
+    });
+    release?.(credential);
+
+    await expect(operation).rejects.toMatchObject({ code: "aborted" });
     expect(controller.getState()).toEqual({
       phase: "error",
       operation: "registration",
