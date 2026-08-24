@@ -24,9 +24,12 @@ manifest. Pinning policy must not be implemented in JavaScript or Dart.
 
 Secure Native Mode is designed for a non-compromised application process. The
 SDK v1 does not claim to detect or defeat rooted/jailbroken devices, injected
-code, malicious accessibility services, debugger attachment, hostile
-overlays, or a malicious host application. These environments can observe
-input or native memory despite the keypad boundary.
+code, malicious accessibility services, debugger attachment, arbitrary hostile
+overlays, or a malicious host application. Android Secure Native does reject
+the platform's fully and partially obscured touch flags before key activation,
+but that bounded tapjacking control is not a general overlay or device-
+integrity guarantee. These environments can observe input or native memory
+despite the keypad boundary.
 
 A product requiring a higher assurance decision must apply its own platform
 attestation, device-integrity, debugger/tamper, and account-risk policy before
