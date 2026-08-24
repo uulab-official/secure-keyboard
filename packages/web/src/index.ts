@@ -866,7 +866,7 @@ export function createPasskeyController(
     operation: PasskeyPresentationOperation,
     work: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> => {
-    if (state.phase === "pending") {
+    if (activeOperation !== undefined) {
       return Promise.reject(
         new WebAuthnClientError("operation-in-progress", "A passkey operation is already in progress"),
       );
@@ -882,8 +882,17 @@ export function createPasskeyController(
       active.rejectCancellation = reject;
     });
     publish(presentationState("pending", operation));
+    const workPromise = Promise.resolve().then(() => work(active.abortController.signal));
+    void workPromise.then(
+      () => {
+        if (activeOperation === active) activeOperation = undefined;
+      },
+      () => {
+        if (activeOperation === active) activeOperation = undefined;
+      },
+    );
     return Promise.race([
-      Promise.resolve().then(() => work(active.abortController.signal)),
+      workPromise,
       cancellation,
     ])
       .then((result) => {
@@ -901,9 +910,6 @@ export function createPasskeyController(
           publish(presentationState("error", operation, normalized.code));
         }
         throw normalized;
-      })
-      .finally(() => {
-        if (activeOperation === active) activeOperation = undefined;
       });
   };
 

@@ -21,6 +21,12 @@ test("WebAuthn audit rejects late direct API results before serialization", () =
   assert.match(audit, /WebAuthn authentication must discard late credentials before serialization after cancellation/);
 });
 
+test("WebAuthn audit retains the operation slot through cancellation races", () => {
+  const audit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(audit, /Web passkey UI controller must retain the operation slot until underlying work settles/);
+  assert.match(audit, /Web passkey cancellation must release the operation slot only after browser work settles/);
+});
+
 test("release workflows pin every production host toolchain consistently", () => {
   const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
   const releaseWorkflow = readFileSync(

@@ -139,6 +139,9 @@ exact release-candidate commit by the release evidence manifest.
 - Security: direct WebAuthn registration and authentication APIs now discard
   late browser credentials before response serialization when the caller has
   cancelled through `AbortSignal`.
+- Security: the Web passkey controller now retains its operation slot until a
+  cancelled browser ceremony settles, preventing overlapping ceremonies during
+  abort races.
 
 ### Server adapters
 

@@ -52,6 +52,9 @@ operation also settles with the stable "aborted" error independently of whether
 the browser honors the underlying abort signal. The direct registration and
 authentication APIs apply the same abort check after the browser promise settles,
 so a late credential is rejected before response data is serialized.
+The controller retains its operation slot until the underlying browser promise
+settles, so cancelling a ceremony cannot open a second concurrent ceremony while
+the first browser operation is still active.
 
 ## Public customization contract
 

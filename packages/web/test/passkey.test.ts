@@ -320,6 +320,29 @@ describe("WebAuthn support and mode policy", () => {
     });
   });
 
+  it("does not start a second ceremony while a cancelled browser operation is still settling", async () => {
+    let release: (() => void) | undefined;
+    const api: WebAuthnCredentialApi = {
+      create: () => new Promise<null>((resolve) => {
+        release = () => resolve(null);
+      }),
+      get: async () => null,
+    };
+    const controller = createPasskeyController(environment(api));
+    const first = controller.createPasskey(creationOptions);
+
+    await Promise.resolve();
+    controller.cancel();
+    await expect(first).rejects.toMatchObject({ code: "aborted" });
+    await expect(controller.getPasskey({ challenge: "AQID" })).rejects.toMatchObject({
+      code: "operation-in-progress",
+    });
+
+    release?.();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
   it("discards a late browser credential before serialization after direct cancellation", async () => {
     let release: ((credential: WebAuthnCredential) => void) | undefined;
     let extensionResultsRead = false;

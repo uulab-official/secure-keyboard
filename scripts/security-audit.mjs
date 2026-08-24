@@ -1256,8 +1256,10 @@ export function runSecurityAudit() {
   requireText(findings, "packages/web/src/index.ts", web, /createPasskey/, "Web adapter must expose passkey-first registration");
   requireText(findings, "packages/web/src/index.ts", web, /createPasskeyController/, "Web custom passkey UI must use the secret-free state controller");
   requireText(findings, "packages/web/src/index.ts", web, /operation-in-progress/, "Web passkey UI controller must reject concurrent ceremonies");
+  requireText(findings, "packages/web/src/index.ts", web, /if \(activeOperation !== undefined\)[\s\S]{0,180}operation-in-progress/, "Web passkey UI controller must retain the operation slot until underlying work settles");
   requireText(findings, "packages/web/src/index.ts", web, /readonly cancel: \(\) => void/, "Web passkey UI controller must expose cancellation without secret data");
   requireText(findings, "packages/web/src/index.ts", web, /new AbortController\(\)/, "Web passkey UI cancellation must use an abortable browser ceremony");
+  requireText(findings, "packages/web/src/index.ts", web, /const workPromise = Promise\.resolve\(\)\.then\(\(\) => work\(active\.abortController\.signal\)\)[\s\S]{0,300}void workPromise\.then\([\s\S]{0,360}Promise\.race/, "Web passkey cancellation must release the operation slot only after browser work settles");
   requireText(findings, "packages/web/src/index.ts", web, /Promise\.race\(\[[\s\S]{0,220}cancellation/, "Web passkey cancellation must settle the caller operation independently of browser abort behavior");
   requireText(findings, "packages/web/src/index.ts", web, /if \(active\.cancelled\)[\s\S]{0,180}new WebAuthnClientError\("aborted"/, "Web cancelled ceremonies must reject late browser results");
   requireText(findings, "packages/web/src/index.ts", web, /active\.cancelled = true[\s\S]{0,160}publish\(presentationState\("error", active\.operation, "aborted"\)\)/, "Web cancellation must immediately publish a stable aborted state");
