@@ -32,6 +32,9 @@ exact release-candidate commit by the release evidence manifest.
   Dart widget reattachment, preventing lifecycle resets below the native replay floor.
 - Security: iOS Headless Host replay floors now advance only after native key
   activation succeeds across the standalone, React Native, and Flutter views.
+- Security: native session errors now leave both iOS and Android Headless Host
+  replay floors unchanged, allowing rejected commands to fail closed without
+  consuming their token.
 - Security: iOS native masked-state refresh failures now release the native
   session before reporting the error, matching Android fail-closed behavior
   across the standalone, React Native, and Flutter source copies.

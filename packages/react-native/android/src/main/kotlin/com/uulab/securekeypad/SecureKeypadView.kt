@@ -571,7 +571,10 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.CANCEL -> status = SecureKeypadNative.sessionCancel(sessionHandle)
             SecureKeyRole.SPACER -> return false
         }
-        if (status != 0) onError?.invoke(status)
+        if (status != 0) {
+            onError?.invoke(status)
+            return false
+        }
         refreshMaskedState()
         return true
     }

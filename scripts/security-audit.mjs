@@ -722,6 +722,13 @@ export function runSecurityAudit() {
     requireText(findings, file, contents, /public fun requestHeadlessKeyPress[\s\S]{0,800}ensureSecureInputBoundary\(\)/, "Android headless input must verify secure-window protection at the command boundary");
     requireText(findings, file, contents, /private fun activate\(key: SecureKeySpec\)[\s\S]{0,300}ensureSecureInputBoundary\(\)/, "Android touch input must verify secure-window protection at activation");
     requireText(findings, file, contents, /if \(!activate\(key\)\) return[\s\S]{0,80}lastHeadlessKeyPress = requestId/, "Android headless replay state must advance only after secure input succeeds");
+    requireText(
+      findings,
+      file,
+      contents,
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      "native activation failures must not advance headless replay floors",
+    );
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)/, "Android native keypad must zeroize when its window loses focus");
     requireText(findings, file, contents, /onWindowFocusChanged\(hasWindowFocus: Boolean\)[\s\S]{0,300}if \(hasWindowFocus\)\s*\{\s*requireSecureWindow\(\)/, "Android native keypad must reassert secure-window protection when focus returns");
     requireText(findings, file, contents, /internal var onSessionNeedsReconfiguration: \(\(\) -> Unit\)\? = null/, "Android native keypad must expose only a non-secret lifecycle reconfiguration callback");
@@ -812,6 +819,13 @@ export function runSecurityAudit() {
       contents,
       /private func activate\(key: SecureKeySpec\) -> Bool/,
       "iOS native activation must report whether a command reached the native session",
+    );
+    requireText(
+      findings,
+      file,
+      contents,
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
+      "native activation failures must not advance headless replay floors",
     );
     forbidText(findings, file, contents, /lastHeadlessKeyPress\s*=\s*nil/, "iOS native keypad must not reset the headless replay floor during session release");
     requireText(findings, file, contents, /displayLabel\.text = protectedPresentation \? \"Protected\" : \"\"/, "iOS native keypad must clear the visible masked display when releasing a session");

@@ -589,6 +589,7 @@ public class SecureKeypadView: UIView {
         }
         if status != 0 {
             onError?(status)
+            return false
         }
         refreshMaskedState()
         return true

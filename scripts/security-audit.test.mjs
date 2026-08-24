@@ -316,6 +316,43 @@ test("iOS headless replay state advances only after native activation succeeds",
   assert.match(securityAudit, /iOS headless replay state must advance only after secure input succeeds/);
 });
 
+test("native session activation failures do not advance the headless replay floor", () => {
+  for (const relativePath of [
+    "../native/ios/SecureKeypadView.swift",
+    "../packages/react-native/ios/SecureKeypadView.swift",
+    "../packages/flutter/ios/Classes/SecureKeypadView.swift",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private func activate(key:");
+    const activateEnd = source.indexOf("private func refreshMaskedState", activateStart);
+    assert.ok(activateStart >= 0 && activateEnd > activateStart);
+    assert.match(
+      source.slice(activateStart, activateEnd),
+      /if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
+      `${relativePath} must keep rejected native commands out of the replay floor`,
+    );
+  }
+
+  for (const relativePath of [
+    "../native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/react-native/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+    "../packages/flutter/android/src/main/kotlin/com/uulab/securekeypad/SecureKeypadView.kt",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    const activateStart = source.indexOf("private fun activate(key:");
+    const activateEnd = source.indexOf("private fun keyBackground", activateStart);
+    assert.ok(activateStart >= 0 && activateEnd > activateStart);
+    assert.match(
+      source.slice(activateStart, activateEnd),
+      /if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      `${relativePath} must keep rejected native commands out of the replay floor`,
+    );
+  }
+
+  const securityAudit = readFileSync(new URL("./security-audit.mjs", import.meta.url), "utf8");
+  assert.match(securityAudit, /native activation failures must not advance headless replay floors/);
+});
+
 test("all framework adapters restore lifecycle-lost sessions without replaying headless commands", () => {
   for (const relativePath of [
     "../native/ios/SecureKeypadView.swift",
