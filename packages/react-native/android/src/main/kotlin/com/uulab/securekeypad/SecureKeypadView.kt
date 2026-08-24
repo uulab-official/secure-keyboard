@@ -596,6 +596,7 @@ public open class SecureKeypadView @JvmOverloads constructor(
             SecureKeyRole.SPACER -> return false
         }
         if (status != 0) {
+            releaseNativeSessionPreservingConfiguration()
             onError?.invoke(status)
             return false
         }

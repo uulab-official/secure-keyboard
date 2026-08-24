@@ -733,8 +733,8 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private fun activate\(key: SecureKeySpec\)[\s\S]*?if \(status != 0\) \{\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
-      "native activation failures must not advance headless replay floors",
+      /private fun activate\(key: SecureKeySpec\)[\s\S]*?if \(status != 0\) \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\.invoke\(status\)\s*return false\s*\}/,
+      "native activation failures must release the native session before reporting the error",
     );
     requireText(
       findings,
@@ -880,8 +880,8 @@ export function runSecurityAudit() {
       findings,
       file,
       contents,
-      /private func activate\(key: SecureKeySpec\)[\s\S]*?if status != 0 \{\s*onError\?\(status\)\s*return false\s*\}/,
-      "native activation failures must not advance headless replay floors",
+      /private func activate\(key: SecureKeySpec\)[\s\S]*?if status != 0 \{\s*releaseNativeSessionPreservingConfiguration\(\)\s*onError\?\(status\)\s*return false\s*\}/,
+      "native activation failures must release the native session before reporting the error",
     );
     requireText(
       findings,

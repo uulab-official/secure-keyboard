@@ -596,6 +596,7 @@ public class SecureKeypadView: UIView {
             return false
         }
         if status != 0 {
+            releaseNativeSessionPreservingConfiguration()
             onError?(status)
             return false
         }
